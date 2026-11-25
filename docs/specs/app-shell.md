@@ -1,10 +1,10 @@
 # App shell (brick 3a)
 
-- **Status:** draft
+- **Status:** approved (26 Nov 2026), in build
 - **Module:** Platform
 - **Journeys:** J-ONB-05 (new), J-ONB-01 (step 7 changed)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
-- **Decisions:** none new. Builds on 0003 (organization contains entities) and 0010 (organizations and access are ours)
+- **Decisions:** 0013 (tab organization guard), 0014 (entity is a view filter). Builds on 0003 and 0010
 
 ## How brick 3 is sliced (recommendation)
 Brick 2a was one large review. Brick 3 is cut into **four slices**. Each one can be tried in a single sitting and leaves the app working. The first is mostly screen work; the three after it each add one area of settings on top of the API that 2a already built and tested.
@@ -234,7 +234,23 @@ To be logged in `docs/design/CHANGES.md` when built.
 - Pages kept for offline use, the offline save queue and "Waiting to sync" (site diary brick).
 - Project switcher (Projects brick). Branding (see open question 6). My profile (name) and changing email.
 
-## Open questions
+## Owner's decisions (26 Nov 2026)
+All recommendations in this spec and the plan were approved:
+1. Brick 3 is four slices: 3a shell, 3b team, 3c roles and organization, 3d My security and passkeys.
+2. Unbuilt modules the role can view show in the sidebar with a "Soon" tag and a Coming soon page (one switch per module hides them before the first customer).
+3. No notifications bell or Approvals link until brick 4.
+4. The sidebar follows each role's view permissions; "Board pack" is "Reports".
+5. Email provider: Postmark, connected in 3b; console in development; named in the privacy notice with a data processing agreement before launch.
+6. Branding moves to the first customer-facing document.
+7. A removed member is signed out of that organization at once and sees "You no longer have access" at the next sign-in (2a's rule).
+8. Speed: Home within 1 s on a repeat visit over slow 3G; first visit LCP ≤ 2.5 s on Fast 4G.
+9. Recently opened pages in ⌘K are cleared on sign-out.
+10. Accepting an invitation as an existing user switches to the new organization (in 3a).
+11. Theme is remembered per device.
+12. **Modules a role can't view are never shown**: not in the sidebar, mobile tabs or More, ⌘K results, shortcuts, Home, or Preview as role. Only a direct link (e.g. pasted by a colleague) reaches the 403 page that names who can grant access.
+Plan questions B (group headings above 6 entries), D (role names from data on the 403 page), G (Preview needs settings.view) and H accepted as recommended.
+
+## Open questions (answered above)
 1. **Four slices (3a–3d) instead of three.** *Recommended:* yes, as in the table at the top. Passkeys get their own review and security audit.
 2. **Modules that aren't built yet.** Show them with a "Soon" tag and a *Coming soon* page, or hide them? *Recommended:* show them now, so you can review role-based navigation hands-on. Hide any still unbuilt before the first customer goes live; this is a single switch per module.
 3. **Notifications bell and Approvals link.** *Recommended:* leave both out of the top bar until something feeds them: Approvals in brick 4, the bell with the first notification source (approvals or receipts). Security alerts stay email-only.

@@ -1,6 +1,6 @@
 # Plan: App shell (brick 3a)
 
-- **Status:** draft for the owner's review. No code until approved.
+- **Status:** approved by the owner on 26 Nov 2026, in build. All recommended answers apply; decisions 0013 and 0014 accepted. Owner added: modules a role can't view are never shown anywhere in navigation (sidebar, tabs, ⌘K, shortcuts, Home, preview); only a direct link reaches 403. Item F (accepting an invitation switches organization) is in scope.
 - **Spec:** [docs/specs/app-shell.md](../specs/app-shell.md) (draft; open questions unanswered, so this plan uses the **recommended defaults**. Anything that would change if you choose differently is marked **⟲ if the owner picks otherwise**.)
 - **Journeys:** J-ONB-05 (new), J-ONB-01 step 7 and J-ONB-02 step 4 (changed)
 - Written by the architect agent on 26 Nov 2026 against branch `brick/03-app-shell` (cut from `main` after 2a merged), TanStack Router 1.170.46, oRPC 1.16.5, Better Auth 1.7.28.

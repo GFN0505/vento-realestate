@@ -18,5 +18,7 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0010](0010-better-auth-identity-own-access.md) | Better Auth for identity; organizations and access are ours | accepted |
 | [0011](0011-append-only-audit-events.md) | Audit events: one append-only table, written in the caller's transaction | accepted |
 | [0012](0012-uuidv7-and-same-organization-keys.md) | Database-generated UUID v7 ids and same-organization foreign keys | accepted |
+| [0013](0013-tab-organization-guard.md) | Each tab names its organization; the server refuses a mismatch | accepted |
+| [0014](0014-entity-is-a-view-filter.md) | The current entity is a view filter in the URL, never an access input | accepted |
 
 Template: [0000-template.md](0000-template.md)
