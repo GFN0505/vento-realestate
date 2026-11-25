@@ -47,8 +47,8 @@ Designs are a starting point, not a contract. If real data, a domain rule, acces
 **Never** write hex, rgb or arbitrary colour values in components. If a colour is missing, add a token in `styles.css`.
 
 ## Typography
-**Poppins** for headings and the logo (`font-heading`); **Inter** for body, labels, tables and all numbers (`font-sans`). Both self-hosted via `@fontsource`. Scale:
-- Display `font-heading text-[32px] font-semibold` (executive numbers only), page title `font-heading text-2xl font-semibold`, section title `font-heading text-lg font-semibold`
+**Geist** for headings and the wordmark (`font-heading`, one token in styles.css); **Inter** for body, labels, tables and all numbers (`font-sans`). Both self-hosted via `@fontsource` (never load fonts from third-party servers; check a font's licence allows a public repo before adding it). Scale:
+- Display `font-heading text-[40px] font-semibold tracking-[-0.03em]` (hero and executive numbers only), page title `font-heading text-2xl font-semibold tracking-[-0.02em]`, section title `font-heading text-lg font-semibold`
 - Body `text-sm`, secondary `text-sm text-muted-foreground`, label `text-xs font-semibold uppercase tracking-wide`, caption `text-xs text-muted-foreground`
 - Money and numbers: `tabular-nums font-medium`
 

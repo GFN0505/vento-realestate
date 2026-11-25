@@ -11,7 +11,7 @@ type Props = {
 
 export function TermsCheckbox({ id, checked, onCheckedChange, error }: Props) {
   return (
-    <div className="flex flex-col gap-1.5 border-t py-2.5">
+    <div className="flex flex-col gap-1.5">
       <div className="flex items-start gap-2.5 text-[13px]">
         <Checkbox
           id={id}
@@ -21,13 +21,13 @@ export function TermsCheckbox({ id, checked, onCheckedChange, error }: Props) {
           aria-describedby={error ? `${id}-error` : undefined}
           className="mt-px"
         />
-        <div className="font-semibold">
+        <div>
           <label htmlFor={id} className="cursor-pointer">
             I agree to the{' '}
           </label>
           <a
             href={LEGAL_LINKS.terms}
-            className="text-link hover:underline"
+            className="font-medium text-link hover:underline"
             target="_blank"
             rel="noreferrer"
           >
@@ -36,13 +36,13 @@ export function TermsCheckbox({ id, checked, onCheckedChange, error }: Props) {
           and{' '}
           <a
             href={LEGAL_LINKS.privacy}
-            className="text-link hover:underline"
+            className="font-medium text-link hover:underline"
             target="_blank"
             rel="noreferrer"
           >
             Privacy notice
           </a>
-          <span className="block font-normal text-muted-foreground text-xs">
+          <span className="mt-0.5 block text-muted-foreground text-xs">
             We process data under the Nigeria Data Protection Act 2023.
           </span>
         </div>

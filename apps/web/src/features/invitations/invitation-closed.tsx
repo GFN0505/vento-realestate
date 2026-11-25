@@ -14,7 +14,7 @@ export function InvitationClosed({ preview }: { preview: InvitationPreview | nul
         <Link to="/sign-in">Go to sign in</Link>
       </Button>
       <AuthFootnote>
-        New to Vento? <Link to="/sign-up">Create a company account</Link>.
+        New to Vento? <Link to="/sign-up">Create an account</Link>
       </AuthFootnote>
     </>
   )

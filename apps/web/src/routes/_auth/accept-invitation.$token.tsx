@@ -103,7 +103,7 @@ function AcceptInvitationPage() {
         >
           Decline invitation
         </button>
-        . Your role can be changed later by an admin.
+        .
         {!me && !preview.hasAccount && (
           <>
             {' '}

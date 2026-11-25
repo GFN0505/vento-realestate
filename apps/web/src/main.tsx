@@ -4,11 +4,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createQueryClient } from '@/lib/query-client'
 import { createAppRouter } from '@/router'
-// Self-hosted fonts. Inter's variable file serves every weight; the browser fetches only the
-// subsets the page uses. Poppins is for headings: Latin, 500 and 600 only.
+// Self-hosted variable fonts (font-display: swap). Each file serves every weight, and the
+// browser fetches only the unicode subsets a page uses. Inter for text, Geist for headings.
 import '@fontsource-variable/inter/wght.css'
-import '@fontsource/poppins/latin-500.css'
-import '@fontsource/poppins/latin-600.css'
+import '@fontsource-variable/geist/wght.css'
 import './styles.css'
 
 const queryClient = createQueryClient()

@@ -45,7 +45,7 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
-      <AuthHeader title="Sign in">Use your work email.</AuthHeader>
+      <AuthHeader title="Sign in" />
       {failure && (
         <FormAlert variant="error">
           <AuthFailureText failure={failure} secondsLeft={secondsLeft} />
@@ -66,7 +66,16 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
         <FieldError id={`${ids.email}-error`}>{errors.email?.message}</FieldError>
       </Field>
       <Field data-invalid={!!errors.password}>
-        <FieldLabel htmlFor={ids.password}>Password</FieldLabel>
+        <div className="flex items-baseline justify-between gap-3">
+          <FieldLabel htmlFor={ids.password}>Password</FieldLabel>
+          {/* Phones: a 44px touch target without making the label row taller. */}
+          <Link
+            to="/forgot-password"
+            className="text-link text-xs hover:text-link-hover hover:underline max-lg:-my-3.5 max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <PasswordInput
           id={ids.password}
           autoComplete="current-password"
@@ -75,14 +84,6 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
           {...form.register('password', { required: 'Enter your password' })}
         />
         <FieldError id={`${ids.password}-error`}>{errors.password?.message}</FieldError>
-        <span className="text-xs">
-          <Link
-            to="/forgot-password"
-            className="text-link hover:text-link-hover hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
-          >
-            Forgot password?
-          </Link>
-        </span>
       </Field>
       <KeepSignedIn id={ids.keep} form={form} />
       <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || waiting}>
@@ -93,8 +94,7 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
             : 'Sign in'}
       </Button>
       <AuthFootnote>
-        New to Vento? <Link to="/sign-up">Create a company account</Link>. Invited by a colleague?
-        Use the link in your email.
+        New to Vento? <Link to="/sign-up">Create an account</Link>
       </AuthFootnote>
     </form>
   )
@@ -105,20 +105,14 @@ function KeepSignedIn({ id, form }: { id: string; form: ReturnType<typeof useFor
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-start gap-2.5 border-t py-2.5 text-[13px]"
+      className="flex cursor-pointer items-center gap-2.5 text-[13px] max-lg:min-h-11"
     >
       <Checkbox
         id={id}
         checked={checked}
         onCheckedChange={(value) => form.setValue('keepSignedIn', value === true)}
-        className="mt-px"
       />
-      <span className="font-semibold">
-        Keep me signed in on this device
-        <span className="block font-normal text-muted-foreground text-xs">
-          30 days. Don't tick this on a shared computer.
-        </span>
-      </span>
+      Keep me signed in for 30 days
     </label>
   )
 }

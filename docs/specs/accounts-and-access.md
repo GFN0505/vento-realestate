@@ -43,7 +43,7 @@ A developer group can't put land, buyers or money into Vento until the right peo
 5. Lands on the temporary signed-in page. Owners must set up two-step before they reach it (see step 3 of the next flow).
 
 **Sign in (J-ONB-04): 2 clicks**
-1. *Sign in:* work email, password, optional "Keep me signed in on this device" → **Sign in**.
+1. *Sign in:* work email, password ("Forgot password?" beside the label), optional "Keep me signed in for 30 days" → **Sign in**.
 2. *Two-step check:* 6-digit code from the authenticator app, or "Use a backup code" → **Verify**.
 3. If the member's role requires two-step and it isn't set up: *Set up two-step* (scan the QR code or type the key, enter a code, save 10 backup codes) before going any further.
 
@@ -171,6 +171,7 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 | Two-step reset by someone else | "Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in." |
 | Lost phone | "Lost your phone and your codes? Ask an owner or admin to reset two-step." |
 | Backup codes | "Save these 10 codes somewhere safe. Each works once." · **Download** · **Copy** · "I've saved my backup codes" |
+| Sign in | Title "Sign in" (no subtitle) · "Keep me signed in for 30 days" · "New to Vento? Create an account" |
 | Session expired | "Your session has ended. For security, Vento signs you out after 30 minutes without activity." · **Sign in again** |
 | Temporary signed-in page | "You're signed in to Vento Homes Ltd as Finance." · "Your workspace arrives in the next release." · **Sign out** · **Sign out everywhere** |
 | Invitation expired | "This invitation expired on 30 Nov 2026. Ask Olumide Bankole to send a new one." |

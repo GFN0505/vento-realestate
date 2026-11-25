@@ -33,13 +33,15 @@ Badges use the tint background, the border, and the darker **text** shade so the
 Unit and plot colours reuse these: **violet outline = available** (it's an action), amber reserved, blue paying, emerald fully paid, rose overdue, slate blocked. Filters dim non-matching units instead of hiding them.
 
 ### Type
-**Poppins** for headings, the logo and marketing surfaces. **Inter** for body, labels and every table, with tabular figures (Inter's taller x-height and true tabular digits hold up in dense ₦ columns where Poppins' numerals blur).
+**Geist** for headings and the wordmark. **Inter** for body, labels and every table, with tabular figures (Inter's taller x-height and true tabular digits hold up in dense ₦ columns).
+
+> **Changed 25 Nov 2026:** the boards use Poppins; the owner moved headings to Geist (crisper and more premium). Satoshi, used on the marketing site, was considered but its licence forbids a public repository. Geist is OFL, self-hosted via `@fontsource-variable/geist`. Next design pass: use Geist for headings.
 
 | Style | Font | Weight | Size |
 |---|---|---|---|
-| Display | Poppins | 600 | 32px |
-| H1 (page title) | Poppins | 600 | 24px |
-| H2 (section) | Poppins | 600 | 18px |
+| Display | Geist | 600 | 40–48px, tracking −0.03em |
+| H1 (page title) | Geist | 600 | 24px in the app, 32px on auth screens, tracking −0.02em |
+| H2 (section) | Geist | 600 | 18px |
 | Body | Inter | 400 | 14px |
 | Label | Inter | 600 | 12px, uppercase |
 | Data | Inter | 500 | 14px, tabular |

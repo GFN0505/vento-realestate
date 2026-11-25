@@ -64,7 +64,9 @@ export function VentoMark({
           )}
         />
       </svg>
-      <span className="font-bold font-heading text-[17px] tracking-[0.01em] lg:text-lg">Vento</span>
+      <span className="font-heading font-semibold text-[17px] tracking-[-0.01em] lg:text-lg">
+        Vento
+      </span>
       {descriptor && (
         <span
           className={cn(

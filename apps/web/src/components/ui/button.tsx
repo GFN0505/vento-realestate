@@ -4,11 +4,13 @@ import type * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent font-semibold text-sm transition-[color,background-color,opacity] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-destructive [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent font-semibold text-sm transition-[color,background-color,border-color,box-shadow,opacity,translate] duration-150 ease-out outline-none active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-destructive [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:opacity-90',
+        // Depth: a soft shadow and a 1px light top edge; deeper fill and lift on hover.
+        default:
+          'bg-primary text-primary-foreground shadow-button-primary hover:bg-primary-hover hover:shadow-button-primary-hover active:shadow-button-primary',
         destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
         outline: 'border-border bg-card text-foreground hover:bg-muted',
         secondary: 'border-border bg-muted text-foreground hover:bg-border/60',
