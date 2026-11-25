@@ -1,4 +1,4 @@
-import { ArrowLeftIcon } from 'lucide-react'
+import { ArrowLeftIcon, FileCheck2Icon, GlobeIcon, ScaleIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { VentoMark } from '@/components/vento-mark'
 
@@ -51,25 +51,67 @@ export function AuthLayout({ children, back, wide = false }: Props) {
 
 function BrandPanel() {
   return (
-    <aside className="hidden flex-col justify-between bg-auth-panel p-12 text-sidebar-foreground lg:flex">
-      <VentoMark />
-      <div>
-        <p className="mb-3 max-w-[380px] font-heading font-semibold text-[28px] leading-[1.3]">
-          Land, projects, buyers and money in one place.
+    <aside className="relative isolate hidden overflow-hidden bg-auth-panel text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-14">
+      <PanelBackdrop />
+      <VentoMark tone="navy" />
+      <div className="motion-safe:animate-auth-rise">
+        <p className="max-w-[420px] text-balance font-heading font-semibold text-[34px] leading-[1.14] tracking-[-0.025em] xl:text-[38px]">
+          Command every development, from title to handover.
         </p>
-        <p className="max-w-[380px] text-sidebar-muted-foreground text-sm leading-normal">
-          Built for Nigerian developers: titles, off-plan instalments, SPVs and statutory filings.
+        <p className="mt-4 max-w-[400px] text-pretty text-[15px] text-sidebar-muted-foreground leading-relaxed">
+          Land, buyers, instalments and every SPV's books in one secure place. Built for how
+          Nigerian developers really work.
         </p>
+        <ul className="mt-10 flex flex-col gap-3.5 border-auth-hairline border-t pt-8">
+          {PROOF_POINTS.map(({ icon: Icon, label }) => (
+            <li key={label} className="flex items-center gap-3 font-medium text-sm">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-logo-stroke/15 ring-1 ring-logo-stroke/30 ring-inset">
+                <Icon className="size-4 text-logo-dot" strokeWidth={2} aria-hidden />
+              </span>
+              {label}
+            </li>
+          ))}
+        </ul>
       </div>
       <AuthFooter />
     </aside>
   )
 }
 
+const PROOF_POINTS = [
+  { icon: FileCheck2Icon, label: 'Title to handover on one record' },
+  { icon: GlobeIcon, label: 'Instalments collected at home and abroad' },
+  { icon: ScaleIcon, label: "Every SPV's books, always balanced" },
+] as const
+
+/** Decoration only: the logo-colour glow, a hairline grid and an oversized faint chevron. */
+function PanelBackdrop() {
+  return (
+    <div aria-hidden="true" className="-z-10 pointer-events-none absolute inset-0">
+      <div className="absolute inset-0 auth-glow" />
+      <div className="absolute inset-0 auth-grid" />
+      <svg
+        viewBox="0 0 32 32"
+        fill="none"
+        aria-hidden="true"
+        className="-right-32 -bottom-40 absolute size-[600px] opacity-[0.07]"
+      >
+        <path
+          d="M5 7 L16 27 L27 7"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="stroke-logo-stroke"
+        />
+      </svg>
+    </div>
+  )
+}
+
 function AuthFooter() {
   return (
     <div className="flex flex-wrap gap-4 text-sidebar-faint-foreground text-xs">
-      <span>© 2026 Vento</span>
+      <span>© 2026 Vento Real Estate</span>
       <a href={LEGAL_LINKS.privacy} className="text-sidebar-muted-foreground hover:underline">
         Privacy
       </a>

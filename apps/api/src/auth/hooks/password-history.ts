@@ -12,7 +12,7 @@ export async function assertPasswordAllowed(
   history?: { userId: string; verify: Verify },
 ): Promise<void> {
   if (typeof password !== 'string') return // Better Auth's own validation answers this
-  const failure = await checkPasswordPolicy(password, deps.breachCheck)
+  const failure = checkPasswordPolicy(password)
   if (failure) throw authError('BAD_REQUEST', failure, AUTH_ERROR_MESSAGES[failure])
   if (!history) return
   const hashes = await recentPasswordHashes(deps.db, history.userId)

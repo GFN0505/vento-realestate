@@ -6,8 +6,6 @@ export const AUTH_ERROR_CODES = {
   // Ours: password rules (sign-up, reset, change, accept invitation).
   PASSWORD_TOO_SHORT: 'PASSWORD_TOO_SHORT',
   PASSWORD_NEEDS_NUMBER: 'PASSWORD_NEEDS_NUMBER',
-  PASSWORD_TOO_COMMON: 'PASSWORD_TOO_COMMON',
-  PASSWORD_BREACHED: 'PASSWORD_BREACHED',
   PASSWORD_REUSED: 'PASSWORD_REUSED',
   TERMS_NOT_ACCEPTED: 'TERMS_NOT_ACCEPTED',
   /** 429. Body also has `lockedUntil` (ISO date-time). */
@@ -37,8 +35,6 @@ export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CO
 export const PASSWORD_ERROR_CODES = [
   AUTH_ERROR_CODES.PASSWORD_TOO_SHORT,
   AUTH_ERROR_CODES.PASSWORD_NEEDS_NUMBER,
-  AUTH_ERROR_CODES.PASSWORD_TOO_COMMON,
-  AUTH_ERROR_CODES.PASSWORD_BREACHED,
   AUTH_ERROR_CODES.PASSWORD_REUSED,
 ] as const
 export type PasswordErrorCode = (typeof PASSWORD_ERROR_CODES)[number]
@@ -55,8 +51,6 @@ export const AUTH_ERROR_MESSAGES: Record<
 > = {
   PASSWORD_TOO_SHORT: 'Use at least 12 characters',
   PASSWORD_NEEDS_NUMBER: 'Include a number',
-  PASSWORD_TOO_COMMON: 'That password is too common. Choose another.',
-  PASSWORD_BREACHED: 'That password has appeared in a data breach. Choose another.',
   PASSWORD_REUSED: 'Choose a password different from your last 5',
   TERMS_NOT_ACCEPTED: 'Agree to the terms and privacy notice to continue',
   INVALID_EMAIL_OR_PASSWORD: "That email and password don't match.",

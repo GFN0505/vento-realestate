@@ -16,7 +16,6 @@ if (!new URL(testUrl).pathname.endsWith('_test')) {
 process.env.DATABASE_URL = testUrl
 // Keep test output readable; failures still show warnings and errors.
 process.env.LOG_LEVEL = process.env.TEST_LOG_LEVEL ?? 'warn'
-// Emails stay in memory, no calls to Have I Been Pwned, no per-IP limits between tests.
+// Emails stay in memory, no per-IP limits between tests.
 process.env.EMAIL_TRANSPORT = 'memory'
-process.env.PWNED_PASSWORDS_CHECK = 'off'
 process.env.AUTH_RATE_LIMIT = 'off'

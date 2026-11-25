@@ -50,7 +50,6 @@ export function clientAs(
     auth,
     mailer,
     rateLimiter: createRateLimiter(false),
-    breachCheck: null,
   }
   return { client: createRouterClient(router, { context }), mailer }
 }

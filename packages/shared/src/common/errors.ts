@@ -37,7 +37,7 @@ export type ConflictReason = z.infer<typeof conflictReason>
  * `data.reason` lets the web choose a screen or state without parsing the message.
  */
 export const errorMap = {
-  /** Only for rules zod can't check (password common, breached or reused). */
+  /** Password rules checked on the server (reuse, or length and number where zod didn't run). */
   BAD_REQUEST: {
     status: 400,
     message: 'Check the highlighted fields',

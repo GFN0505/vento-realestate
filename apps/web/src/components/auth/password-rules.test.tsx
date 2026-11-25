@@ -12,7 +12,6 @@ describe('PasswordRules', () => {
 
     expect(ruleState('At least 12 characters')).toBe('pending')
     expect(ruleState('Includes a number')).toBe('pending')
-    expect(ruleState('Not a common or leaked password')).toBe('pending')
   })
 
   it('ticks length and number as they are met', () => {
@@ -30,11 +29,11 @@ describe('PasswordRules', () => {
     expect(ruleState('Includes a number')).toBe('pending')
   })
 
-  it('shows the common-password rule as failed when the server refuses it', () => {
-    render(<PasswordRules password="password12345" serverIssues={{ common: true }} />)
+  it('shows only the length and number rules outside reset', () => {
+    render(<PasswordRules password="password12345" />)
 
-    expect(ruleState('Not a common or leaked password')).toBe('failed')
-    expect(screen.getByText('Not met:')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByText(/common or leaked/i)).not.toBeInTheDocument()
   })
 
   it('adds the last-5 rule only on reset', () => {
@@ -43,5 +42,6 @@ describe('PasswordRules', () => {
 
     rerender(<PasswordRules password="x" showReuseRule serverIssues={{ reused: true }} />)
     expect(ruleState('Different from your last 5 passwords')).toBe('failed')
+    expect(screen.getByText('Not met:')).toBeInTheDocument()
   })
 })

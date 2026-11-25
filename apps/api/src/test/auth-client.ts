@@ -1,21 +1,15 @@
 import { createHmac } from 'node:crypto'
 import { createApp } from '@/app'
 import { createAuth } from '@/auth/auth'
-import type { BreachCheck } from '@/auth/password-policy'
 import { db } from '@/db/client'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { env } from '@/env'
 
 /** A real app (Better Auth included) with emails kept in memory. */
-export function testApp(options: { breachCheck?: BreachCheck | null; rateLimit?: boolean } = {}) {
+export function testApp(options: { rateLimit?: boolean } = {}) {
   const mailer = createMemoryTransport()
-  const auth = createAuth({
-    db,
-    mailer,
-    breachCheck: options.breachCheck ?? null,
-    rateLimit: options.rateLimit ?? false,
-  })
-  const app = createApp({ db, mailer, auth, breachCheck: options.breachCheck ?? null })
+  const auth = createAuth({ db, mailer, rateLimit: options.rateLimit ?? false })
+  const app = createApp({ db, mailer, auth })
   return { app, mailer, auth }
 }
 

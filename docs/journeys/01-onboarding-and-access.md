@@ -7,7 +7,7 @@
 Spec: [accounts-and-access](../specs/accounts-and-access.md) (steps 1–4 and the two-step setup; step 5 onwards comes with Projects and Sales).
 
 **Steps**
-1. *Sign up:* name, company, work email, password (≥ 12 characters, a number, not a common or leaked password), accept terms and privacy notice → **Create account**.
+1. *Sign up:* name, company, work email, password (≥ 12 characters and a number), accept terms and privacy notice → **Create account**.
 2. *Verify email:* link or 6-digit code from the email (valid 30 minutes) → **Verify email**.
 3. *Onboarding, step 1 (organization):* organization name (pre-filled from Company), head office state, financial year start (January). Base currency NGN is shown, not chosen → **Continue**.
 4. *Onboarding, step 2 (first entity):* entity name (pre-filled), type (holding company or SPV), RC number, TIN, VAT registered? RC and TIN can be left for later → **Finish setup**.

@@ -21,7 +21,7 @@ export function OnboardingLayout({ step, children }: { step: 1 | 2; children: Re
   return (
     <div className="min-h-dvh bg-background lg:flex">
       <aside className="hidden w-[340px] shrink-0 flex-col gap-8 bg-auth-panel px-9 py-10 text-sidebar-foreground lg:flex">
-        <VentoMark />
+        <VentoMark tone="navy" />
         <div className="flex flex-col gap-1.5">
           <span className="font-heading font-semibold text-[22px] leading-[1.3]">
             Set up in about two minutes

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
-import { type AuthClientError, authErrorMessage, passwordIssues } from '@/lib/auth-errors'
+import { type AuthClientError, authErrorMessage } from '@/lib/auth-errors'
 import { TermsCheckbox } from './terms-checkbox'
 
 type Values = { name: string; companyName: string; email: string; password: string; terms: boolean }
@@ -41,14 +41,12 @@ export function SignUpForm() {
     })
     if (error) {
       setServerError(error)
-      if (passwordIssues(error).common) form.setFocus('password')
       return
     }
     // Same reply whether or not the email already has an account (owner's decision 9).
     void navigate({ to: '/verify-email', search: { email } })
   })
 
-  const isPasswordError = Object.values(passwordIssues(serverError)).some(Boolean)
   const fieldProps = (name: keyof Values, id: string) => ({
     id,
     'aria-invalid': !!errors[name],
@@ -58,11 +56,9 @@ export function SignUpForm() {
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       <AuthHeader title="Create your company account" />
-      {serverError &&
-        !isPasswordError &&
-        serverError.code !== AUTH_ERROR_CODES.PASSWORD_TOO_SHORT && (
-          <FormAlert variant="error">{authErrorMessage(serverError)}</FormAlert>
-        )}
+      {serverError && serverError.code !== AUTH_ERROR_CODES.PASSWORD_TOO_SHORT && (
+        <FormAlert variant="error">{authErrorMessage(serverError)}</FormAlert>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field data-invalid={!!errors.name}>
           <FieldLabel htmlFor={ids.name}>Your name</FieldLabel>
@@ -105,15 +101,14 @@ export function SignUpForm() {
         />
         <FieldError id={`${ids.email}-error`}>{errors.email?.message}</FieldError>
       </Field>
-      <Field data-invalid={!!errors.password || isPasswordError}>
+      <Field data-invalid={!!errors.password}>
         <FieldLabel htmlFor={ids.password}>Password</FieldLabel>
         <PasswordInput
           autoComplete="new-password"
           id={ids.password}
-          aria-invalid={!!errors.password || isPasswordError}
+          aria-invalid={!!errors.password}
           aria-describedby={`${ids.password}-rules`}
           {...form.register('password', {
-            onChange: () => isPasswordError && setServerError(null),
             validate: (v) => {
               const checks = checkPasswordLocally(v)
               return (checks.length && checks.number) || PASSWORD_HINT
@@ -123,7 +118,6 @@ export function SignUpForm() {
         <PasswordRules
           id={`${ids.password}-rules`}
           password={password}
-          serverIssues={passwordIssues(serverError)}
           showUnmetAsFailed={!!errors.password}
         />
       </Field>

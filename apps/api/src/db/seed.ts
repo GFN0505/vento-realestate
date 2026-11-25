@@ -203,7 +203,7 @@ async function seed() {
   if (env.NODE_ENV === 'production') throw new Error('The seed is for development only')
   const password = env.SEED_PASSWORD
   if (!password) throw new Error('Set SEED_PASSWORD in .env (see .env.example)')
-  const problem = await checkPasswordPolicy(password, null)
+  const problem = checkPasswordPolicy(password)
   if (problem) throw new Error(`SEED_PASSWORD doesn't meet the password rules (${problem})`)
   const passwordHash = await hashPassword(password)
 

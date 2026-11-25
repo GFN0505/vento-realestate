@@ -34,12 +34,12 @@ export function renderEmail(subject: string, heading: string, blocks: Block[]): 
 <body style="margin:0;padding:0;background:#f5f6fa;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6fa;padding:24px 0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:10px;border:1px solid #e5e7eb">
-<tr><td style="padding:24px 32px;border-bottom:1px solid #e5e7eb;font-family:Poppins,Inter,Arial,sans-serif;font-weight:600;font-size:20px;color:#0f1a3c">Vento</td></tr>
+<tr><td style="padding:24px 32px;border-bottom:1px solid #e5e7eb;font-family:Poppins,Inter,Arial,sans-serif;font-weight:600;font-size:20px;color:#0f1a3c">Vento <span style="font-family:Inter,Arial,sans-serif;font-weight:600;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280">Real Estate</span></td></tr>
 <tr><td style="padding:32px">
 <h1 style="margin:0 0 16px;font-family:Poppins,Inter,Arial,sans-serif;font-size:22px;line-height:30px;color:#111827">${escapeHtml(heading)}</h1>
 ${body}
 </td></tr>
-<tr><td style="padding:16px 32px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280">Vento · Data held in Nigeria</td></tr>
+<tr><td style="padding:16px 32px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280">Vento Real Estate</td></tr>
 </table></td></tr></table></body></html>`
   const text = [
     heading,
@@ -48,7 +48,7 @@ ${body}
       b.kind === 'button' ? `${b.label}: ${b.url}` : b.kind === 'code' ? b.code : b.text,
     ),
     '',
-    'Vento · Data held in Nigeria',
+    'Vento Real Estate',
   ].join('\n')
   return { subject, html, text }
 }

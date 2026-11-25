@@ -61,8 +61,6 @@ export function isLocked(error: AuthClientError): boolean {
 const PASSWORD_CODES: readonly string[] = [
   C.PASSWORD_TOO_SHORT,
   C.PASSWORD_NEEDS_NUMBER,
-  C.PASSWORD_TOO_COMMON,
-  C.PASSWORD_BREACHED,
   C.PASSWORD_REUSED,
 ]
 
@@ -73,10 +71,7 @@ function isPasswordCode(code: string | undefined): code is PasswordErrorCode {
 /** Which server-only password rules failed, for PasswordRules to show in rose. */
 export function passwordIssues(error: AuthClientError | null): ServerPasswordIssues {
   if (!error) return {}
-  return {
-    common: error.code === C.PASSWORD_TOO_COMMON || error.code === C.PASSWORD_BREACHED,
-    reused: error.code === C.PASSWORD_REUSED,
-  }
+  return { reused: error.code === C.PASSWORD_REUSED }
 }
 
 type Step = 'sign-in' | 'two-step' | 'backup-code' | 'email-code' | 'general'

@@ -49,6 +49,9 @@ Unit and plot colours reuse these: **violet outline = available** (it's an actio
 - Radius **10px** for cards, inputs and buttons. Subtle borders over heavy shadows.
 - Mobile touch targets ≥ 44px.
 
+### Product name
+The product is **Vento Real Estate** (the company has other Vento products). The lockup is the V mark, the 'Vento' wordmark and a small uppercase 'Real Estate' descriptor; running text may say 'Vento'.
+
 ### Default theme
 The app opens in **light mode** (owner's decision, 25 Nov 2026). Dark mode is a choice in the user menu (brick 3), with an option to follow the system setting.
 

@@ -277,19 +277,19 @@ describe('accepting as a new person (HTTP)', () => {
     expect(res.body).toMatchObject({ data: { reason: 'account_exists' } })
   })
 
-  it('explains a common password with a code the web can map', async () => {
+  it('explains a password without a number on the password field', async () => {
     const { app } = testApp()
     const { token } = await invite()
     const res = await browser(app).rpc('invitations/acceptAsNewUser', {
       token,
       name: 'Aisha Bello',
-      password: 'Sunshine12345',
+      password: 'no-number-in-here',
       termsVersion: CURRENT_TERMS_VERSION,
     })
     expect(res.status).toBe(400)
+    // The shared zod schema catches length and number before the service runs.
     expect(res.body).toMatchObject({
-      message: 'That password is too common. Choose another.',
-      data: { reason: 'PASSWORD_TOO_COMMON' },
+      data: { issues: [{ message: 'Include a number', path: ['password'] }] },
     })
   })
 })
@@ -327,19 +327,6 @@ describe('inviting the same email at the same moment', () => {
 })
 
 describe('accepting as a new person: edge cases', () => {
-  it('uses the breached-password check the app was built with', async () => {
-    const { app } = testApp({ breachCheck: async () => true })
-    const org = await createOrganization(db, { name: `Breach Test ${Date.now()}` })
-    const { token } = await createInvitation(db, org, { role: 'viewer' })
-    const res = await browser(app).rpc('invitations/acceptAsNewUser', {
-      token,
-      name: 'Aisha Bello',
-      password: TEST_PASSWORD,
-      termsVersion: CURRENT_TERMS_VERSION,
-    })
-    expect(res.body).toMatchObject({ data: { reason: 'PASSWORD_BREACHED' } })
-  })
-
   it('sends them to sign in when the automatic sign-in fails after joining', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)

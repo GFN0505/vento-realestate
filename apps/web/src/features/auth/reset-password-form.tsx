@@ -21,7 +21,7 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
   const form = useForm<Values>({ defaultValues: { password: '', confirm: '' } })
   const { errors, isSubmitting } = form.formState
   const issues = passwordIssues(serverError)
-  const ruleFailed = !!(issues.common || issues.reused)
+  const ruleFailed = !!issues.reused
 
   const submit = form.handleSubmit(async ({ password }) => {
     setServerError(null)

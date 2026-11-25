@@ -83,7 +83,7 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 ## Acceptance criteria
 
 ### Sign up and verify
-- **Given** someone on *Sign up*, **when** the password is under 12 characters, has no number, is a common password or appears in known data breaches, **then** the matching rule stays unticked and **Create account** explains what's missing.
+- **Given** someone on *Sign up*, **when** the password is under 12 characters or has no number, **then** the matching rule stays unticked and **Create account** explains what's missing.
 - **Given** an email that already has an account, **when** they sign up, **then** they see the usual "Check your email" step, and the existing account is emailed "Someone tried to create a Vento account with your email. Sign in or reset your password." Nobody can find out who has an account.
 - **Given** a new account, **when** it's created, **then** the time and version of the terms and privacy notice they accepted is recorded, a verification email is sent (link and 6-digit code, valid 30 minutes), and nothing else in Vento opens until the email is verified.
 - **Given** an expired or used link, **when** it's opened, **then** they see "This link has expired" with **Send a new link**. Resend is allowed once a minute, 5 times an hour.
@@ -155,13 +155,13 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 ## Behind the scenes
 - **Emails** sent in 2a: verify email, reset password, invitation, and security alerts. Until a provider is chosen, development writes each email to the API console; no email leaves the machine.
 - **Security alerts are always sent and can't be muted:** sign-in locked, password changed or reset, two-step turned off or reset by someone else, backup code used.
-- **Breached-password check:** only the first 5 characters of a scrambled (hashed) password are sent to the free Have I Been Pwned service, so the password itself never leaves Vento. If the service is down, sign-up continues with the common-password list only.
+- **Password rules are checked in Vento only:** at least 12 characters and a number (plus not one of the last 5 on reset and change). No outside breached-password service is called, and passwords never leave Vento.
 - **Seed data:** Vento Homes Ltd with its three entities and the eight team members from the designs, one per role, for local development and demos.
 
 ## UI copy
 | Where | Copy |
 |---|---|
-| Sign-up rules | "At least 12 characters" · "Includes a number" · "Not a common or leaked password" · (reset only) "Different from your last 5 passwords" |
+| Sign-up rules | "At least 12 characters" · "Includes a number" · (reset only) "Different from your last 5 passwords" |
 | Verify email | "We sent a link to olumide@ventohomes.ng. It expires in 30 minutes." · "Or enter the code from the email" · **Verify email** · "Resend in 0:42" · **Change email** |
 | Onboarding step 1 | Title "Your organization" · "The developer group as a whole. Project companies come next." · **Continue** |
 | Onboarding step 2 | Title "First entity" · "Most projects sit in their own company (SPV). Books, bank accounts and tax are kept per entity." · "You can add this later" (under RC and TIN) · **Finish setup** |
@@ -225,6 +225,7 @@ All recommendations below and in the plan were approved:
 10. Vento owns organizations, roles and access in its own tables (decision 0010).
 11. In 2a, turning two-step off asks for the password; brick 3 adds the current code.
 12. Seed: Tunde Ola (accountant) is a viewer; no seeded admin.
+13. (After review) The common/leaked password rule is removed; passwords need 12+ characters and a number.
 
 ## Open questions (answered above)
 1. **Email provider.** *Recommended:* log emails to the console in development now; pick a provider (Postmark or Resend are simple and reliable) before the first real customer, at the latest in brick 3.

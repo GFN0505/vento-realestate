@@ -23,7 +23,7 @@ import {
   twoStepRequired,
 } from '@/access/context'
 import { webUrl } from '@/auth/hooks/deps'
-import { type BreachCheck, checkPasswordPolicy } from '@/auth/password-policy'
+import { checkPasswordPolicy } from '@/auth/password-policy'
 import { INVITATION_TTL_MS } from '@/auth/policy'
 import { rememberPasswordHash } from '@/auth/security-store'
 import type { DbOrTx } from '@/db/client'
@@ -571,9 +571,8 @@ export async function acceptInvitation(
 export async function acceptInvitationAsNewUser(
   db: DbOrTx,
   input: z.output<typeof acceptInvitationAsNewUserInput>,
-  breachCheck: BreachCheck | null,
 ): Promise<{ email: string; nextStep: NextStep }> {
-  const failure = await checkPasswordPolicy(input.password, breachCheck)
+  const failure = checkPasswordPolicy(input.password)
   if (failure) {
     throw new ORPCError('BAD_REQUEST', {
       message: AUTH_ERROR_MESSAGES[failure],

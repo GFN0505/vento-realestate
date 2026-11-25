@@ -9,7 +9,6 @@ import { compress } from 'hono/compress'
 import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 import { type Auth, createAuth } from '@/auth/auth'
-import { type BreachCheck, defaultBreachCheck } from '@/auth/password-policy'
 import { applySessionPolicy } from '@/auth/session-policy'
 import type { Db } from '@/db/client'
 import { createMailer, type Mailer } from '@/email/mailer'
@@ -26,8 +25,6 @@ export type AppDeps = {
   mailer?: Mailer
   auth?: Auth
   rateLimiter?: RateLimiter
-  /** Breached-password check; null = off. Defaults to PWNED_PASSWORDS_CHECK. Shared with Better Auth. */
-  breachCheck?: BreachCheck | null
 }
 
 function socketAddress(c: Context): string | undefined {
@@ -51,8 +48,7 @@ function trustedHeaders(c: Context): Headers {
 export function createApp(deps: AppDeps): Hono {
   const { db } = deps
   const mailer = deps.mailer ?? createMailer(env)
-  const breachCheck = deps.breachCheck !== undefined ? deps.breachCheck : defaultBreachCheck()
-  const auth = deps.auth ?? createAuth({ db, mailer, breachCheck })
+  const auth = deps.auth ?? createAuth({ db, mailer })
   const rateLimiter = deps.rateLimiter ?? createRateLimiter()
 
   const rpc = new RPCHandler(router, {
@@ -131,7 +127,6 @@ export function createApp(deps: AppDeps): Hono {
         auth,
         mailer,
         rateLimiter,
-        breachCheck,
       },
     })
     if (matched) return c.newResponse(response.body, response)

@@ -44,11 +44,7 @@ export const invitationsRouter = {
   acceptAsNewUser: os.invitations.acceptAsNewUser
     .use(publicRateLimit('invitationAccept', 10))
     .handler(async ({ context, input }) => {
-      const { email, nextStep } = await acceptInvitationAsNewUser(
-        context.db,
-        input,
-        context.breachCheck,
-      )
+      const { email, nextStep } = await acceptInvitationAsNewUser(context.db, input)
       // Sign in through Better Auth so the session, cookie and audit go through one path.
       try {
         const { headers } = await context.auth.api.signInEmail({

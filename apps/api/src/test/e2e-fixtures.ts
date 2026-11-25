@@ -121,7 +121,7 @@ async function createResetByAdmin() {
   // Same sequence as the router: alert, then the emailed reset link, written to the dev mail folder.
   const mailer = createDevTransport(env.EMAIL_DEV_DIR)
   await sendAll(mailer, result.emails)
-  const auth = createAuth({ db, mailer, breachCheck: null, rateLimit: false })
+  const auth = createAuth({ db, mailer, rateLimit: false })
   await auth.api.requestPasswordReset({
     body: { email: result.resetPasswordFor, redirectTo: '/reset-password' },
   })

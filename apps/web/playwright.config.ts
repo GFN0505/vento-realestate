@@ -10,13 +10,12 @@ const webPort = Number(process.env.E2E_WEB_PORT) || (isCI ? 5173 : 5174)
 const webOrigin = `http://localhost:${webPort}`
 const apiUrl = `http://localhost:${apiPort}`
 
-// Specs sign in many times from one IP and must not call Have I Been Pwned. The dev mail
+// Specs sign in many times from one IP, so per-IP limits are off. The dev mail
 // transport writes the emails (EMAIL_DEV_DIR, default .mail/) that specs read codes from.
 const apiEnv = {
   PORT: String(apiPort),
   WEB_ORIGIN: webOrigin,
   AUTH_RATE_LIMIT: 'off',
-  PWNED_PASSWORDS_CHECK: 'off',
   EMAIL_TRANSPORT: 'dev',
 }
 

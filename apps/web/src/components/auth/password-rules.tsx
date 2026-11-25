@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 export type RuleState = 'met' | 'pending' | 'failed'
 
 /** Problems only the server can find; the page sets them from the error code it gets back. */
-export type ServerPasswordIssues = { common?: boolean; reused?: boolean }
+export type ServerPasswordIssues = { reused?: boolean }
 
 type Props = {
   password: string
@@ -30,7 +30,6 @@ export function PasswordRules({
   const rules: { label: string; state: RuleState }[] = [
     { label: PASSWORD_RULE_LABELS.length, state: local.length ? 'met' : unmet },
     { label: PASSWORD_RULE_LABELS.number, state: local.number ? 'met' : unmet },
-    { label: PASSWORD_RULE_LABELS.notCommon, state: serverIssues.common ? 'failed' : 'pending' },
   ]
   if (showReuseRule) {
     rules.push({

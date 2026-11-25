@@ -11,7 +11,6 @@ describe('sign up', () => {
   it.each([
     ['short1', 'PASSWORD_TOO_SHORT'],
     ['no-number-in-here', 'PASSWORD_NEEDS_NUMBER'],
-    ['Sunshine12345', 'PASSWORD_TOO_COMMON'],
   ])('refuses %s with %s', async (password, code) => {
     const { app } = testApp()
     const res = await signUp(browser(app), uniqueEmail(), { password })
@@ -19,15 +18,10 @@ describe('sign up', () => {
     expect(res.json.code).toBe(code)
   })
 
-  it('refuses a password the breach check reports as leaked', async () => {
-    const { app } = testApp({ breachCheck: async () => true })
-    const res = await signUp(browser(app), uniqueEmail())
-    expect(res.json.code).toBe('PASSWORD_BREACHED')
-  })
-
-  it('accepts when the breach check is down (fails open)', async () => {
-    const { app } = testApp({ breachCheck: async () => 'unknown' })
-    expect((await signUp(browser(app), uniqueEmail())).status).toBe(200)
+  it('accepts an ordinary password that has 12 characters and a number', async () => {
+    const { app } = testApp()
+    const res = await signUp(browser(app), uniqueEmail(), { password: 'Sunshine12345' })
+    expect(res.status).toBe(200)
   })
 
   it('requires the current terms version and records when it was accepted', async () => {

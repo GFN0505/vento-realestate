@@ -1,5 +1,4 @@
 import type { Auth } from '@/auth/auth'
-import type { BreachCheck } from '@/auth/password-policy'
 import type { DbOrTx } from '@/db/client'
 import type { Mailer } from '@/email/mailer'
 import type { RateLimiter } from '@/lib/rate-limit'
@@ -16,6 +15,4 @@ export type BaseContext = {
   auth: Auth
   mailer: Mailer
   rateLimiter: RateLimiter
-  /** Breached-password check shared with Better Auth; null when off. */
-  breachCheck: BreachCheck | null
 }

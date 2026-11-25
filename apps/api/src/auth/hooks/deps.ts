@@ -4,7 +4,6 @@ import type { EmailMessage, Mailer } from '@/email/mailer'
 import { sendAll } from '@/email/mailer'
 import type { RenderedEmail } from '@/email/templates/layout'
 import { env } from '@/env'
-import type { BreachCheck } from '../password-policy'
 
 /** The two server-only Better Auth calls the hooks make, typed narrowly. */
 export type AuthServerApi = {
@@ -17,7 +16,6 @@ export type AuthServerApi = {
 export type AuthDeps = {
   db: Db
   mailer: Mailer
-  breachCheck: BreachCheck | null
   /** Set once betterAuth() has returned; hooks only run after that. */
   api: () => AuthServerApi
 }

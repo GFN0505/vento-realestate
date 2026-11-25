@@ -15,6 +15,13 @@ describe('email templates', () => {
     expect(email.html).toContain('482913')
   })
 
+  it('names the product Vento Real Estate in the header and footer', () => {
+    const email = verifyEmail({ name: 'Olumide', url: 'http://localhost/v', code: '482913' })
+    expect(email.html).toContain('>Real Estate</span>')
+    expect(email.html).toContain('Vento Real Estate')
+    expect(email.text.split('\n').at(-1)).toBe('Vento Real Estate')
+  })
+
   it('escapes names in the HTML', () => {
     const email = invitationEmail({
       organizationName: '<script>alert(1)</script> Ltd',

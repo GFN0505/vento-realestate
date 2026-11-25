@@ -1,7 +1,7 @@
 # Plan: Accounts and access (brick 2a)
 
 - **Status:** approved by the owner on 25 Nov 2026 and built. Decision records 0010–0012 are accepted.
-- **As built (differences from this plan):** the production email guard lives in `createMailer` (so migrations run in production); `AUTH_RATE_LIMIT` switches only per-IP limits, lockouts always apply; Better Auth's rate limiter uses memory storage (no IPs stored; several API instances will need Redis) and the `rate_limits` table was dropped; a two-step reset by someone else forces a new password by email (security review); members limited to some entities can only grant those entities; the common-password check also compares a password's base word; only owners are sent to onboarding; migration `0002_reset_required_drop_rate_limits` added.
+- **As built (differences from this plan):** the production email guard lives in `createMailer` (so migrations run in production); `AUTH_RATE_LIMIT` switches only per-IP limits, lockouts always apply; Better Auth's rate limiter uses memory storage (no IPs stored; several API instances will need Redis) and the `rate_limits` table was dropped; a two-step reset by someone else forces a new password by email (security review); members limited to some entities can only grant those entities; the common/leaked password rule was removed after review (spec decision 13), so passwords need 12+ characters and a number, there is no Have I Been Pwned call and no `PWNED_PASSWORDS_CHECK` setting; only owners are sent to onboarding; migration `0002_reset_required_drop_rate_limits` added.
 - **Spec:** [docs/specs/accounts-and-access.md](../specs/accounts-and-access.md)
 - Written by the architect agent on 25 Nov 2026, checked against Better Auth **1.7.28** (the current npm `latest`) and the code on branch `brick/02-accounts-and-access`.
 
@@ -11,7 +11,7 @@ This brick gives Vento its front door. A developer signs up, verifies their emai
 ---
 
 ## 1. Summary (technical)
-- **Better Auth 1.7.28** + `@better-auth/drizzle-adapter` 1.7.28. Plugins: **`twoFactor`** (TOTP, 10 backup codes, built-in per-account lockout set to 5 failures and 15 minutes) and **`emailOTP`**, used only to put a 6-digit code in the verification email. **No `organization` plugin** and **no `haveIBeenPwned` plugin**: that plugin fails closed when the service is down, and the spec wants it to fail open. We write a ~40-line policy instead.
+- **Better Auth 1.7.28** + `@better-auth/drizzle-adapter` 1.7.28. Plugins: **`twoFactor`** (TOTP, 10 backup codes, built-in per-account lockout set to 5 failures and 15 minutes) and **`emailOTP`**, used only to put a 6-digit code in the verification email. **No `organization` plugin** and **no `haveIBeenPwned` plugin** (the breached-password rule was later removed altogether). Our own small policy checks length and a number.
 - Better Auth's tables (users, sessions, accounts, verifications, two_factors, rate_limits) are **written by hand in Drizzle** with `uuid` primary keys defaulting to Postgres 18's native `uuidv7()` (`advanced.database.generateId: 'uuid'`, which leaves the id to the database on pg), plural names (`usePlural: true`) and snake_case through the existing `casing`.
 - Mounted at **`/api/auth/*`** on the same Hono app (decision 0009). The Vite proxy gains `/api`.
 - Session length (30 min idle / 12 h max, or 30 days with "keep me signed in") is **not native**. Better Auth only has sliding `expiresIn` + `updateAge`, and gives a "don't remember" session 24 h. We add `persistent` and `lastActiveAt` to sessions and enforce the policy in one function, `enforceSessionPolicy`, called before `/rpc` and `/api/auth`. The cookie cache is off, so a revoked session fails on its very next request.
@@ -206,7 +206,7 @@ Notes:
   - `user.create.before`: stamp `termsAcceptedAt`.
   - `account.create.after` and `account.update.after`, when the password changed: insert into `password_histories` and prune to 5.
 - `hooks.before` (`createAuthMiddleware`):
-  - `/sign-up/email`, `/reset-password`, `/change-password`: `checkPasswordPolicy` (12+ characters, a digit, not in the bundled common list, then HIBP k-anonymity with a 2 s timeout that fails open and logs a warning). Reset and change also check the last 5 hashes with `ctx.context.password.verify`. For reset, the user is resolved from `reset-password:${token}`.
+  - `/sign-up/email`, `/reset-password`, `/change-password`: `checkPasswordPolicy` (12+ characters and a digit; the common-list and HIBP checks were removed after review). Reset and change also check the last 5 hashes with `ctx.context.password.verify`. For reset, the user is resolved from `reset-password:${token}`.
   - `/sign-up/email`: also requires the terms version.
   - `/sign-in/email`: refuse while a `sign_in_locks` row is active for the email: `429 {code: 'ACCOUNT_LOCKED', lockedUntil}`.
   - `/send-verification-email`: at most 1 per minute and 5 per hour per email, via `auth_attempts`.
@@ -263,7 +263,7 @@ Notes:
 - **Theme:** an inline script in `index.html` sets `.dark` from `prefers-color-scheme` before paint. The toggle arrives in brick 3.
 - **Fonts:** `@fontsource-variable/inter` and `@fontsource/poppins` (latin 500 and 600 only), imported in `main.tsx`, `font-display: swap`.
 - **shadcn/ui** (CLI 4.x, Tailwind v4, `radix-ui`): `components.json`, `lib/utils.ts` (`cn`). Only these are added: button, input, label, checkbox, select, radio-group, card, alert, dialog, sonner, input-otp, field. New dependencies: `radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `tw-animate-css`, `sonner`, `input-otp`, `lucide-react`, `react-hook-form`, `@hookform/resolvers`, `better-auth` (client), and `uqr` (QR as SVG, about 3 KB, lazy-loaded on the setup route only, because the TOTP URI must not leave the browser).
-- **App components** (`components/auth/`): `AuthLayout` (navy brand panel, hidden below `lg`, plus form card; footer "© 2026 Vento · Privacy · Terms · Data held in Nigeria"), `CodeInput` (wraps shadcn InputOTP; 6 boxes; paste; `autocomplete="one-time-code"`; rose error state), `PasswordInput` (show/hide), `PasswordRules` (live ticks for length and number; "not common or leaked" and "different from your last 5" tick from server error codes), `FormAlert`, `BackupCodes` (Download .txt, Copy, required "I've saved my backup codes" tick), `TotpQr`. Plus `components/session-expired-dialog.tsx`.
+- **App components** (`components/auth/`): `AuthLayout` (navy brand panel, hidden below `lg`, plus form card; footer "© 2026 Vento Real Estate · Privacy · Terms"), `CodeInput` (wraps shadcn InputOTP; 6 boxes; paste; `autocomplete="one-time-code"`; rose error state), `PasswordInput` (show/hide), `PasswordRules` (live ticks for length and number; "not common or leaked" and "different from your last 5" tick from server error codes), `FormAlert`, `BackupCodes` (Download .txt, Copy, required "I've saved my backup codes" tick), `TotpQr`. Plus `components/session-expired-dialog.tsx`.
 
 **Routes (TanStack file-based)**
 | Route | File | Board(s) | Design exists? |
@@ -327,7 +327,7 @@ Notes:
 - `src/auth/auth.ts`: `createAuth`
 - `src/auth/policy.ts`: named limits
 - `src/auth/session-policy.ts` + `.test.ts`
-- `src/auth/password-policy.ts` + `.test.ts`, `src/auth/common-passwords.ts` (top 10k list, MIT SecLists, attribution)
+- `src/auth/password-policy.ts` + `.test.ts` (length and number; the common-password list was removed after review)
 - `src/auth/hooks/{sign-in-guard,two-step-guard,password-history,audit-hooks}.ts`
 - `src/auth/auth-schema.test.ts`: compares Better Auth's expected fields with our tables
 - `src/access/{context,middleware,who-can-grant,entity-scope,system-roles}.ts` + tests
@@ -359,7 +359,7 @@ Notes:
 - `e2e/smoke.spec.ts`: sign-in page renders, `/health` ok
 
 **Root and docs**
-- `.env.example`, `.gitignore` (`.mail/`), `turbo.json` (env passthrough), `.github/workflows/ci.yml` (placeholder secret, `AUTH_RATE_LIMIT=off`, `PWNED_PASSWORDS_CHECK=off`)
+- `.env.example`, `.gitignore` (`.mail/`), `turbo.json` (env passthrough), `.github/workflows/ci.yml` (placeholder secret, `AUTH_RATE_LIMIT=off`)
 - `docs/ARCHITECTURE.md`: auth in the request flow, identity tables
 - `CLAUDE.md`: stack line, **owner edits** after approving 0010
 - `.claude/skills/add-module/SKILL.md`: `uuid` ids with `uuidv7()` default, `organizationId: uuid()`, composite FKs, `member` + `requirePermission('sales','view')` (the skill says `read`; DOMAIN says `view`)
@@ -375,7 +375,7 @@ Notes:
 **By acceptance-criteria group**
 | Group | Cases |
 |---|---|
-| Sign up and verify | Rejects short / no-digit / common passwords (code per rule); HIBP mocked as breached → refused; HIBP down → accepted; terms version recorded; one email carries a link + 6-digit code; expired link → error redirect; resend limited to 1/min and 5/hour; unverified sign-in → EMAIL_NOT_VERIFIED |
+| Sign up and verify | Rejects short / no-digit passwords (code per rule); accepts an ordinary 12-character password with a number; terms version recorded; one email carries a link + 6-digit code; expired link → error redirect; resend limited to 1/min and 5/hour; unverified sign-in → EMAIL_NOT_VERIFIED |
 | Onboarding | Org + owner + nine roles created atomically (failure injected → nothing remains); resume at entity step; RC/TIN warnings don't block; duplicate RC refused with entity name; second `createOrganization` → CONFLICT |
 | Sign in and two-step | Same error for wrong email and wrong password; challenge always after password when enabled (also after reset); forced setup → `FORBIDDEN two_step_setup_required` on member procedures and `nextStep = two_step_setup`; backup code works once and sends the "(9 left)" email; a required role can't disable |
 | Lockout | 5 bad codes → 429 with `lockedUntil`, lock row, audit, one email; 10 bad passwords in 15 min → same; locked account refuses a correct password and code; success resets the counter; unknown email also locks (no enumeration) |
@@ -410,12 +410,10 @@ Notes:
 BETTER_AUTH_SECRET=
 # dev = console + files in EMAIL_DEV_DIR; memory = tests only. Production refuses to start until a provider exists.
 EMAIL_TRANSPORT=dev
-EMAIL_FROM="Vento <no-reply@localhost>"
+EMAIL_FROM="Vento Real Estate <no-reply@localhost>"
 EMAIL_DEV_DIR=.mail
 # on | off. Off only in CI/e2e.
 AUTH_RATE_LIMIT=on
-# on | off. Breached-password check (Have I Been Pwned, k-anonymity). Off in tests.
-PWNED_PASSWORDS_CHECK=on
 # Header holding the client IP when behind a trusted proxy (e.g. x-forwarded-for). Empty = socket address.
 TRUSTED_IP_HEADER=
 # Password for seeded demo users (pnpm db:seed, development only)

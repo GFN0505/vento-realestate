@@ -18,3 +18,6 @@ When a built screen deliberately differs from its approved design, record it her
 | 2026-11-25 | Auth layout | "Data held in Nigeria" removed from the footer; Privacy and Terms point to pages not built yet | Hosting location isn't decided; legal pages come before launch | Yes |
 | 2026-11-25 | Auth layout (dark) | Links use a lighter violet for contrast | WCAG AA in dark mode | Yes |
 | 2026-11-25 | All screens | Open in light mode by default instead of following the computer's setting; dark mode becomes a choice (toggle in brick 3) | Owner's preference | No |
+| 2026-11-25 | Auth brand panel | New premium panel: headline "Command every development, from title to handover.", supporting line, three proof points with icons, soft violet/cyan glow, faint grid and V mark | Owner asked for a more high-class first impression and catchier copy | Yes |
+| 2026-11-25 | Logo lockup | "REAL ESTATE" descriptor beside the Vento wordmark; page titles and footers say Vento Real Estate | The company has other Vento products | Yes |
+| 2026-11-25 | Sign up, reset, invitation | Password rules show 12+ characters and a number only (no "not common or leaked") | Owner's decision 13 | No |

@@ -21,10 +21,9 @@ const envSchema = z.object({
     .string()
     .min(32, { message: 'Use at least 32 random characters (openssl rand -base64 32)' }),
   EMAIL_TRANSPORT: z.enum(['dev', 'memory']).default('dev'),
-  EMAIL_FROM: z.string().min(3).default('Vento <no-reply@localhost>'),
+  EMAIL_FROM: z.string().min(3).default('Vento Real Estate <no-reply@localhost>'),
   EMAIL_DEV_DIR: z.string().min(1).default('.mail'),
   AUTH_RATE_LIMIT: onOff.default('on'),
-  PWNED_PASSWORDS_CHECK: onOff.default('on'),
   TRUSTED_IP_HEADER: optionalText.transform((v) => v?.toLowerCase()),
   SEED_PASSWORD: optionalText,
 })

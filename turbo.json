@@ -24,7 +24,6 @@
         "EMAIL_FROM",
         "EMAIL_DEV_DIR",
         "AUTH_RATE_LIMIT",
-        "PWNED_PASSWORDS_CHECK",
         "TRUSTED_IP_HEADER"
       ]
     },
@@ -42,7 +41,6 @@
         "EMAIL_FROM",
         "EMAIL_DEV_DIR",
         "AUTH_RATE_LIMIT",
-        "PWNED_PASSWORDS_CHECK",
         "TRUSTED_IP_HEADER"
       ]
     }

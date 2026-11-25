@@ -51,6 +51,11 @@
   --sidebar-border: #3a4280;
   /* The sign-in brand panel is a shade deeper than the sidebar in dark mode. */
   --auth-panel: #121a3f;
+  /* Brand panel atmosphere: the logo's violet and cyan as faint light, and a hairline grid. */
+  --auth-glow-violet: rgb(108 99 245 / 0.24);
+  --auth-glow-cyan: rgb(76 201 240 / 0.12);
+  --auth-grid-line: rgb(255 255 255 / 0.035);
+  --auth-hairline: rgb(255 255 255 / 0.1);
 
   --overlay: rgb(10 12 30 / 0.45);
   /* The Vento logo mark: the same in both themes. */
@@ -117,6 +122,9 @@
 
   --sidebar: #0b0e1f;
   --auth-panel: #080b1a;
+  /* The deeper dark panel needs a touch less light to stay calm. */
+  --auth-glow-violet: rgb(108 99 245 / 0.2);
+  --auth-glow-cyan: rgb(76 201 240 / 0.1);
 
   --status-emerald-fg: #34d399;
   --status-emerald-bg: rgb(16 185 129 / 0.1);
@@ -175,6 +183,7 @@
   --color-sidebar-faint-foreground: var(--sidebar-faint-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-auth-panel: var(--auth-panel);
+  --color-auth-hairline: var(--auth-hairline);
   --color-overlay: var(--overlay);
   --color-logo-stroke: var(--logo-stroke);
   --color-logo-dot: var(--logo-dot);
@@ -229,6 +238,13 @@
 }
 
 @theme {
+  --animate-auth-rise: auth-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes auth-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
   --animate-caret-blink: caret-blink 1.25s ease-out infinite;
   @keyframes caret-blink {
     0%,
@@ -241,4 +257,20 @@
       opacity: 0;
     }
   }
+}
+
+/* Sign-in brand panel: two soft glows in the logo colours, like the marketing site's hero. */
+@utility auth-glow {
+  background-image:
+    radial-gradient(60% 50% at 18% 38%, var(--auth-glow-violet), transparent 70%),
+    radial-gradient(45% 40% at 85% 78%, var(--auth-glow-cyan), transparent 70%);
+}
+
+/* A 48px hairline grid that fades out towards the edges. */
+@utility auth-grid {
+  background-image:
+    linear-gradient(to right, var(--auth-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--auth-grid-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(70% 60% at 40% 45%, black, transparent 80%);
 }

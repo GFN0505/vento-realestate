@@ -38,7 +38,6 @@ import {
   sendResetPasswordEmail,
   sendVerificationEmail,
 } from './hooks/verification'
-import { type BreachCheck, defaultBreachCheck } from './password-policy'
 import {
   PERSISTENT_SESSION_SECONDS,
   PERSISTENT_THRESHOLD_MS,
@@ -87,8 +86,6 @@ const SIGN_IN_PATHS = new Set([
 export type CreateAuthOptions = {
   db: Db
   mailer: Mailer
-  /** null turns the breach check off (tests, CI). Defaults to PWNED_PASSWORDS_CHECK. */
-  breachCheck?: BreachCheck | null
   /** Defaults to AUTH_RATE_LIMIT. */
   rateLimit?: boolean
 }
@@ -108,7 +105,6 @@ export function createAuth(options: CreateAuthOptions) {
   const deps: AuthDeps = {
     db,
     mailer: options.mailer,
-    breachCheck: options.breachCheck !== undefined ? options.breachCheck : defaultBreachCheck(),
     api: () => {
       if (!api) throw new Error('Auth is not ready yet')
       return api
