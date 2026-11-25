@@ -2,7 +2,7 @@
 
 A world-class ERP for Nigerian real estate developers: land & title, projects & construction, off-plan sales & CRM, finance (multi-entity, multi-currency), estate management, HR & payroll, compliance, documents & contracts, buyer portal, executive analytics. Top-of-the-line UX, nothing extra.
 
-Read before working (map of all docs: `docs/README.md`):
+Read before working (map of all docs: `docs/README.md`; code layout: `docs/ARCHITECTURE.md`):
 - `docs/PRODUCT.md` — vision, personas, the ten modules and how they connect. Keep each module lean; don't add features outside it without asking.
 - `docs/DOMAIN.md` — business vocabulary, statuses and rules.
 - `docs/design/SCREENS.md` — every screen the product needs, the approved design board for it (in `docs/design/claude-design/`) and its build status. Tokens and the rules the designs set are in `docs/design/DESIGN-NOTES.md`. Update it whenever screens are added or changed; log deliberate departures from a design in `docs/design/CHANGES.md`.
@@ -19,10 +19,11 @@ Read before working (map of all docs: `docs/README.md`):
 - **Package manager:** pnpm only. Never npm or yarn.
 
 ## Commands
-- `pnpm dev` — run web + api
-- `pnpm db:up` — start local Postgres (Docker)
+- `pnpm dev` — run web (:5173) + api (:3000)
+- `pnpm db:up` / `pnpm db:down` — start / stop local Postgres (Docker)
 - `pnpm db:generate` / `pnpm db:migrate` — create / apply migrations
-- `pnpm db:seed` — load the fictional golden-thread data (`docs/journeys/00-golden-thread.md`)
+- `pnpm db:seed` — load the fictional golden-thread data (`docs/journeys/00-golden-thread.md`); added with the first domain tables
+- `pnpm build` — production builds of api and web
 - `pnpm check` — Biome lint + format check
 - `pnpm typecheck`, `pnpm test`, `pnpm e2e`
 - Before any commit: `pnpm check && pnpm typecheck && pnpm test`

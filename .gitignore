@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds and caches
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+coverage/
+
+# environment (the repo is public: never commit real values)
+.env
+.env.*
+!.env.example
+
+# test output
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/
+apps/web/e2e/.auth/
+
+# OS and editors
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

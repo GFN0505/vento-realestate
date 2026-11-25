@@ -14,5 +14,6 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0006](0006-maker-checker-and-audit.md) | Maker-checker approvals and append-only audit | accepted |
 | [0007](0007-ai-optional-add-on.md) | AI is an optional, suggest-only add-on, cheapest model that passes | accepted |
 | [0008](0008-public-repository.md) | The repository is public | accepted |
+| [0009](0009-same-origin-web-and-api.md) | Web and API on the same origin | accepted |
 
 Template: [0000-template.md](0000-template.md)
