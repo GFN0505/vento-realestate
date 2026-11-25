@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 160 rows · 132 designed (17 of them partly) · 28 without a design.
+**Coverage:** 162 rows · 133 designed (18 of them partly) · 29 without a design.
 
 
 
@@ -17,7 +17,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Sign up, verify email | [SignUp](claude-design/SignUp.dc.html), [VerifyEmail](claude-design/VerifyEmail.dc.html) | todo |
 | Forgot / reset password | [ForgotPassword](claude-design/ForgotPassword.dc.html), [ResetPassword](claude-design/ResetPassword.dc.html) | todo |
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | todo |
-| Onboarding: organization → first entity → first project and units | [Onboarding](claude-design/Onboarding.dc.html) | todo |
+| Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | todo |
+| Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | todo |
 | Setup checklist on Home | [Onboarding](claude-design/Onboarding.dc.html) | todo |
 | App shell: sidebar, top bar, entity/project switcher, mobile bottom nav | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), [Main](claude-design/Main.dc.html) (bottom nav) | todo |
 | ⌘K command palette | [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | todo |
@@ -223,6 +224,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Purchase order PDF | [DocPO](claude-design/DocPO.dc.html) | todo |
 | WHT credit note | [WHTCreditNote](claude-design/WHTCreditNote.dc.html) | todo |
 | Emails: invite, verify, reset, receipt, reminder, approval request, digest | [EmailInvite](claude-design/EmailInvite.dc.html), [EmailVerify](claude-design/EmailVerify.dc.html), [EmailReset](claude-design/EmailReset.dc.html), [EmailReceipt](claude-design/EmailReceipt.dc.html), [EmailReminder](claude-design/EmailReminder.dc.html), [EmailApproval](claude-design/EmailApproval.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
+| Email: security alert (sign-in locked, password changed, two-step reset, backup code used) | – | todo |
 | WhatsApp templates: reminder, overdue, receipt, construction update | [WAReminder](claude-design/WAReminder.dc.html), [WAOverdue](claude-design/WAOverdue.dc.html), [WAReceipt](claude-design/WAReceipt.dc.html), [WAConstruction](claude-design/WAConstruction.dc.html) | todo |
 | SMS templates | – | todo |
 

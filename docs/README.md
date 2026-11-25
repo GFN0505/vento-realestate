@@ -8,6 +8,7 @@ Everything about Vento that isn't code lives in `docs/`. If you're new, read in 
 | [DOMAIN.md](DOMAIN.md) | Vocabulary, statuses, business rules, open questions | product-manager, architect | A new term, status or rule appears |
 | [journeys/](journeys/README.md) | Step-by-step user walkthroughs; each becomes an e2e test and a help article | product-manager (writes), tester (tests) | A flow is added or changes |
 | [specs/](specs/README.md) | One spec per feature: problem, flow, acceptance criteria | product-manager | Before building any feature |
+| [plans/](plans/) | The architect's technical plan for each brick: tables, API, permissions, files, tests | architect proposes, owner approves | Before building a brick |
 | [decisions/](decisions/README.md) | Why the big choices were made | architect proposes, implementer commits | A hard-to-reverse or cross-module choice |
 | [design/claude-design/](design/claude-design/README.md) | The approved designs: 419 boards from Claude Design | (exported, never hand-edited) | A new design pass is exported |
 | [design/DESIGN-NOTES.md](design/DESIGN-NOTES.md) | Tokens, product rules the designs set, designer's notes, fictional world | frontend, ui-designer | A new design pass |

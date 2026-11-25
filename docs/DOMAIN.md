@@ -5,9 +5,16 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 ## Tenancy, entities and people
 | Term | Meaning | Notes |
 |---|---|---|
-| **Organization** | The customer: a developer group using the product. | The data boundary. Every domain row has `organizationId`. Never call it "tenant" in code. |
-| **Entity** | A legal company inside the organization: holding company or project **SPV**. | Has RC number, TIN, VAT status, base currency NGN. Ledgers, bank accounts, payroll and contracts belong to an entity. |
-| **Member** | A user in the organization, with a role. | Roles: `owner`, `admin`, `land_legal`, `project_manager`, `sales`, `finance`, `hr`, `facility`, `viewer`. Permissions are module × action, optionally limited to entities or projects. |
+| **Organization** | The customer: a developer group using the product. | The data boundary. Every domain row has `organizationId`. Never call it "tenant" in code. Has name, head office state, financial year start, base currency NGN. |
+| **Entity** | A legal company inside the organization: holding company or project **SPV**. | Type `holding` / `spv`. Has RC number, TIN, VAT registered (yes/no), base currency NGN. Status `active → archived`. Ledgers, bank accounts, payroll and contracts belong to an entity. |
+| **Member** | A user in the organization, with a role. | One role each. Status `active → removed`; a removed member's history stays under their name. Permissions are module × action, optionally limited to entities or projects. A person can be a member of several organizations. |
+| **Role** | A named set of permissions given to a member. | Built-in: `owner`, `admin`, `land_legal`, `project_manager`, `sales`, `finance`, `hr`, `facility`, `viewer`. An organization always has at least one owner. |
+| **Permission** | What a role may do in a module. | Actions `view`, `create`, `edit`, `delete`, `export`, `approve`. `approve` means the member may act as a checker; approval rules decide what needs one. Enforced on the server. |
+| **Access limit** | The entities (later, projects) a member is limited to. | Empty means all. Records outside the limit behave as not found. |
+| **Invitation** | An emailed offer to join an organization with a role and access limits. | Status `pending → accepted / declined / expired / withdrawn`. Resending replaces the link. |
+| **Two-step sign-in** | A 6-digit authenticator-app code (TOTP) asked after the password, with 10 single-use backup codes. | Required for some roles. Repeated wrong codes lock sign-in for a period. |
+| **Session** | One signed-in device or browser. | Listed for its owner, who can end one or all others. Ends on removal from the organization or a password reset. |
+| **Security alert** | An email about a person's account security (lockout, password changed, two-step reset, backup code used). | Always sent; can't be muted. |
 | **Contact** | Any external person or company: buyer, lead, contractor, vendor, surveyor, valuer, JV partner, agent/broker, resident. | One `contacts` table with a roles array. Individuals and companies. |
 | **Buyer (subscriber)** | Contact who has subscribed to one or more units. | Can sign in to the Buyer Portal. May be diaspora (country of residence recorded). |
 | **Agent / broker** | Internal staff or external realtor who brings a sale. | Earns commission. |

@@ -87,6 +87,9 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 **Still need the owner's yes**
 - Allocation letter is offered once a subscription is **50% paid**.
 - Invitations expire after **7 days**.
+- Sessions end after **30 minutes without activity or 12 hours**, or last **30 days** with "Keep me signed in".
+- **10 wrong passwords** in 15 minutes lock sign-in for 15 minutes, like five wrong two-step codes.
+- Two-step is also required for **admin** (and possibly **HR**), not only finance and MD.
 - Overpayments are held as **credit** on the subscription and applied to the next instalment.
 - Handover before full payment is **blocked unless approved**.
 - Automatic reminders: **3 days before, on the day, 7 and 30 days after** the due date.
