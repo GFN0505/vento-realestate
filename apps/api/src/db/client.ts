@@ -1,4 +1,6 @@
-import { drizzle } from 'drizzle-orm/node-postgres'
+import type { ExtractTablesWithRelations } from 'drizzle-orm'
+import { drizzle, type NodePgQueryResultHKT } from 'drizzle-orm/node-postgres'
+import type { PgDatabase } from 'drizzle-orm/pg-core'
 import { Pool } from 'pg'
 import { env } from '@/env'
 import { logger } from '@/lib/logger'
@@ -21,3 +23,10 @@ pool.on('error', (error) => {
 // snake_case columns in Postgres, camelCase in TypeScript.
 export const db = drizzle({ client: pool, schema, casing: 'snake_case' })
 export type Db = typeof db
+
+/** The database or an open transaction: services accept either, so tests can roll back. */
+export type DbOrTx = PgDatabase<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>

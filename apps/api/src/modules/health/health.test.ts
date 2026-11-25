@@ -3,6 +3,10 @@ import { Pool } from 'pg'
 import { afterAll, describe, expect, it } from 'vitest'
 import { createApp } from '@/app'
 import { db, pool } from '@/db/client'
+import * as schema from '@/db/schema'
+import { createMemoryTransport } from '@/email/transports/memory'
+
+const mailer = createMemoryTransport()
 
 afterAll(async () => {
   await pool.end()
@@ -10,14 +14,14 @@ afterAll(async () => {
 
 describe('health check', () => {
   it('reports ok when the database is reachable', async () => {
-    const res = await createApp({ db }).request('/health')
+    const res = await createApp({ db, mailer }).request('/health')
 
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ status: 'ok', database: 'up' })
   })
 
   it('answers through the typed RPC endpoint', async () => {
-    const res = await createApp({ db }).request('/rpc/health/check', {
+    const res = await createApp({ db, mailer }).request('/rpc/health/check', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{}',
@@ -29,9 +33,9 @@ describe('health check', () => {
 
   it('reports degraded with 503 when the database is down', async () => {
     const deadPool = new Pool({ connectionString: 'postgres://nobody@127.0.0.1:1/none' })
-    const deadDb = drizzle({ client: deadPool, casing: 'snake_case' })
+    const deadDb = drizzle({ client: deadPool, schema, casing: 'snake_case' })
 
-    const res = await createApp({ db: deadDb }).request('/health')
+    const res = await createApp({ db: deadDb, mailer }).request('/health')
 
     expect(res.status).toBe(503)
     expect(await res.json()).toMatchObject({ status: 'degraded', database: 'down' })
@@ -39,7 +43,7 @@ describe('health check', () => {
   })
 
   it('sets security headers on every response', async () => {
-    const res = await createApp({ db }).request('/health')
+    const res = await createApp({ db, mailer }).request('/health')
 
     expect(res.headers.get('x-content-type-options')).toBe('nosniff')
   })

@@ -41,6 +41,13 @@ jobs:
       DATABASE_URL: postgres://vento:vento@localhost:5432/vento_test
       TEST_DATABASE_URL: postgres://vento:vento@localhost:5432/vento_test
       LOG_LEVEL: warn
+      # Throwaway signing secret for CI's test database only; never used anywhere real.
+      BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-for-real-use-000000
+      # dev: e2e reads verification codes from the files it writes to .mail/
+      EMAIL_TRANSPORT: dev
+      EMAIL_DEV_DIR: .mail
+      # Many sign-ins from one IP in e2e.
+      AUTH_RATE_LIMIT: "off"
 
     steps:
       - uses: actions/checkout@v7

@@ -59,48 +59,62 @@ Register it in `packages/shared/src/contract.ts`.
 
 ## 3. Table — `apps/api/src/db/schema/subscription.ts`
 ```ts
+import { id, timestamps } from '../columns'
+
 export const subscriptions = pgTable('subscriptions', {
-  id: uuid().primaryKey().$defaultFn(uuidv7),
-  organizationId: text().notNull().references(() => organization.id, { onDelete: 'cascade' }),
-  unitId: uuid().notNull().references(() => units.id),
-  buyerId: uuid().notNull().references(() => contacts.id),
-  paymentPlanId: uuid().notNull().references(() => paymentPlans.id),
+  id: id(),                         // uuid, default uuidv7() in Postgres (decision 0012)
+  organizationId: uuid().notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  unitId: uuid().notNull(),
+  buyerId: uuid().notNull(),
+  paymentPlanId: uuid().notNull(),
   subscribedOn: date().notNull(),
   price: numeric({ precision: 14, scale: 2 }).notNull(),
   currency: char({ length: 3 }).notNull().default('NGN'),
   status: subscriptionStatusEnum().notNull().default('pending_kyc'),
   ...timestamps,
 }, (t) => [
-  index().on(t.organizationId),
+  // Lets other organization-scoped tables point here with (organization_id, subscription_id).
+  unique('subscriptions_org_id_unique').on(t.organizationId, t.id),
+  // Same-organization references: a cross-organization id fails in the database.
+  foreignKey({ name: 'subscriptions_unit_fk', columns: [t.organizationId, t.unitId], foreignColumns: [units.organizationId, units.id] }),
+  foreignKey({ name: 'subscriptions_buyer_fk', columns: [t.organizationId, t.buyerId], foreignColumns: [contacts.organizationId, contacts.id] }),
+  foreignKey({ name: 'subscriptions_plan_fk', columns: [t.organizationId, t.paymentPlanId], foreignColumns: [paymentPlans.organizationId, paymentPlans.id] }),
   index().on(t.organizationId, t.status),
-  index().on(t.buyerId),
+  index().on(t.organizationId, t.buyerId),
   // one active subscription per unit
   uniqueIndex().on(t.unitId).where(sql`${t.status} = 'active'`),
   check('subscription_price_positive', sql`${t.price} > 0`),
 ])
 ```
+Every organization-scoped table exposes `unique (organization_id, id)` so others can reference it with a composite foreign key. Entity-owned tables add `entityId` the same way, pointing at `entities (organization_id, id)`.
 Then follow the `db-migration` skill.
 
 ## 4. Service — `apps/api/src/modules/subscription/subscription.service.ts`
-- Functions take `ctx: { db, organizationId, userId }` first. Every `where` includes `eq(subscriptions.organizationId, ctx.organizationId)`.
+- Functions take `ctx: ServiceContext` first (`db`, `organizationId`, `organizationName`, `user`, `member`; from `@/access/context`). Every `where` includes `eq(subscriptions.organizationId, ctx.organizationId)`, plus `entityScope(ctx.member, table.entityId)` for entity-owned rows. A row in another organization or outside the member's limits is `NOT_FOUND`, never `FORBIDDEN`.
+- Write `recordAudit(tx, …)` (from `@/modules/audit/audit.service`) inside the same transaction as every change, with before and after values.
 - Check that referenced rows (unit, buyer, payment plan) belong to the same organization before you insert, and that the unit is `available` or `reserved`.
 - Enforce domain rules here (e.g. a unit can't have two active subscriptions → `CONFLICT` "Unit B12 already has an active subscription"; only `pending_kyc → active` once the buyer's KYC is verified).
 - Multi-table writes go inside `ctx.db.transaction(async (tx) => …)`: activating a subscription generates its instalments from the payment plan and moves the unit to `subscribed` in the same transaction.
 - Use the decimal library for any maths on `price` and instalment amounts.
-- Lists: build filters with `and(...)`, return `{ items, page, pageSize, total }` using the shared `paginate` helper.
+- Lists: build filters with `and(...)`, return `{ items, page, pageSize, total }` using `pageOffset` and `toPage` from `@/lib/paginate`.
+- Emails or messages: return them from the service and send them in the router after the transaction commits (`sendAll`).
 
 ## 5. Router — `apps/api/src/modules/subscription/subscription.router.ts`
 ```ts
 export const subscriptionRouter = {
-  list: authed.use(requirePermission('sales', 'read')).subscription.list.handler(({ input, context }) => list(context, input)),
-  create: authed.use(requirePermission('sales', 'create')).subscription.create.handler(({ input, context }) => create(context, input)),
+  list: member.subscription.list
+    .use(requirePermission('sales', 'view', 'see subscriptions'))
+    .handler(({ input, context }) => list(serviceContext(context), input)),
+  create: member.subscription.create
+    .use(requirePermission('sales', 'create', 'record subscriptions'))
+    .handler(({ input, context }) => create(serviceContext(context), input)),
   // …
 }
 ```
-No try/catch. Throw `ORPCError` in the service, and the central handler formats it. Register in `apps/api/src/router.ts` and add the module's actions to the permission map.
+`member` (from `@/orpc`) means signed in, in an organization, with two-step set up when the role requires it. Actions are `view`, `create`, `edit`, `delete`, `export`, `approve` (DOMAIN.md); the third argument completes "Only … can ___." in the refusal. No try/catch. Throw `ORPCError` in the service (helpers in `@/lib/errors`), and the central handler formats it. Register in `apps/api/src/router.ts`; a public procedure must also go in `PUBLIC_PROCEDURES` there (the procedure-guard test checks every other one refuses anonymous callers). New modules already have a row in the default role table (`packages/shared/src/access/default-roles.ts`).
 
 ## 6. Tests — `subscription.service.test.ts`
-Cover the happy path, validation, permission denied, not found, the domain conflict (second active subscription on a unit), and **cross-organization access returns NOT_FOUND**.
+Cover the happy path, validation, permission denied, not found, the domain conflict (second active subscription on a unit), and **cross-organization access returns NOT_FOUND**. Use `withRollback`, the factories (`createOrganization`, `createMember(org, { role, entityIds })`, `contextFor`) and `clientAs(tx, user)` to call through the middleware. Add the new id-taking procedures to `src/test/isolation.test.ts`.
 
 ## 7. Web
 Follow the `add-list-page` skill.

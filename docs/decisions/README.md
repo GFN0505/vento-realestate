@@ -15,5 +15,8 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0007](0007-ai-optional-add-on.md) | AI is an optional, suggest-only add-on, cheapest model that passes | accepted |
 | [0008](0008-public-repository.md) | The repository is public | accepted |
 | [0009](0009-same-origin-web-and-api.md) | Web and API on the same origin | accepted |
+| [0010](0010-better-auth-identity-own-access.md) | Better Auth for identity; organizations and access are ours | accepted |
+| [0011](0011-append-only-audit-events.md) | Audit events: one append-only table, written in the caller's transaction | accepted |
+| [0012](0012-uuidv7-and-same-organization-keys.md) | Database-generated UUID v7 ids and same-organization foreign keys | accepted |
 
 Template: [0000-template.md](0000-template.md)

@@ -28,5 +28,8 @@ docs/help/
 ## Articles
 | Article | Journey | Status |
 |---|---|---|
+| [Set up your organization](getting-started/set-up-your-organization.md) | J-ONB-01 | written |
+| [Sign in with two-step](getting-started/sign-in-and-two-step.md) | J-ONB-04 | written |
+| [Join your team](getting-started/join-your-team.md) | J-ONB-02 | written |
 
 Status: `todo` · `written` · `published`

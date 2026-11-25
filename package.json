@@ -18,7 +18,9 @@
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @vento/api db:generate",
     "db:migrate": "pnpm --filter @vento/api db:migrate",
-    "db:studio": "pnpm --filter @vento/api db:studio"
+    "db:seed": "pnpm --filter @vento/api db:seed",
+    "db:studio": "pnpm --filter @vento/api db:studio",
+    "mail": "pnpm --silent --filter @vento/api mail"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",

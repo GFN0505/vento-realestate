@@ -3,6 +3,8 @@
 - **Date:** 2026-11-25
 - **Status:** accepted
 
+> **Note (25 Nov 2026):** the organization is Vento's own table, not Better Auth's organization plugin. Better Auth handles identity only. See [0010](0010-better-auth-identity-own-access.md). The meaning of this decision is unchanged.
+
 ## Context
 Nigerian developers often run each project through its own SPV, with a holding company above. Books, bank accounts, payroll and contracts belong to a legal company, while people and dashboards span the group.
 

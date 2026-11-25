@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { Decimal, toMoneyString } from './decimal'
-import { id, isoDate, money, paginated, paginationInput, signedMoney } from './schemas'
+import { money, signedMoney } from './money'
+import { id, isoDate, paginated, paginationInput } from './schemas'
 
 describe('money', () => {
   it('normalises whole amounts to two decimal places', () => {

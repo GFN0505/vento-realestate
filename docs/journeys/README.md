@@ -26,10 +26,10 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | ID | Journey | Persona | File | Status |
 |---|---|---|---|---|
 | J-ALL-00 | Golden thread: land to estate | Everyone | [00-golden-thread](00-golden-thread.md) | draft |
-| J-ONB-01 | Set up a new organization | MD / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
-| J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-01 | Set up a new organization | MD / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (steps 1–2) |
+| J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens in brick 3 |
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
-| J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -84,9 +84,14 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Excel import **undo lasts 7 days**.
 - Cash above **₦5m** is held for AML review; material requests under the PM's **₦5m** limit skip approval.
 
+**Settled by the owner (25 Nov 2026, brick 2a spec)**
+- Invitations expire after **7 days** and can be resent.
+- Sessions end after **30 minutes without activity or 12 hours**, or last **30 days** from sign-in with "Keep me signed in".
+- **10 wrong passwords** in 15 minutes lock sign-in for 15 minutes, like five wrong two-step codes.
+- Two-step is required for **owner, admin, finance and HR**.
+
 **Still need the owner's yes**
 - Allocation letter is offered once a subscription is **50% paid**.
-- Invitations expire after **7 days**.
 - Overpayments are held as **credit** on the subscription and applied to the next instalment.
 - Handover before full payment is **blocked unless approved**.
 - Automatic reminders: **3 days before, on the day, 7 and 30 days after** the due date.

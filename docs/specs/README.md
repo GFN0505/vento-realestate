@@ -6,5 +6,6 @@ A spec links to the journeys it adds or changes (`docs/journeys/`), the screens 
 
 | Spec | Module | Journeys | Status |
 |---|---|---|---|
+| [Accounts and access (brick 2a)](accounts-and-access.md) | Platform | J-ONB-01, J-ONB-02, J-ONB-04 | draft |
 
 Status: `draft` · `approved` (owner agreed, ready to plan) · `in build` · `shipped` · `dropped`

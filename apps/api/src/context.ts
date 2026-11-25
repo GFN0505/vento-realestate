@@ -1,7 +1,18 @@
-import type { Db } from '@/db/client'
+import type { Auth } from '@/auth/auth'
+import type { DbOrTx } from '@/db/client'
+import type { Mailer } from '@/email/mailer'
+import type { RateLimiter } from '@/lib/rate-limit'
 
-/** What every procedure receives. Auth adds the member and organization in brick 2. */
+/** What every procedure receives. */
 export type BaseContext = {
-  db: Db
+  /** The pool, or a transaction in tests. */
+  db: DbOrTx
   requestId: string
+  /** Request headers (cookies), for Better Auth session lookups. */
+  headers: Headers
+  /** Response headers (Set-Cookie), filled by oRPC's ResponseHeadersPlugin. */
+  resHeaders?: Headers
+  auth: Auth
+  mailer: Mailer
+  rateLimiter: RateLimiter
 }

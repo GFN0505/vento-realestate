@@ -31,6 +31,40 @@ Designs are a starting point, not a contract. If real data, a domain rule, acces
 9. **Feels instant.** Route preloading on hover, skeletons that match the final layout, optimistic UI for safe toggles, no layout shift.
 10. **Nothing extra.** Remove any element that doesn't help a user decide or act.
 
+## Excellence checklist (every screen, every form)
+The owner's standard is **the best experience imaginable**, everywhere in the app, not just sign-in. Before a screen is done, check each line; if Stripe, Linear, Mercury or Apple would do it better, do it their way.
+
+**Forms**
+- The right `type`, `inputMode`, `autoComplete` and `name` on every field, so phones show the right keyboard and browsers and password managers fill correctly. Email fields: no spell-check or autocorrect, no auto-capitals; typo help on common domains.
+- Cursor in the first field on desktop (pointer: fine) only; never pop the keyboard on phones.
+- Enter submits. Paste is always allowed. Leading and trailing spaces are trimmed.
+- Validate on blur and on submit, not on every keystroke; focus the first error; each error says what to do.
+- Helper content appears when it becomes relevant (e.g. password rules on first keystroke), and nothing above the field moves when it does (reserve space or grow downward).
+- Password fields: show/hide, Caps Lock hint, rule checklist, and one toggle for password and confirm.
+- Never lose what someone typed: on errors, network failure or session expiry the input stays.
+- Defaults and memory: pre-fill from organization defaults and the last-used values (date = today, last project, last bank account); remember per-device preferences such as filters.
+
+**Feedback and states**
+- Every action responds visually within 100 ms; buttons show a pending state and can't double-submit.
+- Success says what happened and offers the next step; reversible actions get Undo.
+- Every data view has designed loading (skeleton in the final layout), empty (one clear action), filtered-empty, error (with retry) and offline states.
+- No layout shift, ever.
+
+**Navigation**
+- Back and forward work; URLs hold the state (filters, tabs, page) so links can be shared.
+- Every action is reachable from ⌘K; power users have shortcuts (`?` lists them).
+
+**Motion and feel**
+- Motion explains or delights, never delays: ≤ 250 ms for UI, longer only for ambient brand moments. Everything respects reduced motion.
+- Buttons and inputs have hover, focus and pressed states.
+
+**Access and speed**
+- WCAG 2.2 AA in light and dark; full keyboard use; 44 px targets on touch.
+- Within the performance budgets (first-load JS < 200 KB gzip), fast on a mid-range Android phone on a weak connection.
+
+**Words**
+- Short, specific, in the domain's language, and in the owner's voice (`ux-writing` skill). One idea per line; no jargon.
+
 ## Tokens (defined in `apps/web/src/styles.css`, consumed via Tailwind)
 | Purpose | Token / class |
 |---|---|
@@ -47,8 +81,8 @@ Designs are a starting point, not a contract. If real data, a domain rule, acces
 **Never** write hex, rgb or arbitrary colour values in components. If a colour is missing, add a token in `styles.css`.
 
 ## Typography
-**Poppins** for headings and the logo (`font-heading`); **Inter** for body, labels, tables and all numbers (`font-sans`). Both self-hosted via `@fontsource`. Scale:
-- Display `font-heading text-[32px] font-semibold` (executive numbers only), page title `font-heading text-2xl font-semibold`, section title `font-heading text-lg font-semibold`
+**Geist** for headings and the wordmark (`font-heading`, one token in styles.css); **Inter** for body, labels, tables and all numbers (`font-sans`). Both self-hosted via `@fontsource` (never load fonts from third-party servers; check a font's licence allows a public repo before adding it). Scale:
+- Display `font-heading text-[40px] font-semibold tracking-[-0.03em]` (hero and executive numbers only), page title `font-heading text-2xl font-semibold tracking-[-0.02em]`, section title `font-heading text-lg font-semibold`
 - Body `text-sm`, secondary `text-sm text-muted-foreground`, label `text-xs font-semibold uppercase tracking-wide`, caption `text-xs text-muted-foreground`
 - Money and numbers: `tabular-nums font-medium`
 

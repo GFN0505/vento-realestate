@@ -33,13 +33,15 @@ Badges use the tint background, the border, and the darker **text** shade so the
 Unit and plot colours reuse these: **violet outline = available** (it's an action), amber reserved, blue paying, emerald fully paid, rose overdue, slate blocked. Filters dim non-matching units instead of hiding them.
 
 ### Type
-**Poppins** for headings, the logo and marketing surfaces. **Inter** for body, labels and every table, with tabular figures (Inter's taller x-height and true tabular digits hold up in dense ₦ columns where Poppins' numerals blur).
+**Geist** for headings and the wordmark. **Inter** for body, labels and every table, with tabular figures (Inter's taller x-height and true tabular digits hold up in dense ₦ columns).
+
+> **Changed 25 Nov 2026:** the boards use Poppins; the owner moved headings to Geist (crisper and more premium). Satoshi, used on the marketing site, was considered but its licence forbids a public repository. Geist is OFL, self-hosted via `@fontsource-variable/geist`. Next design pass: use Geist for headings.
 
 | Style | Font | Weight | Size |
 |---|---|---|---|
-| Display | Poppins | 600 | 32px |
-| H1 (page title) | Poppins | 600 | 24px |
-| H2 (section) | Poppins | 600 | 18px |
+| Display | Geist | 600 | 40–48px, tracking −0.03em |
+| H1 (page title) | Geist | 600 | 24px in the app, 32px on auth screens, tracking −0.02em |
+| H2 (section) | Geist | 600 | 18px |
 | Body | Inter | 400 | 14px |
 | Label | Inter | 600 | 12px, uppercase |
 | Data | Inter | 500 | 14px, tabular |
@@ -48,6 +50,12 @@ Unit and plot colours reuse these: **violet outline = available** (it's an actio
 - Spacing scale 4, 8, 12, 16, 24, 32, 48 px.
 - Radius **10px** for cards, inputs and buttons. Subtle borders over heavy shadows.
 - Mobile touch targets ≥ 44px.
+
+### Product name
+The product is **Vento Real Estate** (the company has other Vento products). The lockup is the V mark, the 'Vento' wordmark and a small uppercase 'Real Estate' descriptor; running text may say 'Vento'.
+
+### Default theme
+The app opens in **light mode** (owner's decision, 25 Nov 2026). Dark mode is a choice in the user menu (brick 3), with an option to follow the system setting.
 
 ### Surfaces that stay light in dark mode
 Buyer portal, receipts, letters and the board pack stay light on purpose: they are documents people print or forward. Customer-facing portals and sign-in use the **developer's own brand**, not Vento's navy.
