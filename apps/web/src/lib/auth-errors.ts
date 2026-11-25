@@ -1,4 +1,11 @@
-import { AUTH_ERROR_MESSAGES, AUTH_ERROR_CODES as C, type PasswordErrorCode } from '@vento/shared'
+import {
+  AUTH_ERROR_MESSAGES,
+  AUTH_ERROR_CODES as C,
+  PASSWORD_ERROR_CODES,
+  PASSWORD_RULE_ERROR_CODES,
+  PASSWORD_RULE_KEYS,
+  type PasswordErrorCode,
+} from '@vento/shared'
 import type { ServerPasswordIssues } from '@/components/auth/password-rules'
 
 /**
@@ -58,20 +65,17 @@ export function isLocked(error: AuthClientError): boolean {
   return error.code === C.ACCOUNT_LOCKED || error.code === 'ACCOUNT_TEMPORARILY_LOCKED'
 }
 
-const PASSWORD_CODES: readonly string[] = [
-  C.PASSWORD_TOO_SHORT,
-  C.PASSWORD_NEEDS_NUMBER,
-  C.PASSWORD_REUSED,
-]
+const PASSWORD_CODES: readonly string[] = PASSWORD_ERROR_CODES
 
 function isPasswordCode(code: string | undefined): code is PasswordErrorCode {
   return code !== undefined && PASSWORD_CODES.includes(code)
 }
 
-/** Which server-only password rules failed, for PasswordRules to show in rose. */
+/** Which password rule the server refused, for PasswordRules to show in rose. */
 export function passwordIssues(error: AuthClientError | null): ServerPasswordIssues {
   if (!error) return {}
-  return { reused: error.code === C.PASSWORD_REUSED }
+  const rule = PASSWORD_RULE_KEYS.find((key) => PASSWORD_RULE_ERROR_CODES[key] === error.code)
+  return { ...(rule && { rule }), reused: error.code === C.PASSWORD_REUSED }
 }
 
 type Step = 'sign-in' | 'two-step' | 'backup-code' | 'email-code' | 'general'

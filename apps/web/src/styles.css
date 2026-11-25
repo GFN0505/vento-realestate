@@ -347,6 +347,18 @@
       transform: translate3d(100%, 0, 0);
     }
   }
+  /* Content that appears under a field grows downwards from nothing (e.g. password rules). */
+  --animate-reveal-down: reveal-down 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes reveal-down {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+    to {
+      grid-template-rows: 1fr;
+      opacity: 1;
+    }
+  }
   --animate-caret-blink: caret-blink 1.25s ease-out infinite;
   @keyframes caret-blink {
     0%,

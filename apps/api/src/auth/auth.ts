@@ -5,6 +5,8 @@ import {
   AUTH_ERROR_MESSAGES,
   authSessionFields,
   authUserFields,
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_MAX_LENGTH,
 } from '@vento/shared'
 import { betterAuth } from 'better-auth'
 import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
@@ -135,8 +137,9 @@ export function createAuth(options: CreateAuthOptions) {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
-      minPasswordLength: 12,
-      maxPasswordLength: 128,
+      // Our before-hook applies the full rules first; these are Better Auth's own backstop.
+      minPasswordLength: MIN_PASSWORD_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
       resetPasswordTokenExpiresIn: RESET_TOKEN_TTL_SECONDS,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: (data) => sendResetPasswordEmail(deps, data),

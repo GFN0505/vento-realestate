@@ -1,15 +1,26 @@
-import { checkPasswordLocally, PASSWORD_RULE_LABELS } from '@vento/shared'
+import {
+  checkPasswordLocally,
+  PASSWORD_RULE_KEYS,
+  PASSWORD_RULE_LABELS,
+  type PasswordRuleKey,
+  unmetPasswordRules,
+} from '@vento/shared'
 import { CheckIcon, CircleIcon, XIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type RuleState = 'met' | 'pending' | 'failed'
 
-/** Problems only the server can find; the page sets them from the error code it gets back. */
-export type ServerPasswordIssues = { reused?: boolean }
+/** What the server refused; the page sets it from the error code it gets back. */
+export type ServerPasswordIssues = { rule?: PasswordRuleKey; reused?: boolean }
+
+/** True when the browser can't find anything wrong (the server still checks reuse). */
+export function meetsLocalRules(password: string): boolean {
+  return unmetPasswordRules(password).length === 0
+}
 
 type Props = {
   password: string
-  serverIssues?: ServerPasswordIssues
+  serverIssues?: ServerPasswordIssues | undefined
   /** Reset adds "Different from your last 5 passwords". */
   showReuseRule?: boolean
   /** After a submit, rules still unmet turn rose instead of staying grey. */
@@ -17,7 +28,7 @@ type Props = {
   id?: string
 }
 
-/** Live checklist under a password field (DSAdditions → Password rules). */
+/** Live checklist under a password field (DSAdditions → Password rules), two columns from md. */
 export function PasswordRules({
   password,
   serverIssues = {},
@@ -25,12 +36,12 @@ export function PasswordRules({
   showUnmetAsFailed = false,
   id,
 }: Props) {
-  const local = checkPasswordLocally(password)
+  const checks = checkPasswordLocally(password)
   const unmet: RuleState = showUnmetAsFailed ? 'failed' : 'pending'
-  const rules: { label: string; state: RuleState }[] = [
-    { label: PASSWORD_RULE_LABELS.length, state: local.length ? 'met' : unmet },
-    { label: PASSWORD_RULE_LABELS.number, state: local.number ? 'met' : unmet },
-  ]
+  const rules: { label: string; state: RuleState }[] = PASSWORD_RULE_KEYS.map((key) => ({
+    label: PASSWORD_RULE_LABELS[key],
+    state: serverIssues.rule === key ? 'failed' : checks[key] ? 'met' : unmet,
+  }))
   if (showReuseRule) {
     rules.push({
       label: PASSWORD_RULE_LABELS.reuse,
@@ -39,7 +50,7 @@ export function PasswordRules({
   }
 
   return (
-    <ul id={id} className="flex flex-col gap-1 text-xs">
+    <ul id={id} className="grid gap-x-4 gap-y-1 text-xs md:grid-cols-2">
       {rules.map((rule) => (
         <li
           key={rule.label}

@@ -1,10 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
-import { CURRENT_TERMS_VERSION, checkPasswordLocally, type InvitationPreview } from '@vento/shared'
+import { CURRENT_TERMS_VERSION, type InvitationPreview } from '@vento/shared'
 import { useId } from 'react'
 import { useForm } from 'react-hook-form'
 import { FormAlert } from '@/components/auth/form-alert'
-import { PasswordInput } from '@/components/auth/password-input'
-import { PasswordRules } from '@/components/auth/password-rules'
+import { NewPasswordFields } from '@/components/auth/new-password-fields'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -28,8 +27,8 @@ export function AcceptAsNewUser({
   onHasAccount,
   onSignInNeeded,
 }: Props) {
-  const ids = { name: useId(), email: useId(), password: useId() }
-  const form = useForm({ defaultValues: { name: '', password: '' } })
+  const ids = { name: useId(), email: useId() }
+  const form = useForm({ defaultValues: { name: '', password: '', confirm: '' } })
   const { errors } = form.formState
   const accept = useMutation(orpc.invitations.acceptAsNewUser.mutationOptions())
 
@@ -72,26 +71,7 @@ export function AcceptAsNewUser({
         <FieldLabel htmlFor={ids.email}>Email</FieldLabel>
         <Input id={ids.email} type="email" autoComplete="username" value={preview.email} readOnly />
       </Field>
-      <Field data-invalid={!!errors.password}>
-        <FieldLabel htmlFor={ids.password}>Create a password</FieldLabel>
-        <PasswordInput
-          id={ids.password}
-          autoComplete="new-password"
-          aria-invalid={!!errors.password}
-          aria-describedby={`${ids.password}-rules`}
-          {...form.register('password', {
-            validate: (v) => {
-              const c = checkPasswordLocally(v)
-              return (c.length && c.number) || 'Use at least 12 characters, including a number'
-            },
-          })}
-        />
-        <PasswordRules
-          id={`${ids.password}-rules`}
-          password={form.watch('password')}
-          showUnmetAsFailed={!!errors.password}
-        />
-      </Field>
+      <NewPasswordFields form={form} label="Create a password" />
       <Button type="submit" size="lg" className="w-full" disabled={accept.isPending}>
         {accept.isPending
           ? 'Joining…'

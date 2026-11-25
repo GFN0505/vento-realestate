@@ -29,7 +29,7 @@ test('forgot password: the emailed link sets a new password, then sign-in needs 
 
   await page.goto(await resetLinkPath(member.email))
   await page.getByLabel('New password', { exact: true }).fill(newPassword)
-  await page.getByLabel('Confirm new password').fill(newPassword)
+  await page.getByLabel('Confirm password').fill(newPassword)
   await page.getByRole('button', { name: 'Save and sign in' }).click()
 
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
@@ -49,7 +49,7 @@ test('reset password refuses the password the person already uses', async ({ pag
 
   await page.goto(await resetLinkPath(member.email))
   await page.getByLabel('New password', { exact: true }).fill(member.password)
-  await page.getByLabel('Confirm new password').fill(member.password)
+  await page.getByLabel('Confirm password').fill(member.password)
   await page.getByRole('button', { name: 'Save and sign in' }).click()
 
   await expect(
@@ -64,7 +64,7 @@ test('a reset link works only once', async ({ page }) => {
   const path = await resetLinkPath(member.email)
   await page.goto(path)
   await page.getByLabel('New password', { exact: true }).fill('Lagos-lagoon-2027')
-  await page.getByLabel('Confirm new password').fill('Lagos-lagoon-2027')
+  await page.getByLabel('Confirm password').fill('Lagos-lagoon-2027')
   await page.getByRole('button', { name: 'Save and sign in' }).click()
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
 

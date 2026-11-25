@@ -9,8 +9,11 @@ import { signUp } from '@/test/flows'
 
 describe('sign up', () => {
   it.each([
-    ['short1', 'PASSWORD_TOO_SHORT'],
-    ['no-number-in-here', 'PASSWORD_NEEDS_NUMBER'],
+    ['Short1!', 'PASSWORD_TOO_SHORT'],
+    ['vento-test-2026!', 'PASSWORD_NEEDS_UPPERCASE'],
+    ['VENTO-TEST-2026!', 'PASSWORD_NEEDS_LOWERCASE'],
+    ['No-number-here!', 'PASSWORD_NEEDS_NUMBER'],
+    ['VentoTest2026', 'PASSWORD_NEEDS_SPECIAL'],
   ])('refuses %s with %s', async (password, code) => {
     const { app } = testApp()
     const res = await signUp(browser(app), uniqueEmail(), { password })
@@ -18,9 +21,9 @@ describe('sign up', () => {
     expect(res.json.code).toBe(code)
   })
 
-  it('accepts an ordinary password that has 12 characters and a number', async () => {
+  it('accepts an 8-character password that meets every rule', async () => {
     const { app } = testApp()
-    const res = await signUp(browser(app), uniqueEmail(), { password: 'Sunshine12345' })
+    const res = await signUp(browser(app), uniqueEmail(), { password: 'Lekki#26' })
     expect(res.status).toBe(200)
   })
 

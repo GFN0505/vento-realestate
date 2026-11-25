@@ -18,6 +18,7 @@ test('a new owner signs up, sets up the organization and entity, and ends up sig
   await page.getByLabel('Company').fill(company)
   await page.getByLabel('Work email').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
+  await page.getByLabel('Confirm password').fill(password)
   await page.getByRole('checkbox', { name: /I agree to the/ }).check()
   await page.getByRole('button', { name: 'Create account' }).click()
 
@@ -53,6 +54,7 @@ test('a wrong verification code shows what to do and keeps the person on the pag
   await page.getByLabel('Company').fill(`Ikoyi Heights ${unique}`)
   await page.getByLabel('Work email').fill(email)
   await page.getByLabel('Password', { exact: true }).fill('Parkview-gate-2026')
+  await page.getByLabel('Confirm password').fill('Parkview-gate-2026')
   await page.getByRole('checkbox', { name: /I agree to the/ }).check()
   await page.getByRole('button', { name: 'Create account' }).click()
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
@@ -74,12 +76,29 @@ test('the sign-up form explains what is missing before sending anything', async 
   await expect(page.getByText('Enter your work email')).toBeVisible()
   // The password rules turn from grey to rose instead of a separate message.
   await expect(
-    page.getByRole('listitem').filter({ hasText: /Not met:\s*At least 12 characters/ }),
+    page.getByRole('listitem').filter({ hasText: /Not met:\s*At least 8 characters/ }),
   ).toBeVisible()
   await expect(
-    page.getByRole('listitem').filter({ hasText: /Not met:\s*Includes a number/ }),
+    page.getByRole('listitem').filter({ hasText: /Not met:\s*A special character/ }),
   ).toBeVisible()
   await expect(page.getByText('Agree to the terms and privacy notice to continue')).toBeVisible()
+})
+
+test('sign-up refuses a confirmation that differs from the password, without sending it', async ({
+  page,
+}) => {
+  await page.goto('/sign-up')
+  await page.getByLabel('Your name').fill('Amaka Obi')
+  await page.getByLabel('Company').fill('Parkview Estates Ltd')
+  await page.getByLabel('Work email').fill('amaka.mismatch@test.vento.ng')
+  await page.getByLabel('Password', { exact: true }).fill('Vento-Test-2026!')
+  await page.getByLabel('Confirm password').fill('Vento-Test-2027!')
+  await page.getByRole('checkbox', { name: /I agree to the/ }).check()
+  await page.getByRole('button', { name: 'Create account' }).click()
+
+  await expect(page.getByText("Passwords don't match")).toBeVisible()
+  await expect(page.getByLabel('Confirm password')).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Create your company account' })).toBeVisible()
 })
 
 test('signing up with an email that already has an account looks the same and emails the owner of it', async ({
@@ -92,6 +111,7 @@ test('signing up with an email that already has an account looks the same and em
   await page.getByLabel('Company').fill('Another Company Ltd')
   await page.getByLabel('Work email').fill(member.email)
   await page.getByLabel('Password', { exact: true }).fill('Parkview-gate-2026')
+  await page.getByLabel('Confirm password').fill('Parkview-gate-2026')
   await page.getByRole('checkbox', { name: /I agree to the/ }).check()
   await page.getByRole('button', { name: 'Create account' }).click()
 

@@ -43,7 +43,7 @@ Then open **http://localhost:5173** in your browser.
 
 ## 1. Create a company account and verify the email
 1. On the sign-in page choose **Create a company account**.
-2. Enter your name, a company name, an email (any, e.g. `you@example.ng`) and a password. Watch the rules tick as you type. Try `password1234` first: it should be refused as too common.
+2. Enter your name, a company name, an email (any, e.g. `you@example.ng`) and a password. Watch the five rules tick as you type. Try `password1` first: the uppercase and special-character rules stay unticked and **Create account** explains what's missing. Then use something like `Lekki-Pearl-2026!`, and type a different value in **Confirm password** once to see "The passwords don't match".
 3. Tick the terms box and **Create account**.
 4. Run `pnpm mail`, copy the 6-digit code, enter it, and choose **Verify email**. Or open the link instead.
 

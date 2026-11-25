@@ -7,7 +7,7 @@
 Spec: [accounts-and-access](../specs/accounts-and-access.md) (steps 1–4 and the two-step setup; step 5 onwards comes with Projects and Sales).
 
 **Steps**
-1. *Sign up:* name, company, work email, password (≥ 12 characters and a number), accept terms and privacy notice → **Create account**.
+1. *Sign up:* name, company, work email, password (≥ 8 characters with an uppercase letter, a lowercase letter, a number and a special character) and confirm password, accept terms and privacy notice → **Create account**.
 2. *Verify email:* link or 6-digit code from the email (valid 30 minutes) → **Verify email**.
 3. *Onboarding, step 1 (organization):* organization name (pre-filled from Company), head office state, financial year start (January). Base currency NGN is shown, not chosen → **Continue**.
 4. *Onboarding, step 2 (first entity):* entity name (pre-filled), type (holding company or SPV), RC number, TIN, VAT registered? RC and TIN can be left for later → **Finish setup**.
@@ -30,7 +30,7 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md). Brick 2a builds th
 1. *Team members* → "Invite people". Paste up to 20 emails and pick a role for each (owner, admin, land & legal, project manager, sales, finance, HR, facility, viewer; owner-made roles such as "Site engineer" from brick 3). Only owners can invite owners.
 2. Optionally limit access to entities ("Kunle: Parkview Residences SPV Ltd only"). Project limits arrive with the Projects brick.
 3. "Send invites". Invitees get the invite email (WhatsApp once a provider is chosen).
-4. Invitee: *Invitation email* → *Accept invitation* (shows organization, who invited them, role, entities, what the role can approve, whether two-step is required) → name and password, or sign in if they already use Vento → *Set up two-step* (required for owner, admin and finance) → lands on their role home (temporary signed-in page until brick 3).
+4. Invitee: *Invitation email* → *Accept invitation* (shows organization, who invited them, role, entities, what the role can approve, whether two-step is required) → name, password and confirm password, or sign in if they already use Vento → *Set up two-step* (required for owner, admin and finance) → lands on their role home (temporary signed-in page until brick 3).
 
 **Behind the scenes:** invitations expire after 7 days; resending replaces the link and restarts the 7 days; invitations, role and limit changes, and removals are audit events; permissions are enforced server-side on every request; a role change takes effect on the member's next request.
 **Done when:** the member appears as `active` with their role and limits.
@@ -59,7 +59,7 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md).
 
 **Steps**
 1. *Sign in:* email, password, optional "Keep me signed in on this device" (30 days) → **Sign in** → *Two-step check* (authenticator code, or "Use a backup code") → **Verify**. If the role requires two-step and it isn't set up, *Set up two-step* comes first.
-2. Forgot password: *Forgot password* → email link (30 minutes, works once) → *Reset password* (new password, not one of the last 5) → signed in after the two-step check; every other session ends.
+2. Forgot password: *Forgot password* → email link (30 minutes, works once) → *Reset password* (new password and confirm password, not one of the last 5) → signed in after the two-step check; every other session ends.
 3. Lost authenticator: a backup code, or an owner (for anyone) or admin (for non-owners) resets their two-step (audit event, security alert to the member); they set it up again at next sign-in.
 
 **Behind the scenes:** sign-ins, failures, lockouts, password and two-step changes are audit events visible to the owners of every organization the person belongs to; security alerts can't be muted.

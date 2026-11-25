@@ -1,11 +1,14 @@
-import { AUTH_ERROR_CODES, PASSWORD_MIN_LENGTH, type PasswordErrorCode } from '@vento/shared'
+import {
+  PASSWORD_RULE_ERROR_CODES,
+  type PasswordErrorCode,
+  unmetPasswordRules,
+} from '@vento/shared'
 
 /**
- * The first rule a password misses, or null. Reuse of a recent password is checked separately,
- * since it needs the account's history.
+ * The first rule a password misses (in display order), or null. Reuse of a recent password is
+ * checked separately, since it needs the account's history.
  */
 export function checkPasswordPolicy(password: string): PasswordErrorCode | null {
-  if (password.length < PASSWORD_MIN_LENGTH) return AUTH_ERROR_CODES.PASSWORD_TOO_SHORT
-  if (!/\d/.test(password)) return AUTH_ERROR_CODES.PASSWORD_NEEDS_NUMBER
-  return null
+  const [first] = unmetPasswordRules(password)
+  return first ? PASSWORD_RULE_ERROR_CODES[first] : null
 }

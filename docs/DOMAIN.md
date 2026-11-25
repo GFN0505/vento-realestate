@@ -131,6 +131,7 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 - **Two-step is required** for owner, admin, finance and HR (a property of the role). Members with those roles can't turn it off. Owners (for anyone) and admins (for non-owners) can reset someone's two-step; nobody can reset their own. A reset by someone else ends all the person's sessions and requires a new password (from an emailed link) before their next sign-in.
 - **Access can't be raised by the granter:** a member limited to some entities can only grant access to those entities.
 - **Verification emails:** the link and code last 30 minutes; resending is allowed once a minute, 5 times an hour. Reset links last 30 minutes and work once; a new password can't be one of the last 5.
+- **Passwords** need at least 8 characters with an uppercase letter, a lowercase letter, a number and a special character (anything that isn't a letter, number or space).
 
 ## Locale defaults
 - Base currency `NGN` (₦). Foreign currency stored with its FX rate and source.

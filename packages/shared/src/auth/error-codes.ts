@@ -1,3 +1,5 @@
+import type { PasswordRuleKey } from './password-rules'
+
 /**
  * Error codes returned by `/api/auth/*` (Better Auth's own and ours), as `{ code, message }`
  * in the JSON body. The web maps them to copy; never match on `message`.
@@ -5,7 +7,10 @@
 export const AUTH_ERROR_CODES = {
   // Ours: password rules (sign-up, reset, change, accept invitation).
   PASSWORD_TOO_SHORT: 'PASSWORD_TOO_SHORT',
+  PASSWORD_NEEDS_UPPERCASE: 'PASSWORD_NEEDS_UPPERCASE',
+  PASSWORD_NEEDS_LOWERCASE: 'PASSWORD_NEEDS_LOWERCASE',
   PASSWORD_NEEDS_NUMBER: 'PASSWORD_NEEDS_NUMBER',
+  PASSWORD_NEEDS_SPECIAL: 'PASSWORD_NEEDS_SPECIAL',
   PASSWORD_REUSED: 'PASSWORD_REUSED',
   TERMS_NOT_ACCEPTED: 'TERMS_NOT_ACCEPTED',
   /** 429. Body also has `lockedUntil` (ISO date-time). */
@@ -34,10 +39,22 @@ export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CO
 /** Password rule failures, in the order the rules are listed on screen. */
 export const PASSWORD_ERROR_CODES = [
   AUTH_ERROR_CODES.PASSWORD_TOO_SHORT,
+  AUTH_ERROR_CODES.PASSWORD_NEEDS_UPPERCASE,
+  AUTH_ERROR_CODES.PASSWORD_NEEDS_LOWERCASE,
   AUTH_ERROR_CODES.PASSWORD_NEEDS_NUMBER,
+  AUTH_ERROR_CODES.PASSWORD_NEEDS_SPECIAL,
   AUTH_ERROR_CODES.PASSWORD_REUSED,
 ] as const
 export type PasswordErrorCode = (typeof PASSWORD_ERROR_CODES)[number]
+
+/** The error code for each locally checked rule, so the API and the zod schema agree. */
+export const PASSWORD_RULE_ERROR_CODES = {
+  length: AUTH_ERROR_CODES.PASSWORD_TOO_SHORT,
+  uppercase: AUTH_ERROR_CODES.PASSWORD_NEEDS_UPPERCASE,
+  lowercase: AUTH_ERROR_CODES.PASSWORD_NEEDS_LOWERCASE,
+  number: AUTH_ERROR_CODES.PASSWORD_NEEDS_NUMBER,
+  special: AUTH_ERROR_CODES.PASSWORD_NEEDS_SPECIAL,
+} as const satisfies Record<PasswordRuleKey, PasswordErrorCode>
 
 /** Copy for the codes we own. Lock and resend messages need a time, so the web builds those. */
 export const AUTH_ERROR_MESSAGES: Record<
@@ -49,8 +66,11 @@ export const AUTH_ERROR_MESSAGES: Record<
   | 'PASSWORD_RESET_REQUIRED',
   string
 > = {
-  PASSWORD_TOO_SHORT: 'Use at least 12 characters',
-  PASSWORD_NEEDS_NUMBER: 'Include a number',
+  PASSWORD_TOO_SHORT: 'Use at least 8 characters',
+  PASSWORD_NEEDS_UPPERCASE: 'Add an uppercase letter',
+  PASSWORD_NEEDS_LOWERCASE: 'Add a lowercase letter',
+  PASSWORD_NEEDS_NUMBER: 'Add a number',
+  PASSWORD_NEEDS_SPECIAL: 'Add a special character, like ! @ # ?',
   PASSWORD_REUSED: 'Choose a password different from your last 5',
   TERMS_NOT_ACCEPTED: 'Agree to the terms and privacy notice to continue',
   INVALID_EMAIL_OR_PASSWORD: "That email and password don't match.",

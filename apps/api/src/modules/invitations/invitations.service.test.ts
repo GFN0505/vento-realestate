@@ -283,13 +283,13 @@ describe('accepting as a new person (HTTP)', () => {
     const res = await browser(app).rpc('invitations/acceptAsNewUser', {
       token,
       name: 'Aisha Bello',
-      password: 'no-number-in-here',
+      password: 'No-number-here!',
       termsVersion: CURRENT_TERMS_VERSION,
     })
     expect(res.status).toBe(400)
-    // The shared zod schema catches length and number before the service runs.
+    // The shared zod schema catches every local rule before the service runs.
     expect(res.body).toMatchObject({
-      data: { issues: [{ message: 'Include a number', path: ['password'] }] },
+      data: { issues: [{ message: 'Add a number', path: ['password'] }] },
     })
   })
 })

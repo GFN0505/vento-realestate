@@ -1,10 +1,9 @@
-import type { SystemRoleKey } from '@vento/shared'
+import { PASSWORD_RULE_LABELS, type SystemRoleKey, unmetPasswordRules } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
 import { and, eq, isNotNull } from 'drizzle-orm'
 import { setActiveOrganization } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import { webUrl } from '@/auth/hooks/deps'
-import { checkPasswordPolicy } from '@/auth/password-policy'
 import { INVITATION_TTL_MS } from '@/auth/policy'
 import { env } from '@/env'
 import { logger } from '@/lib/logger'
@@ -203,8 +202,14 @@ async function seed() {
   if (env.NODE_ENV === 'production') throw new Error('The seed is for development only')
   const password = env.SEED_PASSWORD
   if (!password) throw new Error('Set SEED_PASSWORD in .env (see .env.example)')
-  const problem = checkPasswordPolicy(password)
-  if (problem) throw new Error(`SEED_PASSWORD doesn't meet the password rules (${problem})`)
+  const missing = unmetPasswordRules(password)
+  if (missing.length > 0) {
+    // Names the missing rules only; never echoes the password.
+    const rules = missing.map((rule) => PASSWORD_RULE_LABELS[rule].toLowerCase()).join('; ')
+    throw new Error(
+      `SEED_PASSWORD must meet the password rules: at least 8 characters, an uppercase letter, a lowercase letter, a number and a special character. Missing: ${rules}. Update it in .env.`,
+    )
+  }
   const passwordHash = await hashPassword(password)
 
   const links = await db.transaction(async (tx) => {

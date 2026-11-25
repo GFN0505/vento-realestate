@@ -21,6 +21,7 @@ test('a new person accepts a Finance invitation, sets up two-step and lands sign
 
   await page.getByLabel('Your name').fill('Chidi Eze')
   await page.getByLabel('Create a password').fill(password)
+  await page.getByLabel('Confirm password').fill(password)
   await page.getByRole('button', { name: 'Accept and set up two-step' }).click()
 
   await completeTwoStepSetup(page, password)

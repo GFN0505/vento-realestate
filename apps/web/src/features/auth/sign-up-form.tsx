@@ -1,32 +1,43 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { AUTH_ERROR_CODES, CURRENT_TERMS_VERSION, checkPasswordLocally } from '@vento/shared'
+import { CURRENT_TERMS_VERSION } from '@vento/shared'
 import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { AuthFootnote, AuthHeader } from '@/components/auth/auth-layout'
 import { FormAlert } from '@/components/auth/form-alert'
-import { PasswordInput } from '@/components/auth/password-input'
-import { PasswordRules } from '@/components/auth/password-rules'
+import { NewPasswordFields } from '@/components/auth/new-password-fields'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
-import { type AuthClientError, authErrorMessage } from '@/lib/auth-errors'
+import { type AuthClientError, authErrorMessage, passwordIssues } from '@/lib/auth-errors'
 import { TermsCheckbox } from './terms-checkbox'
 
-type Values = { name: string; companyName: string; email: string; password: string; terms: boolean }
-
-const PASSWORD_HINT = 'Use at least 12 characters, including a number'
+type Values = {
+  name: string
+  companyName: string
+  email: string
+  password: string
+  confirm: string
+  terms: boolean
+}
 
 /** Board SignUp. The "30-day trial" line is hidden: no billing yet (CHANGES.md). */
 export function SignUpForm() {
   const navigate = useNavigate()
-  const ids = { name: useId(), company: useId(), email: useId(), password: useId(), terms: useId() }
+  const ids = { name: useId(), company: useId(), email: useId(), terms: useId() }
   const [serverError, setServerError] = useState<AuthClientError | null>(null)
   const form = useForm<Values>({
-    defaultValues: { name: '', companyName: '', email: '', password: '', terms: false },
+    defaultValues: {
+      name: '',
+      companyName: '',
+      email: '',
+      password: '',
+      confirm: '',
+      terms: false,
+    },
   })
   const { errors, isSubmitting } = form.formState
-  const password = form.watch('password')
+  const issues = passwordIssues(serverError)
 
   const submit = form.handleSubmit(async (values) => {
     setServerError(null)
@@ -41,6 +52,7 @@ export function SignUpForm() {
     })
     if (error) {
       setServerError(error)
+      if (passwordIssues(error).rule) form.setFocus('password')
       return
     }
     // Same reply whether or not the email already has an account (owner's decision 9).
@@ -56,7 +68,7 @@ export function SignUpForm() {
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       <AuthHeader title="Create your company account" />
-      {serverError && serverError.code !== AUTH_ERROR_CODES.PASSWORD_TOO_SHORT && (
+      {serverError && !issues.rule && (
         <FormAlert variant="error">{authErrorMessage(serverError)}</FormAlert>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -101,26 +113,12 @@ export function SignUpForm() {
         />
         <FieldError id={`${ids.email}-error`}>{errors.email?.message}</FieldError>
       </Field>
-      <Field data-invalid={!!errors.password}>
-        <FieldLabel htmlFor={ids.password}>Password</FieldLabel>
-        <PasswordInput
-          autoComplete="new-password"
-          id={ids.password}
-          aria-invalid={!!errors.password}
-          aria-describedby={`${ids.password}-rules`}
-          {...form.register('password', {
-            validate: (v) => {
-              const checks = checkPasswordLocally(v)
-              return (checks.length && checks.number) || PASSWORD_HINT
-            },
-          })}
-        />
-        <PasswordRules
-          id={`${ids.password}-rules`}
-          password={password}
-          showUnmetAsFailed={!!errors.password}
-        />
-      </Field>
+      <NewPasswordFields
+        form={form}
+        label="Password"
+        serverIssues={issues}
+        onPasswordChange={() => issues.rule && setServerError(null)}
+      />
       <TermsCheckbox
         id={ids.terms}
         checked={form.watch('terms')}

@@ -20,6 +20,7 @@ import {
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
 import { uniqueEmail } from './db'
 
+// Meets every password rule; apps/web/e2e signs up with the same literal.
 export const TEST_PASSWORD = 'Parkview-gate-2026'
 
 export type TestUser = typeof users.$inferSelect
