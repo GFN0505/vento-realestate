@@ -1,6 +1,6 @@
 # Accounts and access (brick 2a)
 
-- **Status:** draft
+- **Status:** approved (25 Nov 2026), in build
 - **Module:** Platform
 - **Journeys:** J-ONB-01, J-ONB-02, J-ONB-04 (changed)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
@@ -84,7 +84,7 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 
 ### Sign up and verify
 - **Given** someone on *Sign up*, **when** the password is under 12 characters, has no number, is a common password or appears in known data breaches, **then** the matching rule stays unticked and **Create account** explains what's missing.
-- **Given** an email that already has an account, **when** they sign up, **then** they see "An account already uses this email" with **Sign in** and **Forgot password?**.
+- **Given** an email that already has an account, **when** they sign up, **then** they see the usual "Check your email" step, and the existing account is emailed "Someone tried to create a Vento account with your email. Sign in or reset your password." Nobody can find out who has an account.
 - **Given** a new account, **when** it's created, **then** the time and version of the terms and privacy notice they accepted is recorded, a verification email is sent (link and 6-digit code, valid 30 minutes), and nothing else in Vento opens until the email is verified.
 - **Given** an expired or used link, **when** it's opened, **then** they see "This link has expired" with **Send a new link**. Resend is allowed once a minute, 5 times an hour.
 
@@ -208,7 +208,22 @@ Rows in `docs/design/SCREENS.md`: Sign in and two-factor challenge · Sign up an
 ## Domain changes
 Added to `docs/DOMAIN.md` (terms): **Role**, **Permission**, **Access limit**, **Invitation** (statuses `pending → accepted / declined / expired / withdrawn`), **Two-step sign-in**, **Session**, **Security alert**; member status `active → removed`; entity type `holding` / `spv` and status `active → archived`; organization fields. The rules (7-day invitation expiry, lockouts, session lengths, roles requiring two-step) are added once you approve this spec.
 
-## Open questions
+## Owner's decisions (25 Nov 2026)
+All recommendations below and in the plan were approved:
+1. Email: print to the console in development; choose Postmark or Resend by brick 3.
+2. Invitations expire after 7 days and can be resent.
+3. Sessions end after 30 minutes idle or 12 hours at most; "Keep me signed in" lasts 30 days from sign-in (not extended by use).
+4. Two-step is required for owner, admin, finance and HR.
+5. The nine built-in roles ship with the default table above; custom roles come in brick 3.
+6. The design departures above are accepted.
+7. Buyer and realtor portal sign-in come with the portals.
+8. 10 wrong passwords in 15 minutes lock sign-in for 15 minutes.
+9. Signing up with an email that already has an account replies "Check your email" as usual and emails that account a notice, so nobody can find out who has an account (this replaces the "An account already uses this email" criterion).
+10. Vento owns organizations, roles and access in its own tables (decision 0010).
+11. In 2a, turning two-step off asks for the password; brick 3 adds the current code.
+12. Seed: Tunde Ola (accountant) is a viewer; no seeded admin.
+
+## Open questions (answered above)
 1. **Email provider.** *Recommended:* log emails to the console in development now; pick a provider (Postmark or Resend are simple and reliable) before the first real customer, at the latest in brick 3.
 2. **Invitation expiry.** *Recommended:* 7 days, resendable.
 3. **Session length.** *Recommended:* 30 minutes without activity or 12 hours at most; 30 days on a device where "Keep me signed in" is ticked (site phones). Two-step is asked at every new sign-in.

@@ -1,6 +1,6 @@
 # Plan: Accounts and access (brick 2a)
 
-- **Status:** proposed, waiting for the owner's review
+- **Status:** approved by the owner on 25 Nov 2026, in build. Decision records 0010–0012 are accepted.
 - **Spec:** [docs/specs/accounts-and-access.md](../specs/accounts-and-access.md)
 - Written by the architect agent on 25 Nov 2026, checked against Better Auth **1.7.28** (the current npm `latest`) and the code on branch `brick/02-accounts-and-access`.
 

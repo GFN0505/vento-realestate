@@ -27,3 +27,6 @@ apps/web/e2e/.auth/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# development email output
+.mail/
