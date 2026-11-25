@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, FileCheck2Icon, GlobeIcon, ScaleIcon } from 'lucide-react'
+import { ArrowLeftIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { VentoMark } from '@/components/vento-mark'
 
@@ -19,7 +19,7 @@ type Props = {
  */
 export function AuthLayout({ children, back, wide = false }: Props) {
   return (
-    <div className="min-h-dvh bg-card lg:grid lg:grid-cols-[520px_1fr]">
+    <div className="min-h-dvh bg-card lg:grid lg:grid-cols-2">
       <BrandPanel />
       <main className="flex min-h-dvh flex-col gap-5 px-6 pt-4 pb-8 lg:items-center lg:justify-start lg:p-12 lg:pt-[14vh]">
         <div className="flex min-h-10 items-center gap-2.5 lg:hidden">
@@ -51,38 +51,21 @@ export function AuthLayout({ children, back, wide = false }: Props) {
 
 function BrandPanel() {
   return (
-    <aside className="relative isolate hidden overflow-hidden bg-auth-panel text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-14">
+    <aside className="relative isolate hidden overflow-hidden bg-auth-panel text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
       <PanelBackdrop />
       <VentoMark tone="navy" />
       <div className="motion-safe:animate-auth-rise">
-        <p className="max-w-[420px] text-balance font-heading font-semibold text-[34px] leading-[1.14] tracking-[-0.025em] xl:text-[38px]">
+        <p className="max-w-[560px] text-balance font-heading font-semibold text-[40px] leading-[1.1] tracking-[-0.03em] xl:text-[48px]">
           Command every development, from title to handover.
         </p>
-        <p className="mt-4 max-w-[400px] text-pretty text-[15px] text-sidebar-muted-foreground leading-relaxed">
-          Land, buyers, instalments and every SPV's books in one secure place. Built for how
-          Nigerian developers really work.
+        <p className="mt-5 max-w-[460px] text-pretty text-base text-sidebar-muted-foreground leading-relaxed xl:text-lg">
+          Everything your development business runs on, in one calm, secure place.
         </p>
-        <ul className="mt-10 flex flex-col gap-3.5 border-auth-hairline border-t pt-8">
-          {PROOF_POINTS.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-3 font-medium text-sm">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-logo-stroke/15 ring-1 ring-logo-stroke/30 ring-inset">
-                <Icon className="size-4 text-logo-dot" strokeWidth={2} aria-hidden />
-              </span>
-              {label}
-            </li>
-          ))}
-        </ul>
       </div>
       <AuthFooter />
     </aside>
   )
 }
-
-const PROOF_POINTS = [
-  { icon: FileCheck2Icon, label: 'Title to handover on one record' },
-  { icon: GlobeIcon, label: 'Instalments collected at home and abroad' },
-  { icon: ScaleIcon, label: "Every SPV's books, always balanced" },
-] as const
 
 /** Decoration only: the logo-colour glow, a hairline grid and an oversized faint chevron. */
 function PanelBackdrop() {
