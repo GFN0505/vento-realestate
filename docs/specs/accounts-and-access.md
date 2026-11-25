@@ -96,7 +96,7 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 - **Given** an RC number already used by another entity in this organization, **then** it is refused: "Parkview Residences SPV Ltd already uses RC 1789234." (Enforced by the API now; it can only arise when adding or editing entities, whose screens come in brick 3. The first entity at onboarding has nothing to clash with.)
 
 ### Sign in and two-step
-- **Given** a wrong email or password, **then** the message is the same for both: "That email and password don't match. Check them or reset your password."
+- **Given** a wrong email or password, **then** the message is the same for both: "Invalid email or password" (owner's wording; "Forgot password?" sits beside the Password label).
 - **Given** a member with two-step on, **when** the password is right, **then** the two-step check always follows on a new sign-in, including straight after a password reset.
 - **Given** a member whose role requires two-step and who hasn't set it up, **when** they sign in, accept an invitation or have their role changed, **then** they can do nothing else until two-step is set up.
 - **Given** two-step setup, **when** the code is verified, **then** 10 single-use backup codes are shown once, with **Download** and **Copy**, and the member must tick "I've saved my backup codes" to continue.
@@ -170,7 +170,7 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 | Onboarding step 2 | Title "First entity" · "Most projects sit in their own company (SPV). Books, bank accounts and tax are kept per entity." · "You can add this later" (under RC and TIN) · **Finish setup** |
 | Wrong code | "That code didn't match. Codes change every 30 seconds, so use the newest one." |
 | Lockout | "Too many wrong codes. Try again in 14:32, or reset your password." (password lockout: "Too many wrong passwords…") |
-| Wrong password | "That email and password don't match. Check them or reset your password." |
+| Wrong email or password | "Invalid email or password" |
 | Two-step reset by someone else | "Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in." |
 | Lost phone | "Lost your phone and your codes? Ask an owner or admin to reset two-step." |
 | Backup codes | "Save these 10 codes somewhere safe. Each works once." · **Download** · **Copy** · "I've saved my backup codes" |

@@ -17,7 +17,7 @@ export function AuthFailureText({
   secondsLeft: number
 }) {
   if (failure.kind === 'wrong-password') {
-    return <>That email and password don't match. Check them or {resetLink}.</>
+    return <>Invalid email or password</>
   }
   if (failure.kind === 'locked') {
     const wait = secondsLeft > 0 ? formatCountdown(secondsLeft) : '15 minutes'

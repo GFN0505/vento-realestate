@@ -39,7 +39,7 @@ test('a member with two-step signs in, is refused a wrong code, then gets in wit
 
 test('a wrong password gets the same message as an unknown email', async ({ page }) => {
   const member = createMemberFixture()
-  const reply = page.getByText(/email and password/i)
+  const reply = page.getByText('Invalid email or password', { exact: true })
 
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(member.email)

@@ -73,7 +73,7 @@ export const AUTH_ERROR_MESSAGES: Record<
   PASSWORD_NEEDS_SPECIAL: 'Add a special character, like ! @ # ?',
   PASSWORD_REUSED: 'Choose a password different from your last 5',
   TERMS_NOT_ACCEPTED: 'Agree to the terms and privacy notice to continue',
-  INVALID_EMAIL_OR_PASSWORD: "That email and password don't match.",
+  INVALID_EMAIL_OR_PASSWORD: 'Invalid email or password',
   INVALID_CODE: "That code didn't match. Codes change every 30 seconds, so use the newest one.",
   TWO_STEP_REQUIRED_BY_ROLE: 'Your role requires two-step sign-in, so it stays on.',
   PASSWORD_RESET_REQUIRED:

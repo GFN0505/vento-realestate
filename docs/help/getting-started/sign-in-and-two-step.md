@@ -13,7 +13,7 @@ Owners, admins, finance and HR must use two-step sign-in. Anyone else can turn i
 2. Enter the newest 6-digit code from your app, or choose **Use a backup code**.
 
 **If something goes wrong**
-- *"That email and password don't match"*: check both, or use **Forgot password?**
+- *"Invalid email or password"*: check both, or use **Forgot password?**
 - *Too many wrong tries*: sign-in pauses for 15 minutes and we email you. Wait for the countdown, or reset your password.
 - *Lost your phone and your backup codes*: ask an owner or admin to reset your two-step. You'll get an email to set a new password, then you set up two-step again.
 - *Forgot your password*: choose **Forgot password?**, open the link (valid 30 minutes) and choose a new password that follows the same rules as when you signed up and isn't one of your last 5. Type it twice to confirm. You're signed out of every other device.
