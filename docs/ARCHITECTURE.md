@@ -72,7 +72,7 @@ Better Auth 1.7 ([decision 0010](decisions/0010-better-auth-identity-own-access.
 - **Imports** use `@/` inside each app. Named exports, except route files.
 
 ## Data
-- PostgreSQL 18 (Docker locally: `pnpm db:up`). Two databases: `vento` for development, `vento_test` for automated tests.
+- PostgreSQL 18 (Docker locally: `pnpm db:up`). Three databases: `vento` for development (only what you create, plus `pnpm db:seed` if you run it), `vento_test` for unit and API tests (recreated each run), and `vento_e2e` for browser tests (created and migrated automatically by `pnpm e2e`).
 - Drizzle ORM with `pg` (node-postgres). Postgres `numeric` values arrive as strings, which is what money needs.
 - Browse the local database: `pnpm db:studio` (Drizzle Studio at https://local.drizzle.studio), or any Postgres client on `localhost:5432` with the credentials in `.env.example`.
 - Schema changes: edit `apps/api/src/db/schema/*`, then `pnpm db:generate`, review the SQL, `pnpm db:migrate` (see the `db-migration` skill).

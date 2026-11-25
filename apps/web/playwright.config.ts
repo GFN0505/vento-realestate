@@ -2,6 +2,13 @@ import { defineConfig, devices } from '@playwright/test'
 
 const isCI = Boolean(process.env.CI)
 
+// Locally, e2e uses its own database so test accounts never land in development data.
+// The servers, fixtures and global setup all inherit this. CI sets DATABASE_URL itself.
+if (!isCI) {
+  process.env.DATABASE_URL =
+    process.env.E2E_DATABASE_URL ?? 'postgres://vento:vento@localhost:5432/vento_e2e'
+}
+
 // Locally, e2e starts its own API and web server on separate ports, so it never meets the
 // rate limits of a running `pnpm dev` and never shares its sessions. CI uses the usual ports.
 // E2E_API_PORT and E2E_WEB_PORT override both, e.g. to run CI mode next to `pnpm dev`.
@@ -41,7 +48,8 @@ export default defineConfig({
       // Locally without watch mode, so edits elsewhere don't restart the API mid-run.
       command: isCI
         ? 'pnpm --filter @vento/api start'
-        : 'pnpm --filter @vento/api exec tsx src/index.ts',
+        : // Create and migrate the e2e database first (servers start before any setup hook).
+          'pnpm --filter @vento/api exec tsx src/test/e2e-db.ts && pnpm --filter @vento/api exec tsx src/index.ts',
       url: `${apiUrl}/health`,
       reuseExistingServer: !isCI,
       env: apiEnv,
