@@ -1,0 +1,109 @@
+---
+name: add-module
+description: Step-by-step recipe for adding a new domain module (e.g. land parcels, subscriptions, receipts) end to end — zod schema, oRPC contract, Drizzle table, service, router, permissions, tests. Use when creating a new entity or resource.
+---
+
+# Add a module
+
+Example module: `subscription` (a buyer subscribes to a unit with a payment plan). Replace names throughout. Check `docs/DOMAIN.md` for the correct terms, statuses and relationships first.
+
+## 1. Shared schema — `packages/shared/src/subscription/schema.ts`
+```ts
+import { z } from 'zod'
+import { id, money, currency, paginationInput, isoDate, Decimal } from '../common'
+
+export const subscriptionStatus = z.enum(['pending_kyc', 'active', 'completed', 'cancelled', 'defaulted'])
+
+export const subscription = z.object({
+  id,
+  unitId: id,
+  buyerId: id,
+  paymentPlanId: id,
+  subscribedOn: isoDate,
+  price: money,               // decimal string, never number
+  currency,                   // 'NGN' | 'USD' | 'GBP' | 'EUR'
+  status: subscriptionStatus,
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+})
+
+export const createSubscriptionInput = subscription
+  .pick({ unitId: true, buyerId: true, paymentPlanId: true, subscribedOn: true, price: true, currency: true })
+  .refine((v) => new Decimal(v.price).gt(0), { path: ['price'], message: 'Enter a price above zero' })
+
+export const updateSubscriptionInput = createSubscriptionInput.partial().extend({ id })
+export const listSubscriptionsInput = paginationInput.extend({
+  status: subscriptionStatus.optional(),
+  unitId: id.optional(),
+  projectId: id.optional(),
+})
+
+export type Subscription = z.infer<typeof subscription>
+```
+Rules: user-facing error messages in plain English. The same schema drives the form, so write messages for end users.
+
+## 2. Contract — `packages/shared/src/subscription/contract.ts`
+```ts
+import { oc } from '@orpc/contract'
+import { paginated } from '../common'
+
+export const subscriptionContract = {
+  list: oc.input(listSubscriptionsInput).output(paginated(subscription)),
+  get: oc.input(z.object({ id })).output(subscription),
+  create: oc.input(createSubscriptionInput).output(subscription),
+  update: oc.input(updateSubscriptionInput).output(subscription),
+  remove: oc.input(z.object({ id })).output(z.void()),
+}
+```
+Register it in `packages/shared/src/contract.ts`.
+
+## 3. Table — `apps/api/src/db/schema/subscription.ts`
+```ts
+export const subscriptions = pgTable('subscriptions', {
+  id: uuid().primaryKey().$defaultFn(uuidv7),
+  organizationId: text().notNull().references(() => organization.id, { onDelete: 'cascade' }),
+  unitId: uuid().notNull().references(() => units.id),
+  buyerId: uuid().notNull().references(() => contacts.id),
+  paymentPlanId: uuid().notNull().references(() => paymentPlans.id),
+  subscribedOn: date().notNull(),
+  price: numeric({ precision: 14, scale: 2 }).notNull(),
+  currency: char({ length: 3 }).notNull().default('NGN'),
+  status: subscriptionStatusEnum().notNull().default('pending_kyc'),
+  ...timestamps,
+}, (t) => [
+  index().on(t.organizationId),
+  index().on(t.organizationId, t.status),
+  index().on(t.buyerId),
+  // one active subscription per unit
+  uniqueIndex().on(t.unitId).where(sql`${t.status} = 'active'`),
+  check('subscription_price_positive', sql`${t.price} > 0`),
+])
+```
+Then follow the `db-migration` skill.
+
+## 4. Service — `apps/api/src/modules/subscription/subscription.service.ts`
+- Functions take `ctx: { db, organizationId, userId }` first. Every `where` includes `eq(subscriptions.organizationId, ctx.organizationId)`.
+- Check that referenced rows (unit, buyer, payment plan) belong to the same organization before you insert, and that the unit is `available` or `reserved`.
+- Enforce domain rules here (e.g. a unit can't have two active subscriptions → `CONFLICT` "Unit B12 already has an active subscription"; only `pending_kyc → active` once the buyer's KYC is verified).
+- Multi-table writes go inside `ctx.db.transaction(async (tx) => …)`: activating a subscription generates its instalments from the payment plan and moves the unit to `subscribed` in the same transaction.
+- Use the decimal library for any maths on `price` and instalment amounts.
+- Lists: build filters with `and(...)`, return `{ items, page, pageSize, total }` using the shared `paginate` helper.
+
+## 5. Router — `apps/api/src/modules/subscription/subscription.router.ts`
+```ts
+export const subscriptionRouter = {
+  list: authed.use(requirePermission('sales', 'read')).subscription.list.handler(({ input, context }) => list(context, input)),
+  create: authed.use(requirePermission('sales', 'create')).subscription.create.handler(({ input, context }) => create(context, input)),
+  // …
+}
+```
+No try/catch. Throw `ORPCError` in the service, and the central handler formats it. Register in `apps/api/src/router.ts` and add the module's actions to the permission map.
+
+## 6. Tests — `subscription.service.test.ts`
+Cover the happy path, validation, permission denied, not found, the domain conflict (second active subscription on a unit), and **cross-organization access returns NOT_FOUND**.
+
+## 7. Web
+Follow the `add-list-page` skill.
+
+## Done when
+`pnpm check && pnpm typecheck && pnpm test` pass, and the migration is generated and applied.

@@ -1,0 +1,92 @@
+---
+name: design-system
+description: The app's visual language — tokens, colours, typography, spacing, layout shells, component usage, status colours, states, responsive and accessibility rules. Use when building or reviewing any UI in apps/web.
+---
+
+# Design system
+
+The quality bar is Linear, Stripe Dashboard and Mercury: calm, fast, precise. If the approved Claude Design files exist in `docs/design/`, they override anything below.
+
+## Screens without a design
+`docs/design/SCREENS.md` lists every screen the product needs. Many have no bespoke design, and that's expected. Build them from the patterns below so they look like they were designed:
+- **Pick the closest archetype** and copy its layout exactly: *list page* (PageHeader → toolbar → DataTable → pagination), *detail page* (header with key facts and status → tabs → activity timeline on the right), *side-sheet form* (edit), *stepped sheet* (multi-step flow), *settings page* (left sub-nav, sections of label + description + control), *queue* (list with approve/reject actions), *document/PDF* (letterhead, title, parties, table, totals, signature block), *message* (from, one purpose, amount and date first, one action).
+- **Reuse existing components** only; if a genuinely new component is needed, flag it in your report instead of inventing a style.
+- **Mark it** in `SCREENS.md` as `pattern`. If it's high-traffic, customer-facing (buyer/realtor portals, PDFs) or the pattern doesn't fit, also mark `needs-design` so it goes into the next Claude Design pass.
+- When an approved design arrives later, the screen is updated to match and marked `built`.
+
+## When a design needs to change
+Designs are a starting point, not a contract. If real data, a domain rule, accessibility or performance shows a designed screen won't work (e.g. a table that can't fit real column widths, a flow missing an approval step), adjust it using the same patterns, note the change and the reason in `docs/design/CHANGES.md`, and mark the screen `needs-design` if the change is significant.
+
+## UX principles (apply to every screen)
+1. **One job per screen, one primary action.** The most important number or status is the first thing seen.
+2. **≤ 3 clicks** for common tasks (record receipt, new subscription, add unit, log site diary entry). Every action is also in the ⌘K command palette.
+3. **Defaults over settings.** Pre-fill from organization defaults and the last-used values (e.g. the project's price list and default payment plan on a new subscription, receipt date = today).
+4. **Progressive disclosure.** Show the essentials, and put advanced fields behind "More options".
+5. **Undo over confirm.** Reversible actions run immediately with an undo toast. Confirm only for money movements and permanent deletes, and the confirm button says exactly what happens ("Record ₦2,500,000 receipt").
+6. **Inline over modal.** Edit simple fields in place. Use a side sheet for multi-field edits, and a stepped sheet for flows (new subscription, onboarding).
+7. **Speak the user's language.** Domain terms from `docs/DOMAIN.md`, plain English, no jargon or codes. Errors say what to do next.
+8. **Keyboard and touch.** Shortcuts for power users (`?` shows them). On mobile: bottom navigation, sticky primary action, 44px touch targets.
+9. **Feels instant.** Route preloading on hover, skeletons that match the final layout, optimistic UI for safe toggles, no layout shift.
+10. **Nothing extra.** Remove any element that doesn't help a user decide or act.
+
+## Tokens (defined in `apps/web/src/styles.css`, consumed via Tailwind)
+| Purpose | Token / class |
+|---|---|
+| Brand / primary action | `bg-primary text-primary-foreground` (brand `#7677FB`) |
+| Page background | `bg-background` (light: slate-50 tone, dark: near-black) |
+| Card / surface | `bg-card text-card-foreground border` |
+| Secondary text | `text-muted-foreground` |
+| Destructive | `bg-destructive`, `text-destructive` |
+| Sidebar | `bg-sidebar text-sidebar-foreground` (dark navy in both themes) |
+| Focus ring | `ring-ring` (brand) |
+| Radius | `rounded-md` for controls, `rounded-lg` for cards, `rounded-full` for badges and avatars |
+
+**Never** write hex, rgb or arbitrary colour values in components. If a colour is missing, add a token in `styles.css`.
+
+## Typography
+Poppins (self-hosted via `@fontsource`). Scale:
+- Page title `text-xl font-semibold`, section title `text-base font-semibold`
+- Body `text-sm`, secondary `text-sm text-muted-foreground`, caption `text-xs text-muted-foreground`
+- Numbers in tables and stats use `tabular-nums`
+
+## Spacing and layout
+- 4px grid. Page padding `p-4 sm:p-6`, gaps between sections `gap-6`, inside cards `p-4 sm:p-6`, form fields `gap-4`.
+- App shell: fixed sidebar (`w-64`, collapsible to icons) on `lg+`, Sheet drawer below `lg`, top bar with search, notifications, theme toggle and user menu.
+- Max content width `max-w-7xl` for forms and detail pages. Lists use the full width.
+- Forms: one column on mobile, two columns from `md`, using container queries inside dialogs.
+
+## Components (shadcn only, from `@/components/ui`)
+Button (`default`, `secondary`, `outline`, `ghost`, `destructive`; sizes `sm`, `default`, `icon`), Input, Select, Combobox (Command + Popover), DatePicker (Calendar + Popover), Dialog, Sheet, DropdownMenu, Tabs, Table, Badge, Card, Skeleton, Tooltip, Sonner.
+App-level: PageHeader, DataTable, DataTableToolbar, StatusBadge, EmptyState, ConfirmDialog, MoneyInput, EntityCombobox, StatCard.
+Don't create a second version of any of these. Extend with `variant`s via `cva`.
+
+## Status colours (StatusBadge)
+| Meaning | Colour | Examples |
+|---|---|---|
+| Success / done | emerald | active subscription, paid, completed, granted, verified, available unit |
+| Waiting / attention | amber | pending KYC, due, partially paid, reserved, submitted, permit expiring |
+| In progress / info | blue | in construction, in progress, subscribed, allocated, upcoming |
+| Problem / ended | rose | overdue, defaulted, cancelled, rejected, flagged, active encumbrance |
+| Neutral | slate | draft, not started, blocked, handed over, closed, archived |
+A badge is a dot plus a label on a tinted background. Never rely on colour alone.
+
+## Developer ERP patterns
+- **Unit grid / availability map:** one tile per unit, grouped by block or phase, coloured by unit status (`available`, `reserved`, `subscribed`, `allocated`, `handed_over`, `blocked`) with a legend and counts. Tile shows unit number, type and price; click opens the unit side sheet. Never colour alone: status label in the tile tooltip and in list view.
+- **Project progress:** phases in order (`site_prep` → … → `handover`) as a segmented bar with % complete, planned vs actual dates, and budget vs actual beside it. Delays show their reason.
+- **Payment plan timeline:** instalments in due-date order with amount, due date and derived status badge; received amount and balance at the top. Today's position marked. Overdue shows relative time ("12 days overdue").
+- **Title stage tracker:** stepper per parcel (e.g. survey plan → excision gazette → C of O → governor's consent) with stage status, dates and linked documents. An active encumbrance shows a rose warning banner wherever the parcel appears.
+- **Money with currency:** `₦1,250,000.00`, `$12,500.00`. Foreign amounts show the NGN equivalent and FX rate in muted text (`≈ ₦19,375,000 at ₦1,550/$, CBN`). Compact form in stat cards (`₦12.5M`). Right-aligned, `tabular-nums`.
+- **Dates:** `25 Nov 2026`. Relative time for due dates, delinquency age and permit expiry ("expires in 21 days").
+- **Site photos:** lazy-loaded, `srcset`, with date, location and a meaningful `alt`.
+
+## States
+Every data view needs loading (skeleton), empty (illustration + action), filtered-empty (clear filters), error (message + retry), and long content (truncate with a tooltip, or wrap).
+
+## Accessibility (WCAG 2.2 AA)
+- Text contrast ≥ 4.5:1 (≥ 3:1 for large text and UI parts), checked in both themes.
+- Visible focus on everything interactive. Full keyboard use, and focus is trapped in dialogs.
+- Labels on every input. `aria-label` on icon-only buttons. Errors linked with `aria-describedby`.
+- Touch targets ≥ 40px on mobile. Respect `prefers-reduced-motion`.
+
+## Responsive
+Design mobile-first. Test at 375px, 768px and 1280px. No horizontal page scroll. Tables hide secondary columns or switch to cards below `md`.
