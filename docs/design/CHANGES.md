@@ -17,3 +17,4 @@ When a built screen deliberately differs from its approved design, record it her
 | 2026-11-25 | Two-step setup | Starts with "Confirm your password"; built inside the auth layout from the SecuritySettings panel | Better Auth requires the password to turn two-step on | Yes |
 | 2026-11-25 | Auth layout | "Data held in Nigeria" removed from the footer; Privacy and Terms point to pages not built yet | Hosting location isn't decided; legal pages come before launch | Yes |
 | 2026-11-25 | Auth layout (dark) | Links use a lighter violet for contrast | WCAG AA in dark mode | Yes |
+| 2026-11-25 | All screens | Open in light mode by default instead of following the computer's setting; dark mode becomes a choice (toggle in brick 3) | Owner's preference | No |

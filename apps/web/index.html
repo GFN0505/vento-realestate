@@ -4,18 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Vento: the operating system for Nigerian real estate developers." />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
     <title>Vento</title>
     <script>
-      // Set the theme before first paint so dark-mode users never see a white flash.
-      // A stored choice (brick 3 adds the toggle) wins over the system setting.
+      // Set the theme before first paint. Light is the default (owner's choice); a stored
+      // choice of 'dark' or 'system' (the toggle arrives in brick 3) overrides it.
       ;(() => {
         try {
           const stored = localStorage.getItem('vento-theme')
           const dark =
             stored === 'dark' ||
-            (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-          if (dark) document.documentElement.classList.add('dark')
+            (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) {
+            document.documentElement.classList.add('dark')
+            document.documentElement.style.colorScheme = 'dark'
+          }
         } catch (_) {}
       })()
     </script>

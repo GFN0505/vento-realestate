@@ -49,6 +49,9 @@ Unit and plot colours reuse these: **violet outline = available** (it's an actio
 - Radius **10px** for cards, inputs and buttons. Subtle borders over heavy shadows.
 - Mobile touch targets ≥ 44px.
 
+### Default theme
+The app opens in **light mode** (owner's decision, 25 Nov 2026). Dark mode is a choice in the user menu (brick 3), with an option to follow the system setting.
+
 ### Surfaces that stay light in dark mode
 Buyer portal, receipts, letters and the board pack stay light on purpose: they are documents people print or forward. Customer-facing portals and sign-in use the **developer's own brand**, not Vento's navy.
 

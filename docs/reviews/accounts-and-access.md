@@ -36,7 +36,7 @@ Then open **http://localhost:5173** in your browser.
 | Tunde Ola | tunde@ventohomes.ng | Viewer | Optional |
 
 - `pnpm db:seed` also prints two invitation links: one pending, one expired. Running it again gives fresh links (only scrambled versions are stored, so old links can't be shown again).
-- **Light and dark:** the app follows your computer's appearance setting. Try both.
+- **Light and dark:** the app opens in light mode. To see dark mode until the switch arrives in brick 3, open the browser console on the page and run `localStorage.setItem('vento-theme','dark')`, then reload (use `'light'` to go back).
 - **Phone size:** in Chrome, press ⌥⌘I, then the phone icon, and pick a phone.
 
 ---
