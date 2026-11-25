@@ -13,6 +13,8 @@ type Props = {
   descriptor?: boolean
   /** `navy` on the brand panels, `surface` on cards and the page background. */
   tone?: 'navy' | 'surface'
+  /** The chevron draws itself and the dot fades in, like the marketing site's loader. */
+  animated?: boolean
 }
 
 /** The brand thins the stroke and dot as the mark grows, so it reads the same at every size. */
@@ -29,6 +31,7 @@ export function VentoMark({
   strokeWidth,
   descriptor = true,
   tone = 'surface',
+  animated = false,
 }: Props) {
   const weight = weights(size)
   return (
@@ -46,9 +49,20 @@ export function VentoMark({
           strokeWidth={strokeWidth ?? weight.stroke}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="stroke-logo-stroke"
+          className={cn(
+            'stroke-logo-stroke',
+            animated && '[stroke-dasharray:46] motion-safe:animate-auth-draw',
+          )}
         />
-        <circle cx="16" cy="10" r={weight.dot} className="fill-logo-dot" />
+        <circle
+          cx="16"
+          cy="10"
+          r={weight.dot}
+          className={cn(
+            'fill-logo-dot',
+            animated && 'origin-center [transform-box:fill-box] motion-safe:animate-auth-dot',
+          )}
+        />
       </svg>
       <span className="font-bold font-heading text-[17px] tracking-[0.01em] lg:text-lg">Vento</span>
       {descriptor && (
@@ -56,7 +70,7 @@ export function VentoMark({
           className={cn(
             'border-l py-0.5 pl-2.5 font-semibold text-[10.5px] uppercase leading-none tracking-[0.14em]',
             tone === 'navy'
-              ? 'border-auth-hairline text-sidebar-muted-foreground'
+              ? 'border-auth-hairline text-auth-panel-muted'
               : 'border-border text-muted-foreground',
           )}
         >

@@ -52,10 +52,19 @@
   /* The sign-in brand panel is a shade deeper than the sidebar in dark mode. */
   --auth-panel: #121a3f;
   /* Brand panel atmosphere: the logo's violet and cyan as faint light, and a hairline grid. */
-  --auth-glow-violet: rgb(108 99 245 / 0.24);
+  --auth-glow-violet: rgb(108 99 245 / 0.2);
   --auth-glow-cyan: rgb(76 201 240 / 0.12);
   --auth-grid-line: rgb(255 255 255 / 0.035);
   --auth-hairline: rgb(255 255 255 / 0.1);
+  /*
+   * Secondary text on the moving panel: brighter than sidebar-muted so it keeps 4.5:1 even
+   * where the aurora, spotlight and sweep overlap (worst case 4.6:1, plain navy 10.7:1).
+   */
+  --auth-panel-muted: #c8ccee;
+  /* Light that follows the pointer, the grid lines it lights up, and the slow sweep. */
+  --auth-spotlight: rgb(138 139 252 / 0.1);
+  --auth-grid-line-lit: rgb(255 255 255 / 0.11);
+  --auth-sweep: rgb(255 255 255 / 0.035);
 
   --overlay: rgb(10 12 30 / 0.45);
   /* The Vento logo mark: the same in both themes. */
@@ -123,7 +132,7 @@
   --sidebar: #0b0e1f;
   --auth-panel: #080b1a;
   /* The deeper dark panel needs a touch less light to stay calm. */
-  --auth-glow-violet: rgb(108 99 245 / 0.2);
+  --auth-glow-violet: rgb(108 99 245 / 0.18);
   --auth-glow-cyan: rgb(76 201 240 / 0.1);
 
   --status-emerald-fg: #34d399;
@@ -184,6 +193,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-auth-panel: var(--auth-panel);
   --color-auth-hairline: var(--auth-hairline);
+  --color-auth-panel-muted: var(--auth-panel-muted);
   --color-overlay: var(--overlay);
   --color-logo-stroke: var(--logo-stroke);
   --color-logo-dot: var(--logo-dot);
@@ -238,11 +248,83 @@
 }
 
 @theme {
-  --animate-auth-rise: auth-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-  @keyframes auth-rise {
+  /* Brand panel motion. Every use is behind motion-safe:, so reduced motion is fully static. */
+  --animate-auth-drift-a: auth-drift-a 34s ease-in-out infinite alternate;
+  --animate-auth-drift-b: auth-drift-b 26s ease-in-out infinite alternate;
+  --animate-auth-drift-c: auth-drift-c 40s ease-in-out infinite alternate;
+  --animate-auth-draw: auth-draw 1.1s cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-auth-dot: auth-dot 0.5s ease-out 0.9s both;
+  --animate-auth-breathe: auth-breathe 9s ease-in-out 1.8s infinite;
+  --animate-auth-word: auth-word 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-auth-sweep: auth-sweep 12s ease-in-out 3s infinite both;
+  @keyframes auth-drift-a {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(14%, 10%, 0) scale(1.08);
+    }
+    100% {
+      transform: translate3d(4%, 22%, 0) scale(0.96);
+    }
+  }
+  @keyframes auth-drift-b {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(-16%, -8%, 0) scale(1.1);
+    }
+    100% {
+      transform: translate3d(-6%, -18%, 0) scale(1);
+    }
+  }
+  @keyframes auth-drift-c {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    100% {
+      transform: translate3d(22%, -12%, 0) scale(1.15);
+    }
+  }
+  @keyframes auth-draw {
+    from {
+      stroke-dashoffset: 46;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes auth-dot {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: scale(0.4);
+    }
+  }
+  @keyframes auth-breathe {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.65;
+      transform: scale(1.02);
+    }
+  }
+  @keyframes auth-word {
+    from {
+      opacity: 0;
+      transform: translateY(0.35em);
+    }
+  }
+  @keyframes auth-sweep {
+    0% {
+      transform: translate3d(-100%, 0, 0);
+    }
+    22%,
+    100% {
+      transform: translate3d(100%, 0, 0);
     }
   }
   --animate-caret-blink: caret-blink 1.25s ease-out infinite;
@@ -259,11 +341,43 @@
   }
 }
 
-/* Sign-in brand panel: two soft glows in the logo colours, like the marketing site's hero. */
-@utility auth-glow {
+/*
+ * Sign-in brand panel aurora: large soft blobs in the logo colours. Radial gradients are already
+ * soft, so there is no blur filter to repaint; only transform is animated.
+ */
+@utility auth-blob-violet {
+  background-image: radial-gradient(closest-side, var(--auth-glow-violet), transparent);
+}
+@utility auth-blob-cyan {
+  background-image: radial-gradient(closest-side, var(--auth-glow-cyan), transparent);
+}
+
+/* The pointer spotlight: positions come from --x / --y, written by usePanelMotion. */
+@utility auth-spotlight {
+  background-image: radial-gradient(
+    420px circle at var(--x, 50%) var(--y, 45%),
+    var(--auth-spotlight),
+    transparent 70%
+  );
+}
+
+/* The same grid, brighter, shown only in a circle around the pointer. */
+@utility auth-grid-lit {
   background-image:
-    radial-gradient(60% 50% at 18% 38%, var(--auth-glow-violet), transparent 70%),
-    radial-gradient(45% 40% at 85% 78%, var(--auth-glow-cyan), transparent 70%);
+    linear-gradient(to right, var(--auth-grid-line-lit) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--auth-grid-line-lit) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(240px circle at var(--x, 50%) var(--y, 45%), black, transparent);
+}
+
+/* A narrow diagonal band of light that crosses the panel now and then. */
+@utility auth-sweep {
+  background-image: linear-gradient(
+    105deg,
+    transparent 35%,
+    var(--auth-sweep) 50%,
+    transparent 65%
+  );
 }
 
 /* A 48px hairline grid that fades out towards the edges. */

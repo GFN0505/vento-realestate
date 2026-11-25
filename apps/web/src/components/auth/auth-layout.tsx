@@ -1,9 +1,9 @@
 import { ArrowLeftIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { VentoMark } from '@/components/vento-mark'
+import { BrandPanel } from './brand-panel'
 
-/** The privacy notice and terms pages are published outside the app (not built yet). */
-export const LEGAL_LINKS = { privacy: '/privacy', terms: '/terms' } as const
+export { LEGAL_LINKS } from './brand-panel'
 
 type Props = {
   children: ReactNode
@@ -45,62 +45,6 @@ export function AuthLayout({ children, back, wide = false }: Props) {
           {children}
         </div>
       </main>
-    </div>
-  )
-}
-
-function BrandPanel() {
-  return (
-    <aside className="relative isolate hidden overflow-hidden bg-auth-panel text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
-      <PanelBackdrop />
-      <VentoMark tone="navy" />
-      <div className="motion-safe:animate-auth-rise">
-        <p className="max-w-[560px] text-balance font-heading font-semibold text-[40px] leading-[1.1] tracking-[-0.03em] xl:text-[48px]">
-          Command every development, from title to handover.
-        </p>
-        <p className="mt-5 max-w-[460px] text-pretty text-base text-sidebar-muted-foreground leading-relaxed xl:text-lg">
-          Everything your development business runs on, in one calm, secure place.
-        </p>
-      </div>
-      <AuthFooter />
-    </aside>
-  )
-}
-
-/** Decoration only: the logo-colour glow, a hairline grid and an oversized faint chevron. */
-function PanelBackdrop() {
-  return (
-    <div aria-hidden="true" className="-z-10 pointer-events-none absolute inset-0">
-      <div className="absolute inset-0 auth-glow" />
-      <div className="absolute inset-0 auth-grid" />
-      <svg
-        viewBox="0 0 32 32"
-        fill="none"
-        aria-hidden="true"
-        className="-right-32 -bottom-40 absolute size-[600px] opacity-[0.07]"
-      >
-        <path
-          d="M5 7 L16 27 L27 7"
-          strokeWidth={1.2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="stroke-logo-stroke"
-        />
-      </svg>
-    </div>
-  )
-}
-
-function AuthFooter() {
-  return (
-    <div className="flex flex-wrap gap-4 text-sidebar-faint-foreground text-xs">
-      <span>© 2026 Vento Real Estate</span>
-      <a href={LEGAL_LINKS.privacy} className="text-sidebar-muted-foreground hover:underline">
-        Privacy
-      </a>
-      <a href={LEGAL_LINKS.terms} className="text-sidebar-muted-foreground hover:underline">
-        Terms
-      </a>
     </div>
   )
 }
