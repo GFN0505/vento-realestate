@@ -30,6 +30,7 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens in brick 3 |
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-05 | Find your way around the workspace | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -98,3 +99,7 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Resolved maintenance requests auto-close after **7 days**.
 - Permit expiry alerts at **60, 30 and 7 days**.
 - The two ₦5m thresholds above are design defaults; the AML one must match current SCUML/NFIU rules.
+- (Brick 3a) The sidebar and mobile tabs are **derived from the role's view permissions**, with a fixed tab priority per role.
+- (Brick 3a) Modules not built yet show a **"Soon" tag and a Coming soon page** until each ships; any still unbuilt are hidden before the first customer.
+- (Brick 3a) Theme, sidebar state, last entity and recently opened pages are remembered **per device**, not per account.
+- (Brick 3a) **Preview as role** changes navigation only and lasts until stopped or the tab is closed.

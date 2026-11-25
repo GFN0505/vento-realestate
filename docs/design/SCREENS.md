@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 162 rows · 133 designed (18 of them partly) · 29 without a design.
+**Coverage:** 165 rows · 135 designed (18 of them partly) · 30 without a design.
 
 
 
@@ -19,15 +19,16 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
 | Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
-| Setup checklist on Home | [Onboarding](claude-design/Onboarding.dc.html) | todo |
-| App shell: sidebar, top bar, entity/project switcher, mobile bottom nav | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), [Main](claude-design/Main.dc.html) (bottom nav) | todo |
-| ⌘K command palette | [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | todo |
+| Setup checklist on Home (brick 3b) | [Onboarding](claude-design/Onboarding.dc.html) | todo |
+| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | todo |
+| ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | todo |
+| Module placeholder ("Coming soon", until each module ships) | – | todo |
 | Notifications panel and notification preferences | [Notifications](claude-design/Notifications.dc.html), [NotificationPrefs](claude-design/NotificationPrefs.dc.html) | todo |
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
-| Keyboard shortcuts help (`?`) | – | todo |
-| My profile, password, two-factor, active sessions | [SecuritySettings](claude-design/SecuritySettings.dc.html) (security only; profile not designed) | todo |
-| 403 no access, 404 not found, 500 error, offline banner and page | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | todo |
+| Keyboard shortcuts help (`?`) (brick 3a) | – | todo |
+| My security: two-step on/off, backup codes, active sessions, passkeys (brick 3d); my profile | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (security only; passkeys and profile not designed) | todo |
+| 403 no access, 404 not found, 500 error, offline banner and page (brick 3a; Request access in brick 4) | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | todo |
 | Maintenance page | – | todo |
 | Session expired / signed out elsewhere | [SessionExpired](claude-design/SessionExpired.dc.html) | built |
 | Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | built (tokens, fonts, form components) |
@@ -186,9 +187,11 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 12. Settings and admin
 | Screen | Design | Status |
 |---|---|---|
-| Settings layout with left sub-navigation | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav) | todo |
-| Organization profile and branding (logo, colours on documents) | [SetOrg](claude-design/SetOrg.dc.html), [SetBranding](claude-design/SetBranding.dc.html) | todo |
-| Team members, invites, roles and permissions, role templates | [RolesSettings](claude-design/RolesSettings.dc.html), [SetPermissions](claude-design/SetPermissions.dc.html) | todo |
+| Settings layout with left sub-navigation (brick 3b) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | todo |
+| Organization profile and entities: add, edit, archive (brick 3c) | [SetOrg](claude-design/SetOrg.dc.html) | todo |
+| Branding: logo and colours on documents, emails and portals (proposed: with the first customer-facing document) | [SetBranding](claude-design/SetBranding.dc.html) | todo |
+| Team members and invitations: invite, change role and limits, resend, withdraw, remove, reset two-step (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) | todo |
+| Permissions: role × module matrix, copy and edit custom roles (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | todo |
 | Approval rules | [SetApprovalRules](claude-design/SetApprovalRules.dc.html) | todo |
 | Fee and sales defaults, grace periods | – | todo |
 | Numbering (receipts, invoices, documents) | – | todo |

@@ -16,6 +16,9 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Two-step sign-in** | A 6-digit authenticator-app code (TOTP) asked after the password, with 10 single-use backup codes. | Required for some roles. Repeated wrong codes lock sign-in for a period. |
 | **Sign-in lock** | A pause on signing in to one email address after repeated failures. | `locked → none` after 15 minutes. Caused by 10 wrong passwords within 15 minutes or 5 wrong two-step or backup codes in a row. Applies to unknown emails too, so a lock reveals nothing. |
 | **Session** | One signed-in device or browser. | Listed for its owner, who can end one or all others. Ends on removal from the organization or a password reset. |
+| **Active organization** | The organization a session is working in. | Belongs to the session, never to request input. A person in several organizations switches it from the shell; the last one used is the default at next sign-in. |
+| **Current entity** | The entity (or "All entities") chosen in the entity switcher. | A view filter for pages that use it, held in the page address; never grants access. Only entities within the member's access limits are offered. |
+| **Role preview** | An owner or admin viewing the navigation and home of another role. | Changes what is shown only; every request still runs with the previewer's own access. Ends when stopped or the tab is closed. |
 | **Security alert** | An email about a person's account security (lockout, password changed, two-step reset, backup code used). | Always sent; can't be muted. |
 | **Contact** | Any external person or company: buyer, lead, contractor, vendor, surveyor, valuer, JV partner, agent/broker, resident. | One `contacts` table with a roles array. Individuals and companies. |
 | **Buyer (subscriber)** | Contact who has subscribed to one or more units. | Can sign in to the Buyer Portal. May be diaspora (country of residence recorded). |
