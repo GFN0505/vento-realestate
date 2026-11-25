@@ -12,9 +12,13 @@ export function findRepoRoot(start: string): string | undefined {
   }
 }
 
-/** Loads the repo-root .env for local runs. Variables already set are never overridden. */
-export function loadLocalEnvFile(start: string) {
-  const root = findRepoRoot(start)
+/**
+ * Loads the repo-root .env for local runs. Variables already set are never overridden.
+ * `start` can be undefined when a tool loads this file as CommonJS (drizzle-kit does),
+ * where `import.meta.dirname` doesn't exist; the working directory is used instead.
+ */
+export function loadLocalEnvFile(start: string | undefined) {
+  const root = findRepoRoot(start ?? process.cwd())
   const file = root && join(root, '.env')
   if (file && existsSync(file)) process.loadEnvFile(file)
 }

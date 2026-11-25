@@ -53,6 +53,7 @@ packages/
 ## Data
 - PostgreSQL 18 (Docker locally: `pnpm db:up`). Two databases: `vento` for development, `vento_test` for automated tests.
 - Drizzle ORM with `pg` (node-postgres). Postgres `numeric` values arrive as strings, which is what money needs.
+- Browse the local database: `pnpm db:studio` (Drizzle Studio at https://local.drizzle.studio), or any Postgres client on `localhost:5432` with the credentials in `.env.example`.
 - Schema changes: edit `apps/api/src/db/schema/*`, then `pnpm db:generate`, review the SQL, `pnpm db:migrate` (see the `db-migration` skill).
 
 ## Resilience

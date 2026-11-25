@@ -22,6 +22,7 @@ Read before working (map of all docs: `docs/README.md`; code layout: `docs/ARCHI
 - `pnpm dev` — run web (:5173) + api (:3000)
 - `pnpm db:up` / `pnpm db:down` — start / stop local Postgres (Docker)
 - `pnpm db:generate` / `pnpm db:migrate` — create / apply migrations
+- `pnpm db:studio` — browse the local database at https://local.drizzle.studio
 - `pnpm db:seed` — load the fictional golden-thread data (`docs/journeys/00-golden-thread.md`); added with the first domain tables
 - `pnpm build` — production builds of api and web
 - `pnpm check` — Biome lint + format check
