@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalDependencies": [".env"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {
+      "dependsOn": ["^typecheck"],
+      "env": ["DATABASE_URL", "TEST_DATABASE_URL"],
+      "passThroughEnv": ["PORT", "WEB_ORIGIN", "LOG_LEVEL", "TEST_LOG_LEVEL", "CI"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": ["VITE_API_PROXY"]
+    }
+  }
+}

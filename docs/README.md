@@ -16,9 +16,9 @@ Everything about Vento that isn't code lives in `docs/`. If you're new, read in 
 | [design/](design/) prompts | Claude Design prompts used to produce the designs | product-manager | A new design pass |
 | [help/](help/README.md) | Customer help-centre articles | frontend (writes), ui-designer (reviews copy) | A journey ships |
 | [../CHANGELOG.md](../CHANGELOG.md) | What changed, release by release, in customers' words | whoever ships | Every user-visible change |
-| `ARCHITECTURE.md` *(at scaffold)* | How the code is laid out, request lifecycle, data model overview | architect | Structure changes |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | How the code is laid out, request lifecycle, data, build and quality gates | architect | Structure changes |
 | `RUNBOOK.md` *(before first deploy)* | Environments, deploys, backups, restore, incident steps | devops | Infrastructure changes |
-| `.env.example` *(at scaffold)* | Every environment variable and what it's for | backend, devops | A variable is added |
+| [../.env.example](../.env.example) | Every environment variable and what it's for | backend, devops | A variable is added |
 | `ai/evals/RESULTS.md` *(first AI feature)* | Which model each AI feature uses and why | ai | An eval is run |
 
 ## Definition of done (documentation)

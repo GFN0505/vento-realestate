@@ -1,0 +1,29 @@
+{
+  "name": "vento-realestate",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.23.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "e2e": "pnpm --filter @vento/web e2e",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @vento/api db:generate",
+    "db:migrate": "pnpm --filter @vento/api db:migrate",
+    "db:studio": "pnpm --filter @vento/api db:studio"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
+    "@types/node": "^24.19.2",
+    "turbo": "^2.11.13",
+    "typescript": "^7.0.2"
+  }
+}
