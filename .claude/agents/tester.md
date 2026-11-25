@@ -20,7 +20,7 @@ Read `CLAUDE.md`, `docs/PRODUCT.md` and `docs/DOMAIN.md`, and follow your preloa
 - **Dates:** instalment due on the date vs overdue the day after, grace period and ageing bucket boundaries, month ends (31st), leap years, permit expiry alerts.
 - **Concurrency where it matters:** two receipts on one instalment or two subscriptions for the same unit at the same time.
 - **UI:** submit, validation message shown, server error shown, empty and loading states.
-- **E2E:** the main user journey for the feature, as a real user would do it.
+- **E2E:** each journey in `docs/journeys/` the feature touches, walked step by step as written, in the spec file the journey names (`apps/web/e2e/...`), including its *Watch for* cases. If the build and the journey disagree, report it; don't quietly test something else. When it passes, set the journey's status to `built`.
 
 ## Standards
 Deterministic (no real clock or random without control; use `vi.useFakeTimers` and seeded factories), independent, fast, and named as behaviour sentences. Never weaken an assertion to make it pass.

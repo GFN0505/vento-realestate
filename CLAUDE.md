@@ -2,10 +2,12 @@
 
 A world-class ERP for Nigerian real estate developers: land & title, projects & construction, off-plan sales & CRM, finance (multi-entity, multi-currency), estate management, HR & payroll, compliance, documents & contracts, buyer portal, executive analytics. Top-of-the-line UX, nothing extra.
 
-Read before working:
+Read before working (map of all docs: `docs/README.md`):
 - `docs/PRODUCT.md` — vision, personas, the ten modules and how they connect. Keep each module lean; don't add features outside it without asking.
 - `docs/DOMAIN.md` — business vocabulary, statuses and rules.
 - `docs/design/SCREENS.md` — every screen the product needs and its design/build status. Update it whenever screens are added or changed; log deliberate departures from a design in `docs/design/CHANGES.md`.
+- `docs/journeys/` — step-by-step user walkthroughs (start with `00-golden-thread.md`). Each journey is an e2e test and, once shipped, a help article.
+- `docs/decisions/` — why the big choices were made. Don't reverse one without a new record.
 
 ## Stack
 - **Monorepo:** pnpm workspaces + Turborepo — `apps/web`, `apps/api`, `packages/shared`
@@ -20,6 +22,7 @@ Read before working:
 - `pnpm dev` — run web + api
 - `pnpm db:up` — start local Postgres (Docker)
 - `pnpm db:generate` / `pnpm db:migrate` — create / apply migrations
+- `pnpm db:seed` — load the fictional golden-thread data (`docs/journeys/00-golden-thread.md`)
 - `pnpm check` — Biome lint + format check
 - `pnpm typecheck`, `pnpm test`, `pnpm e2e`
 - Before any commit: `pnpm check && pnpm typecheck && pnpm test`
@@ -47,6 +50,7 @@ Read before working:
 - Tests sit next to the code (`x.test.ts`); e2e lives in `apps/web/e2e`.
 
 ## Workflow
-Feature: **product-manager** specs (`docs/specs/`) → **architect** plans → **backend** + **frontend** build (**payments** for collections and receipts, **finance** for ledger, tax, payroll and reporting, **ai** for any AI feature) → **tester** covers → **reviewer** + **ui-designer** check → fix → commit.
+Feature: **product-manager** specs (`docs/specs/`) → **architect** plans → **backend** + **frontend** build (**payments** for collections and receipts, **finance** for ledger, tax, payroll and reporting, **ai** for any AI feature) → **tester** covers → **reviewer** + **ui-designer** check → fix → docs → commit.
+**Docs are part of done:** in the same commit, the journey matches the build (status `built`), `SCREENS.md`/`CHANGES.md` are current, new terms are in `DOMAIN.md`, hard-to-reverse choices have a decision record, shipped journeys have a help article in `docs/help/`, and user-visible changes are in `CHANGELOG.md`. Full list in `docs/README.md`.
 Periodic and pre-release: **security** audits. Build, CI, deploys and monitoring: **devops**.
 Project skills in `.claude/skills/` hold the step-by-step recipes (`add-module`, `add-list-page`, `db-migration`, `design-system`, `ux-writing`, `performance`, `paystack`, `nigeria-compliance`, `ai-features`, `testing-patterns`, `review-checklist`, `pre-commit-check`).

@@ -32,5 +32,7 @@ Read `CLAUDE.md`, `docs/PRODUCT.md` and `docs/DOMAIN.md` first. Follow your prel
 - **Components:** composition over props explosion, one job per component, no file over ~200 lines. Extract hooks for logic.
 - **Copy:** short, plain and specific ("Subscription created", "Unit B12 already has an active subscription"). Use the terms from `docs/DOMAIN.md`.
 
+- **Docs:** follow the journey in `docs/journeys/` for the flow; if what you build differs, update the journey and mark it `changed`. Write the customer help article in `docs/help/` for each journey you ship (rules in its README).
+
 ## Report back
 Changed files, screenshots or notes from checking the page in the browser (desktop and 375px, light and dark), commands run with pass/fail, and anything unverified.

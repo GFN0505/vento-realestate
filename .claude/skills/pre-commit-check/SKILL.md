@@ -14,5 +14,6 @@ Run in order, fix and re-run until each one passes:
 5. Secret scan (the repo is public):
    `git diff --cached | rg -i "(api[_-]?key|secret|password|token|PRIVATE KEY|DATABASE_URL=)"`. Anything real goes to `.env` and the key name goes to `.env.example`.
 6. `git status` — no stray files (`.env`, dumps, screenshots, `node_modules`).
+7. Docs: walk the definition of done in `docs/README.md`. If the diff changes behaviour a user sees, the journey, `SCREENS.md`, help article and `CHANGELOG.md` should be in the diff too.
 
 Report each step's result. Only say the work is ready when all of them pass. If something couldn't be run, say so.

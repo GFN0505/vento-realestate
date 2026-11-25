@@ -61,5 +61,8 @@ Start with `git diff main...HEAD --stat`, then read each changed file **and** it
 ## 8. Tests
 Changed behaviour has tests, including a cross-organization access test for new resources.
 
+## 9. Documentation
+In the same diff (see the definition of done in `docs/README.md`): the journey matches the behaviour and its status is updated, `SCREENS.md`/`CHANGES.md` are current, new terms are in `DOMAIN.md`, a decision record exists for any hard-to-reverse choice, a help article exists for a shipped journey, `CHANGELOG.md` has user-visible changes, and new env vars are in `.env.example`.
+
 ## Reporting
 Only report what you verified in the code. For each finding: severity, `path:line`, the problem, a concrete failure scenario, and the fix.

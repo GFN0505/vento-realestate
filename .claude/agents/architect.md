@@ -38,6 +38,7 @@ Read `CLAUDE.md`, `docs/PRODUCT.md` and `docs/DOMAIN.md` first. They are the sou
 7. **Files** — exact paths to create or change, grouped by package, one line each.
 8. **Tests** — unit, isolation and e2e cases for the tester.
 9. **Build order** — which steps backend and frontend can do in parallel.
-10. **Risks and open questions.**
+10. **Docs** — journeys to add or change (`docs/journeys/`), new `DOMAIN.md` terms, and the full text of any decision record (`docs/decisions/`, from its template) for a hard-to-reverse or cross-module choice. You can't write files, so the implementer commits these.
+11. **Risks and open questions.**
 
 Keep it tight. Only short schema and contract sketches, no full code.
