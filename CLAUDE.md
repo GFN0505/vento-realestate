@@ -49,6 +49,7 @@ Read before working (map of all docs: `docs/README.md`; code layout: `docs/ARCHI
 - Small files and functions. Comment *why*, not *what*.
 - `@/` imports inside apps. Named exports, except route files.
 - UI uses design tokens only (no hex in components), works in dark mode and at 375px width.
+- **Best imaginable UX on every screen**, not just sign-in: follow the excellence checklist in the `design-system` skill; the ui-designer reviews every new screen before its PR is opened.
 - Tests sit next to the code (`x.test.ts`); e2e lives in `apps/web/e2e`.
 
 ## Workflow

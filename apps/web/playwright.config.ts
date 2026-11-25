@@ -38,7 +38,10 @@ export default defineConfig({
   // the bundled API and static web app are what gets tested.
   webServer: [
     {
-      command: isCI ? 'pnpm --filter @vento/api start' : 'pnpm --filter @vento/api dev',
+      // Locally without watch mode, so edits elsewhere don't restart the API mid-run.
+      command: isCI
+        ? 'pnpm --filter @vento/api start'
+        : 'pnpm --filter @vento/api exec tsx src/index.ts',
       url: `${apiUrl}/health`,
       reuseExistingServer: !isCI,
       env: apiEnv,
@@ -51,7 +54,7 @@ export default defineConfig({
         : `pnpm --filter @vento/web dev --port ${webPort} --strictPort`,
       url: webOrigin,
       reuseExistingServer: !isCI,
-      env: { VITE_API_PROXY: apiUrl },
+      env: { VITE_API_PROXY: apiUrl, VITE_CACHE_DIR: 'node_modules/.vite-e2e' },
       timeout: 60_000,
     },
   ],

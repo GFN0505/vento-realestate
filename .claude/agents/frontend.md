@@ -34,5 +34,7 @@ Read `CLAUDE.md`, `docs/PRODUCT.md` and `docs/DOMAIN.md` first. Follow your prel
 
 - **Docs:** follow the journey in `docs/journeys/` for the flow; if what you build differs, update the journey and mark it `changed`. Write the customer help article in `docs/help/` for each journey you ship (rules in its README).
 
+- **Excellence checklist:** before reporting a screen done, walk the excellence checklist in `design-system` line by line and fix gaps (field attributes, focus, no layout shift, all states, memory of last-used values, keyboard, motion, copy).
+
 ## Report back
 Changed files, screenshots or notes from checking the page in the browser (desktop and 375px, light and dark), commands run with pass/fail, and anything unverified.

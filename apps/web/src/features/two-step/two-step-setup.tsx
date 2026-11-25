@@ -3,6 +3,7 @@ import { CodeInput } from '@/components/auth/code-input'
 import { PasswordInput } from '@/components/auth/password-input'
 import { Button } from '@/components/ui/button'
 import { FieldError, FieldLabel } from '@/components/ui/field'
+import { hasFinePointer } from '@/lib/pointer'
 import { SetupStep, SetupSteps } from './setup-steps'
 import { formatTotpSecret, type useTwoStepSetup } from './use-two-step-setup'
 
@@ -54,12 +55,13 @@ function PasswordStep({ setup }: { setup: Setup }) {
         <div className="flex-1">
           <PasswordInput
             id={id}
+            name="password"
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             aria-invalid={!!setup.error}
             aria-describedby={setup.error ? `${id}-error` : undefined}
-            autoFocus
+            autoFocus={hasFinePointer()}
           />
         </div>
         <Button type="submit" disabled={setup.pending} className="h-12 md:h-10">

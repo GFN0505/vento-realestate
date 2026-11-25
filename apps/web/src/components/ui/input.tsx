@@ -5,6 +5,8 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (
     <input
       type={type}
+      // Emails are never words: no spellcheck squiggles, autocorrect or capitals.
+      {...(type === 'email' && { spellCheck: false, autoCorrect: 'off', autoCapitalize: 'none' })}
       data-slot="input"
       className={cn(
         // 48px and 16px text on phones (no iOS zoom on focus), 40px and 14px from md.

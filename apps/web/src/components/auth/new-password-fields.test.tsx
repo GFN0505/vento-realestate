@@ -38,6 +38,19 @@ describe('NewPasswordFields', () => {
     expect(screen.getAllByText('Not met:')).toHaveLength(5)
   })
 
+  it('shows and hides both passwords with one toggle', async () => {
+    const user = userEvent.setup()
+    render(<Harness onValid={vi.fn()} />)
+
+    const [first] = screen.getAllByRole('button', { name: 'Show passwords' })
+    if (!first) throw new Error('No show/hide toggle')
+    await user.click(first)
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text')
+    expect(screen.getByLabelText('Confirm password')).toHaveAttribute('type', 'text')
+    expect(screen.getAllByRole('button', { name: 'Hide passwords' })).toHaveLength(2)
+  })
+
   it('says the passwords do not match and does not submit', async () => {
     const onValid = vi.fn()
     render(<Harness onValid={onValid} />)

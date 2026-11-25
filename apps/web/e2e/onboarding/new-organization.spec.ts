@@ -84,6 +84,18 @@ test('the sign-up form explains what is missing before sending anything', async 
   await expect(page.getByText('Agree to the terms and privacy notice to continue')).toBeVisible()
 })
 
+test('sign-up offers to fix a mistyped email provider in one click', async ({ page }) => {
+  await page.goto('/sign-up')
+  const email = page.getByLabel('Work email')
+  await email.fill('amaka.obi@gmial.com')
+  await page.getByLabel('Password', { exact: true }).click()
+
+  await page.getByRole('button', { name: 'amaka.obi@gmail.com' }).click()
+
+  await expect(email).toHaveValue('amaka.obi@gmail.com')
+  await expect(page.getByText('Did you mean')).toHaveCount(0)
+})
+
 test('sign-up refuses a confirmation that differs from the password, without sending it', async ({
   page,
 }) => {

@@ -7,6 +7,7 @@ import { NewPasswordFields } from '@/components/auth/new-password-fields'
 import { Button } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
 import { type AuthClientError, authErrorMessage, passwordIssues } from '@/lib/auth-errors'
+import { useDesktopAutofocus } from './use-desktop-autofocus'
 
 type Values = { password: string; confirm: string }
 
@@ -16,6 +17,7 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
   const [serverError, setServerError] = useState<AuthClientError | null>(null)
   const form = useForm<Values>({ defaultValues: { password: '', confirm: '' } })
   const { isSubmitting } = form.formState
+  useDesktopAutofocus(() => form.setFocus('password'))
   const issues = passwordIssues(serverError)
   const ruleFailed = !!(issues.reused || issues.rule)
 
@@ -32,7 +34,7 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
   })
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
+    <form method="post" onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       {serverError && !ruleFailed && (
         <FormAlert variant="error">{authErrorMessage(serverError)}</FormAlert>
       )}

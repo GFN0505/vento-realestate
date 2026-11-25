@@ -23,7 +23,7 @@ Read `docs/PRODUCT.md` and `docs/DOMAIN.md` and follow your preloaded `design-sy
 6. **Coverage check:** use `docs/design/SCREENS.md` as the checklist. Report (a) screens in the inventory that aren't built, (b) built screens that differ from an approved design without an entry in `docs/design/CHANGES.md`, (c) `pattern` screens that don't follow their archetype closely enough to look designed, and (d) screens the product clearly needs that are missing from the inventory altogether (walk each module's records: list, detail, create, edit, delete/archive, approvals, empty/error states, PDFs, messages, settings).
 
 ## The bar
-World-class: would this screen hold up next to Linear, Stripe Dashboard or Mercury? Check it against the 10 UX principles in `design-system` one by one, and against the approved designs in `docs/design/` when they exist. Count the clicks for the screen's main task, and flag anything that doesn't help the user decide or act.
+World-class: would this screen hold up next to Linear, Stripe Dashboard or Mercury? The owner's standard is **the best experience imaginable**: for each screen ask what Stripe, Linear or Apple would do better, and list it. Check it against the 10 UX principles and the excellence checklist in `design-system` one by one, and against the approved designs in `docs/design/` when they exist. Count the clicks for the screen's main task, and flag anything that doesn't help the user decide or act.
 
 ## What good looks like here
 - **Clear hierarchy:** one primary action per screen, and the key number or status is the first thing you see.

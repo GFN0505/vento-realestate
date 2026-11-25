@@ -7,6 +7,7 @@ import { NewPasswordFields } from '@/components/auth/new-password-fields'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { useDesktopAutofocus } from '@/features/auth/use-desktop-autofocus'
 import { apiErrorMessage, errorReason } from '@/lib/api-errors'
 import { orpc } from '@/lib/orpc'
 
@@ -30,6 +31,7 @@ export function AcceptAsNewUser({
   const ids = { name: useId(), email: useId() }
   const form = useForm({ defaultValues: { name: '', password: '', confirm: '' } })
   const { errors } = form.formState
+  useDesktopAutofocus(() => form.setFocus('name'))
   const accept = useMutation(orpc.invitations.acceptAsNewUser.mutationOptions())
 
   const submit = form.handleSubmit((values) =>
@@ -50,7 +52,7 @@ export function AcceptAsNewUser({
   )
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
+    <form method="post" onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       {accept.error && errorReason(accept.error) !== 'account_exists' && (
         <FormAlert variant="error">{apiErrorMessage(accept.error)}</FormAlert>
       )}

@@ -3,6 +3,7 @@ import { CURRENT_TERMS_VERSION } from '@vento/shared'
 import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { AuthFootnote, AuthHeader } from '@/components/auth/auth-layout'
+import { EmailSuggestion, useEmailSuggestion } from '@/components/auth/email-suggestion'
 import { FormAlert } from '@/components/auth/form-alert'
 import { NewPasswordFields } from '@/components/auth/new-password-fields'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
 import { type AuthClientError, authErrorMessage, passwordIssues } from '@/lib/auth-errors'
 import { TermsCheckbox } from './terms-checkbox'
+import { useDesktopAutofocus } from './use-desktop-autofocus'
 
 type Values = {
   name: string
@@ -38,6 +40,10 @@ export function SignUpForm() {
   })
   const { errors, isSubmitting } = form.formState
   const issues = passwordIssues(serverError)
+  const typo = useEmailSuggestion((email) =>
+    form.setValue('email', email, { shouldDirty: true, shouldValidate: !!errors.email }),
+  )
+  useDesktopAutofocus(() => form.setFocus('name'))
 
   const submit = form.handleSubmit(async (values) => {
     setServerError(null)
@@ -66,7 +72,7 @@ export function SignUpForm() {
   })
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
+    <form method="post" onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       <AuthHeader title="Create your company account" />
       {serverError && !issues.rule && (
         <FormAlert variant="error">{authErrorMessage(serverError)}</FormAlert>
@@ -99,11 +105,12 @@ export function SignUpForm() {
         <FieldLabel htmlFor={ids.email}>Work email</FieldLabel>
         <Input
           type="email"
-          autoComplete="email"
+          autoComplete="username"
           inputMode="email"
-          autoCapitalize="none"
           {...fieldProps('email', ids.email)}
           {...form.register('email', {
+            onBlur: (event) => typo.check(event.target.value),
+            onChange: typo.clear,
             required: 'Enter your work email',
             pattern: {
               value: /^\S+@\S+\.\S+$/,
@@ -112,6 +119,7 @@ export function SignUpForm() {
           })}
         />
         <FieldError id={`${ids.email}-error`}>{errors.email?.message}</FieldError>
+        <EmailSuggestion suggestion={typo.suggestion} onAccept={typo.accept} />
       </Field>
       <NewPasswordFields
         form={form}

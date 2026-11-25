@@ -9,6 +9,9 @@ export default defineConfig({
   // The router plugin must run before React so route files are code-split.
   plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true }), react(), tailwindcss()],
   resolve: { tsconfigPaths: true },
+  // The e2e dev server gets its own dependency cache, so it never re-optimises (and reloads)
+  // under a developer's `pnpm dev` running at the same time.
+  cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
   build: {
     rollupOptions: {
       treeshake: {

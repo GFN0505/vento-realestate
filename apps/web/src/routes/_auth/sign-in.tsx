@@ -6,6 +6,7 @@ import { AuthLayout } from '@/components/auth/auth-layout'
 import { resetForNewSession } from '@/features/account/api'
 import { PasswordStep } from '@/features/auth/password-step'
 import { TwoStepCheck } from '@/features/auth/two-step-check'
+import { readRememberedEmail, rememberEmail } from '@/lib/remembered-email'
 import { safeRedirect } from '@/lib/safe-redirect'
 
 type Search = { redirect?: string; email?: string }
@@ -24,9 +25,13 @@ function SignInPage() {
   const queryClient = useQueryClient()
   // The two-step check is a step inside this page, tied to a short-lived cookie, not a URL.
   const [twoStepFor, setTwoStepFor] = useState<string | null>(null)
-  const [lastEmail, setLastEmail] = useState(search.email)
+  // A link's ?email= wins over the one remembered on this device.
+  const [remembered] = useState(() => (search.email ? undefined : readRememberedEmail()))
+  const [lastEmail, setLastEmail] = useState(search.email ?? remembered)
+  const [keepSignedIn, setKeepSignedIn] = useState(false)
 
-  function finish() {
+  function finish(email = lastEmail, keep = keepSignedIn) {
+    if (email) rememberEmail(email, keep)
     resetForNewSession(queryClient)
     void navigate({ href: safeRedirect(search.redirect), replace: true })
   }
@@ -40,7 +45,7 @@ function SignInPage() {
       {twoStepFor ? (
         <TwoStepCheck
           email={twoStepFor}
-          onSignedIn={finish}
+          onSignedIn={() => finish()}
           onBack={() => setTwoStepFor(null)}
           onRestart={(message) => {
             setTwoStepFor(null)
@@ -50,13 +55,15 @@ function SignInPage() {
       ) : (
         <PasswordStep
           defaultEmail={lastEmail}
-          onResult={(result, email) => {
+          remembered={!!remembered && lastEmail === remembered}
+          onResult={(result, email, keep) => {
             setLastEmail(email)
+            setKeepSignedIn(keep)
             if (result.status === 'two-step') return setTwoStepFor(email)
             if (result.status === 'unverified') {
               return void navigate({ to: '/verify-email', search: { email } })
             }
-            finish()
+            finish(email, keep)
           }}
         />
       )}

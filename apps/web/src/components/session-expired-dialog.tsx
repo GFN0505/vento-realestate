@@ -95,7 +95,7 @@ function ExpiredDialog({ email }: { email: string }) {
           </DialogDescription>
         </DialogHeader>
         {stage === 'password' ? (
-          <form onSubmit={submit} noValidate>
+          <form method="post" onSubmit={submit} noValidate>
             <DialogBody>
               {(failure || error) && (
                 <FormAlert variant="error">
@@ -113,6 +113,7 @@ function ExpiredDialog({ email }: { email: string }) {
                 <input type="email" autoComplete="username" value={email} readOnly hidden />
                 <PasswordInput
                   id={id}
+                  name="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
