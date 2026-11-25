@@ -1,3 +1,7 @@
 export { Decimal, MONEY_LIMIT, toMoneyString } from './decimal'
+export type { ConflictReason, ForbiddenReason, UnauthorizedReason } from './errors'
+export { base, conflictReason, errorMap, forbiddenReason, unauthorizedReason } from './errors'
+export type { NigerianState } from './nigeria'
+export { MONTHS, monthNumber, NIGERIAN_STATES, nigerianState, stateLabel } from './nigeria'
 export type { Currency, PaginationInput } from './schemas'
 export { currency, id, isoDate, money, paginated, paginationInput, signedMoney } from './schemas'

@@ -1,0 +1,59 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { AuthHeader, AuthLayout } from '@/components/auth/auth-layout'
+import { BackupCodes } from '@/components/auth/backup-codes'
+import { Button } from '@/components/ui/button'
+import { meQuery } from '@/features/account/api'
+import { TwoStepSetupSteps } from '@/features/two-step/two-step-setup'
+import { useTwoStepSetup } from '@/features/two-step/use-two-step-setup'
+import { orpc } from '@/lib/orpc'
+
+export const Route = createFileRoute('/_app/two-step/setup')({
+  component: TwoStepSetupPage,
+})
+
+/** The two-step panel of SecuritySettings, inside the sign-in layout (pattern). */
+function TwoStepSetupPage() {
+  const { me: initial } = Route.useRouteContext()
+  const { data: me = initial } = useQuery(meQuery())
+  const setup = useTwoStepSetup()
+  const [saved, setSaved] = useState(false)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  async function finish() {
+    toast.success('Two-step is on')
+    await queryClient.invalidateQueries({ queryKey: orpc.account.me.key() })
+    void navigate({ to: '/', replace: true })
+  }
+
+  if (setup.stage.name === 'codes') {
+    return (
+      <AuthLayout>
+        <AuthHeader title="Two-step is on" />
+        <BackupCodes
+          codes={setup.stage.backupCodes}
+          email={me.user.email}
+          saved={saved}
+          onSavedChange={setSaved}
+        />
+        <Button size="lg" className="w-full" disabled={!saved} onClick={() => void finish()}>
+          Continue
+        </Button>
+      </AuthLayout>
+    )
+  }
+
+  return (
+    <AuthLayout wide>
+      <AuthHeader title="Set up two-step sign-in">
+        {me.twoStepRequired
+          ? `Your role needs a code from an authenticator app each time you sign in. It takes about a minute.`
+          : 'Add a code from an authenticator app to each sign-in.'}
+      </AuthHeader>
+      <TwoStepSetupSteps setup={setup} />
+    </AuthLayout>
+  )
+}

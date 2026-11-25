@@ -9,10 +9,12 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Entity** | A legal company inside the organization: holding company or project **SPV**. | Type `holding` / `spv`. Has RC number, TIN, VAT registered (yes/no), base currency NGN. Status `active → archived`. Ledgers, bank accounts, payroll and contracts belong to an entity. |
 | **Member** | A user in the organization, with a role. | One role each. Status `active → removed`; a removed member's history stays under their name. Permissions are module × action, optionally limited to entities or projects. A person can be a member of several organizations. |
 | **Role** | A named set of permissions given to a member. | Built-in: `owner`, `admin`, `land_legal`, `project_manager`, `sales`, `finance`, `hr`, `facility`, `viewer`. An organization always has at least one owner. |
+| **System role** | One of the nine built-in roles, created for every organization from the default table. | Can't be edited; owners copy one to make their own role (brick 3). Only owners can give, change or remove the `owner` role. |
 | **Permission** | What a role may do in a module. | Actions `view`, `create`, `edit`, `delete`, `export`, `approve`. `approve` means the member may act as a checker; approval rules decide what needs one. Enforced on the server. |
 | **Access limit** | The entities (later, projects) a member is limited to. | Empty means all. Records outside the limit behave as not found. |
 | **Invitation** | An emailed offer to join an organization with a role and access limits. | Status `pending → accepted / declined / expired / withdrawn`. Resending replaces the link. |
 | **Two-step sign-in** | A 6-digit authenticator-app code (TOTP) asked after the password, with 10 single-use backup codes. | Required for some roles. Repeated wrong codes lock sign-in for a period. |
+| **Sign-in lock** | A pause on signing in to one email address after repeated failures. | `locked → none` after 15 minutes. Caused by 10 wrong passwords within 15 minutes or 5 wrong two-step or backup codes in a row. Applies to unknown emails too, so a lock reveals nothing. |
 | **Session** | One signed-in device or browser. | Listed for its owner, who can end one or all others. Ends on removal from the organization or a password reset. |
 | **Security alert** | An email about a person's account security (lockout, password changed, two-step reset, backup code used). | Always sent; can't be muted. |
 | **Contact** | Any external person or company: buyer, lead, contractor, vendor, surveyor, valuer, JV partner, agent/broker, resident. | One `contacts` table with a roles array. Individuals and companies. |
@@ -107,7 +109,7 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 |---|---|---|
 | **Approval rule** | Which actions need a second approver, by role and amount threshold. | Per organization. Default rules ship for receipts reversal, refunds, payroll, price lists, POs, manual journals. |
 | **Approval request** | A pending sensitive action waiting for a checker. | Status `pending → approved / rejected / expired`. The maker can't approve their own request. The action runs only on approval. |
-| **Audit event** | Immutable record of who did what, when, with before/after values. | Append-only, organization-scoped, shown on every record's timeline. |
+| **Audit event** | Immutable record of who did what, when, with before/after values. | Append-only, organization-scoped, shown on every record's timeline. Events about a person's account (sign-ins, lockouts, password and two-step changes, sessions ended) are recorded once for each organization they belong to. Never holds passwords, codes, secrets or full IP addresses. |
 | **Import job** | An Excel/CSV import: file, column mapping, validation results, rows created. | Status `uploaded → mapped → validated → imported → undone`. Undo removes exactly the rows it created if nothing depends on them yet. |
 | **Site plan / layout** | The uploaded estate layout image or PDF with unit shapes placed on it. | Each unit has an optional polygon on the layout. |
 | **Realtor** | External agent or broker contact with portal access. | Leads they register are checked for duplicates; a duplicate can still be submitted and a person at the developer decides ownership. |
@@ -121,6 +123,13 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **AI suggestion** | A proposed value, match, draft or flag produced by AI. | Status `proposed → accepted / edited / rejected`. Never changes data until a person accepts it. |
 | **AI usage record** | One AI request: organization, feature, model, input/output tokens, cost, user, timestamp. | Feeds the usage meter and billing. |
 | **AI budget** | Monthly spend limit per organization. | Alerts at 50/80/100%; at the limit, AI features pause and manual paths remain. |
+
+## Access rules (approved 25 Nov 2026)
+- **Invitations** expire 7 days after they're sent. Resending replaces the link and gives a fresh 7 days. Up to 20 people per batch.
+- **Sessions** end after 30 minutes without activity or 12 hours after sign-in, whichever comes first. With "Keep me signed in", a session lasts 30 days from sign-in (not extended by use). Every new sign-in asks for two-step when it's on. A password reset or removal from the organization ends sessions at once.
+- **Lockouts:** 10 wrong passwords within 15 minutes, or 5 wrong two-step or backup codes in a row, lock sign-in for that email for 15 minutes. A correct password and code are refused until the lock ends; a security alert is emailed. A successful sign-in resets the count.
+- **Two-step is required** for owner, admin, finance and HR (a property of the role). Members with those roles can't turn it off. Owners (for anyone) and admins (for non-owners) can reset someone's two-step; nobody can reset their own.
+- **Verification emails:** the link and code last 30 minutes; resending is allowed once a minute, 5 times an hour. Reset links last 30 minutes and work once; a new password can't be one of the last 5.
 
 ## Locale defaults
 - Base currency `NGN` (₦). Foreign currency stored with its FX rate and source.

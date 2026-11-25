@@ -1,3 +1,244 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* Design tokens (colours, fonts, radius) arrive with the app shell in brick 3. */
+/* Dark mode follows a `.dark` class on <html>, set before paint by the script in index.html. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Values come from docs/design/DESIGN-NOTES.md; components use the Tailwind
+ * names mapped in @theme below and never raw colours.
+ */
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+
+  --background: #f5f6fc;
+  --foreground: #15172b;
+  --card: #ffffff;
+  --card-foreground: #15172b;
+  --popover: #ffffff;
+  --popover-foreground: #15172b;
+  --muted: #f0f1fa;
+  --muted-foreground: #686d94;
+  --accent: #f0f1fa;
+  --accent-foreground: #15172b;
+  --border: #e3e5f3;
+  --input: #e3e5f3;
+
+  /* Action fill: white on #5B5CE0 is 5.2:1; on the lighter brand violet it fails. */
+  --primary: #5b5ce0;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f1fa;
+  --secondary-foreground: #15172b;
+  /* Links on a surface. Dark mode uses a lighter violet so small text keeps 4.5:1. */
+  --link: #5b5ce0;
+  --link-hover: #4546c9;
+
+  --brand: #7677fb;
+  --ring: #7677fb;
+
+  --destructive: #be123c;
+  --destructive-foreground: #ffffff;
+
+  --selected: #ececff;
+  --selected-foreground: #3f40b8;
+  --selected-border: #7677fb;
+
+  --sidebar: #121a3f;
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted-foreground: #a9aedc;
+  --sidebar-faint-foreground: #8a90c4;
+  --sidebar-border: #3a4280;
+  /* The sign-in brand panel is a shade deeper than the sidebar in dark mode. */
+  --auth-panel: #121a3f;
+
+  --overlay: rgb(10 12 30 / 0.45);
+  /* The Vento logo mark: the same in both themes. */
+  --logo-stroke: #6c63f5;
+  --logo-dot: #4cc9f0;
+  /* QR codes stay dark-on-white in both themes so phone cameras can read them. */
+  --qr-background: #ffffff;
+  --qr-foreground: #15172b;
+
+  --status-emerald: #10b981;
+  --status-emerald-fg: #047857;
+  --status-emerald-bg: #ecfdf5;
+  --status-emerald-border: #a7f3d0;
+  --status-amber: #f59e0b;
+  --status-amber-fg: #b45309;
+  --status-amber-bg: #fffbeb;
+  --status-amber-border: #fde68a;
+  --status-blue: #3b82f6;
+  --status-blue-fg: #1d4ed8;
+  --status-blue-bg: #eff6ff;
+  --status-blue-border: #bfdbfe;
+  --status-rose: #f43f5e;
+  --status-rose-fg: #be123c;
+  --status-rose-bg: #fff1f2;
+  --status-rose-border: #fecdd3;
+  --status-slate: #64748b;
+  --status-slate-fg: #475569;
+  --status-slate-bg: #f1f5f9;
+  --status-slate-border: #e2e8f0;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #0b0e1f;
+  --foreground: #f2f3fa;
+  --card: #141833;
+  --card-foreground: #f2f3fa;
+  --popover: #141833;
+  --popover-foreground: #f2f3fa;
+  --muted: #1b2047;
+  --muted-foreground: #9499c2;
+  --accent: #1b2047;
+  --accent-foreground: #f2f3fa;
+  --border: #262b4a;
+  --input: #262b4a;
+
+  --primary: #5b5ce0;
+  --primary-foreground: #ffffff;
+  --secondary: #1b2047;
+  --secondary-foreground: #f2f3fa;
+  --link: #a5a6fb;
+  --link-hover: #c7c8ff;
+
+  --brand: #8a8bfc;
+  --ring: #8a8bfc;
+
+  --destructive: #fb7185;
+  --destructive-foreground: #0b0e1f;
+
+  --selected: #262b63;
+  --selected-foreground: #c7c8ff;
+  --selected-border: #8a8bfc;
+
+  --sidebar: #0b0e1f;
+  --auth-panel: #080b1a;
+
+  --status-emerald-fg: #34d399;
+  --status-emerald-bg: rgb(16 185 129 / 0.1);
+  --status-emerald-border: rgb(16 185 129 / 0.35);
+  --status-amber-fg: #fbbf24;
+  --status-amber-bg: rgb(245 158 11 / 0.1);
+  --status-amber-border: rgb(245 158 11 / 0.35);
+  --status-blue-fg: #60a5fa;
+  --status-blue-bg: rgb(59 130 246 / 0.1);
+  --status-blue-border: rgb(59 130 246 / 0.35);
+  --status-rose-fg: #fb7185;
+  --status-rose-bg: rgb(244 63 94 / 0.1);
+  --status-rose-border: rgb(244 63 94 / 0.35);
+  --status-slate-fg: #94a3b8;
+  --status-slate-bg: rgb(100 116 139 / 0.1);
+  --status-slate-border: rgb(100 116 139 / 0.35);
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-heading: "Poppins", system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-brand: var(--brand);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
+  --color-selected-border: var(--selected-border);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-sidebar-faint-foreground: var(--sidebar-faint-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-auth-panel: var(--auth-panel);
+  --color-overlay: var(--overlay);
+  --color-logo-stroke: var(--logo-stroke);
+  --color-logo-dot: var(--logo-dot);
+  --color-qr-background: var(--qr-background);
+  --color-qr-foreground: var(--qr-foreground);
+
+  --color-status-emerald: var(--status-emerald);
+  --color-status-emerald-fg: var(--status-emerald-fg);
+  --color-status-emerald-bg: var(--status-emerald-bg);
+  --color-status-emerald-border: var(--status-emerald-border);
+  --color-status-amber: var(--status-amber);
+  --color-status-amber-fg: var(--status-amber-fg);
+  --color-status-amber-bg: var(--status-amber-bg);
+  --color-status-amber-border: var(--status-amber-border);
+  --color-status-blue: var(--status-blue);
+  --color-status-blue-fg: var(--status-blue-fg);
+  --color-status-blue-bg: var(--status-blue-bg);
+  --color-status-blue-border: var(--status-blue-border);
+  --color-status-rose: var(--status-rose);
+  --color-status-rose-fg: var(--status-rose-fg);
+  --color-status-rose-bg: var(--status-rose-bg);
+  --color-status-rose-border: var(--status-rose-border);
+  --color-status-slate: var(--status-slate);
+  --color-status-slate-fg: var(--status-slate-fg);
+  --color-status-slate-bg: var(--status-slate-bg);
+  --color-status-slate-border: var(--status-slate-border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat component styles */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat component styles */
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@theme {
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+  @keyframes caret-blink {
+    0%,
+    70%,
+    100% {
+      opacity: 1;
+    }
+    20%,
+    50% {
+      opacity: 0;
+    }
+  }
+}

@@ -9,10 +9,19 @@ export default defineConfig({
   // The router plugin must run before React so route files are code-split.
   plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true }), react(), tailwindcss()],
   resolve: { tsconfigPaths: true },
+  build: {
+    rollupOptions: {
+      treeshake: {
+        // @vento/shared only declares schemas and constants. Saying so lets a screen that needs
+        // one error code skip zod and decimal.js (about 70 KB gzipped) from the shared barrel.
+        moduleSideEffects: (id) => !/[\\/]packages[\\/]shared[\\/]/.test(id),
+      },
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,
     // Same origin in development: no CORS, and auth cookies just work.
-    proxy: { '/rpc': apiUrl, '/health': apiUrl },
+    proxy: { '/rpc': apiUrl, '/api': apiUrl, '/health': apiUrl },
   },
 })

@@ -18,6 +18,7 @@
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @vento/api db:generate",
     "db:migrate": "pnpm --filter @vento/api db:migrate",
+    "db:seed": "pnpm --filter @vento/api db:seed",
     "db:studio": "pnpm --filter @vento/api db:studio"
   },
   "devDependencies": {

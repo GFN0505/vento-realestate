@@ -1,0 +1,43 @@
+import { cn } from '@/lib/utils'
+
+type Props = {
+  className?: string
+  /** Mark size in px (square). */
+  size?: number
+  /** Chevron stroke in viewBox units (32×32). Defaults to the brand's size-based weight. */
+  strokeWidth?: number
+}
+
+/** The brand thins the stroke and dot as the mark grows, so it reads the same at every size. */
+function weights(size: number) {
+  if (size <= 24) return { stroke: 3.4, dot: 2.6 }
+  if (size <= 40) return { stroke: 3, dot: 2.5 }
+  return { stroke: 2.6, dot: 2.4 }
+}
+
+/** The Vento mark (violet chevron, cyan dot) with the "Vento" wordmark beside it. */
+export function VentoMark({ className, size = 28, strokeWidth }: Props) {
+  const weight = weights(size)
+  return (
+    <span className={cn('flex items-center gap-2.5', className)}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 32 32"
+        fill="none"
+        aria-hidden="true"
+        className="shrink-0"
+      >
+        <path
+          d="M5 7 L16 27 L27 7"
+          strokeWidth={strokeWidth ?? weight.stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="stroke-logo-stroke"
+        />
+        <circle cx="16" cy="10" r={weight.dot} className="fill-logo-dot" />
+      </svg>
+      <span className="font-bold font-heading text-[17px] tracking-[0.01em] lg:text-lg">Vento</span>
+    </span>
+  )
+}
