@@ -17,8 +17,8 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md) (steps 1–4 and th
 
 **Behind the scenes:** step 1 creates the organization and the person as its owner in one transaction; step 2 creates the entity. Each step saves, so the user can leave and resume. Audit events written for each. Later bricks add the entity's default chart of accounts, default approval rules and current statutory rules.
 **Done when:** the organization and first entity exist, the owner has two-step on and sees the signed-in page (later: their project on Home with checklist step 1 done).
-**Watch for:** email already registered (offer sign in); unverified email (back to *Verify email*); leaving mid-onboarding and coming back resumes at the next unfinished step; RC/TIN format warnings never block ("You can add this later"); RC number already used by another entity in the organization (refused).
-**Target:** under 3 minutes and 4 clicks to a saved organization and entity; ≤ 5 minutes to first project. **Test:** `e2e/onboarding/new-organization.spec.ts` **Status:** draft
+**Watch for:** email already registered (offer sign in); unverified email (back to *Verify email*); leaving mid-onboarding and coming back resumes at the next unfinished step; RC/TIN format warnings never block ("You can add this later"); RC number already used by another entity in the organization is refused when adding entities (brick 3; it can't happen for the first entity).
+**Target:** under 3 minutes and 4 clicks to a saved organization and entity; ≤ 5 minutes to first project. **Test:** `e2e/onboarding/new-organization.spec.ts` **Status:** built (steps 1–2; step 3 with Projects)
 
 ## J-ONB-02 · Invite the team and set roles
 **Who / how often:** Admin, at setup then occasionally.
@@ -35,7 +35,7 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md). Brick 2a builds th
 **Behind the scenes:** invitations expire after 7 days; resending replaces the link and restarts the 7 days; invitations, role and limit changes, and removals are audit events; permissions are enforced server-side on every request; a role change takes effect on the member's next request.
 **Done when:** the member appears as `active` with their role and limits.
 **Watch for:** invite to someone already in another organization (allowed; they join with their existing account and switch organizations); email already a member (refused); opened while signed in as someone else ("This invitation is for…"); expired or withdrawn invite (ask for a new one); nobody can change their own access; removing or demoting the last owner (blocked); a removed member's sessions end at once and their history stays.
-**Target:** 3 clicks per batch; invitee active with two-step in under 3 minutes. **Test:** `e2e/auth/accept-invitation.spec.ts` (2a, seeded invitation), `e2e/settings/invite-members.spec.ts` (brick 3) **Status:** draft
+**Target:** 3 clicks per batch; invitee active with two-step in under 3 minutes. **Test:** `e2e/auth/accept-invitation.spec.ts` (2a, seeded invitation), `e2e/settings/invite-members.spec.ts` (brick 3) **Status:** built for accepting (2a); sending invitations from the screen comes in brick 3
 
 ## J-ONB-03 · Import existing buyers and payments from Excel
 **Who / how often:** Finance or admin, at go-live and when migrating a project.
@@ -65,4 +65,4 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md).
 **Behind the scenes:** sign-ins, failures, lockouts, password and two-step changes are audit events visible to the owners of every organization the person belongs to; security alerts can't be muted.
 **Done when:** the member is signed in on their page.
 **Watch for:** five wrong two-step or backup codes lock sign-in for 15 minutes and email the user (10 wrong passwords in 15 minutes do the same); the code boxes turn rose with a message saying what to do; the same message for a wrong email or a wrong password; forgot-password never reveals whether an account exists; session expired mid-form (input kept on the device, signing in again returns them to the page); *Session expired / signed out elsewhere* screen; a member who requires two-step can't turn it off; the only owner losing their phone and codes needs Vento support.
-**Target:** under 20 seconds and 2 clicks for a daily sign-in. **Test:** `e2e/auth/sign-in.spec.ts` **Status:** draft
+**Target:** under 20 seconds and 2 clicks for a daily sign-in. **Test:** `e2e/auth/sign-in.spec.ts` **Status:** built

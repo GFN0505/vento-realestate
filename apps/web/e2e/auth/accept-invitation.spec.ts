@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { createInvitationFixture } from '../support/fixtures'
+import { createInvitationFixture, createMemberFixture } from '../support/fixtures'
+import { signInWithTotp } from '../support/sign-in'
 import { completeTwoStepSetup } from '../support/two-step'
 
 // J-ONB-02 step 4: the invitee's side.
@@ -37,4 +38,40 @@ test('an invitation link that does not exist says so instead of showing a form',
 
   await expect(page.getByRole('button', { name: /Accept/ })).toHaveCount(0)
   await expect(page.getByText(/invitation/i).first()).toBeVisible()
+})
+
+test('an expired invitation says so and offers sign-in, not a form', async ({ page }) => {
+  const invite = createInvitationFixture('expired')
+
+  await page.goto(`/accept-invitation/${invite.token}`)
+
+  await expect(page.getByRole('heading', { name: 'This invitation has expired' })).toBeVisible()
+  await expect(page.getByText(`Ask ${invite.inviterName} to send a new one.`)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Go to sign in' })).toBeVisible()
+  await expect(page.getByLabel('Create a password')).toHaveCount(0)
+})
+
+test('a withdrawn invitation says so and names who to ask', async ({ page }) => {
+  const invite = createInvitationFixture('withdrawn')
+
+  await page.goto(`/accept-invitation/${invite.token}`)
+
+  await expect(page.getByRole('heading', { name: 'This invitation was withdrawn' })).toBeVisible()
+  await expect(page.getByText(`Ask ${invite.inviterName} if you still need access`)).toBeVisible()
+  await expect(page.getByLabel('Create a password')).toHaveCount(0)
+})
+
+test('opening an invitation while signed in as someone else offers to sign out first', async ({
+  page,
+}) => {
+  const member = createMemberFixture()
+  const invite = createInvitationFixture()
+  await signInWithTotp(page, member)
+
+  await page.goto(`/accept-invitation/${invite.token}`)
+
+  await expect(page.getByText(`This invitation is for ${invite.email}.`)).toBeVisible()
+  await expect(page.getByText(`You're signed in as ${member.email}.`)).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out and continue' }).click()
+  await expect(page.getByLabel('Create a password')).toBeVisible()
 })

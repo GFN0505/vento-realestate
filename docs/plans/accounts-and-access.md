@@ -1,6 +1,7 @@
 # Plan: Accounts and access (brick 2a)
 
-- **Status:** approved by the owner on 25 Nov 2026, in build. Decision records 0010–0012 are accepted.
+- **Status:** approved by the owner on 25 Nov 2026 and built. Decision records 0010–0012 are accepted.
+- **As built (differences from this plan):** the production email guard lives in `createMailer` (so migrations run in production); `AUTH_RATE_LIMIT` switches only per-IP limits, lockouts always apply; Better Auth's rate limiter uses memory storage (no IPs stored; several API instances will need Redis) and the `rate_limits` table was dropped; a two-step reset by someone else forces a new password by email (security review); members limited to some entities can only grant those entities; the common-password check also compares a password's base word; only owners are sent to onboarding; migration `0002_reset_required_drop_rate_limits` added.
 - **Spec:** [docs/specs/accounts-and-access.md](../specs/accounts-and-access.md)
 - Written by the architect agent on 25 Nov 2026, checked against Better Auth **1.7.28** (the current npm `latest`) and the code on branch `brick/02-accounts-and-access`.
 

@@ -1,6 +1,6 @@
 # Accounts and access (brick 2a)
 
-- **Status:** approved (25 Nov 2026), in build
+- **Status:** approved (25 Nov 2026), built on branch `brick/02-accounts-and-access`, waiting for the owner's per-feature review
 - **Module:** Platform
 - **Journeys:** J-ONB-01, J-ONB-02, J-ONB-04 (changed)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
@@ -92,10 +92,10 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 - **Given** a verified person with no organization, **when** they sign in, **then** they go to onboarding step 1. A person who leaves after step 1 resumes at step 2 next time.
 - **Given** step 1 is completed, **then** the organization and the person as its **owner** are created together, or neither is.
 - **Given** step 2, **when** RC number or TIN don't look right, **then** a warning shows ("RC numbers are digits, like RC 1789234") but **Finish setup** still works. Both can be left blank and added later.
-- **Given** an RC number already used by another entity in this organization, **then** it is refused: "Parkview Residences SPV Ltd already uses RC 1789234."
+- **Given** an RC number already used by another entity in this organization, **then** it is refused: "Parkview Residences SPV Ltd already uses RC 1789234." (Enforced by the API now; it can only arise when adding or editing entities, whose screens come in brick 3. The first entity at onboarding has nothing to clash with.)
 
 ### Sign in and two-step
-- **Given** a wrong email or password, **then** the message is the same for both: "That email and password don't match."
+- **Given** a wrong email or password, **then** the message is the same for both: "That email and password don't match. Check them or reset your password."
 - **Given** a member with two-step on, **when** the password is right, **then** the two-step check always follows on a new sign-in, including straight after a password reset.
 - **Given** a member whose role requires two-step and who hasn't set it up, **when** they sign in, accept an invitation or have their role changed, **then** they can do nothing else until two-step is set up.
 - **Given** two-step setup, **when** the code is verified, **then** 10 single-use backup codes are shown once, with **Download** and **Copy**, and the member must tick "I've saved my backup codes" to continue.
@@ -103,7 +103,7 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 - **Given** a member who requires two-step, **then** they can't turn it off. Others can, after entering a current code.
 
 ### Lockout
-- **Given** five wrong two-step or backup codes in a row, **then** sign-in for that account is locked for 15 minutes, the boxes turn rose with "Sign-in is locked until 10:45. We've emailed you.", and a security alert email is sent.
+- **Given** five wrong two-step or backup codes in a row, **then** sign-in for that account is locked for 15 minutes, the boxes turn rose with "Too many wrong codes. Try again in 14:32, or reset your password." (a live countdown; inputs and buttons stay disabled until it ends), and a security alert email is sent.
 - **Given** 10 wrong passwords for one account within 15 minutes, **then** the same 15-minute lock and email apply.
 - **Given** a locked account, **then** a correct password and code are still refused until the lock ends. A successful sign-in resets the count.
 
@@ -133,7 +133,8 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 - **Given** any member, **then** they can't change their own role or limits: "You can't change your own access. Ask another owner or admin."
 - **Given** the only owner, **when** anyone tries to remove them, demote them or have them leave, **then** it's refused: "Vento Homes Ltd needs at least one owner. Make someone else an owner first."
 - **Given** a member is removed, **then** all their sessions in this organization end at once, their status becomes `removed`, everything they did stays in the audit trail under their name, and they can be invited again later.
-- **Given** a member who lost their phone and backup codes, **when** an owner (for anyone) or admin (for non-owners) resets their two-step, **then** the member gets a security alert and must set up two-step again at next sign-in. Nobody can reset their own.
+- **Given** a member who lost their phone and backup codes, **when** an owner (for anyone) or admin (for non-owners) resets their two-step, **then** all their sessions end, they get a security alert and a password-reset link, and they can't sign in until they set a new password from that link; then they set up two-step again. Nobody can reset their own. (Changed after review: a two-step reset in one organization must not let someone who knows the old password into the person's other organizations.)
+- **Given** an owner or admin limited to some entities, **when** they invite someone or change a member's limits, **then** they can only give access to entities they can see themselves, never "all entities".
 
 ### Permissions and limits
 - **Given** each of the nine roles, **when** it calls each Settings action, **then** the result matches the default table above. The table is the test's expected result.
@@ -165,8 +166,10 @@ Only the Settings row has anything to protect in 2a. The other rows are agreed n
 | Onboarding step 1 | Title "Your organization" · "The developer group as a whole. Project companies come next." · **Continue** |
 | Onboarding step 2 | Title "First entity" · "Most projects sit in their own company (SPV). Books, bank accounts and tax are kept per entity." · "You can add this later" (under RC and TIN) · **Finish setup** |
 | Wrong code | "That code didn't match. Codes change every 30 seconds, so use the newest one." |
-| Lockout | "Too many wrong codes. Sign-in is locked until 10:45. We've emailed you." |
-| Lost phone | "Lost your phone? Use a backup code, or ask Olumide Bankole (owner) to reset two-step for you." |
+| Lockout | "Too many wrong codes. Try again in 14:32, or reset your password." (password lockout: "Too many wrong passwords…") |
+| Wrong password | "That email and password don't match. Check them or reset your password." |
+| Two-step reset by someone else | "Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in." |
+| Lost phone | "Lost your phone and your codes? Ask an owner or admin to reset two-step." |
 | Backup codes | "Save these 10 codes somewhere safe. Each works once." · **Download** · **Copy** · "I've saved my backup codes" |
 | Session expired | "Your session has ended. For security, Vento signs you out after 30 minutes without activity." · **Sign in again** |
 | Temporary signed-in page | "You're signed in to Vento Homes Ltd as Finance." · "Your workspace arrives in the next release." · **Sign out** · **Sign out everywhere** |

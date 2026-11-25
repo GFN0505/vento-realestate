@@ -128,7 +128,8 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 - **Invitations** expire 7 days after they're sent. Resending replaces the link and gives a fresh 7 days. Up to 20 people per batch.
 - **Sessions** end after 30 minutes without activity or 12 hours after sign-in, whichever comes first. With "Keep me signed in", a session lasts 30 days from sign-in (not extended by use). Every new sign-in asks for two-step when it's on. A password reset or removal from the organization ends sessions at once.
 - **Lockouts:** 10 wrong passwords within 15 minutes, or 5 wrong two-step or backup codes in a row, lock sign-in for that email for 15 minutes. A correct password and code are refused until the lock ends; a security alert is emailed. A successful sign-in resets the count.
-- **Two-step is required** for owner, admin, finance and HR (a property of the role). Members with those roles can't turn it off. Owners (for anyone) and admins (for non-owners) can reset someone's two-step; nobody can reset their own.
+- **Two-step is required** for owner, admin, finance and HR (a property of the role). Members with those roles can't turn it off. Owners (for anyone) and admins (for non-owners) can reset someone's two-step; nobody can reset their own. A reset by someone else ends all the person's sessions and requires a new password (from an emailed link) before their next sign-in.
+- **Access can't be raised by the granter:** a member limited to some entities can only grant access to those entities.
 - **Verification emails:** the link and code last 30 minutes; resending is allowed once a minute, 5 times an hour. Reset links last 30 minutes and work once; a new password can't be one of the last 5.
 
 ## Locale defaults

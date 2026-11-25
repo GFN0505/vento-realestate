@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { verificationCode } from '../support/mailbox'
+import { createHalfOnboardedFixture, createMemberFixture } from '../support/fixtures'
+import { newestEmail, verificationCode } from '../support/mailbox'
+import { enterPassword } from '../support/sign-in'
 import { completeTwoStepSetup } from '../support/two-step'
 
 // J-ONB-01: sign up, verify, create the organization and first entity, set up two-step.
@@ -78,4 +80,45 @@ test('the sign-up form explains what is missing before sending anything', async 
     page.getByRole('listitem').filter({ hasText: /Not met:\s*Includes a number/ }),
   ).toBeVisible()
   await expect(page.getByText('Agree to the terms and privacy notice to continue')).toBeVisible()
+})
+
+test('signing up with an email that already has an account looks the same and emails the owner of it', async ({
+  page,
+}) => {
+  const member = createMemberFixture()
+
+  await page.goto('/sign-up')
+  await page.getByLabel('Your name').fill('Someone Else')
+  await page.getByLabel('Company').fill('Another Company Ltd')
+  await page.getByLabel('Work email').fill(member.email)
+  await page.getByLabel('Password', { exact: true }).fill('Parkview-gate-2026')
+  await page.getByRole('checkbox', { name: /I agree to the/ }).check()
+  await page.getByRole('button', { name: 'Create account' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
+  const notice = await newestEmail(member.email, 'existing_account')
+  expect(notice.subject).toBe('Someone tried to create a Vento account with your email')
+  expect(notice.text).toContain('Your account is unchanged')
+})
+
+test('leaving after step 1 and signing in again resumes at step 2', async ({ page }) => {
+  const person = createHalfOnboardedFixture()
+
+  await page.goto('/sign-in')
+  await enterPassword(page, person.email, person.password)
+
+  await expect(page.getByRole('heading', { name: 'First entity' })).toBeVisible()
+  await expect(page.getByLabel('Entity name')).toHaveValue(person.organizationName)
+})
+
+test('an RC or TIN in the wrong format warns but does not stop Finish setup', async ({ page }) => {
+  const person = createHalfOnboardedFixture()
+  await page.goto('/sign-in')
+  await enterPassword(page, person.email, person.password)
+
+  await page.getByLabel('RC number').fill('12')
+  await page.getByLabel('TIN', { exact: true }).fill('abc')
+  await page.getByRole('button', { name: 'Finish setup' }).click()
+
+  await expect(page).toHaveURL(/\/two-step\/setup/)
 })

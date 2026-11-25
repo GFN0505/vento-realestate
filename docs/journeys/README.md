@@ -26,10 +26,10 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | ID | Journey | Persona | File | Status |
 |---|---|---|---|---|
 | J-ALL-00 | Golden thread: land to estate | Everyone | [00-golden-thread](00-golden-thread.md) | draft |
-| J-ONB-01 | Set up a new organization | MD / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
-| J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-01 | Set up a new organization | MD / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (steps 1–2) |
+| J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens in brick 3 |
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
-| J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |

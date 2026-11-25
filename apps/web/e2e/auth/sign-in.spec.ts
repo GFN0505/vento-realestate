@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { createMemberFixture } from '../support/fixtures'
+import {
+  ageSessions,
+  createMemberFixture,
+  createResetByAdminFixture,
+  createUnverifiedFixture,
+} from '../support/fixtures'
+import { newestEmail } from '../support/mailbox'
+import { enterPassword, signInWithTotp } from '../support/sign-in'
 import { totpCode } from '../support/totp'
 
 // J-ONB-04: password, then the two-step check, then signed in; then sign out everywhere.
@@ -87,4 +94,71 @@ test('five wrong two-step codes lock sign-in and show how long to wait', async (
   await expect(page.getByRole('alert')).toContainText('Too many wrong codes')
   await expect(page.getByRole('alert')).toContainText('Try again in')
   await expect(page.getByLabel('6-digit code')).toBeDisabled()
+})
+
+test('signing in before verifying the email sends the person to the verify step', async ({
+  page,
+}) => {
+  const person = createUnverifiedFixture()
+
+  await page.goto('/sign-in')
+  await enterPassword(page, person.email, person.password)
+
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
+  await expect(page.getByText(person.email)).toBeVisible()
+})
+
+test('a backup code signs in once and is refused the second time', async ({ page }) => {
+  const member = createMemberFixture()
+  const [code] = member.backupCodes
+  if (!code) throw new Error('fixture has no backup codes')
+
+  async function signInWithBackupCode() {
+    await page.goto('/sign-in')
+    await enterPassword(page, member.email, member.password)
+    await page.getByRole('button', { name: 'Use a backup code' }).click()
+    await page.getByLabel('Backup code').fill(code as string)
+    await page.getByRole('button', { name: 'Verify' }).click()
+  }
+
+  await signInWithBackupCode()
+  await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+
+  await signInWithBackupCode()
+
+  await expect(page.getByRole('alert')).toContainText('used already')
+})
+
+test('after an admin resets two-step, sign-in says to set a new password first', async ({
+  page,
+}) => {
+  const person = createResetByAdminFixture()
+
+  await page.goto('/sign-in')
+  await enterPassword(page, person.email, person.password)
+
+  await expect(
+    page.getByText(
+      'Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in.',
+    ),
+  ).toBeVisible()
+  const mail = await newestEmail(person.email, 'reset_password')
+  expect(mail.text).toMatch(/https?:\/\//)
+})
+
+test('an expired session shows the sign-in-again dialog and keeps the page', async ({ page }) => {
+  const member = createMemberFixture()
+  await signInWithTotp(page, member)
+  ageSessions(member.email)
+
+  await page.getByRole('button', { name: 'Sign out everywhere' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Your session has ended' })).toBeVisible()
+  await page.getByLabel(`Password for ${member.email}`).fill(member.password)
+  await page.getByRole('button', { name: 'Sign in again' }).click()
+  await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
+  await expect(page.getByRole('heading', { name: 'Your session has ended' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible()
 })

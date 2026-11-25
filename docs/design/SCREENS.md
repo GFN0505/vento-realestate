@@ -13,12 +13,12 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 0. Foundation and account
 | Screen | Design | Status |
 |---|---|---|
-| Sign in, two-factor challenge | [SignIn](claude-design/SignIn.dc.html), [SignIn2FA](claude-design/SignIn2FA.dc.html) | todo |
-| Sign up, verify email | [SignUp](claude-design/SignUp.dc.html), [VerifyEmail](claude-design/VerifyEmail.dc.html) | todo |
-| Forgot / reset password | [ForgotPassword](claude-design/ForgotPassword.dc.html), [ResetPassword](claude-design/ResetPassword.dc.html) | todo |
-| Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | todo |
-| Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | todo |
-| Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | todo |
+| Sign in, two-factor challenge | [SignIn](claude-design/SignIn.dc.html), [SignIn2FA](claude-design/SignIn2FA.dc.html) | built |
+| Sign up, verify email | [SignUp](claude-design/SignUp.dc.html), [VerifyEmail](claude-design/VerifyEmail.dc.html) | built |
+| Forgot / reset password | [ForgotPassword](claude-design/ForgotPassword.dc.html), [ResetPassword](claude-design/ResetPassword.dc.html) | built |
+| Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
+| Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
+| Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
 | Setup checklist on Home | [Onboarding](claude-design/Onboarding.dc.html) | todo |
 | App shell: sidebar, top bar, entity/project switcher, mobile bottom nav | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), [Main](claude-design/Main.dc.html) (bottom nav) | todo |
 | ⌘K command palette | [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | todo |
@@ -29,8 +29,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | My profile, password, two-factor, active sessions | [SecuritySettings](claude-design/SecuritySettings.dc.html) (security only; profile not designed) | todo |
 | 403 no access, 404 not found, 500 error, offline banner and page | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | todo |
 | Maintenance page | – | todo |
-| Session expired / signed out elsewhere | [SessionExpired](claude-design/SessionExpired.dc.html) | todo |
-| Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | todo |
+| Session expired / signed out elsewhere | [SessionExpired](claude-design/SessionExpired.dc.html) | built |
+| Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | built (tokens, fonts, form components) |
 
 ## 1. Home and analytics
 | Screen | Design | Status |
@@ -224,7 +224,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Purchase order PDF | [DocPO](claude-design/DocPO.dc.html) | todo |
 | WHT credit note | [WHTCreditNote](claude-design/WHTCreditNote.dc.html) | todo |
 | Emails: invite, verify, reset, receipt, reminder, approval request, digest | [EmailInvite](claude-design/EmailInvite.dc.html), [EmailVerify](claude-design/EmailVerify.dc.html), [EmailReset](claude-design/EmailReset.dc.html), [EmailReceipt](claude-design/EmailReceipt.dc.html), [EmailReminder](claude-design/EmailReminder.dc.html), [EmailApproval](claude-design/EmailApproval.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
-| Email: security alert (sign-in locked, password changed, two-step reset, backup code used) | – | todo |
+| Email: security alert (sign-in locked, password changed, two-step reset, backup code used) | – | pattern, needs-design |
 | WhatsApp templates: reminder, overdue, receipt, construction update | [WAReminder](claude-design/WAReminder.dc.html), [WAOverdue](claude-design/WAOverdue.dc.html), [WAReceipt](claude-design/WAReceipt.dc.html), [WAConstruction](claude-design/WAConstruction.dc.html) | todo |
 | SMS templates | – | todo |
 
