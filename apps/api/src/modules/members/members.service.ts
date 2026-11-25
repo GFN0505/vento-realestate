@@ -6,8 +6,7 @@ import type {
 } from '@vento/shared'
 import { and, asc, count, eq, inArray, isNull, ne, or, type SQL } from 'drizzle-orm'
 import type { z } from 'zod'
-import type { ServiceContext } from '@/access/context'
-import { webUrl } from '@/auth/hooks/deps'
+import { actorOf, type ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
 import {
   entities,
@@ -25,7 +24,6 @@ import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAccountEvent, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
 
-const actorOf = (ctx: ServiceContext) => ({ userId: ctx.user.id, name: ctx.user.name })
 const isOwnerKey = (key: string | null) => key === 'owner'
 
 export async function listMembers(ctx: ServiceContext, input: z.output<typeof listMembersInput>) {
@@ -190,18 +188,32 @@ async function currentLimits(tx: DbOrTx, ctx: ServiceContext, memberId: string) 
     .orderBy(asc(entities.name))
 }
 
-/** Entities named in a limit must be this organization's: otherwise not found. */
-export async function assertEntitiesInOrganization(
+/**
+ * Entities a granter may put in a limit (member update or invitation). They must be this
+ * organization's, and a granter limited to some entities can only grant within them: they
+ * can't give "all entities", and an entity outside their limit is not found, as everywhere.
+ */
+export async function assertGrantableEntities(
   tx: DbOrTx,
-  organizationId: string,
+  ctx: Pick<ServiceContext, 'organizationId' | 'member'>,
   entityIds: string[] | null,
 ) {
+  const granterLimit = ctx.member.entityIds
+  if (granterLimit !== null) {
+    if (entityIds === null) {
+      throw forbidden(
+        'entity_limit',
+        'You can only give access to the entities you can see. Choose them instead of all entities.',
+      )
+    }
+    if (entityIds.some((id) => !granterLimit.includes(id))) throw notFound()
+  }
   if (!entityIds) return []
   const unique = [...new Set(entityIds)]
   const rows = await tx
     .select({ id: entities.id, name: entities.name })
     .from(entities)
-    .where(and(eq(entities.organizationId, organizationId), inArray(entities.id, unique)))
+    .where(and(eq(entities.organizationId, ctx.organizationId), inArray(entities.id, unique)))
   if (rows.length !== unique.length) throw notFound()
   return rows
 }
@@ -231,7 +243,7 @@ export async function updateMemberAccess(
         throw conflict('last_owner', lastOwnerMessage(ctx))
       }
     }
-    const newLimits = await assertEntitiesInOrganization(tx, ctx.organizationId, input.entityIds)
+    const newLimits = await assertGrantableEntities(tx, ctx, input.entityIds)
     const before = await currentLimits(tx, ctx, target.id)
 
     await tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id))
@@ -327,10 +339,17 @@ export async function removeMember(
  * For a lost phone and lost backup codes. Two-step is per person, so this affects every
  * organization they belong to; it's recorded in each and they get a security alert.
  */
+/**
+ * For a lost phone and lost backup codes. Two-step is per person, so this reaches every
+ * organization they belong to. A reset alone must never open the account to whoever asked
+ * for it (an admin elsewhere, or someone who knows the password): every session ends and
+ * sign-in stays refused until the person sets a new password from the emailed link. The
+ * router sends that link and the security alert after commit.
+ */
 export async function resetMemberTwoStep(
   ctx: ServiceContext,
   memberId: string,
-): Promise<{ notice: string; emails: EmailMessage[] }> {
+): Promise<{ notice: string; emails: EmailMessage[]; resetPasswordFor: string }> {
   return ctx.db.transaction(async (tx) => {
     const target = await lockTarget(tx, ctx, memberId)
     assertNotSelf(ctx, target, "You can't reset your own two-step. Ask another owner or admin.")
@@ -338,19 +357,24 @@ export async function resetMemberTwoStep(
     await tx.delete(twoFactors).where(eq(twoFactors.userId, target.userId))
     await tx
       .update(users)
-      .set({ twoFactorEnabled: false, twoStepSetupRequired: true })
+      .set({ twoFactorEnabled: false, twoStepSetupRequired: true, passwordResetRequired: true })
       .where(eq(users.id, target.userId))
+    const ended = await tx
+      .delete(sessions)
+      .where(eq(sessions.userId, target.userId))
+      .returning({ id: sessions.id })
     await recordAccountEvent(tx, {
       userId: target.userId,
       action: 'two_step.reset',
       actor: actorOf(ctx),
       target: { type: 'user', id: target.userId, label: target.name },
-      metadata: { resetFrom: ctx.organizationName },
+      metadata: { resetFrom: ctx.organizationName, sessionsEnded: ended.length },
     })
-    const alert = twoStepResetAlert({ byName: ctx.user.name, signInUrl: webUrl('/sign-in') })
+    const alert = twoStepResetAlert({ byName: ctx.user.name })
     return {
-      notice: `Two-step reset for ${target.name}. They'll set it up again when they next sign in.`,
+      notice: `Two-step reset for ${target.name}. We've emailed them a link to set a new password.`,
       emails: [{ to: target.email, tag: 'security_alert', ...alert }],
+      resetPasswordFor: target.email,
     }
   })
 }

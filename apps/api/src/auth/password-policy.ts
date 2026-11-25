@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { AUTH_ERROR_CODES, PASSWORD_MIN_LENGTH, type PasswordErrorCode } from '@vento/shared'
+import { env } from '@/env'
 import { logger } from '@/lib/logger'
 import { COMMON_PASSWORD_WORDS } from './common-passwords'
 
@@ -60,4 +61,9 @@ export async function checkPasswordPolicy(
   if (breachCheck && (await breachCheck(password)) === true)
     return AUTH_ERROR_CODES.PASSWORD_BREACHED
   return null
+}
+
+/** The configured check: Have I Been Pwned when PWNED_PASSWORDS_CHECK=on, otherwise none. */
+export function defaultBreachCheck(): BreachCheck | null {
+  return env.PWNED_PASSWORDS_CHECK === 'on' ? checkPwnedPasswords : null
 }

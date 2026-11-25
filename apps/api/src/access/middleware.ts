@@ -1,7 +1,7 @@
 import { os as baseOs, ORPCError } from '@orpc/server'
 import type { PermissionAction, PermissionModule } from '@vento/shared'
 import { hasPermission } from '@vento/shared'
-import { enforceSessionPolicy } from '@/auth/session-policy'
+import { applySessionPolicy, toPolicySession } from '@/auth/session-policy'
 import type { BaseContext } from '@/context'
 import { forbidden } from '@/lib/errors'
 import { requestScope } from '@/lib/request-scope'
@@ -38,16 +38,11 @@ export async function authenticate(
   const result = await context.auth.api.getSession({ headers: context.headers })
   if (!result) throw unauthorized(hadCookie ? 'session_expired' : 'signed_out')
   const s = result.session
+  if ((await applySessionPolicy(context.db, s)) === 'expired') throw unauthorized('session_expired')
   const session: AuthSession = {
-    id: s.id,
+    ...toPolicySession(s),
     userId: s.userId,
     activeOrganizationId: s.activeOrganizationId ?? null,
-    persistent: Boolean(s.persistent),
-    createdAt: new Date(s.createdAt),
-    lastActiveAt: new Date(s.lastActiveAt ?? s.createdAt),
-  }
-  if ((await enforceSessionPolicy(context.db, session)) === 'expired') {
-    throw unauthorized('session_expired')
   }
   const u = result.user
   const user: AuthUser = {

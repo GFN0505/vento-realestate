@@ -20,7 +20,7 @@ export function InvitationSummary({ preview }: { preview: InvitationPreview }) {
         >
           {initials(preview.organizationName)}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 [overflow-wrap:anywhere]">
           <div className="font-semibold text-[15px]">{preview.organizationName}</div>
           <div className="text-muted-foreground text-xs">
             {preview.inviterName} invited you · expires {formatDate(preview.expiresOn)}
@@ -35,7 +35,7 @@ export function InvitationSummary({ preview }: { preview: InvitationPreview }) {
             className={`flex justify-between gap-4 py-2 ${index > 0 ? 'border-t' : ''}`}
           >
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className="text-right font-semibold">{value}</dd>
+            <dd className="min-w-0 text-right font-semibold [overflow-wrap:anywhere]">{value}</dd>
           </div>
         ))}
       </dl>

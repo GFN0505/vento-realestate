@@ -9,6 +9,7 @@ import {
   roles,
   signInLocks,
   users,
+  verifications,
 } from '@/db/schema'
 import { AUTH_ATTEMPT_RETENTION_MS } from './policy'
 
@@ -82,31 +83,27 @@ export type IdentityUser = {
   name: string
   email: string
   twoFactorEnabled: boolean
+  passwordResetRequired: boolean
+}
+
+const identityColumns = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  twoFactorEnabled: users.twoFactorEnabled,
+  passwordResetRequired: users.passwordResetRequired,
 }
 
 export async function findUserByEmail(db: DbOrTx, email: string): Promise<IdentityUser | null> {
   const [row] = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      twoFactorEnabled: users.twoFactorEnabled,
-    })
+    .select(identityColumns)
     .from(users)
     .where(eq(users.email, email.toLowerCase()))
   return row ?? null
 }
 
 export async function findUserById(db: DbOrTx, id: string): Promise<IdentityUser | null> {
-  const [row] = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      twoFactorEnabled: users.twoFactorEnabled,
-    })
-    .from(users)
-    .where(eq(users.id, id))
+  const [row] = await db.select(identityColumns).from(users).where(eq(users.id, id))
   return row ?? null
 }
 
@@ -168,4 +165,27 @@ export async function roleRequiresTwoStep(db: DbOrTx, userId: string): Promise<b
 
 export async function clearTwoStepSetupRequired(db: DbOrTx, userId: string): Promise<void> {
   await db.update(users).set({ twoStepSetupRequired: false }).where(eq(users.id, userId))
+}
+
+/**
+ * The person a password-reset token belongs to (Better Auth stores it as `reset-password:<token>`
+ * with the user id as text). Null when unknown, used or expired.
+ */
+export async function userIdForResetToken(db: DbOrTx, token: unknown): Promise<string | null> {
+  if (typeof token !== 'string' || !token) return null
+  const [row] = await db
+    .select({ value: verifications.value })
+    .from(verifications)
+    .where(
+      and(
+        eq(verifications.identifier, `reset-password:${token}`),
+        gt(verifications.expiresAt, new Date()),
+      ),
+    )
+  const userId = row?.value
+  return userId && /^[0-9a-f-]{36}$/i.test(userId) ? userId : null
+}
+
+export async function clearPasswordResetRequired(db: DbOrTx, userId: string): Promise<void> {
+  await db.update(users).set({ passwordResetRequired: false }).where(eq(users.id, userId))
 }

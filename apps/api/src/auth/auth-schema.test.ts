@@ -1,9 +1,9 @@
 import { getSchema } from 'better-auth/db'
-import { getTableColumns } from 'drizzle-orm'
+import { getTableColumns, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
-import { accounts, rateLimits, sessions, twoFactors, users, verifications } from '@/db/schema'
+import { accounts, sessions, twoFactors, users, verifications } from '@/db/schema'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { createAuth } from './auth'
 
@@ -15,7 +15,6 @@ const ours: Record<string, PgTable> = {
   account: accounts,
   verification: verifications,
   twoFactor: twoFactors,
-  rateLimit: rateLimits,
 }
 
 describe('Better Auth schema', () => {
@@ -30,5 +29,16 @@ describe('Better Auth schema', () => {
     const fields = Object.keys(expected[model]?.fields ?? {})
     const columns = table ? Object.keys(getTableColumns(table)) : []
     expect(fields.filter((f) => !columns.includes(f))).toEqual([])
+  })
+})
+
+describe('rate limiting', () => {
+  it('keeps per-IP counters in memory, so full IP addresses never reach the database', async () => {
+    const auth = createAuth({ db, mailer: createMemoryTransport(), rateLimit: true })
+    expect(auth.options.rateLimit?.storage).toBe('memory')
+    const result = await db.execute<{ t: string | null }>(
+      sql`select to_regclass('public.rate_limits') as t`,
+    )
+    expect(result.rows[0]?.t).toBeNull()
   })
 })

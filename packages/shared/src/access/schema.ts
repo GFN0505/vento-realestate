@@ -130,4 +130,10 @@ export const acceptInvitationAsNewUserInput = z.strictObject({
   termsVersion,
 })
 
-export const acceptInvitationOutput = z.object({ nextStep })
+/**
+ * `sign_in`: the account and membership were created but signing in failed (rare); send the
+ * person to the sign-in screen.
+ */
+export const acceptInvitationOutput = z.object({
+  nextStep: z.union([nextStep, z.literal('sign_in')]),
+})

@@ -15,7 +15,12 @@ import type { TestUser } from './factories'
 export function clientAs(
   db: DbOrTx,
   user: TestUser | null,
-  options: { sessionId?: string; activeOrganizationId?: string | null } = {},
+  options: {
+    sessionId?: string
+    activeOrganizationId?: string | null
+    /** Extra Better Auth server calls a procedure makes (requestPasswordReset, signInEmail). */
+    authApi?: Record<string, (...args: never[]) => unknown>
+  } = {},
 ) {
   const now = new Date()
   const auth = {
@@ -34,6 +39,7 @@ export function clientAs(
               },
             }
           : null,
+      ...options.authApi,
     },
   } as unknown as Auth
   const mailer = createMemoryTransport()
@@ -44,6 +50,7 @@ export function clientAs(
     auth,
     mailer,
     rateLimiter: createRateLimiter(false),
+    breachCheck: null,
   }
   return { client: createRouterClient(router, { context }), mailer }
 }

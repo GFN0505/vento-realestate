@@ -11,21 +11,23 @@ import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import { emailOTP, twoFactor } from 'better-auth/plugins'
 import { eq } from 'drizzle-orm'
 import type { Db } from '@/db/client'
-import { accounts, rateLimits, sessions, twoFactors, users, verifications } from '@/db/schema'
+import { accounts, sessions, twoFactors, users, verifications } from '@/db/schema'
 import type { Mailer } from '@/email/mailer'
 import { env } from '@/env'
 import { CLIENT_IP_HEADER, maskIp } from '@/lib/client-ip'
 import { logger } from '@/lib/logger'
 import { onBackupCodesRegenerated, onPasswordChanged, onTwoStepDisabled } from './hooks/audit-hooks'
-import { type AuthDeps, type AuthServerApi, authError, errorCode } from './hooks/deps'
 import {
-  assertPasswordAllowed,
-  assertTermsAccepted,
-  userIdForResetToken,
-} from './hooks/password-history'
+  type AuthDeps,
+  type AuthServerApi,
+  authError,
+  errorCode,
+  errorResponse,
+} from './hooks/deps'
+import { assertPasswordAllowed, assertTermsAccepted } from './hooks/password-history'
 import {
   assertNotLocked,
-  lockedError,
+  lockedResponse,
   onPasswordFailure,
   onPasswordSuccess,
 } from './hooks/sign-in-guard'
@@ -36,7 +38,7 @@ import {
   sendResetPasswordEmail,
   sendVerificationEmail,
 } from './hooks/verification'
-import { type BreachCheck, checkPwnedPasswords } from './password-policy'
+import { type BreachCheck, defaultBreachCheck } from './password-policy'
 import {
   PERSISTENT_SESSION_SECONDS,
   PERSISTENT_THRESHOLD_MS,
@@ -44,7 +46,13 @@ import {
   SESSION_MAX_MS,
   VERIFICATION_TTL_SECONDS,
 } from './policy'
-import { findUserById, rememberPasswordHash, roleRequiresTwoStep } from './security-store'
+import {
+  clearPasswordResetRequired,
+  findUserById,
+  rememberPasswordHash,
+  roleRequiresTwoStep,
+  userIdForResetToken,
+} from './security-store'
 
 /**
  * Better Auth routes we switch off: passwordless sign-ins that would skip two-step, and
@@ -100,12 +108,7 @@ export function createAuth(options: CreateAuthOptions) {
   const deps: AuthDeps = {
     db,
     mailer: options.mailer,
-    breachCheck:
-      options.breachCheck !== undefined
-        ? options.breachCheck
-        : env.PWNED_PASSWORDS_CHECK === 'on'
-          ? checkPwnedPasswords
-          : null,
+    breachCheck: options.breachCheck !== undefined ? options.breachCheck : defaultBreachCheck(),
     api: () => {
       if (!api) throw new Error('Auth is not ready yet')
       return api
@@ -120,7 +123,7 @@ export function createAuth(options: CreateAuthOptions) {
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, {
       provider: 'pg',
-      schema: { users, sessions, accounts, verifications, twoFactors, rateLimits },
+      schema: { users, sessions, accounts, verifications, twoFactors },
       usePlural: true,
       transaction: true,
     }),
@@ -142,6 +145,8 @@ export function createAuth(options: CreateAuthOptions) {
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: (data) => sendResetPasswordEmail(deps, data),
       onPasswordReset: async ({ user }) => {
+        // A new password through the emailed link is what lifts a two-step reset's sign-in block.
+        await clearPasswordResetRequired(db, user.id)
         const identity = await findUserById(db, user.id)
         if (identity) await onPasswordChanged(deps, identity, 'reset')
       },
@@ -165,7 +170,9 @@ export function createAuth(options: CreateAuthOptions) {
     },
     rateLimit: {
       enabled: options.rateLimit ?? env.AUTH_RATE_LIMIT === 'on',
-      storage: 'database',
+      // Memory, not the database: Better Auth keys rows by the full client IP, which we never
+      // store. Fine for one API instance; several instances need Redis (secondary storage).
+      storage: 'memory',
       customRules: {
         '/sign-in/email': { window: 60, max: 10 },
         '/sign-up/email': { window: 60, max: 5 },
@@ -231,7 +238,7 @@ export function createAuth(options: CreateAuthOptions) {
             await assertPasswordAllowed(deps, bodyField(ctx.body, 'password'))
             return
           case '/reset-password': {
-            const userId = await userIdForResetToken(deps, bodyField(ctx.body, 'token'))
+            const userId = await userIdForResetToken(db, bodyField(ctx.body, 'token'))
             await assertPasswordAllowed(
               deps,
               bodyField(ctx.body, 'newPassword'),
@@ -248,7 +255,8 @@ export function createAuth(options: CreateAuthOptions) {
                 ? { userId: session.user.id, verify: ctx.context.password.verify }
                 : undefined,
             )
-            return
+            // A changed password always signs out every other device, whatever the client asks.
+            return { context: { body: { ...(ctx.body as object), revokeOtherSessions: true } } }
           }
           case '/update-user':
             // Terms are accepted once, at sign-up, where the time is recorded.
@@ -307,20 +315,28 @@ export function createAuth(options: CreateAuthOptions) {
             const email = bodyEmail(ctx.body)
             if (code === AUTH_ERROR_CODES.INVALID_EMAIL_OR_PASSWORD && email) {
               const lockedUntil = await onPasswordFailure(deps, email)
-              if (lockedUntil) throw lockedError(lockedUntil)
-              return
+              return lockedUntil ? lockedResponse(lockedUntil) : undefined
             }
-            const signedIn = ctx.context.newSession?.user.id
-            const user = !code && signedIn ? await findUserById(db, signedIn) : null
-            if (user) await onPasswordSuccess(deps, user)
+            const signedIn = ctx.context.newSession
+            const user = !code && signedIn ? await findUserById(db, signedIn.user.id) : null
+            if (!user || !signedIn) return
+            // Checked only after a correct password, so it reveals nothing to a guesser.
+            if (user.passwordResetRequired) {
+              await db.delete(sessions).where(eq(sessions.token, signedIn.session.token))
+              // Stops the two-step plugin's after-hook from turning this into a code challenge.
+              ctx.context.setNewSession(null)
+              return errorResponse(403, {
+                code: AUTH_ERROR_CODES.PASSWORD_RESET_REQUIRED,
+                message: AUTH_ERROR_MESSAGES.PASSWORD_RESET_REQUIRED,
+              })
+            }
+            await onPasswordSuccess(deps, user)
             return
           }
           case '/two-factor/verify-totp':
-            await afterTwoStepVerify(deps, { method: 'totp', returned })
-            return
+            return afterTwoStepVerify(deps, { method: 'totp', returned })
           case '/two-factor/verify-backup-code':
-            await afterTwoStepVerify(deps, { method: 'backup_code', returned })
-            return
+            return afterTwoStepVerify(deps, { method: 'backup_code', returned })
         }
         if (code) return
         const sessionUserId = ctx.context.session?.user.id ?? ctx.context.newSession?.user.id

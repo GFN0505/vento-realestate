@@ -1,6 +1,4 @@
 import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES, CURRENT_TERMS_VERSION } from '@vento/shared'
-import { and, eq, gt } from 'drizzle-orm'
-import { verifications } from '@/db/schema'
 import { checkPasswordPolicy } from '../password-policy'
 import { recentPasswordHashes } from '../security-store'
 import { type AuthDeps, authError } from './deps'
@@ -37,19 +35,4 @@ export function assertTermsAccepted(termsVersion: unknown): void {
       AUTH_ERROR_MESSAGES.TERMS_NOT_ACCEPTED,
     )
   }
-}
-
-/** The person a reset token belongs to (Better Auth stores it as `reset-password:<token>`). */
-export async function userIdForResetToken(deps: AuthDeps, token: unknown): Promise<string | null> {
-  if (typeof token !== 'string' || !token) return null
-  const [row] = await deps.db
-    .select({ value: verifications.value })
-    .from(verifications)
-    .where(
-      and(
-        eq(verifications.identifier, `reset-password:${token}`),
-        gt(verifications.expiresAt, new Date()),
-      ),
-    )
-  return row?.value ?? null
 }

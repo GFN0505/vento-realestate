@@ -9,7 +9,8 @@ import { compress } from 'hono/compress'
 import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 import { type Auth, createAuth } from '@/auth/auth'
-import { enforceSessionPolicy } from '@/auth/session-policy'
+import { type BreachCheck, defaultBreachCheck } from '@/auth/password-policy'
+import { applySessionPolicy } from '@/auth/session-policy'
 import type { Db } from '@/db/client'
 import { createMailer, type Mailer } from '@/email/mailer'
 import { env } from '@/env'
@@ -25,6 +26,8 @@ export type AppDeps = {
   mailer?: Mailer
   auth?: Auth
   rateLimiter?: RateLimiter
+  /** Breached-password check; null = off. Defaults to PWNED_PASSWORDS_CHECK. Shared with Better Auth. */
+  breachCheck?: BreachCheck | null
 }
 
 function socketAddress(c: Context): string | undefined {
@@ -45,23 +48,11 @@ function trustedHeaders(c: Context): Headers {
   return headers
 }
 
-const LOCKABLE_PATHS = /\/(sign-in\/email|two-factor\/verify-(totp|backup-code))$/
-
-/**
- * Our after-hooks turn the failure that triggers a lock into ACCOUNT_LOCKED, but Better Auth
- * keeps the endpoint's original status (401). Lockouts are always 429 for the web.
- */
-async function withLockStatus(res: Response): Promise<Response> {
-  if (res.status === 429 || res.status < 400) return res
-  const body = await res.clone().text()
-  if (!body.includes('"ACCOUNT_LOCKED"')) return res
-  return new Response(body, { status: 429, headers: res.headers })
-}
-
 export function createApp(deps: AppDeps): Hono {
   const { db } = deps
   const mailer = deps.mailer ?? createMailer(env)
-  const auth = deps.auth ?? createAuth({ db, mailer })
+  const breachCheck = deps.breachCheck !== undefined ? deps.breachCheck : defaultBreachCheck()
+  const auth = deps.auth ?? createAuth({ db, mailer, breachCheck })
   const rateLimiter = deps.rateLimiter ?? createRateLimiter()
 
   const rpc = new RPCHandler(router, {
@@ -122,18 +113,9 @@ export function createApp(deps: AppDeps): Hono {
     // Apply our idle and 12-hour rules first, so Better Auth never serves an expired session.
     if (/vento\.session_token=/.test(headers.get('cookie') ?? '')) {
       const current = await auth.api.getSession({ headers })
-      if (current) {
-        const s = current.session
-        await enforceSessionPolicy(db, {
-          id: s.id,
-          persistent: Boolean(s.persistent),
-          createdAt: new Date(s.createdAt),
-          lastActiveAt: new Date(s.lastActiveAt ?? s.createdAt),
-        })
-      }
+      if (current) await applySessionPolicy(db, current.session)
     }
-    const res = await auth.handler(new Request(c.req.raw, { headers }))
-    return LOCKABLE_PATHS.test(c.req.path) ? withLockStatus(res) : res
+    return auth.handler(new Request(c.req.raw, { headers }))
   })
 
   // JSON calls are small; file uploads get their own endpoints with their own limits.
@@ -149,6 +131,7 @@ export function createApp(deps: AppDeps): Hono {
         auth,
         mailer,
         rateLimiter,
+        breachCheck,
       },
     })
     if (matched) return c.newResponse(response.body, response)

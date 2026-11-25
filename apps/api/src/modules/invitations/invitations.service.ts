@@ -12,13 +12,15 @@ import {
   type SystemRoleKey,
 } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { and, asc, count, desc, eq, gt, inArray, lte, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, lte, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
 import {
   type AuthSession,
   type AuthUser,
+  actorOf,
   type ServiceContext,
   setActiveOrganization,
+  twoStepRequired,
 } from '@/access/context'
 import { webUrl } from '@/auth/hooks/deps'
 import { type BreachCheck, checkPasswordPolicy } from '@/auth/password-policy'
@@ -38,17 +40,15 @@ import {
 } from '@/db/schema'
 import type { EmailMessage } from '@/email/mailer'
 import { invitationEmail } from '@/email/templates/invitation'
-import { conflict, forbidden, notFound } from '@/lib/errors'
+import { conflict, forbidden, isUniqueViolation, notFound } from '@/lib/errors'
 import { formatDate, lagosIsoDate } from '@/lib/format'
 import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAudit } from '@/modules/audit/audit.service'
-import { assertEntitiesInOrganization } from '@/modules/members/members.service'
+import { assertGrantableEntities } from '@/modules/members/members.service'
 import { loadRoles } from '@/modules/roles/roles.service'
 import { hashInvitationToken, newInvitationToken } from './invitation-token'
 
 type InvitationRow = typeof invitations.$inferSelect
-
-const actorOf = (ctx: ServiceContext) => ({ userId: ctx.user.id, name: ctx.user.name })
 
 /** A pending invitation past its expiry reads as expired, before anything writes that down. */
 export function effectiveStatus(
@@ -204,11 +204,7 @@ export async function createInvitations(
     if (roleRows.some((r) => r.key === 'owner') && ctx.member.roleKey !== 'owner') {
       throw forbidden('owner_only', 'Only owners can invite someone as an owner.')
     }
-    const limitEntities = await assertEntitiesInOrganization(
-      tx,
-      ctx.organizationId,
-      input.entityIds,
-    )
+    const limitEntities = await assertGrantableEntities(tx, ctx, input.entityIds)
     const emails = input.items.map((i) => i.email)
 
     const [alreadyMember] = await tx
@@ -243,10 +239,7 @@ export async function createInvitations(
       .for('update')
     const live = pending.find((p) => p.expiresAt > now)
     if (live) {
-      throw conflict(
-        'already_invited',
-        `${live.email} already has an invitation. Resend it instead.`,
-      )
+      throw alreadyInvited(live.email)
     }
     // Expired-but-pending rows would block the "one pending per email" index: mark them first.
     if (pending.length) {
@@ -264,18 +257,21 @@ export async function createInvitations(
     const messages: EmailMessage[] = []
     for (const item of input.items) {
       const { token, tokenHash } = newInvitationToken()
-      const [row] = await tx
-        .insert(invitations)
-        .values({
-          organizationId: ctx.organizationId,
-          email: item.email,
-          roleId: item.roleId,
-          invitedByUserId: ctx.user.id,
-          tokenHash,
-          expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
-          lastSentAt: now,
-        })
-        .returning()
+      const [row] = await alreadyInvitedOnRace(
+        item.email,
+        tx
+          .insert(invitations)
+          .values({
+            organizationId: ctx.organizationId,
+            email: item.email,
+            roleId: item.roleId,
+            invitedByUserId: ctx.user.id,
+            tokenHash,
+            expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
+            lastSentAt: now,
+          })
+          .returning(),
+      )
       if (!row) throw new Error('Invitation insert returned nothing')
       if (limitEntities.length) {
         await tx.insert(invitationEntityLimits).values(
@@ -309,6 +305,21 @@ export async function createInvitations(
       emails: messages,
     }
   })
+}
+
+function alreadyInvited(email: string) {
+  return conflict('already_invited', `${email} already has an invitation. Resend it instead.`)
+}
+
+/** Two people inviting the same email at once: the second hits the unique index, not a 500. */
+async function alreadyInvitedOnRace<T>(email: string, write: Promise<T>): Promise<T> {
+  try {
+    return await write
+  } catch (error) {
+    if (isUniqueViolation(error, 'invitations_org_email_pending_unique'))
+      throw alreadyInvited(email)
+    throw error
+  }
 }
 
 async function lockInvitationById(
@@ -348,18 +359,47 @@ export async function resendInvitation(
     if (current.status !== 'pending' && current.status !== 'expired') {
       throw notPendingError(current, ctx.user.name)
     }
-    const { token, tokenHash } = newInvitationToken()
     const now = new Date()
-    const [row] = await tx
+    // An old invitation can't come back while a newer one for the same email is live.
+    const [newer] = await tx
+      .select({ id: invitations.id })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.organizationId, ctx.organizationId),
+          eq(invitations.email, current.email),
+          eq(invitations.status, 'pending'),
+          ne(invitations.id, id),
+          gt(invitations.expiresAt, now),
+        ),
+      )
+    if (newer) throw alreadyInvited(current.email)
+    // A newer one that has lapsed but still reads 'pending' would trip the unique index.
+    await tx
       .update(invitations)
-      .set({
-        status: 'pending',
-        tokenHash,
-        expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
-        lastSentAt: now,
-      })
-      .where(eq(invitations.id, id))
-      .returning()
+      .set({ status: 'expired' })
+      .where(
+        and(
+          eq(invitations.organizationId, ctx.organizationId),
+          eq(invitations.email, current.email),
+          eq(invitations.status, 'pending'),
+          ne(invitations.id, id),
+        ),
+      )
+    const { token, tokenHash } = newInvitationToken()
+    const [row] = await alreadyInvitedOnRace(
+      current.email,
+      tx
+        .update(invitations)
+        .set({
+          status: 'pending',
+          tokenHash,
+          expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
+          lastSentAt: now,
+        })
+        .where(eq(invitations.id, id))
+        .returning(),
+    )
     if (!row) throw notFound()
     await recordAudit(tx, {
       organizationId: ctx.organizationId,
@@ -498,8 +538,8 @@ async function nextStepAfterJoin(
     })
     .from(users)
     .where(eq(users.id, userId))
-  const required = Boolean(role?.requiresTwoStep) || Boolean(user?.twoStepSetupRequired)
-  return required && !user?.twoFactorEnabled ? 'two_step_setup' : 'ready'
+  if (!user) return 'ready'
+  return twoStepRequired(user, role ?? null) && !user.twoFactorEnabled ? 'two_step_setup' : 'ready'
 }
 
 /** Signed in as the invited email (an existing Vento user joining another organization). */

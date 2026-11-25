@@ -69,8 +69,9 @@ export function VerifyEmailPanel({ email }: { email: string }) {
         <MailIcon className="size-7 text-primary" strokeWidth={1.7} aria-hidden />
       </div>
       <AuthHeader title="Check your email">
-        We sent a link to <b className="font-semibold text-foreground">{email}</b>. It expires in 30
-        minutes.
+        We sent a link to{' '}
+        <b className="font-semibold text-foreground [overflow-wrap:anywhere]">{email}</b>. It
+        expires in 30 minutes.
       </AuthHeader>
       <span className="font-semibold text-muted-foreground text-xs" id={`${errorId}-label`}>
         Or enter the code from the email

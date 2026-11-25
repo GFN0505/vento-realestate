@@ -6,13 +6,19 @@ import { AsyncLocalStorage } from 'node:async_hooks'
  */
 export type RequestScope = {
   requestId: string
-  /** Full client address: used for rate limits only, never stored or logged. */
+  /** Full client address: kept in memory for rate limits only, never written to the database or logs. */
   ip: string | null
   ipMasked: string | null
   userAgent: string | null
   userAgentSummary: string | null
   /** Facts Better Auth before-hooks hand to after-hooks for the same request. */
-  auth: { userId?: string; twoStepMode?: 'sign_in' | 'setup'; wasTwoFactorEnabled?: boolean }
+  auth: {
+    userId?: string
+    twoStepMode?: 'sign_in' | 'setup'
+    wasTwoFactorEnabled?: boolean
+    /** The resend endpoint already counted this request against the limit. */
+    verificationCounted?: boolean
+  }
 }
 
 const storage = new AsyncLocalStorage<RequestScope>()

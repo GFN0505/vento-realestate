@@ -1,6 +1,7 @@
 import { requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
 import { sendAll } from '@/email/mailer'
+import { logger } from '@/lib/logger'
 import { member } from '@/orpc'
 import {
   listMembers,
@@ -22,8 +23,20 @@ export const membersRouter = {
   resetTwoStep: member.members.resetTwoStep
     .use(requirePermission('settings', 'edit', "reset someone's two-step"))
     .handler(async ({ context, input }) => {
-      const { notice, emails } = await resetMemberTwoStep(serviceContext(context), input.memberId)
-      await sendAll(context.mailer, emails)
-      return { notice }
+      const result = await resetMemberTwoStep(serviceContext(context), input.memberId)
+      await sendAll(context.mailer, result.emails)
+      try {
+        // Better Auth issues the 30-minute, single-use reset link and emails it.
+        await context.auth.api.requestPasswordReset({
+          body: { email: result.resetPasswordFor, redirectTo: '/reset-password' },
+        })
+      } catch (error) {
+        // The reset is done; they can still use "Forgot password" to get a link.
+        logger.error('Reset link after two-step reset not sent', {
+          requestId: context.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+      return { notice: result.notice }
     }),
 }

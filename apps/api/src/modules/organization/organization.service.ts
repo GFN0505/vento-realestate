@@ -1,7 +1,7 @@
 import type { NigerianState, Organization, updateOrganizationInput } from '@vento/shared'
 import { eq } from 'drizzle-orm'
 import type { z } from 'zod'
-import type { ServiceContext } from '@/access/context'
+import { actorOf, type ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
 import { organizations } from '@/db/schema'
 import { notFound } from '@/lib/errors'
@@ -43,8 +43,6 @@ export async function getOrganization(ctx: ServiceContext): Promise<Organization
   if (!row) throw notFound()
   return toOrganization(row)
 }
-
-const actorOf = (ctx: ServiceContext) => ({ userId: ctx.user.id, name: ctx.user.name })
 
 /** Only changed fields go into before/after, so the audit trail reads as a diff. */
 export function diff<T extends Record<string, unknown>>(before: T, patch: Partial<T>) {

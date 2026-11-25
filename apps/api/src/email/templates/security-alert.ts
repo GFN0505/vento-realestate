@@ -34,16 +34,19 @@ export function passwordChangedAlert(p: {
   ])
 }
 
-export function twoStepResetAlert(p: { byName: string; signInUrl: string }): RenderedEmail {
+export function twoStepResetAlert(p: { byName: string }): RenderedEmail {
   return renderEmail(
     `Vento: your two-step sign-in was reset by ${p.byName}`,
     'Your two-step sign-in was reset',
     [
       {
         kind: 'p',
-        text: `${p.byName} reset two-step sign-in for your Vento account. Set it up again with your authenticator app the next time you sign in.`,
+        text: `${p.byName} reset two-step sign-in for your Vento account and signed you out everywhere.`,
       },
-      { kind: 'button', label: 'Sign in', url: p.signInUrl },
+      {
+        kind: 'p',
+        text: "To sign in again, set a new password with the link we've just emailed you, then set up two-step with your authenticator app.",
+      },
       { kind: 'small', text: `If you didn't ask for this, contact ${p.byName} or another owner.` },
     ],
   )

@@ -13,17 +13,27 @@ import {
   findUserByEmail,
   type IdentityUser,
 } from '../security-store'
-import { type AuthDeps, authError, sendEmail, webUrl } from './deps'
+import { type AuthDeps, authError, errorResponse, sendEmail, webUrl } from './deps'
 
 const ATTEMPT_ACTOR = { userId: null, name: 'Sign-in attempt' }
 
+function lockedBody(lockedUntil: Date) {
+  return {
+    code: AUTH_ERROR_CODES.ACCOUNT_LOCKED,
+    message: `Sign-in is locked until ${formatTime(lockedUntil)}. We've emailed you.`,
+    lockedUntil: lockedUntil.toISOString(),
+  }
+}
+
+/** For before-hooks: thrown before the endpoint runs, so its 429 status stands. */
 export function lockedError(lockedUntil: Date): APIError {
-  return authError(
-    'TOO_MANY_REQUESTS',
-    AUTH_ERROR_CODES.ACCOUNT_LOCKED,
-    `Sign-in is locked until ${formatTime(lockedUntil)}. We've emailed you.`,
-    { lockedUntil: lockedUntil.toISOString() },
-  )
+  const { code, message, ...extra } = lockedBody(lockedUntil)
+  return authError('TOO_MANY_REQUESTS', code, message, extra)
+}
+
+/** For after-hooks: `429 { code: 'ACCOUNT_LOCKED', message, lockedUntil }`. */
+export function lockedResponse(lockedUntil: Date): Response {
+  return errorResponse(429, lockedBody(lockedUntil))
 }
 
 /** A locked account refuses even the right password, for known and unknown emails alike. */

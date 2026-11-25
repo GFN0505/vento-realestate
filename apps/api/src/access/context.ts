@@ -56,6 +56,11 @@ export type ServiceContext = {
   sessionId: string | null
 }
 
+/** The audit actor for a service call: the signed-in person, by id and name at the time. */
+export function actorOf(ctx: Pick<ServiceContext, 'user'>): { userId: string; name: string } {
+  return { userId: ctx.user.id, name: ctx.user.name }
+}
+
 type MembershipRow = {
   member_id: string
   organization_id: string
@@ -155,7 +160,7 @@ export async function resolveMembership(
 /** Two-step is required by the role, or because an owner or admin reset it. */
 export function twoStepRequired(
   user: Pick<AuthUser, 'twoStepSetupRequired'>,
-  member: MemberContext | null,
+  member: Pick<MemberContext, 'requiresTwoStep'> | null,
 ): boolean {
   return user.twoStepSetupRequired || Boolean(member?.requiresTwoStep)
 }

@@ -16,10 +16,18 @@ type Props = {
   preview: InvitationPreview
   onAccepted: () => void
   onHasAccount: () => void
+  /** Joined, but signing in straight away failed; they sign in themselves. */
+  onSignInNeeded: () => void
 }
 
 /** New to Vento: name and a password, then straight in (two-step setup if the role needs it). */
-export function AcceptAsNewUser({ token, preview, onAccepted, onHasAccount }: Props) {
+export function AcceptAsNewUser({
+  token,
+  preview,
+  onAccepted,
+  onHasAccount,
+  onSignInNeeded,
+}: Props) {
   const ids = { name: useId(), email: useId(), password: useId() }
   const form = useForm({ defaultValues: { name: '', password: '' } })
   const { errors } = form.formState
@@ -34,7 +42,7 @@ export function AcceptAsNewUser({ token, preview, onAccepted, onHasAccount }: Pr
         termsVersion: CURRENT_TERMS_VERSION,
       },
       {
-        onSuccess: onAccepted,
+        onSuccess: (result) => (result.nextStep === 'sign_in' ? onSignInNeeded() : onAccepted()),
         onError: (error) => {
           if (errorReason(error) === 'account_exists') onHasAccount()
         },
@@ -78,8 +86,11 @@ export function AcceptAsNewUser({ token, preview, onAccepted, onHasAccount }: Pr
             },
           })}
         />
-        <PasswordRules id={`${ids.password}-rules`} password={form.watch('password')} />
-        <FieldError>{errors.password?.message}</FieldError>
+        <PasswordRules
+          id={`${ids.password}-rules`}
+          password={form.watch('password')}
+          showUnmetAsFailed={!!errors.password}
+        />
       </Field>
       <Button type="submit" size="lg" className="w-full" disabled={accept.isPending}>
         {accept.isPending

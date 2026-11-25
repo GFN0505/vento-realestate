@@ -15,6 +15,13 @@
       "when": 1795638184269,
       "tag": "0001_access_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795642328200,
+      "tag": "0002_reset_required_drop_rate_limits",
+      "breakpoints": true
     }
   ]
 }

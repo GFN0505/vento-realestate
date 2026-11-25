@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { useForm } from 'react-hook-form'
 import { AuthFootnote, AuthHeader } from '@/components/auth/auth-layout'
 import { FormAlert } from '@/components/auth/form-alert'
@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { AuthFailureText } from './auth-failure-text'
+import { useAuthFailure } from './use-auth-failure'
+import { formatCountdown } from './use-countdown'
 import { type SignInResult, signInWithPassword } from './use-sign-in'
 
 type Values = { email: string; password: string; keepSignedIn: boolean }
@@ -20,7 +23,7 @@ type Props = {
 /** Board SignIn: work email, password, "Keep me signed in". No Google/Microsoft (CHANGES.md). */
 export function PasswordStep({ defaultEmail = '', onResult }: Props) {
   const ids = { email: useId(), password: useId(), keep: useId(), error: useId() }
-  const [error, setError] = useState<string | null>(null)
+  const { failure, setFailure, secondsLeft, waiting } = useAuthFailure()
   const form = useForm<Values>({
     defaultValues: { email: defaultEmail, password: '', keepSignedIn: false },
     shouldFocusError: true,
@@ -28,10 +31,11 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
   const { errors, isSubmitting } = form.formState
 
   const submit = form.handleSubmit(async (values) => {
-    setError(null)
+    if (waiting) return
+    setFailure(null)
     const result = await signInWithPassword(values)
     if (result.status === 'error') {
-      setError(result.message)
+      setFailure(result.failure)
       form.setValue('password', '')
       form.setFocus('password')
       return
@@ -42,7 +46,11 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       <AuthHeader title="Sign in">Use your work email.</AuthHeader>
-      {error && <FormAlert variant="error">{error}</FormAlert>}
+      {failure && (
+        <FormAlert variant="error">
+          <AuthFailureText failure={failure} secondsLeft={secondsLeft} />
+        </FormAlert>
+      )}
       <Field data-invalid={!!errors.email}>
         <FieldLabel htmlFor={ids.email}>Work email</FieldLabel>
         <Input
@@ -68,14 +76,21 @@ export function PasswordStep({ defaultEmail = '', onResult }: Props) {
         />
         <FieldError id={`${ids.password}-error`}>{errors.password?.message}</FieldError>
         <span className="text-xs">
-          <Link to="/forgot-password" className="text-link hover:text-link-hover hover:underline">
+          <Link
+            to="/forgot-password"
+            className="text-link hover:text-link-hover hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
+          >
             Forgot password?
           </Link>
         </span>
       </Field>
       <KeepSignedIn id={ids.keep} form={form} />
-      <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Signing in…' : 'Sign in'}
+      <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || waiting}>
+        {waiting
+          ? `Try again in ${formatCountdown(secondsLeft)}`
+          : isSubmitting
+            ? 'Signing in…'
+            : 'Sign in'}
       </Button>
       <AuthFootnote>
         New to Vento? <Link to="/sign-up">Create a company account</Link>. Invited by a colleague?

@@ -52,3 +52,18 @@ export function errorCode(returned: unknown): string | null {
   const body = returned.body as { code?: unknown } | undefined
   return typeof body?.code === 'string' ? body.code : 'UNKNOWN'
 }
+
+/**
+ * An error from an after-hook. Better Auth keeps the endpoint's own status for an APIError
+ * thrown there (a failed sign-in stays 401), but passes a Response through unchanged, so
+ * after-hooks that change the outcome (a lock) return one of these.
+ */
+export function errorResponse(
+  status: 403 | 429,
+  body: { code: string; message: string } & Record<string, unknown>,
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+}

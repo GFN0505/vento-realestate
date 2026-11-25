@@ -13,7 +13,7 @@ import {
   type IdentityUser,
 } from '../security-store'
 import { type AuthDeps, errorCode, sendEmail, webUrl } from './deps'
-import { lockAccount, lockedError } from './sign-in-guard'
+import { lockAccount, lockedError, lockedResponse } from './sign-in-guard'
 
 /**
  * The verify endpoints serve two jobs: the code after a password (sign-in mode, no session
@@ -52,7 +52,7 @@ async function twoStepLockedUntil(deps: AuthDeps, userId: string): Promise<Date 
 export async function afterTwoStepVerify(
   deps: AuthDeps,
   input: { method: 'totp' | 'backup_code'; returned: unknown },
-): Promise<void> {
+): Promise<Response | undefined> {
   const { twoStepMode, userId, wasTwoFactorEnabled } = requestScope().auth
   if (!userId) return
   const user = await findUserById(deps.db, userId)
@@ -73,8 +73,7 @@ export async function afterTwoStepVerify(
 
   if (code === 'ACCOUNT_TEMPORARILY_LOCKED') {
     const until = await twoStepLockedUntil(deps, user.id)
-    if (until) throw lockedError(until)
-    return
+    return until ? lockedResponse(until) : undefined
   }
   if (code === AUTH_ERROR_CODES.INVALID_CODE || code === AUTH_ERROR_CODES.INVALID_BACKUP_CODE) {
     await recordAccountEvent(deps.db, {
@@ -88,7 +87,7 @@ export async function afterTwoStepVerify(
     const until = await twoStepLockedUntil(deps, user.id)
     if (until) {
       await lockAccount(deps, { email: user.email, reason: 'two_step', lockedUntil: until })
-      throw lockedError(until)
+      return lockedResponse(until)
     }
     return
   }

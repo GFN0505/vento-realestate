@@ -15,7 +15,7 @@ export function testApp(options: { breachCheck?: BreachCheck | null; rateLimit?:
     breachCheck: options.breachCheck ?? null,
     rateLimit: options.rateLimit ?? false,
   })
-  const app = createApp({ db, mailer, auth })
+  const app = createApp({ db, mailer, auth, breachCheck: options.breachCheck ?? null })
   return { app, mailer, auth }
 }
 

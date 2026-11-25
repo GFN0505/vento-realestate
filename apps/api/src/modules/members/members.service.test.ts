@@ -132,14 +132,16 @@ describe('members', () => {
       const org = await createOrganization(tx)
       await expect(
         tx.transaction(async (inner) => {
+          // Check now instead of at commit, so the raw update is refused on the spot.
+          await inner.execute(sql`set constraints members_keep_an_owner immediate`)
           await inner
             .update(members)
             .set({ status: 'removed', removedAt: new Date() })
             .where(eq(members.id, org.ownerMemberId))
-          // Deferred trigger: checked at commit of this savepoint's outer statement.
-          await inner.execute(sql`set constraints all immediate`)
         }),
-      ).rejects.toThrow()
+      ).rejects.toMatchObject({
+        cause: { code: '23514', message: expect.stringMatching(/needs at least one owner/) },
+      })
     }))
 
   it('removes a member: status removed, their sessions here end, history stays, re-invite works', () =>
@@ -169,24 +171,73 @@ describe('members', () => {
       expect(again.sent).toBe(1)
     }))
 
-  it('resets two-step for a non-owner, alerts them and requires setup again', () =>
+  it('resets two-step: ends every session and blocks sign-in until a new password is set', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       const aisha = await createMember(tx, org, { role: 'finance' })
       await tx.insert(twoFactors).values({ userId: aisha.user.id, secret: 's', backupCodes: 'b' })
+      const elsewhere = await createOrganization(tx, { name: 'Lekki Partners Ltd' })
+      await createSession(tx, aisha.user, { activeOrganizationId: elsewhere.id })
       const admin = await createMember(tx, org, { role: 'admin', name: 'Kemi Admin' })
-      const { emails } = await resetMemberTwoStep(
+      const result = await resetMemberTwoStep(
         await contextFor(tx, admin.user, org),
         aisha.member.id,
       )
-      expect(emails[0]?.subject).toBe('Vento: your two-step sign-in was reset by Kemi Admin')
+      expect(result.resetPasswordFor).toBe(aisha.user.email)
+      expect(result.emails[0]?.subject).toBe('Vento: your two-step sign-in was reset by Kemi Admin')
+      expect(result.emails[0]?.text).toContain(
+        "set a new password with the link we've just emailed you",
+      )
       expect(await reloadUser(tx, aisha.user.id)).toMatchObject({
         twoFactorEnabled: false,
         twoStepSetupRequired: true,
+        passwordResetRequired: true,
       })
       expect(
         await tx.select().from(twoFactors).where(eq(twoFactors.userId, aisha.user.id)),
       ).toHaveLength(0)
+      // Sessions in every organization end, not just this one.
+      expect(
+        await tx.select().from(sessions).where(eq(sessions.userId, aisha.user.id)),
+      ).toHaveLength(0)
+    }))
+
+  it('emails the reset link after a two-step reset', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const aisha = await createMember(tx, org, { role: 'sales' })
+      const requests: unknown[] = []
+      const { client } = clientAs(tx, org.owner, {
+        authApi: { requestPasswordReset: async (input: never) => requests.push(input) },
+      })
+      await client.members.resetTwoStep({ memberId: aisha.member.id })
+      expect(requests).toEqual([
+        { body: { email: aisha.user.email, redirectTo: '/reset-password' } },
+      ])
+    }))
+
+  it('keeps a limited admin within their own entities when changing access', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const parkview = await createEntity(tx, org)
+      const victoria = await createEntity(tx, org, { name: 'Victoria Gardens Dev. Ltd' })
+      const admin = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+      const kunle = await createMember(tx, org, { role: 'project_manager' })
+      const ctx = await contextFor(tx, admin.user, org)
+      const change = (entityIds: string[] | null) =>
+        updateMemberAccess(ctx, {
+          memberId: kunle.member.id,
+          roleId: org.roleIds.get('project_manager') ?? '',
+          entityIds,
+        })
+      await expect(change(null)).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        data: { reason: 'entity_limit' },
+      })
+      await expect(change([parkview.id, victoria.id])).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(change([parkview.id])).resolves.toMatchObject({
+        member: { entities: [{ id: parkview.id, name: 'Parkview Residences SPV Ltd' }] },
+      })
     }))
 
   it("lets only owners reset an owner's two-step, and nobody their own", () =>

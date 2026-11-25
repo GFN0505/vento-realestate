@@ -6,12 +6,22 @@ import {
   resolveMembership,
   twoStepRequired,
 } from '@/access/context'
+import { userIdForResetToken } from '@/auth/security-store'
 import type { DbOrTx } from '@/db/client'
-import { entities, sessions, users, verifications } from '@/db/schema'
+import { entities, sessions, users } from '@/db/schema'
 import { summariseUserAgent } from '@/lib/client-ip'
 import { notFound } from '@/lib/errors'
 import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
+
+async function hasEntity(db: DbOrTx, organizationId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: entities.id })
+    .from(entities)
+    .where(eq(entities.organizationId, organizationId))
+    .limit(1)
+  return Boolean(row)
+}
 
 /** The single source of truth for the web's guards: who, where, and what to do next. */
 export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): Promise<Me> {
@@ -19,14 +29,14 @@ export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): P
   const required = twoStepRequired(user, membership?.member ?? null)
   let nextStep: NextStep = 'ready'
   if (!membership) nextStep = 'onboarding_organization'
-  else {
-    const [row] = await db
-      .select({ n: count() })
-      .from(entities)
-      .where(eq(entities.organizationId, membership.organizationId))
-    if ((row?.n ?? 0) === 0) nextStep = 'onboarding_entity'
-    else if (required && !user.twoFactorEnabled) nextStep = 'two_step_setup'
-  }
+  // Only an owner can finish setting the organization up; anyone invited before the first
+  // entity exists goes straight on to two-step or the app.
+  else if (
+    membership.member.roleKey === 'owner' &&
+    !(await hasEntity(db, membership.organizationId))
+  ) {
+    nextStep = 'onboarding_entity'
+  } else if (required && !user.twoFactorEnabled) nextStep = 'two_step_setup'
   return {
     user: {
       id: user.id,
@@ -57,19 +67,10 @@ export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): P
 
 /** The email a reset link belongs to, for the reset screen. Expired or used: not found. */
 export async function passwordResetInfo(db: DbOrTx, token: string): Promise<{ email: string }> {
-  // Better Auth stores the user id as text in `value`; look it up in two steps rather than casting.
-  const [verification] = await db
-    .select({ userId: verifications.value })
-    .from(verifications)
-    .where(
-      and(
-        eq(verifications.identifier, `reset-password:${token}`),
-        gt(verifications.expiresAt, new Date()),
-      ),
-    )
-  const userId = verification?.userId
-  if (!userId || !/^[0-9a-f-]{36}$/i.test(userId)) throw notFound()
-  const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId))
+  const userId = await userIdForResetToken(db, token)
+  const [user] = userId
+    ? await db.select({ email: users.email }).from(users).where(eq(users.id, userId))
+    : []
   if (!user) throw notFound()
   return user
 }

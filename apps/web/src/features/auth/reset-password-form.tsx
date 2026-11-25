@@ -63,11 +63,8 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
         password={form.watch('password')}
         serverIssues={issues}
         showReuseRule
+        showUnmetAsFailed={!!errors.password}
       />
-      <FieldError>
-        {errors.password?.message ??
-          (ruleFailed && serverError ? authErrorMessage(serverError) : null)}
-      </FieldError>
       <Field data-invalid={!!errors.confirm}>
         <FieldLabel htmlFor={ids.confirm}>Confirm new password</FieldLabel>
         <PasswordInput

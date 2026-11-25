@@ -12,6 +12,8 @@ export const forbiddenReason = z.enum([
   'own_access',
   'owner_only',
   'invitation_email_mismatch',
+  /** A granter limited to some entities can only give access within them. */
+  'entity_limit',
 ])
 export type ForbiddenReason = z.infer<typeof forbiddenReason>
 

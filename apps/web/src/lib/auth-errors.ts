@@ -109,6 +109,8 @@ export function authErrorMessage(error: AuthClientError, step: Step = 'general')
       return COPY.linkExpired
     case C.EMAIL_NOT_VERIFIED:
       return COPY.emailNotVerified
+    case C.PASSWORD_RESET_REQUIRED:
+      return AUTH_ERROR_MESSAGES.PASSWORD_RESET_REQUIRED
     case C.TERMS_NOT_ACCEPTED:
       return AUTH_ERROR_MESSAGES.TERMS_NOT_ACCEPTED
     case C.VERIFICATION_RESEND_LIMITED:
@@ -124,4 +126,52 @@ export function retryAfterSeconds(error: object): number | null {
   return 'retryAfterSeconds' in error && typeof error.retryAfterSeconds === 'number'
     ? error.retryAfterSeconds
     : null
+}
+
+/**
+ * A sign-in failure the screen can act on: wrong password and lockout carry a reset link,
+ * lockout and rate limits carry the moment the person can try again.
+ */
+export type AuthFailure = {
+  kind: 'wrong-password' | 'locked' | 'rate-limited' | 'other'
+  message: string
+  /** Epoch ms when trying again makes sense, or null. */
+  until: number | null
+  /** What was wrong too often: drives "Too many wrong passwords / codes". */
+  lockedBy: 'passwords' | 'codes'
+}
+
+const LOCK_FALLBACK_MS = 15 * 60_000
+const RATE_FALLBACK_MS = 60_000
+
+export function toAuthFailure(
+  error: AuthClientError,
+  step: Step,
+  retryAfter: number | null = null,
+): AuthFailure {
+  const lockedBy = step === 'sign-in' ? 'passwords' : 'codes'
+  const message = authErrorMessage(error, step)
+  if (isLocked(error)) {
+    const parsed = error.lockedUntil ? Date.parse(error.lockedUntil) : Number.NaN
+    const until = Number.isNaN(parsed) ? Date.now() + LOCK_FALLBACK_MS : parsed
+    return { kind: 'locked', message, until, lockedBy }
+  }
+  if (error.status === 429) {
+    const wait = retryAfter ?? retryAfterSeconds(error)
+    return {
+      kind: 'rate-limited',
+      message: COPY.tooManyRequests,
+      until: Date.now() + (wait ? wait * 1000 : RATE_FALLBACK_MS),
+      lockedBy,
+    }
+  }
+  if (message === COPY.wrongPassword)
+    return { kind: 'wrong-password', message, until: null, lockedBy }
+  return { kind: 'other', message, until: null, lockedBy }
+}
+
+/** Seconds from an `X-Retry-After` (or `Retry-After`) header, if it holds a number. */
+export function retryAfterHeader(headers: Headers): number | null {
+  const value = Number(headers.get('X-Retry-After') ?? headers.get('Retry-After'))
+  return Number.isFinite(value) && value > 0 ? Math.ceil(value) : null
 }

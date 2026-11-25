@@ -99,6 +99,7 @@ describe('audit trail', () => {
   it('keeps passwords, codes and full IPs out of every event written by the flows', async () => {
     const rows = await db.select().from(auditEvents)
     const text = JSON.stringify(rows)
-    expect(text).not.toMatch(/Parkview-gate-2026|"password"|"secret"|"backupCodes"/)
+    // Keys, not values: a lockout's reason is legitimately the word "password".
+    expect(text).not.toMatch(/Parkview-gate-2026|"(password|secret|token|code|backupCodes)":/)
   })
 })

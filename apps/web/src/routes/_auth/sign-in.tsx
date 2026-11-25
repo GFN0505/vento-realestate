@@ -41,6 +41,7 @@ function SignInPage() {
         <TwoStepCheck
           email={twoStepFor}
           onSignedIn={finish}
+          onBack={() => setTwoStepFor(null)}
           onRestart={(message) => {
             setTwoStepFor(null)
             toast.error(message)

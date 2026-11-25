@@ -96,6 +96,29 @@ describe('sign up', () => {
     expect(res.json.retryAfterSeconds).toBeGreaterThan(0)
   })
 
+  it('limits resends for unknown emails the same way, so the answer reveals nothing', async () => {
+    const { app } = testApp()
+    const nobody = uniqueEmail('nobody')
+    expect((await browser(app).auth('/send-verification-email', { email: nobody })).status).toBe(
+      200,
+    )
+    const again = await browser(app).auth('/send-verification-email', { email: nobody })
+    expect(again.status).toBe(429)
+    expect(again.json.code).toBe('VERIFICATION_RESEND_LIMITED')
+  })
+
+  it('counts a resend once, so a real resend still goes out after a minute', async () => {
+    const { app, mailer } = testApp()
+    const email = uniqueEmail()
+    await signUp(browser(app), email)
+    await db
+      .update(authAttempts)
+      .set({ createdAt: sql`now() - interval '2 minutes'` })
+      .where(eq(authAttempts.subject, email))
+    expect((await browser(app).auth('/send-verification-email', { email })).status).toBe(200)
+    expect(mailer.to(email).filter((m) => m.tag === 'verify_email')).toHaveLength(2)
+  })
+
   it('stops after 5 verification emails in an hour', async () => {
     const { app } = testApp()
     const email = uniqueEmail()

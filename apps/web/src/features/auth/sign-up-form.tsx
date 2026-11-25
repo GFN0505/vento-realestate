@@ -124,11 +124,8 @@ export function SignUpForm() {
           id={`${ids.password}-rules`}
           password={password}
           serverIssues={passwordIssues(serverError)}
+          showUnmetAsFailed={!!errors.password}
         />
-        <FieldError>
-          {errors.password?.message ??
-            (isPasswordError && serverError ? authErrorMessage(serverError) : null)}
-        </FieldError>
       </Field>
       <TermsCheckbox
         id={ids.terms}

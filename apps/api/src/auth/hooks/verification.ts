@@ -24,10 +24,16 @@ export async function verificationRetryAfter(deps: AuthDeps, email: string): Pro
   return 0
 }
 
-/** The Resend button: once a minute, 5 times an hour (spec). */
-export async function assertCanResendVerification(deps: AuthDeps, email: unknown): Promise<void> {
-  if (typeof email !== 'string') return
-  const retryAfterSeconds = await verificationRetryAfter(deps, email.toLowerCase())
+/**
+ * The Resend button: once a minute, 5 times an hour (spec). Every request counts, for unknown,
+ * verified and unverified emails alike, so a 429 never hints whether an account exists.
+ */
+export async function assertCanResendVerification(
+  deps: AuthDeps,
+  email: string | null,
+): Promise<void> {
+  if (!email) return
+  const retryAfterSeconds = await verificationRetryAfter(deps, email)
   if (retryAfterSeconds > 0) {
     throw authError(
       'TOO_MANY_REQUESTS',
@@ -36,6 +42,8 @@ export async function assertCanResendVerification(deps: AuthDeps, email: unknown
       { retryAfterSeconds },
     )
   }
+  await addAttempt(deps.db, 'verification_email', email)
+  requestScope().auth.verificationCounted = true
 }
 
 /** One email carries both the link and the 6-digit code. */
@@ -44,14 +52,16 @@ export async function sendVerificationEmail(
   data: { user: { email: string; name: string }; url: string },
 ): Promise<void> {
   const email = data.user.email.toLowerCase()
-  // Sign-in by an unverified person also sends; the same limit applies there, silently.
-  if ((await verificationRetryAfter(deps, email)) > 0) {
-    logger.info('Verification email not sent: resend limit', {
-      requestId: requestScope().requestId,
-    })
-    return
+  if (!requestScope().auth.verificationCounted) {
+    // Sign-up, and sign-in by an unverified person, also send; the same limit applies, silently.
+    if ((await verificationRetryAfter(deps, email)) > 0) {
+      logger.info('Verification email not sent: resend limit', {
+        requestId: requestScope().requestId,
+      })
+      return
+    }
+    await addAttempt(deps.db, 'verification_email', email)
   }
-  await addAttempt(deps.db, 'verification_email', email)
   const code = await deps
     .api()
     .createVerificationOTP({ body: { email, type: 'email-verification' } })

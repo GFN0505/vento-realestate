@@ -19,7 +19,11 @@ export const Route = createFileRoute('/_auth/accept-invitation/$token')({
       context.queryClient
         .fetchQuery(orpc.invitations.preview.queryOptions({ input: { token: params.token } }))
         .catch((error: unknown) => {
-          if (error instanceof ORPCError && error.code === 'NOT_FOUND') return null
+          // A mangled or truncated link is "doesn't work", same as an unknown one. Only a
+          // failed connection reaches the "Couldn't reach Vento" screen.
+          if (error instanceof ORPCError && ['NOT_FOUND', 'BAD_REQUEST'].includes(error.code)) {
+            return null
+          }
           throw error
         }),
       context.queryClient.fetchQuery(meQuery()).catch(() => null),
@@ -81,6 +85,7 @@ function AcceptInvitationPage() {
           token={token}
           preview={preview}
           onAccepted={accepted}
+          onSignInNeeded={() => void navigate({ to: '/sign-in', search: { email: preview.email } })}
           onHasAccount={() =>
             void navigate({
               to: '/sign-in',

@@ -40,3 +40,28 @@ export async function enforceSessionPolicy(
   }
   return 'ok'
 }
+
+/** The fields of a Better Auth session row the policy needs (dates may arrive as strings). */
+export type BetterAuthSessionFields = {
+  id: string
+  persistent?: boolean | null
+  createdAt: Date | string
+  lastActiveAt?: Date | string | null
+}
+
+/** Shared by the /api/auth mount and the `authed` middleware. */
+export function applySessionPolicy(
+  db: DbOrTx,
+  session: BetterAuthSessionFields,
+): Promise<'ok' | 'expired'> {
+  return enforceSessionPolicy(db, toPolicySession(session))
+}
+
+export function toPolicySession(s: BetterAuthSessionFields): PolicySession {
+  return {
+    id: s.id,
+    persistent: Boolean(s.persistent),
+    createdAt: new Date(s.createdAt),
+    lastActiveAt: new Date(s.lastActiveAt ?? s.createdAt),
+  }
+}

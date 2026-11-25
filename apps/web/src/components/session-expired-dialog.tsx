@@ -15,7 +15,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldLabel } from '@/components/ui/field'
+import { AuthFailureText } from '@/features/auth/auth-failure-text'
 import { TwoStepCheck } from '@/features/auth/two-step-check'
+import { useAuthFailure } from '@/features/auth/use-auth-failure'
+import { formatCountdown } from '@/features/auth/use-countdown'
 import { signInWithPassword } from '@/features/auth/use-sign-in'
 import { orpc } from '@/lib/orpc'
 import { sessionExpired, useSessionExpired } from '@/lib/session-expired'
@@ -40,6 +43,7 @@ function ExpiredDialog({ email }: { email: string }) {
   const [stage, setStage] = useState<'password' | 'code'>('password')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const { failure, setFailure, secondsLeft, waiting } = useAuthFailure()
   const [pending, setPending] = useState(false)
 
   function done() {
@@ -50,13 +54,15 @@ function ExpiredDialog({ email }: { email: string }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (waiting) return
     if (!password) return setError('Enter your password.')
     setPending(true)
     setError(null)
+    setFailure(null)
     const result = await signInWithPassword({ email, password, keepSignedIn: false })
     setPending(false)
     setPassword('')
-    if (result.status === 'error') return setError(result.message)
+    if (result.status === 'error') return setFailure(result.failure)
     if (result.status === 'two-step') return setStage('code')
     if (result.status === 'signed-in') return done()
   }
@@ -78,17 +84,32 @@ function ExpiredDialog({ email }: { email: string }) {
         <DialogHeader>
           <DialogTitle>Your session has ended</DialogTitle>
           <DialogDescription>
-            {stage === 'password'
-              ? 'For security, Vento signs you out after 30 minutes without activity.'
-              : `Enter the 6-digit code from your authenticator app for ${email}.`}
+            {stage === 'password' ? (
+              'For security, Vento signs you out after 30 minutes without activity.'
+            ) : (
+              <>
+                Enter the 6-digit code from your authenticator app for{' '}
+                <span className="[overflow-wrap:anywhere]">{email}</span>.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         {stage === 'password' ? (
           <form onSubmit={submit} noValidate>
             <DialogBody>
-              {error && <FormAlert variant="error">{error}</FormAlert>}
+              {(failure || error) && (
+                <FormAlert variant="error">
+                  {failure ? (
+                    <AuthFailureText failure={failure} secondsLeft={secondsLeft} />
+                  ) : (
+                    error
+                  )}
+                </FormAlert>
+              )}
               <Field>
-                <FieldLabel htmlFor={id}>Password for {email}</FieldLabel>
+                <FieldLabel htmlFor={id} className="[overflow-wrap:anywhere]">
+                  Password for {email}
+                </FieldLabel>
                 <input type="email" autoComplete="username" value={email} readOnly hidden />
                 <PasswordInput
                   id={id}
@@ -106,8 +127,12 @@ function ExpiredDialog({ email }: { email: string }) {
               <Button type="button" variant="outline" onClick={someoneElse}>
                 Sign in as someone else
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? 'Signing in…' : 'Sign in again'}
+              <Button type="submit" disabled={pending || waiting}>
+                {waiting
+                  ? `Try again in ${formatCountdown(secondsLeft)}`
+                  : pending
+                    ? 'Signing in…'
+                    : 'Sign in again'}
               </Button>
             </DialogFooter>
           </form>

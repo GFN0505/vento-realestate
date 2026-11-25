@@ -21,7 +21,7 @@ export function AuthLayout({ children, back, wide = false }: Props) {
   return (
     <div className="min-h-dvh bg-card lg:grid lg:grid-cols-[520px_1fr]">
       <BrandPanel />
-      <main className="flex min-h-dvh flex-col gap-5 px-6 pt-4 pb-8 lg:items-center lg:justify-center lg:p-12">
+      <main className="flex min-h-dvh flex-col gap-5 px-6 pt-4 pb-8 lg:items-center lg:justify-start lg:p-12 lg:pt-[14vh]">
         <div className="flex min-h-10 items-center gap-2.5 lg:hidden">
           {back && (
             <button
@@ -95,7 +95,7 @@ export function AuthHeader({ title, children }: { title: string; children?: Reac
 /** Small print under the main button: links to the neighbouring screens. */
 export function AuthFootnote({ children }: { children: ReactNode }) {
   return (
-    <p className="text-muted-foreground text-xs leading-normal [&_a]:text-link [&_a:hover]:text-link-hover [&_a]:underline-offset-4 [&_a:hover]:underline [&_button]:text-link [&_button:hover]:underline">
+    <p className="text-muted-foreground text-xs leading-normal [&_a]:text-link [&_a:hover]:text-link-hover [&_a]:underline-offset-4 [&_a:hover]:underline [&_button]:text-link [&_button:hover]:underline max-lg:[&_a]:inline-flex max-lg:[&_a]:min-h-11 max-lg:[&_a]:items-center max-lg:[&_button]:inline-flex max-lg:[&_button]:min-h-11 max-lg:[&_button]:items-center">
       {children}
     </p>
   )

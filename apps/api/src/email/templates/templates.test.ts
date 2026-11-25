@@ -49,7 +49,7 @@ describe('email templates', () => {
   })
 
   it('uses the spec subjects for security alerts', () => {
-    expect(twoStepResetAlert({ byName: 'Olumide Bankole', signInUrl: 'x' }).subject).toBe(
+    expect(twoStepResetAlert({ byName: 'Olumide Bankole' }).subject).toBe(
       'Vento: your two-step sign-in was reset by Olumide Bankole',
     )
     expect(

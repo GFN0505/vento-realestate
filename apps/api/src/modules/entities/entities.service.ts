@@ -8,7 +8,7 @@ import {
 } from '@vento/shared'
 import { and, asc, count, eq, ne, sql } from 'drizzle-orm'
 import type { z } from 'zod'
-import type { ServiceContext } from '@/access/context'
+import { actorOf, type ServiceContext } from '@/access/context'
 import { entityScope } from '@/access/entity-scope'
 import type { DbOrTx } from '@/db/client'
 import { entities } from '@/db/schema'
@@ -34,8 +34,6 @@ export function toEntity(row: EntityRow): Entity {
     updatedAt: row.updatedAt.toISOString(),
   }
 }
-
-const actorOf = (ctx: ServiceContext) => ({ userId: ctx.user.id, name: ctx.user.name })
 
 /** Org filter plus the member's entity limit: anything else is "not found". */
 function visible(ctx: ServiceContext) {

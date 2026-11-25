@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { auditEvents, sessions, signInLocks, users } from '@/db/schema'
-import { browser, testApp, totpFromUri } from '@/test/auth-client'
+import { browser, linkFromEmail, testApp, totpFromUri } from '@/test/auth-client'
 import { uniqueEmail } from '@/test/db'
 import { onboard, setUpTwoStep, signIn, signUpVerified } from '@/test/flows'
 
@@ -181,5 +181,76 @@ describe('lockout', () => {
     expect((await signIn(browser(app), email, 'Wrong-password-99')).json.code).toBe(
       'INVALID_EMAIL_OR_PASSWORD',
     )
+  })
+})
+
+describe('after an owner or admin resets two-step', () => {
+  async function resetPerson() {
+    const { app, mailer } = testApp()
+    const email = uniqueEmail()
+    await signUpVerified(browser(app), mailer, email)
+    await db.update(users).set({ passwordResetRequired: true }).where(eq(users.email, email))
+    return { app, mailer, email }
+  }
+
+  it('refuses the right password until a new one is set, and says why', async () => {
+    const { app, email } = await resetPerson()
+    const b = browser(app)
+    const res = await signIn(b, email)
+    expect(res.status).toBe(403)
+    expect(res.json).toMatchObject({
+      code: 'PASSWORD_RESET_REQUIRED',
+      message:
+        'Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in.',
+    })
+    expect((await b.rpc('account/me')).status).toBe(401)
+  })
+
+  it("gives a wrong password the usual answer, so the reset isn't revealed", async () => {
+    const { app, email } = await resetPerson()
+    expect((await signIn(browser(app), email, 'Wrong-password-99')).json.code).toBe(
+      'INVALID_EMAIL_OR_PASSWORD',
+    )
+  })
+
+  it('lets them in once they set a new password from the emailed link', async () => {
+    const { app, mailer, auth, email } = { ...(await resetPerson()), auth: null }
+    void auth
+    await browser(app).auth('/request-password-reset', { email, redirectTo: '/reset-password' })
+    const link = new URL(linkFromEmail(mailer, email, 'reset_password'))
+    const landed = await app.request(`${link.pathname}${link.search}`)
+    const token = new URL(landed.headers.get('location') ?? '', 'http://x').searchParams.get(
+      'token',
+    )
+    await browser(app).auth('/reset-password', { token, newPassword: 'Lekki-pearl-gardens-4' })
+    expect((await signIn(browser(app), email, 'Lekki-pearl-gardens-4')).status).toBe(200)
+  })
+
+  it('can send the reset link from the server, as the reset procedure does', async () => {
+    const { auth, mailer } = testApp()
+    const { app } = testApp()
+    const email = uniqueEmail()
+    await signUpVerified(browser(app), mailer, email).catch(() => {})
+    await auth.api.requestPasswordReset({ body: { email, redirectTo: '/reset-password' } })
+    expect(linkFromEmail(mailer, email, 'reset_password')).toContain('/api/auth/reset-password/')
+  })
+})
+
+describe('changing your password', () => {
+  it('always signs out your other devices, even if the client asks not to', async () => {
+    const { app, mailer } = testApp()
+    const email = uniqueEmail()
+    await signUpVerified(browser(app), mailer, email)
+    const here = browser(app)
+    const other = browser(app)
+    await signIn(here, email)
+    await signIn(other, email)
+    const res = await here.auth('/change-password', {
+      currentPassword: 'Parkview-gate-2026',
+      newPassword: 'Lekki-pearl-gardens-4',
+      revokeOtherSessions: false,
+    })
+    expect(res.status).toBe(200)
+    expect((await other.rpc('account/me')).status).toBe(401)
   })
 })

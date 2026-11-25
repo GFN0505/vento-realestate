@@ -14,6 +14,8 @@ export const AUTH_ERROR_CODES = {
   ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
   /** 429. Body also has `retryAfterSeconds`. */
   VERIFICATION_RESEND_LIMITED: 'VERIFICATION_RESEND_LIMITED',
+  /** 403 on /sign-in/email after an owner or admin reset two-step: set a new password first. */
+  PASSWORD_RESET_REQUIRED: 'PASSWORD_RESET_REQUIRED',
   /** 403 on /two-factor/disable when a role requires two-step. */
   TWO_STEP_REQUIRED_BY_ROLE: 'TWO_STEP_REQUIRED_BY_ROLE',
   // Better Auth's, listed so the web can map them.
@@ -47,7 +49,8 @@ export const AUTH_ERROR_MESSAGES: Record<
   | 'TERMS_NOT_ACCEPTED'
   | 'INVALID_EMAIL_OR_PASSWORD'
   | 'INVALID_CODE'
-  | 'TWO_STEP_REQUIRED_BY_ROLE',
+  | 'TWO_STEP_REQUIRED_BY_ROLE'
+  | 'PASSWORD_RESET_REQUIRED',
   string
 > = {
   PASSWORD_TOO_SHORT: 'Use at least 12 characters',
@@ -59,4 +62,6 @@ export const AUTH_ERROR_MESSAGES: Record<
   INVALID_EMAIL_OR_PASSWORD: "That email and password don't match.",
   INVALID_CODE: "That code didn't match. Codes change every 30 seconds, so use the newest one.",
   TWO_STEP_REQUIRED_BY_ROLE: 'Your role requires two-step sign-in, so it stays on.',
+  PASSWORD_RESET_REQUIRED:
+    'Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in.',
 }

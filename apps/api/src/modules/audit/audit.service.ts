@@ -68,15 +68,13 @@ export async function recordAccountEvent(
   input: Omit<AuditInput, 'organizationId' | 'target'> & {
     userId: string
     target?: AuditTarget
-    /** Only these organizations (e.g. a reset done from one organization's settings). */
-    organizationIds?: string[]
   },
 ): Promise<number> {
   const memberships = await db
     .select({ organizationId: members.organizationId })
     .from(members)
     .where(and(eq(members.userId, input.userId), eq(members.status, 'active')))
-  const organizationIds = input.organizationIds ?? memberships.map((m) => m.organizationId)
+  const organizationIds = memberships.map((m) => m.organizationId)
   if (organizationIds.length === 0) {
     logger.info('Account event before any organization', {
       action: input.action,

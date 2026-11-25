@@ -120,6 +120,57 @@ describe('invitations', () => {
       expect((row?.expiresAt.getTime() ?? 0) - Date.now()).toBeGreaterThan(6.9 * DAY)
     }))
 
+  it('keeps a limited admin within their own entities when inviting', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const parkview = await createEntity(tx, org)
+      const victoria = await createEntity(tx, org, { name: 'Victoria Gardens Dev. Ltd' })
+      const admin = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+      const ctx = await contextFor(tx, admin.user, org)
+      const invite = (entityIds: string[] | null) =>
+        createInvitations(ctx, {
+          items: [{ email: uniqueEmail(), roleId: org.roleIds.get('sales') ?? '' }],
+          entityIds,
+        })
+      await expect(invite(null)).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        message:
+          'You can only give access to the entities you can see. Choose them instead of all entities.',
+        data: { reason: 'entity_limit' },
+      })
+      await expect(invite([victoria.id])).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(invite([parkview.id])).resolves.toMatchObject({ sent: 1 })
+    }))
+
+  it('refuses to resend an old invitation while a newer one is live', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const email = uniqueEmail()
+      const old = await createInvitation(tx, org, { role: 'sales', email, status: 'expired' })
+      await createInvitation(tx, org, { role: 'sales', email })
+      await expect(
+        resendInvitation(await contextFor(tx, org.owner, org), old.invitation.id),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: `${email} already has an invitation. Resend it instead.`,
+        data: { reason: 'already_invited' },
+      })
+    }))
+
+  it('resends an old invitation when the newer one has lapsed too', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const email = uniqueEmail()
+      const old = await createInvitation(tx, org, { role: 'sales', email, status: 'expired' })
+      await createInvitation(tx, org, {
+        role: 'sales',
+        email,
+        expiresAt: new Date(Date.now() - DAY),
+      })
+      const result = await resendInvitation(await contextFor(tx, org.owner, org), old.invitation.id)
+      expect(result.notice).toBe(`Invitation sent again to ${email}`)
+    }))
+
   it('shows a withdrawn invitation as withdrawn', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
@@ -241,4 +292,74 @@ describe('accepting as a new person (HTTP)', () => {
       data: { reason: 'PASSWORD_TOO_COMMON' },
     })
   })
+})
+
+describe('inviting the same email at the same moment', () => {
+  it('answers already_invited to the second request, not a server error', async () => {
+    const org = await createOrganization(db, { name: `Race Test ${Date.now()}` })
+    const email = uniqueEmail()
+    const roleId = org.roleIds.get('sales') ?? ''
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // The first invite is written but not yet committed when the second one checks.
+    const first = db.transaction(async (tx) => {
+      await createInvitations(await contextFor(tx, org.owner, org), {
+        items: [{ email, roleId }],
+        entityIds: null,
+      })
+      await held
+    })
+    await new Promise((r) => setTimeout(r, 100))
+    const second = createInvitations(await contextFor(db, org.owner, org), {
+      items: [{ email, roleId }],
+      entityIds: null,
+    })
+    await new Promise((r) => setTimeout(r, 100))
+    release()
+    await first
+    await expect(second).rejects.toMatchObject({
+      code: 'CONFLICT',
+      data: { reason: 'already_invited' },
+    })
+  })
+})
+
+describe('accepting as a new person: edge cases', () => {
+  it('uses the breached-password check the app was built with', async () => {
+    const { app } = testApp({ breachCheck: async () => true })
+    const org = await createOrganization(db, { name: `Breach Test ${Date.now()}` })
+    const { token } = await createInvitation(db, org, { role: 'viewer' })
+    const res = await browser(app).rpc('invitations/acceptAsNewUser', {
+      token,
+      name: 'Aisha Bello',
+      password: TEST_PASSWORD,
+      termsVersion: CURRENT_TERMS_VERSION,
+    })
+    expect(res.body).toMatchObject({ data: { reason: 'PASSWORD_BREACHED' } })
+  })
+
+  it('sends them to sign in when the automatic sign-in fails after joining', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      await createEntity(tx, org)
+      const { token, invitation } = await createInvitation(tx, org, { role: 'viewer' })
+      const { client } = clientAs(tx, null, {
+        authApi: {
+          signInEmail: async () => {
+            throw new Error('database blip')
+          },
+        },
+      })
+      const result = await client.invitations.acceptAsNewUser({
+        token,
+        name: 'Aisha Bello',
+        password: TEST_PASSWORD,
+        termsVersion: CURRENT_TERMS_VERSION,
+      })
+      expect(result).toEqual({ nextStep: 'sign_in' })
+      const [joined] = await tx.select().from(users).where(eq(users.email, invitation.email))
+      expect(joined).toBeDefined()
+    }))
 })

@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm'
 import {
-  bigint,
   boolean,
   check,
   index,
@@ -31,6 +30,11 @@ export const users = pgTable(
     termsAcceptedAt: timestamptz(),
     lastActiveOrganizationId: uuid().references(() => organizations.id, { onDelete: 'set null' }),
     twoStepSetupRequired: boolean().notNull().default(false),
+    /**
+     * Set when someone else resets this person's two-step: sign-in is refused until they set a
+     * new password through the emailed link, so a reset alone never opens the account.
+     */
+    passwordResetRequired: boolean().notNull().default(false),
     ...timestamps,
   },
   (t) => [
@@ -117,16 +121,4 @@ export const twoFactors = pgTable(
     uniqueIndex('two_factors_user_id_unique').on(t.userId),
     index('two_factors_secret_idx').on(t.secret),
   ],
-)
-
-export const rateLimits = pgTable(
-  'rate_limits',
-  {
-    id: id(),
-    key: text().notNull(),
-    count: integer().notNull(),
-    lastRequest: bigint({ mode: 'number' }).notNull(),
-    ...timestamps,
-  },
-  (t) => [uniqueIndex('rate_limits_key_unique').on(t.key)],
 )

@@ -1,8 +1,7 @@
 import { publicRateLimit, requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
-import { checkPwnedPasswords } from '@/auth/password-policy'
 import { sendAll } from '@/email/mailer'
-import { env } from '@/env'
+import { logger } from '@/lib/logger'
 import { authed, member, os } from '@/orpc'
 import {
   acceptInvitation,
@@ -45,15 +44,28 @@ export const invitationsRouter = {
   acceptAsNewUser: os.invitations.acceptAsNewUser
     .use(publicRateLimit('invitationAccept', 10))
     .handler(async ({ context, input }) => {
-      const breachCheck = env.PWNED_PASSWORDS_CHECK === 'on' ? checkPwnedPasswords : null
-      const { email, nextStep } = await acceptInvitationAsNewUser(context.db, input, breachCheck)
+      const { email, nextStep } = await acceptInvitationAsNewUser(
+        context.db,
+        input,
+        context.breachCheck,
+      )
       // Sign in through Better Auth so the session, cookie and audit go through one path.
-      const { headers } = await context.auth.api.signInEmail({
-        body: { email, password: input.password, rememberMe: false },
-        headers: context.headers,
-        returnHeaders: true,
-      })
-      for (const cookie of headers.getSetCookie()) context.resHeaders?.append('set-cookie', cookie)
+      try {
+        const { headers } = await context.auth.api.signInEmail({
+          body: { email, password: input.password, rememberMe: false },
+          headers: context.headers,
+          returnHeaders: true,
+        })
+        for (const cookie of headers.getSetCookie())
+          context.resHeaders?.append('set-cookie', cookie)
+      } catch (error) {
+        // The account and membership are saved; don't report failure, send them to sign in.
+        logger.error('Sign-in after accepting an invitation failed', {
+          requestId: context.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        return { nextStep: 'sign_in' as const }
+      }
       return { nextStep }
     }),
   decline: os.invitations.decline

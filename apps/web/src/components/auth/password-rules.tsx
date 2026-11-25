@@ -12,15 +12,24 @@ type Props = {
   serverIssues?: ServerPasswordIssues
   /** Reset adds "Different from your last 5 passwords". */
   showReuseRule?: boolean
+  /** After a submit, rules still unmet turn rose instead of staying grey. */
+  showUnmetAsFailed?: boolean
   id?: string
 }
 
 /** Live checklist under a password field (DSAdditions → Password rules). */
-export function PasswordRules({ password, serverIssues = {}, showReuseRule = false, id }: Props) {
+export function PasswordRules({
+  password,
+  serverIssues = {},
+  showReuseRule = false,
+  showUnmetAsFailed = false,
+  id,
+}: Props) {
   const local = checkPasswordLocally(password)
+  const unmet: RuleState = showUnmetAsFailed ? 'failed' : 'pending'
   const rules: { label: string; state: RuleState }[] = [
-    { label: PASSWORD_RULE_LABELS.length, state: local.length ? 'met' : 'pending' },
-    { label: PASSWORD_RULE_LABELS.number, state: local.number ? 'met' : 'pending' },
+    { label: PASSWORD_RULE_LABELS.length, state: local.length ? 'met' : unmet },
+    { label: PASSWORD_RULE_LABELS.number, state: local.number ? 'met' : unmet },
     { label: PASSWORD_RULE_LABELS.notCommon, state: serverIssues.common ? 'failed' : 'pending' },
   ]
   if (showReuseRule) {
