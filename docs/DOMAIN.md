@@ -19,7 +19,7 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Land parcel** | A piece of land owned, being acquired, or under JV. | Location (state, LGA, area), size (hectares/plots/m²), coordinates/polygon, acquisition cost, status `prospect → under_acquisition → acquired → titled → in_development → sold_out`. |
 | **Title document** | Evidence of title: `c_of_o`, `r_of_o`, `governors_consent`, `deed_of_assignment`, `excision_gazette`, `survey_plan`, `family_receipt`, `land_purchase_agreement`. | Versioned files with number, issue date, issuing authority. |
 | **Title stage** | Progress of title perfection for a parcel. | Each stage has status `not_started → in_progress → submitted → granted / rejected`, dates and documents. |
-| **Encumbrance** | A claim on the land: `mortgage`, `caveat`, `court_order`, `lien`, `family_dispute`. | Active/cleared, with alerts. A parcel with an active encumbrance shows a warning everywhere it's used. |
+| **Encumbrance** | A claim on the land: `mortgage`, `caveat`, `court_order`, `lien`, `family_dispute`. | Active/cleared, with alerts. A parcel with an active encumbrance is flagged everywhere it's used and its units are `blocked` for sale. Clearing needs evidence and two approvals. |
 | **Survey** | Survey job by a SURCON-registered surveyor. | Surveyor contact, plan number, date, documents. |
 | **Valuation** | Value of a parcel at a date by a registered valuer (ESVARBON/NIESV). | History kept; feeds the land bank tracker. |
 
@@ -103,7 +103,7 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Audit event** | Immutable record of who did what, when, with before/after values. | Append-only, organization-scoped, shown on every record's timeline. |
 | **Import job** | An Excel/CSV import: file, column mapping, validation results, rows created. | Status `uploaded → mapped → validated → imported → undone`. Undo removes exactly the rows it created if nothing depends on them yet. |
 | **Site plan / layout** | The uploaded estate layout image or PDF with unit shapes placed on it. | Each unit has an optional polygon on the layout. |
-| **Realtor** | External agent or broker contact with portal access. | Leads they register are protected from duplicates for a configurable period. |
+| **Realtor** | External agent or broker contact with portal access. | Leads they register are checked for duplicates; a duplicate can still be submitted and a person at the developer decides ownership. |
 | **Digest** | A scheduled summary message to a member. | Channel (WhatsApp, email), time, content by role. |
 | **Feature flag / add-on** | Whether a capability is on for an organization. | AI features are add-ons, off by default. |
 

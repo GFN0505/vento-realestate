@@ -74,13 +74,22 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-AI-04 | Turn on AI and set a budget | Owner | [11-ai-add-on](11-ai-add-on.md) | draft |
 
 ## Assumptions to confirm
-Writing these journeys meant picking sensible defaults the product docs don't settle yet. Each is a setting or a rule, not hard-coded, but the default needs the owner's yes:
+Writing these journeys meant picking defaults the product docs don't settle. The approved designs settled some of them (now written into the journeys and `docs/design/DESIGN-NOTES.md`). Each is a setting or rule, not hard-coded.
+
+**Settled by the designs**
+- An active encumbrance **blocks** its units in Sales; clearing it needs two approvals.
+- Realtor duplicates aren't blocked; **a person decides ownership** (no automatic protection period).
+- Two-step is required for **finance and MD** roles; five wrong codes lock sign-in for 15 minutes.
+- Buyers sign in to the portal with a **one-time code**, no password.
+- Excel import **undo lasts 7 days**.
+- Cash above **₦5m** is held for AML review; material requests under the PM's **₦5m** limit skip approval.
+
+**Still need the owner's yes**
 - Allocation letter is offered once a subscription is **50% paid**.
-- Realtor lead protection lasts **90 days**.
-- Invitations expire after **7 days**. Two-factor is required for `owner` and `finance` roles.
-- An active encumbrance **warns but doesn't block** a new subscription (the sale must acknowledge it).
+- Invitations expire after **7 days**.
 - Overpayments are held as **credit** on the subscription and applied to the next instalment.
 - Handover before full payment is **blocked unless approved**.
 - Automatic reminders: **3 days before, on the day, 7 and 30 days after** the due date.
 - Resolved maintenance requests auto-close after **7 days**.
 - Permit expiry alerts at **60, 30 and 7 days**.
+- The two ₦5m thresholds above are design defaults; the AML one must match current SCUML/NFIU rules.

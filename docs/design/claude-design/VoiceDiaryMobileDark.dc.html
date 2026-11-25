@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vento (dark) — Voice site diary (mobile)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.v{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.v *{box-sizing:border-box}
+.v-h{font-family:Poppins,system-ui,sans-serif}
+.v-n{font-variant-numeric:tabular-nums}
+.v-b{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
+.v-b:hover{opacity:.86}
+.v-b:focus-visible,.v a:focus-visible{outline:2px solid #7677FB;outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.v-menu{position:absolute;top:44px;border-radius:10px;box-shadow:0 12px 32px rgba(10,12,30,.16);overflow:hidden;z-index:30}
+a{color:#5B5CE0}a:hover{color:#4546C9}
+</style>
+</helmet>
+<div class="v" style="width:390px;height:844px;display:flex;flex-direction:column;background:{{t.bg}};color:{{t.text}};position:relative;overflow:hidden">
+
+  <header style="flex:0 0 auto;padding:12px 18px;background:{{t.surface}};border-bottom:1px solid {{t.border}};display:flex;align-items:center;gap:10px">
+    <a href="HomePMMobileDark.dc.html" aria-label="Back" style="width:40px;height:40px;margin-left:-10px;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="{{t.text}}" stroke-width="2" stroke-linecap="round"></path></svg></a>
+    <div style="flex:1"><div class="v-h" style="font-size:17px;font-weight:600;display:flex;gap:8px;align-items:center">Diary by voice <span title="AI suggestion" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:999px;border:1px solid {{t.aiBorder}};background:{{t.aiBg}};color:{{t.aiText}};font-size:10px;font-weight:700;letter-spacing:.05em;line-height:16px;vertical-align:middle;white-space:nowrap"><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor"></path></svg>AI</span></div><div style="font-size:12px;color:{{t.muted}}">Victoria Gardens Ph 2 · Block C · offline OK</div></div>
+  </header>
+  <div style="flex:1;overflow:auto;padding:16px 18px 120px;display:flex;flex-direction:column;gap:16px">
+    <sc-if value="{{isIdle}}" hint-placeholder-val="{{false}}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding-top:60px">
+        <span style="font-size:15px;font-weight:600">Hold the button and say what happened today</span>
+        <span style="font-size:13px;color:{{t.muted}};max-width:280px;line-height:1.5">Work done, how many workers, any delays. English, Pidgin or Yoruba is fine. You'll check everything before it saves.</span>
+        <button class="v-b" onClick="{{rec}}" aria-label="Hold to record" style="width:112px;height:112px;border-radius:50%;background:#5B5CE0;box-shadow:0 0 0 10px {{t.aiBg}};display:flex;align-items:center;justify-content:center;margin-top:20px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" stroke="#fff" stroke-width="2"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="#fff" stroke-width="2" stroke-linecap="round"></path></svg></button>
+        <a href="SiteDiaryMobileDark.dc.html" style="font-size:13px;font-weight:600;text-decoration:none;margin-top:12px">Type it instead</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{isRec}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:70px">
+        <span class="v-n" aria-live="polite" style="font-size:28px;font-weight:600">0:34</span>
+        <div aria-hidden="true" style="display:flex;gap:3px;align-items:center;height:60px"><sc-for list="{{wave}}" as="w" hint-placeholder-count="28"><span style="width:4px;height:{{w}}px;border-radius:2px;background:#5B5CE0"></span></sc-for></div>
+        <span style="font-size:13px;color:{{t.muted}}">Recording · release to stop</span>
+        <button class="v-b" onClick="{{stop}}" aria-label="Stop recording" style="width:112px;height:112px;border-radius:50%;background:#BE123C;display:flex;align-items:center;justify-content:center"><span style="width:34px;height:34px;border-radius:6px;background:#fff"></span></button>
+      </div>
+    </sc-if>
+    <sc-if value="{{isReview}}" hint-placeholder-val="{{true}}">
+      <div style="padding:12px 14px;border-radius:12px;background:{{t.alt}};font-size:13px;line-height:1.5"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Your note · 0:34</b><button class="v-b" style="background:transparent;padding:0;color:#5B5CE0;font-size:12px;font-weight:600">Play</button></div>“Block C roof formwork about eighty percent done, east wing rebar started. Forty-two men today. Rain stopped us around two hours this morning. Cement delivery came, two thousand four hundred bags.”</div>
+      <span style="font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center">Check before saving <span title="AI suggestion" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:999px;border:1px solid {{t.aiBorder}};background:{{t.aiBg}};color:{{t.aiText}};font-size:10px;font-weight:700;letter-spacing:.05em;line-height:16px;vertical-align:middle;white-space:nowrap"><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor"></path></svg>AI</span></span>
+      <sc-for list="{{fields}}" as="f" hint-placeholder-count="4">
+        <div style="padding:12px 14px;border-radius:12px;background:{{f.bg}};border:1px solid {{f.bd}};display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:600;color:{{t.muted}}">{{f.label}}</span><sc-if value="{{f.pending}}" hint-placeholder-val="{{true}}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:{{f.conf.cc}};white-space:nowrap"><span aria-hidden="true" style="display:inline-flex;gap:2px;align-items:flex-end"><span style="width:3px;height:6px;border-radius:1px;background:{{f.conf.c1}}"></span><span style="width:3px;height:9px;border-radius:1px;background:{{f.conf.c2}}"></span><span style="width:3px;height:12px;border-radius:1px;background:{{f.conf.c3}}"></span></span>{{f.conf.cl}}</span></sc-if><sc-if value="{{f.ok}}" hint-placeholder-val="{{false}}"><span style="font-size:12px;font-weight:600;color:{{t.emeraldText}}">✓ Kept</span></sc-if></div>
+          <span style="font-size:15px;line-height:1.45">{{f.val}}</span>
+          <sc-if value="{{f.pending}}" hint-placeholder-val="{{true}}"><div style="display:flex;gap:8px"><button class="v-b" onClick="{{f.accept}}" style="flex:1;min-height:40px;border-radius:10px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600">Keep</button><button class="v-b" style="flex:1;min-height:40px;border-radius:10px;background:{{t.surface}};border:1px solid {{t.border}};color:{{t.text}};font-size:13px;font-weight:600">Edit</button><button class="v-b" onClick="{{f.dismiss}}" aria-label="Remove" style="width:44px;min-height:40px;border-radius:10px;background:transparent;color:{{t.muted}};font-size:18px">×</button></div></sc-if>
+        </div>
+      </sc-for>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><button class="v-b" style="aspect-ratio:1;border-radius:12px;background:{{t.surface}};border:1.5px dashed {{t.border}};color:{{t.text}};font-size:12px;font-weight:600">+ Photo</button><div role="img" aria-label="Photo: formwork" style="aspect-ratio:1;border-radius:12px;background:repeating-linear-gradient(135deg,{{t.alt}} 0 10px,{{t.track}} 10px 20px)"></div><div role="img" aria-label="Photo: delivery" style="aspect-ratio:1;border-radius:12px;background:repeating-linear-gradient(135deg,{{t.alt}} 0 10px,{{t.track}} 10px 20px)"></div></div>
+    </sc-if>
+  </div>
+  <sc-if value="{{isReview}}" hint-placeholder-val="{{true}}"><div style="position:absolute;left:0;right:0;bottom:76px;padding:10px 18px;background:{{t.bg}};border-top:1px solid {{t.border}};display:flex;gap:8px"><button class="v-b" onClick="{{again}}" style="flex:1;min-height:50px;border-radius:12px;background:{{t.surface}};border:1px solid {{t.border}};color:{{t.text}};font-size:15px;font-weight:600">Re-record</button><a href="HomePMMobileDark.dc.html" style="flex:2;min-height:50px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#5B5CE0;color:#fff;font-size:15px;font-weight:600;text-decoration:none">Save entry</a></div></sc-if>
+  <nav aria-label="Main" style="flex:0 0 auto;display:flex;justify-content:space-around;padding:6px 6px 22px;background:{{t.surface}};border-top:1px solid {{t.border}}">
+    <sc-for list="{{bnav}}" as="bn" hint-placeholder-count="5">
+      <a href="{{bn.href}}" aria-current="{{bn.cur}}" style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;color:{{bn.color}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="{{bn.icon}}" stroke="{{bn.color}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-size:11px;font-weight:600">{{bn.label}}</span>
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true,"section":"Theme"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  th(d){return d?{bg:'#0B0E1F',surface:'#141833',alt:'#1B2047',border:'#262B4A',text:'#F2F3FA',muted:'#9499C2',navy:'#080B1A',track:'#262B4A',sel:'#1E2350',chipOnBg:'#262B63',chipOnText:'#C7C8FF',roseBg:'rgba(244,63,94,.10)',roseBorder:'rgba(244,63,94,.35)',roseText:'#FB7185',amberBg:'rgba(245,158,11,.10)',amberBorder:'rgba(245,158,11,.35)',amberText:'#FBBF24',emeraldBg:'rgba(16,185,129,.10)',emeraldBorder:'rgba(16,185,129,.35)',emeraldText:'#34D399',blueBg:'rgba(59,130,246,.10)',blueBorder:'rgba(59,130,246,.35)',blueText:'#60A5FA',accentText:'#A5A6FB',mapBg:'#11152C',mapGrid:'rgba(255,255,255,.04)',water:'rgba(96,165,250,.14)',aiBg:'rgba(118,119,251,.14)',aiText:'#A5A6FB',aiBorder:'rgba(165,166,251,.45)'}:{bg:'#F5F6FC',surface:'#FFFFFF',alt:'#F0F1FA',border:'#E3E5F3',text:'#15172B',muted:'#686D94',navy:'#121A3F',track:'#E8EAF5',sel:'#F5F5FF',chipOnBg:'#ECECFF',chipOnText:'#3F40B8',roseBg:'#FFF1F2',roseBorder:'#FECDD3',roseText:'#BE123C',amberBg:'#FFFBEB',amberBorder:'#FDE68A',amberText:'#B45309',emeraldBg:'#ECFDF5',emeraldBorder:'#A7F3D0',emeraldText:'#047857',blueBg:'#EFF6FF',blueBorder:'#BFDBFE',blueText:'#1D4ED8',accentText:'#4546C9',mapBg:'#F3F4FA',mapGrid:'rgba(18,26,63,.05)',water:'rgba(59,130,246,.12)',aiBg:'#F3F3FF',aiText:'#4546C9',aiBorder:'#C7C8FF'};}
+  b(k,l,d){const base={emerald:'#10B981',amber:'#F59E0B',blue:'#3B82F6',rose:'#F43F5E',slate:'#64748B',violet:'#7677FB'}[k];const tx=d?{emerald:'#34D399',amber:'#FBBF24',blue:'#60A5FA',rose:'#FB7185',slate:'#94A3B8',violet:'#A5A6FB'}[k]:{emerald:'#047857',amber:'#B45309',blue:'#1D4ED8',rose:'#BE123C',slate:'#475569',violet:'#4546C9'}[k];return {label:l,dot:base,color:tx,bg:base+(d?'26':'1A')};}
+  cf(p,t){const hi=p>=90,md=p>=70;const on='currentColor';return {cl:(hi?'High':md?'Medium':'Low')+' · '+p+'%',cc:hi?t.emeraldText:md?t.amberText:t.roseText,c1:on,c2:md?on:t.border,c3:hi?on:t.border,hi,md};}
+  tabs(defs,cur,key,t){return defs.map(([k,l])=>({label:l,on:k===cur,color:k===cur?t.text:t.muted,line:k===cur?'#5B5CE0':'transparent',pick:()=>this.setState({[key]:k})}));}
+  roles(){return {md:{label:'Managing Director',name:'Olumide Bankole',short:'Olumide B.',ini:'OB',email:'olumide@ventohomes.ng',home:'ExecutiveHomeDark.dc.html'},land:{label:'Land & legal',name:'Ngozi Adeyemi',short:'Ngozi A.',ini:'NA',email:'ngozi@ventohomes.ng',home:'HomeLandDark.dc.html'},pm:{label:'Project manager',name:'Kunle Ojo',short:'Kunle O.',ini:'KO',email:'kunle@ventohomes.ng',home:'HomePMDark.dc.html'},sales:{label:'Sales',name:'Grace Umeh',short:'Grace U.',ini:'GU',email:'grace@ventohomes.ng',home:'HomeSalesDark.dc.html'},finance:{label:'Finance',name:'Aisha Bello',short:'Aisha B.',ini:'AB',email:'aisha@ventohomes.ng',home:'HomeFinanceDark.dc.html'},hr:{label:'HR',name:'Kemi Adebayo',short:'Kemi A.',ini:'KA',email:'kemi@ventohomes.ng',home:'HomeHRDark.dc.html'},fm:{label:'Facility manager',name:'Ope Martins',short:'Ope M.',ini:'OM',email:'ope@ventohomes.ng',home:'HomeFMDark.dc.html'}};}
+  nav(active,role){const I={home:'M4 11l8-7 8 7M6 10v9h12v-9',land:'M12 3a6 6 0 0 0-6 6c0 4.5 6 11 6 11s6-6.5 6-11a6 6 0 0 0-6-6zM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',proj:'M4 21V8l8-5 8 5v13M9 21v-6h6v6',estate:'M4 20V10l4-3 4 3v10M12 20V7l4-3 4 3v13',sales:'M12 3h6v6l-9 9-6-6 9-9zM15 6h.01',subs:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',fin:'M3 7h18v12H3V7zM3 7l2-3h14l2 3M7 13h2',hr:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6',comp:'M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z',docs:'M7 3h7l5 5v13H7V3zM14 3v5h5',board:'M4 4h16v12H4zM8 20h8M12 16v4',appr:'M9 12l2 2 4-4M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z',diary:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',comm:'M12 3v18M17 7H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6',cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4'};
+    const R=this.roles(); const home=(R[role]||R.md).home;
+    const full=[['h','Overview'],['i','Home',home,'home'],['i','Approvals','ApprovalsDark.dc.html','appr'],['h','Land & assets'],['i','Land & Title','LandTitleDark.dc.html','land'],['i','Projects','ProjectsDark.dc.html','proj'],['i','Estates','EstateDark.dc.html','estate'],['h','Revenue'],['i','Sales','SalesDark.dc.html','sales'],['i','Subscriptions','SubscriptionDetailDark.dc.html','subs'],['i','Finance','FinanceDark.dc.html','fin'],['h','People & governance'],['i','HR & Payroll','HRPayrollDark.dc.html','hr'],['i','Compliance','ComplianceDark.dc.html','comp'],['i','Documents','DocumentsDark.dc.html','docs'],['i','Board pack','BoardPack.dc.html','board'],['i','Settings','RolesSettingsDark.dc.html','cog']];
+    const sets={land:['Home','Approvals','Land & Title','Projects','Compliance','Documents'],pm:['Home','Projects','Site diary','Compliance','Documents'],sales:['Home','Sales','Subscriptions','Commissions','Documents'],finance:['Home','Approvals','Finance','Subscriptions','HR & Payroll','Compliance','Board pack'],hr:['Home','Approvals','HR & Payroll','Compliance','Documents'],fm:['Home','Estates','Documents']};
+    const extra={'Site diary':['i','Site diary','SiteDiaryMobileDark.dc.html','diary'],'Commissions':['i','Commissions','CommissionsDark.dc.html','comm']};
+    let N=full; if(sets[role]){N=[['h','Workspace']].concat(sets[role].map(l=>extra[l]||full.find(r=>r[1]===l)));}
+    const open=this.state.shNav??true;
+    return N.map(r=>r[0]==='h'?{showHeader:open,isItem:false,label:r[1],href:'',icon:'',bg:'',color:'',cur:'false',just:'',showLabel:false}:{showHeader:false,isItem:true,label:r[1],href:r[2],icon:I[r[3]],cur:r[1]===active?'page':'false',bg:r[1]===active?'rgba(118,119,251,.22)':'transparent',color:r[1]===active?'#FFFFFF':'#A9AEDC',just:open?'flex-start':'center',showLabel:open});}
+  shell(d,t,entity,role){const st=this.state;const open=st.shNav??true;const R=this.roles();const me=R[role]||R.md;
+    const close={shEnt:false,shNotif:false,shUser:false};
+    const ents=[['All entities','Consolidated'],['Vento Holdings Ltd','Holding'],['Victoria Gardens Dev. Ltd','SPV · 2 projects'],['Parkview Residences SPV','SPV · 1 project'],['Lekki Pearl Estates Ltd','SPV · 1 project'],['Abuja Heights Ltd','SPV · 1 project']];
+    const cur=st.shEntity??entity; const read=!!st.shRead;
+    const N={md:[['PO-2291 needs your approval (₦23.5m)','ProjectDetailDark.dc.html','#F59E0B','1h ago'],['Tunde Bakare is 14 days overdue','SubscriptionDetailDark.dc.html','#F43F5E','5h ago'],['Payroll for November is ready to approve','HRPayrollDark.dc.html','#5B5CE0','Today'],['Parkview building permit expires in 9 days','ComplianceDark.dc.html','#F59E0B','Yesterday']],land:[['Court order served on Plot 22','ParcelDetailDark.dc.html','#F43F5E','Today'],['Consent file GC/LAG/2026/7781 queried','ParcelDetailDark.dc.html','#F59E0B','Mon'],['Excision gazette: Idu land still pending','ComplianceDark.dc.html','#64748B','Last week']],pm:[['PO-2291 sent for MD approval','ProjectDetailDark.dc.html','#3B82F6','1h ago'],['2 diary entries waiting to sync','SiteDiaryMobileDark.dc.html','#F59E0B','Today'],['Cement price up 13.9% vs BoQ','ProjectDetailDark.dc.html','#F43F5E','Mon']],sales:[['Ifeoma’s hold on C-06 ends in 31 h','LeadDetailDark.dc.html','#F43F5E','Now'],['New diaspora lead: Kelechi Obi (US)','LeadDetailDark.dc.html','#5B5CE0','2h ago'],['Commission for October paid','CommissionsDark.dc.html','#10B981','Mon']],finance:[['3 bank lines to match in Zenith','FinanceDark.dc.html','#F59E0B','Today'],['Payroll needs approval by Thu','HRPayrollDark.dc.html','#5B5CE0','Today'],['Cash receipt held for AML review','ComplianceDark.dc.html','#F59E0B','Today']],hr:[['3 leave requests waiting','HRPayrollDark.dc.html','#F59E0B','Today'],['ICAN membership expired: Tunde Ola','HRPayrollDark.dc.html','#F43F5E','Mon']],fm:[['Roof leak at House 31 is past SLA','HomeFMDark.dc.html','#F43F5E','Today'],['Generator A service due in 38 hrs','EstateDark.dc.html','#F59E0B','Today']]}[role]||[];
+    const palAct=[['Record receipt','RecordReceiptDark.dc.html','Action'],['New subscription','NewSubscriptionDark.dc.html','Action'],['Add site diary entry','SiteDiaryMobileDark.dc.html','Action'],['Upload title document','ParcelDetailDark.dc.html','Action']];
+    const palGo=[['Victoria Gardens — Phase 2','ProjectDetailDark.dc.html','Project'],['Plot 22, Folu Ayo · P-0012','ParcelDetailDark.dc.html','Parcel'],['Chidi Eze · SUB-0118','SubscriptionDetailDark.dc.html','Buyer'],['Unit C-05 · Victoria Gardens','SalesDark.dc.html','Unit'],['Roofing works agreement','DocumentsDark.dc.html','Contract']];
+    const mk=(xs)=>xs.map(([label,href,hint],i)=>({label,href,hint,bg:i===0?t.sel:'transparent'}));
+    return {
+      shOpen:open,shNavW:open?'232px':'68px',shJust:open?'flex-start':'center',shRot:open?0:180,shNavLabel:open?'Collapse sidebar':'Expand sidebar',shToggleNav:()=>this.setState({shNav:!open}),
+      shEntity:cur,shEntOpen:!!st.shEnt,shToggleEnt:()=>this.setState({...close,shEnt:!st.shEnt}),
+      shEntities:ents.map(([n,note])=>({name:n,note,on:n===cur,bg:n===cur?t.sel:'transparent',pick:()=>this.setState({shEntity:n,shEnt:false})})),
+      shNotifOpen:!!st.shNotif,shToggleNotif:()=>this.setState({...close,shNotif:!st.shNotif}),shUnread:read?0:N.length,shHasUnread:!read&&N.length>0,shMarkRead:()=>this.setState({shRead:true}),
+      shNotifs:N.map(([text,href,c,when])=>({text,href,c,when,bg:read?'transparent':t.sel})),
+      shUserOpen:!!st.shUser,shToggleUser:()=>this.setState({...close,shUser:!st.shUser}),
+      shUser:{name:me.name,short:me.short,ini:me.ini,role:me.label,email:me.email},
+      shDark:d,shDarkTrack:d?'#5B5CE0':t.border,shDarkKnob:d?16:2,shToggleDark:()=>this.setState({dark:!d}),
+      shRoles:Object.keys(R).map(k=>({label:R[k].label,who:R[k].name,href:R[k].home,bg:k===role?t.sel:'transparent'})).concat([{label:'Buyer portal',who:'Chidi Eze',href:'BuyerPortalMobile.dc.html',bg:'transparent'}]),
+      shApprN:{md:4,finance:3,land:1,pm:0,sales:0,hr:1,fm:0}[role]??0,shHasAppr:({md:4,finance:3,land:1,hr:1}[role]||0)>0,
+      aiOn:st.shAI??true,shAITrack:(st.shAI??true)?'#5B5CE0':t.border,shAIKnob:(st.shAI??true)?16:2,shToggleAI:()=>this.setState({shAI:!(st.shAI??true)}),
+      shPalOpen:!!st.shPal,shTogglePal:()=>this.setState({...close,shPal:!st.shPal}),
+      shPal:[{group:'Actions',items:mk(palAct)},{group:'Jump to',items:mk(palGo)}]
+    };}
+  bn(items,active,t){const I={diary:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',flag:'M5 21V4h11l-2 4 2 4H5',box:'M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7',alert:'M12 3l9.5 17h-19L12 3zM12 10v4M12 17h.01',more:'M5 12h.01M12 12h.01M19 12h.01',home:'M4 11l8-7 8 7M6 10v9h12v-9',grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',users:'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 3.5a4 4 0 0 1 0 7.5M22 21c0-3-1.5-5-4-5.7',cash:'M3 6h18v12H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',doc:'M7 3h7l5 5v13H7V3zM14 3v5h5',pay:'M3 7h18v12H3V7zM3 11h18',photo:'M4 7h4l2-3h4l2 3h4v13H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',wrench:'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z',fuel:'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M14 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3',land:'M12 3a6 6 0 0 0-6 6c0 4.5 6 11 6 11s6-6.5 6-11a6 6 0 0 0-6-6z'};return items.map(([l,ic,h])=>({label:l,icon:I[ic],href:h,cur:l===active?'page':'false',color:l===active?(t.dark?'#A5A6FB':'#4546C9'):t.muted}));}
+  renderVals(){
+    const d=this.state.dark??this.props.dark??true; const t=Object.assign(this.th(d),{dark:d}); const B=(k,l)=>this.b(k,l,d); const st=this.state;
+    const M=(()=>{
+
+const ph=st.ph??'review'; const S=st.s??{};
+const F=[['work','Work done','Block C roof formwork 80% complete. Rebar fixing started on east wing.',93],['workers','Workers on site','42',97],['delay','Delays','Rain · about 2 hours (morning)',86],['mat','Materials received','Cement · 2,400 bags (matches PO-2287)',90]];
+return {
+ bnav:this.bn([['Home','home','HomePMMobileDark.dc.html'],['Diary','diary','VoiceDiaryMobileDark.dc.html'],['Milestones','flag','ProjectDetailMobileDark.dc.html'],['Issues','alert','ProjectDetailMobileDark.dc.html'],['More','more','HomePMDark.dc.html']],'Diary',t),
+ isIdle:ph==='idle',isRec:ph==='rec',isReview:ph==='review',rec:()=>this.setState({ph:'rec'}),stop:()=>this.setState({ph:'review'}),again:()=>this.setState({ph:'idle',s:{}}),
+ wave:[18,30,44,26,52,38,22,46,58,34,20,40,54,30,24,48,36,18,42,56,28,22,44,32,50,26,38,20],
+ fields:F.filter(f=>S[f[0]]!=='x').map(([k,label,val,p])=>{const ok=S[k]==='a';return {label,val,conf:this.cf(p,t),pending:!ok,ok,bg:ok?t.surface:t.aiBg,bd:ok?t.border:t.aiBorder,accept:()=>this.setState({s:{...S,[k]:'a'}}),dismiss:()=>this.setState({s:{...S,[k]:'x'}})};})
+};
+
+    })();
+    return Object.assign({t,aiOn:st.shAI??true},M);
+  }
+}
+</script>
+</body>
+</html>

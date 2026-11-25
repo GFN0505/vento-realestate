@@ -30,7 +30,7 @@ Every journey here has a manual twin elsewhere. With AI off, the screens look th
 **Who / how often:** Finance officer, with each import (manual twin: J-FIN-03).
 
 **Steps**
-1. After import, unmatched lines show AI suggestions (buyer and instalment) with confidence and the reason ("Name 'C OBI' and amount match Instalment 6 of A-07").
+1. After import, unmatched lines show AI suggestions (buyer and instalment) with confidence and the reason ("Name 'A OKONKWO' and amount match Instalment 6 of A-14").
 2. Confirm individually or "Confirm all high-confidence".
 
 **Test:** `e2e/ai/payment-matching.spec.ts` **Status:** draft
@@ -40,8 +40,8 @@ Every journey here has a manual twin elsewhere. With AI off, the screens look th
 **Starts from:** ⌘K, typing a question.
 
 **Steps**
-1. "UK buyers in Palm Grove more than 60 days overdue" → *Ask Vento answers:* a table of real records, the filters it used (editable), and actions (send reminder, export).
+1. "UK buyers in Parkview more than 60 days overdue" → *Ask Vento answers:* a table of real records, the filters it used (editable), and actions (send reminder, export).
 2. If the question can't be answered from their permitted data: says so plainly.
 
-**Behind the scenes:** answers only from data the member can see; read-only; usage metered.
+**Behind the scenes:** always says what the answer is based on ("14 subscriptions you have access to") and how it found them; answers only from data the member can see; read-only; usage metered.
 **Test:** `e2e/ai/ask-vento.spec.ts` **Status:** draft

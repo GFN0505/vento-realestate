@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vento (dark) — Home — Sales</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.v{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.v *{box-sizing:border-box}
+.v-h{font-family:Poppins,system-ui,sans-serif}
+.v-n{font-variant-numeric:tabular-nums}
+.v-b{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
+.v-b:hover{opacity:.86}
+.v-b:focus-visible,.v a:focus-visible{outline:2px solid #7677FB;outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.v-menu{position:absolute;top:44px;border-radius:10px;box-shadow:0 12px 32px rgba(10,12,30,.16);overflow:hidden;z-index:30}
+a{color:#5B5CE0}a:hover{color:#4546C9}
+</style>
+</helmet>
+<div class="v" style="width:100%;min-height:1000px;display:flex;background:{{t.bg}};color:{{t.text}};position:relative">
+  <nav aria-label="Main" style="flex:0 0 auto;width:{{shNavW}};background:{{t.navy}};display:flex;flex-direction:column;padding:16px 12px;gap:2px">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 14px;justify-content:{{shJust}}">
+      <img src="/_blob/12917ccdb9f010f737d346362339f636" alt="Vento" style="width:24px;height:24px;object-fit:contain">
+      <sc-if value="{{shOpen}}" hint-placeholder-val="{{true}}"><span class="v-h" style="font-size:15px;font-weight:600;color:#fff">Vento</span></sc-if>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.showHeader}}" hint-placeholder-val="{{false}}"><span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8A90C4;text-transform:uppercase;padding:12px 12px 4px;white-space:nowrap">{{n.label}}</span></sc-if>
+      <sc-if value="{{n.isItem}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-label="{{n.label}}" aria-current="{{n.cur}}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;background:{{n.bg}};color:{{n.color}};justify-content:{{n.just}}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex:0 0 auto"><path d="{{n.icon}}" stroke="{{n.color}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <sc-if value="{{n.showLabel}}" hint-placeholder-val="{{true}}"><span style="white-space:nowrap">{{n.label}}</span></sc-if>
+        </a>
+      </sc-if>
+    </sc-for>
+    <button class="v-b" onClick="{{shToggleNav}}" aria-label="{{shNavLabel}}" style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:transparent;color:#8A90C4;font-size:13px;font-weight:500;justify-content:{{shJust}}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="transform:rotate({{shRot}}deg)"><path d="M15 6l-6 6 6 6" stroke="#8A90C4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <sc-if value="{{shOpen}}" hint-placeholder-val="{{true}}"><span>Collapse</span></sc-if>
+    </button>
+  </nav>
+  <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column">
+    <div style="min-height:60px;display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid {{t.border}};background:{{t.surface}};flex-wrap:wrap;position:relative;z-index:20">
+      <div style="position:relative">
+        <button class="v-b" onClick="{{shToggleEnt}}" aria-expanded="{{shEntOpen}}" aria-haspopup="menu" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{{t.alt}};border:1px solid {{t.border}};font-size:13px;font-weight:600;color:{{t.text}}"><span style="font-size:10px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">Entity</span>{{shEntity}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="{{t.muted}}" stroke-width="2" stroke-linecap="round"></path></svg></button>
+        <sc-if value="{{shEntOpen}}" hint-placeholder-val="{{false}}">
+          <div class="v-menu" role="menu" style="left:0;width:300px;background:{{t.surface}};border:1px solid {{t.border}}">
+            <sc-for list="{{shEntities}}" as="e" hint-placeholder-count="6"><button class="v-b" role="menuitemradio" aria-checked="{{e.on}}" onClick="{{e.pick}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:10px 14px;background:{{e.bg}};color:{{t.text}};font-size:13px;border-bottom:1px solid {{t.border}}"><span style="font-weight:600">{{e.name}}</span><span style="font-size:11px;color:{{t.muted}}">{{e.note}}</span></button></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      
+      <button class="v-b" onClick="{{shTogglePal}}" style="flex:1 1 220px;max-width:400px;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:{{t.alt}};border:1px solid {{t.border}};color:{{t.muted}};font-size:13px;text-align:left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="{{t.muted}}" stroke-width="1.8"></circle><path d="M20 20l-3.5-3.5" stroke="{{t.muted}}" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        <span style="flex:1">Search or run a command…</span><span style="font-size:11px;font-weight:600;border:1px solid {{t.border}};border-radius:4px;padding:1px 6px">⌘K</span></button>
+      <div style="flex:1 1 auto"></div>
+      <a href="ApprovalsDark.dc.html" aria-label="Approvals, {{shApprN}} waiting" style="position:relative;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;text-decoration:none;color:{{t.text}};font-size:13px;font-weight:600"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12l2 2 4-4M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="{{t.muted}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>Approvals</span><sc-if value="{{shHasAppr}}" hint-placeholder-val="{{true}}"><span class="v-n" style="min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#5B5CE0;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">{{shApprN}}</span></sc-if></a>
+      <div style="position:relative">
+        <button class="v-b" onClick="{{shToggleNotif}}" aria-expanded="{{shNotifOpen}}" aria-label="Notifications, {{shUnread}} unread" style="position:relative;width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10z" stroke="{{t.muted}}" stroke-width="1.7" stroke-linejoin="round"></path><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0" stroke="{{t.muted}}" stroke-width="1.7"></path></svg><sc-if value="{{shHasUnread}}" hint-placeholder-val="{{true}}"><span style="position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#F43F5E"></span></sc-if></button>
+        <sc-if value="{{shNotifOpen}}" hint-placeholder-val="{{false}}">
+          <div class="v-menu" role="dialog" aria-label="Notifications" style="right:0;width:340px;background:{{t.surface}};border:1px solid {{t.border}}">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid {{t.border}}"><span style="font-size:12px;font-weight:700;color:{{t.muted}};text-transform:uppercase">Notifications</span><button class="v-b" onClick="{{shMarkRead}}" style="background:transparent;color:#5B5CE0;font-size:12px;font-weight:600;padding:0">Mark all read</button></div>
+            <sc-for list="{{shNotifs}}" as="nf" hint-placeholder-count="4"><a href="{{nf.href}}" style="display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid {{t.border}};text-decoration:none;background:{{nf.bg}}"><span style="width:7px;height:7px;border-radius:50%;background:{{nf.c}};margin-top:6px;flex:0 0 auto"></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;color:{{t.text}}">{{nf.text}}</span><span style="font-size:11px;color:{{t.muted}}">{{nf.when}}</span></span></a></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="position:relative">
+        <button class="v-b" onClick="{{shToggleUser}}" aria-expanded="{{shUserOpen}}" aria-haspopup="menu" aria-label="Account: {{shUser.name}}" style="display:flex;align-items:center;gap:8px;padding:3px 10px 3px 3px;border-radius:999px;background:{{t.alt}};border:1px solid {{t.border}}"><span style="width:28px;height:28px;border-radius:50%;background:#5B5CE0;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">{{shUser.ini}}</span><span style="font-size:12px;font-weight:600;color:{{t.text}};white-space:nowrap">{{shUser.short}}</span></button>
+        <sc-if value="{{shUserOpen}}" hint-placeholder-val="{{false}}">
+          <div class="v-menu" role="menu" style="right:0;width:280px;background:{{t.surface}};border:1px solid {{t.border}}">
+            <div style="padding:14px;border-bottom:1px solid {{t.border}}"><div style="font-size:14px;font-weight:600;color:{{t.text}}">{{shUser.name}}</div><div style="font-size:12px;color:{{t.muted}}">{{shUser.role}} · {{shUser.email}}</div></div>
+            <button class="v-b" role="menuitemcheckbox" aria-checked="{{shDark}}" onClick="{{shToggleDark}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:transparent;color:{{t.text}};font-size:13px;border-bottom:1px solid {{t.border}}"><span>Dark mode</span><span style="width:34px;height:20px;border-radius:10px;background:{{shDarkTrack}};position:relative;display:block"><span style="position:absolute;top:2px;left:{{shDarkKnob}}px;width:16px;height:16px;border-radius:50%;background:#fff;display:block"></span></span></button>
+            <button class="v-b" role="menuitemcheckbox" aria-checked="{{aiOn}}" onClick="{{shToggleAI}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:transparent;color:{{t.text}};font-size:13px;border-bottom:1px solid {{t.border}}"><span style="display:flex;align-items:center;gap:8px">AI suggestions <span title="AI suggestion" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:999px;border:1px solid {{t.aiBorder}};background:{{t.aiBg}};color:{{t.aiText}};font-size:10px;font-weight:700;letter-spacing:.05em;line-height:16px;vertical-align:middle;white-space:nowrap"><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor"></path></svg>AI</span></span><span style="width:34px;height:20px;border-radius:10px;background:{{shAITrack}};position:relative;display:block"><span style="position:absolute;top:2px;left:{{shAIKnob}}px;width:16px;height:16px;border-radius:50%;background:#fff;display:block"></span></span></button>
+            <div style="padding:10px 14px 4px;font-size:11px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">Preview as role</div>
+            <sc-for list="{{shRoles}}" as="r" hint-placeholder-count="7"><a role="menuitem" href="{{r.href}}" style="display:flex;justify-content:space-between;padding:8px 14px;font-size:13px;color:{{t.text}};text-decoration:none;background:{{r.bg}}"><span>{{r.label}}</span><span style="font-size:11px;color:{{t.muted}}">{{r.who}}</span></a></sc-for>
+            <a role="menuitem" href="RolesSettingsDark.dc.html" style="display:block;padding:11px 14px;border-top:1px solid {{t.border}};margin-top:6px;font-size:13px;color:{{t.text}};text-decoration:none">Settings</a>
+            <a role="menuitem" href="Onboarding.dc.html" style="display:block;padding:11px 14px;border-top:1px solid {{t.border}};font-size:13px;color:{{t.roseText}};text-decoration:none">Sign out</a>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <main style="padding:28px 32px 56px;display:flex;flex-direction:column;gap:22px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><h1 class="v-h" style="margin:0 0 4px;font-size:24px;font-weight:600">Good afternoon, Grace</h1><p class="v-n" style="margin:0;font-size:13px;color:{{t.muted}}">Sales executive · 14 active leads · 5 diaspora · {{left}} things need you today</p></div>
+        <a href="NewSubscriptionDark.dc.html" style="padding:10px 16px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600;text-decoration:none">New subscription</a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:14px">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4"><a href="{{k.href}}" style="background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:4px;text-decoration:none;color:{{t.text}}"><span style="font-size:12px;font-weight:600;color:{{t.muted}}">{{k.l}}</span><span class="v-n" style="font-size:22px;font-weight:600;color:{{k.c}}">{{k.v}}</span><span class="v-n" style="font-size:12px;color:{{t.muted}}">{{k.s}}</span></a></sc-for>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <section aria-label="Your queue" style="flex:1.4 1 460px;min-width:0;background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;overflow:hidden">
+          <div style="padding:16px 20px;border-bottom:1px solid {{t.border}};display:flex;justify-content:space-between;align-items:center"><h2 class="v-h" style="margin:0;font-size:15px;font-weight:600">Your queue</h2><span style="font-size:12px;color:{{t.muted}}">Sorted by due date, then impact</span></div>
+          <sc-for list="{{queue}}" as="q" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid {{t.border}}">
+              <button class="v-b" onClick="{{q.check}}" aria-label="Mark done: {{q.label}}" style="width:20px;height:20px;flex:0 0 auto;border-radius:50%;border:1.5px solid {{q.ring}};background:transparent;padding:0"></button>
+              <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">{{q.label}}</div><div class="v-n" style="font-size:12px;color:{{t.muted}}">{{q.meta}}</div></div>
+              <span class="v-n" style="flex:0 0 auto;font-size:12px;font-weight:600;color:{{q.dueC}}">{{q.due}}</span>
+              <a href="{{q.href}}" style="flex:0 0 auto;padding:7px 12px;border-radius:7px;background:{{t.alt}};border:1px solid {{t.border}};color:{{t.text}};font-size:12px;font-weight:600;text-decoration:none">{{q.action}}</a>
+            </div>
+          </sc-for>
+          <sc-if value="{{clear}}" hint-placeholder-val="{{false}}"><div style="padding:36px;text-align:center;font-size:13px;color:{{t.muted}}">You're clear for today.</div></sc-if>
+        </section>
+        <div style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px">
+          <section style="background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px"><h2 class="v-h" style="margin:0;font-size:15px;font-weight:600">My pipeline</h2><div style="display:flex;flex-direction:column;gap:4px"><div class="v-n" style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:500">New</span><span style="color:{{t.muted}}">3 · ~₦318m</span></div><div style="height:7px;border-radius:4px;background:{{t.track}};overflow:hidden"><div style="height:100%;width:100%;background:#94A3B8"></div></div></div><div style="display:flex;flex-direction:column;gap:4px"><div class="v-n" style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:500">Contacted</span><span style="color:{{t.muted}}">2 · ~₦242m</span></div><div style="height:7px;border-radius:4px;background:{{t.track}};overflow:hidden"><div style="height:100%;width:67%;background:#94A3B8"></div></div></div><div style="display:flex;flex-direction:column;gap:4px"><div class="v-n" style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:500">Site visit</span><span style="color:{{t.muted}}">2 · ~₦229m</span></div><div style="height:7px;border-radius:4px;background:{{t.track}};overflow:hidden"><div style="height:100%;width:67%;background:#3B82F6"></div></div></div><div style="display:flex;flex-direction:column;gap:4px"><div class="v-n" style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:500">Negotiation</span><span style="color:{{t.muted}}">1 · ~₦164m</span></div><div style="height:7px;border-radius:4px;background:{{t.track}};overflow:hidden"><div style="height:100%;width:33%;background:#3B82F6"></div></div></div><div style="display:flex;flex-direction:column;gap:4px"><div class="v-n" style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:500">Reserved</span><span style="color:{{t.muted}}">1 · ₦88m</span></div><div style="height:7px;border-radius:4px;background:{{t.track}};overflow:hidden"><div style="height:100%;width:33%;background:#F59E0B"></div></div></div></section><section style="background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:6px"><h2 class="v-h" style="margin:0 0 6px;font-size:15px;font-weight:600">Hot units</h2><div class="v-n" style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid {{t.border}};font-size:13px"><span><span style="font-weight:600">Victoria Gardens C-05</span><span style="display:block;font-size:12px;color:{{t.muted}}">4-bed semi · 3 leads interested</span></span><span style="font-weight:600;color:{{t.text}};white-space:nowrap">₦112m</span></div><div class="v-n" style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid {{t.border}};font-size:13px"><span><span style="font-weight:600">Victoria Gardens B-02</span><span style="display:block;font-size:12px;color:{{t.muted}}">4-bed semi · corner plot</span></span><span style="font-weight:600;color:{{t.text}};white-space:nowrap">₦114m</span></div><div class="v-n" style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid {{t.border}};font-size:13px"><span><span style="font-weight:600">Abuja Heights A-12</span><span style="display:block;font-size:12px;color:{{t.muted}}">Launch price ends 31 Dec</span></span><span style="font-weight:600;color:{{t.amberText}};white-space:nowrap">₦96m</span></div></section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <sc-if value="{{shPalOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position:absolute;inset:0;background:rgba(10,12,30,.45);display:flex;align-items:flex-start;justify-content:center;padding-top:110px;z-index:40">
+      <div role="dialog" aria-label="Command palette" style="width:580px;max-width:92%;background:{{t.surface}};border-radius:12px;box-shadow:0 24px 64px rgba(10,12,30,.35);overflow:hidden">
+        <div style="padding:14px 18px;border-bottom:1px solid {{t.border}};display:flex;align-items:center;gap:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="{{t.muted}}" stroke-width="1.8"></circle><path d="M20 20l-3.5-3.5" stroke="{{t.muted}}" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          <label for="sh-q" class="sr">Search or run a command</label><input id="sh-q" placeholder="Type a parcel, unit, buyer, document or action" style="flex:1;border:none;background:transparent;color:{{t.text}};font-size:15px;font-family:inherit;outline:none">
+          <button class="v-b" onClick="{{shTogglePal}}" style="background:{{t.alt}};border:1px solid {{t.border}};border-radius:5px;color:{{t.muted}};font-size:11px;font-weight:700;padding:2px 7px">ESC</button>
+        </div>
+        <sc-for list="{{shPal}}" as="g" hint-placeholder-count="2">
+          <div style="padding:8px 18px 4px;font-size:11px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">{{g.group}}</div>
+          <sc-for list="{{g.items}}" as="p" hint-placeholder-count="3"><a href="{{p.href}}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;text-decoration:none;color:{{t.text}};font-size:13px;background:{{p.bg}}"><span>{{p.label}}</span><span style="font-size:11px;color:{{t.muted}}">{{p.hint}}</span></a></sc-for>
+        </sc-for>
+        <div style="display:flex;gap:16px;padding:10px 18px;border-top:1px solid {{t.border}};font-size:11px;color:{{t.muted}}"><span>↑↓ to move</span><span>↵ to open</span><span>Esc to close</span></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{false}}"><div role="status" style="position:absolute;right:32px;bottom:32px;display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:10px;background:#121A3F;color:#fff;font-size:13px;z-index:45"><span>Marked done</span><button class="v-b" onClick="{{undo}}" style="background:transparent;color:#A5A6FB;font-size:13px;font-weight:700">Undo</button></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true,"section":"Theme"},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  th(d){return d?{bg:'#0B0E1F',surface:'#141833',alt:'#1B2047',border:'#262B4A',text:'#F2F3FA',muted:'#9499C2',navy:'#080B1A',track:'#262B4A',sel:'#1E2350',chipOnBg:'#262B63',chipOnText:'#C7C8FF',roseBg:'rgba(244,63,94,.10)',roseBorder:'rgba(244,63,94,.35)',roseText:'#FB7185',amberBg:'rgba(245,158,11,.10)',amberBorder:'rgba(245,158,11,.35)',amberText:'#FBBF24',emeraldBg:'rgba(16,185,129,.10)',emeraldBorder:'rgba(16,185,129,.35)',emeraldText:'#34D399',blueBg:'rgba(59,130,246,.10)',blueBorder:'rgba(59,130,246,.35)',blueText:'#60A5FA',accentText:'#A5A6FB',mapBg:'#11152C',mapGrid:'rgba(255,255,255,.04)',water:'rgba(96,165,250,.14)',aiBg:'rgba(118,119,251,.14)',aiText:'#A5A6FB',aiBorder:'rgba(165,166,251,.45)'}:{bg:'#F5F6FC',surface:'#FFFFFF',alt:'#F0F1FA',border:'#E3E5F3',text:'#15172B',muted:'#686D94',navy:'#121A3F',track:'#E8EAF5',sel:'#F5F5FF',chipOnBg:'#ECECFF',chipOnText:'#3F40B8',roseBg:'#FFF1F2',roseBorder:'#FECDD3',roseText:'#BE123C',amberBg:'#FFFBEB',amberBorder:'#FDE68A',amberText:'#B45309',emeraldBg:'#ECFDF5',emeraldBorder:'#A7F3D0',emeraldText:'#047857',blueBg:'#EFF6FF',blueBorder:'#BFDBFE',blueText:'#1D4ED8',accentText:'#4546C9',mapBg:'#F3F4FA',mapGrid:'rgba(18,26,63,.05)',water:'rgba(59,130,246,.12)',aiBg:'#F3F3FF',aiText:'#4546C9',aiBorder:'#C7C8FF'};}
+  b(k,l,d){const base={emerald:'#10B981',amber:'#F59E0B',blue:'#3B82F6',rose:'#F43F5E',slate:'#64748B',violet:'#7677FB'}[k];const tx=d?{emerald:'#34D399',amber:'#FBBF24',blue:'#60A5FA',rose:'#FB7185',slate:'#94A3B8',violet:'#A5A6FB'}[k]:{emerald:'#047857',amber:'#B45309',blue:'#1D4ED8',rose:'#BE123C',slate:'#475569',violet:'#4546C9'}[k];return {label:l,dot:base,color:tx,bg:base+(d?'26':'1A')};}
+  cf(p,t){const hi=p>=90,md=p>=70;const on='currentColor';return {cl:(hi?'High':md?'Medium':'Low')+' · '+p+'%',cc:hi?t.emeraldText:md?t.amberText:t.roseText,c1:on,c2:md?on:t.border,c3:hi?on:t.border,hi,md};}
+  tabs(defs,cur,key,t){return defs.map(([k,l])=>({label:l,on:k===cur,color:k===cur?t.text:t.muted,line:k===cur?'#5B5CE0':'transparent',pick:()=>this.setState({[key]:k})}));}
+  roles(){return {md:{label:'Managing Director',name:'Olumide Bankole',short:'Olumide B.',ini:'OB',email:'olumide@ventohomes.ng',home:'ExecutiveHomeDark.dc.html'},land:{label:'Land & legal',name:'Ngozi Adeyemi',short:'Ngozi A.',ini:'NA',email:'ngozi@ventohomes.ng',home:'HomeLandDark.dc.html'},pm:{label:'Project manager',name:'Kunle Ojo',short:'Kunle O.',ini:'KO',email:'kunle@ventohomes.ng',home:'HomePMDark.dc.html'},sales:{label:'Sales',name:'Grace Umeh',short:'Grace U.',ini:'GU',email:'grace@ventohomes.ng',home:'HomeSalesDark.dc.html'},finance:{label:'Finance',name:'Aisha Bello',short:'Aisha B.',ini:'AB',email:'aisha@ventohomes.ng',home:'HomeFinanceDark.dc.html'},hr:{label:'HR',name:'Kemi Adebayo',short:'Kemi A.',ini:'KA',email:'kemi@ventohomes.ng',home:'HomeHRDark.dc.html'},fm:{label:'Facility manager',name:'Ope Martins',short:'Ope M.',ini:'OM',email:'ope@ventohomes.ng',home:'HomeFMDark.dc.html'}};}
+  nav(active,role){const I={home:'M4 11l8-7 8 7M6 10v9h12v-9',land:'M12 3a6 6 0 0 0-6 6c0 4.5 6 11 6 11s6-6.5 6-11a6 6 0 0 0-6-6zM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',proj:'M4 21V8l8-5 8 5v13M9 21v-6h6v6',estate:'M4 20V10l4-3 4 3v10M12 20V7l4-3 4 3v13',sales:'M12 3h6v6l-9 9-6-6 9-9zM15 6h.01',subs:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',fin:'M3 7h18v12H3V7zM3 7l2-3h14l2 3M7 13h2',hr:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6',comp:'M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z',docs:'M7 3h7l5 5v13H7V3zM14 3v5h5',board:'M4 4h16v12H4zM8 20h8M12 16v4',appr:'M9 12l2 2 4-4M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z',diary:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',comm:'M12 3v18M17 7H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6',cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4'};
+    const R=this.roles(); const home=(R[role]||R.md).home;
+    const full=[['h','Overview'],['i','Home',home,'home'],['i','Approvals','ApprovalsDark.dc.html','appr'],['h','Land & assets'],['i','Land & Title','LandTitleDark.dc.html','land'],['i','Projects','ProjectsDark.dc.html','proj'],['i','Estates','EstateDark.dc.html','estate'],['h','Revenue'],['i','Sales','SalesDark.dc.html','sales'],['i','Subscriptions','SubscriptionDetailDark.dc.html','subs'],['i','Finance','FinanceDark.dc.html','fin'],['h','People & governance'],['i','HR & Payroll','HRPayrollDark.dc.html','hr'],['i','Compliance','ComplianceDark.dc.html','comp'],['i','Documents','DocumentsDark.dc.html','docs'],['i','Board pack','BoardPack.dc.html','board'],['i','Settings','RolesSettingsDark.dc.html','cog']];
+    const sets={land:['Home','Approvals','Land & Title','Projects','Compliance','Documents'],pm:['Home','Projects','Site diary','Compliance','Documents'],sales:['Home','Sales','Subscriptions','Commissions','Documents'],finance:['Home','Approvals','Finance','Subscriptions','HR & Payroll','Compliance','Board pack'],hr:['Home','Approvals','HR & Payroll','Compliance','Documents'],fm:['Home','Estates','Documents']};
+    const extra={'Site diary':['i','Site diary','SiteDiaryMobileDark.dc.html','diary'],'Commissions':['i','Commissions','CommissionsDark.dc.html','comm']};
+    let N=full; if(sets[role]){N=[['h','Workspace']].concat(sets[role].map(l=>extra[l]||full.find(r=>r[1]===l)));}
+    const open=this.state.shNav??true;
+    return N.map(r=>r[0]==='h'?{showHeader:open,isItem:false,label:r[1],href:'',icon:'',bg:'',color:'',cur:'false',just:'',showLabel:false}:{showHeader:false,isItem:true,label:r[1],href:r[2],icon:I[r[3]],cur:r[1]===active?'page':'false',bg:r[1]===active?'rgba(118,119,251,.22)':'transparent',color:r[1]===active?'#FFFFFF':'#A9AEDC',just:open?'flex-start':'center',showLabel:open});}
+  shell(d,t,entity,role){const st=this.state;const open=st.shNav??true;const R=this.roles();const me=R[role]||R.md;
+    const close={shEnt:false,shNotif:false,shUser:false};
+    const ents=[['All entities','Consolidated'],['Vento Holdings Ltd','Holding'],['Victoria Gardens Dev. Ltd','SPV · 2 projects'],['Parkview Residences SPV','SPV · 1 project'],['Lekki Pearl Estates Ltd','SPV · 1 project'],['Abuja Heights Ltd','SPV · 1 project']];
+    const cur=st.shEntity??entity; const read=!!st.shRead;
+    const N={md:[['PO-2291 needs your approval (₦23.5m)','ProjectDetailDark.dc.html','#F59E0B','1h ago'],['Tunde Bakare is 14 days overdue','SubscriptionDetailDark.dc.html','#F43F5E','5h ago'],['Payroll for November is ready to approve','HRPayrollDark.dc.html','#5B5CE0','Today'],['Parkview building permit expires in 9 days','ComplianceDark.dc.html','#F59E0B','Yesterday']],land:[['Court order served on Plot 22','ParcelDetailDark.dc.html','#F43F5E','Today'],['Consent file GC/LAG/2026/7781 queried','ParcelDetailDark.dc.html','#F59E0B','Mon'],['Excision gazette: Idu land still pending','ComplianceDark.dc.html','#64748B','Last week']],pm:[['PO-2291 sent for MD approval','ProjectDetailDark.dc.html','#3B82F6','1h ago'],['2 diary entries waiting to sync','SiteDiaryMobileDark.dc.html','#F59E0B','Today'],['Cement price up 13.9% vs BoQ','ProjectDetailDark.dc.html','#F43F5E','Mon']],sales:[['Ifeoma’s hold on C-06 ends in 31 h','LeadDetailDark.dc.html','#F43F5E','Now'],['New diaspora lead: Kelechi Obi (US)','LeadDetailDark.dc.html','#5B5CE0','2h ago'],['Commission for October paid','CommissionsDark.dc.html','#10B981','Mon']],finance:[['3 bank lines to match in Zenith','FinanceDark.dc.html','#F59E0B','Today'],['Payroll needs approval by Thu','HRPayrollDark.dc.html','#5B5CE0','Today'],['Cash receipt held for AML review','ComplianceDark.dc.html','#F59E0B','Today']],hr:[['3 leave requests waiting','HRPayrollDark.dc.html','#F59E0B','Today'],['ICAN membership expired: Tunde Ola','HRPayrollDark.dc.html','#F43F5E','Mon']],fm:[['Roof leak at House 31 is past SLA','HomeFMDark.dc.html','#F43F5E','Today'],['Generator A service due in 38 hrs','EstateDark.dc.html','#F59E0B','Today']]}[role]||[];
+    const palAct=[['Record receipt','RecordReceiptDark.dc.html','Action'],['New subscription','NewSubscriptionDark.dc.html','Action'],['Add site diary entry','SiteDiaryMobileDark.dc.html','Action'],['Upload title document','ParcelDetailDark.dc.html','Action']];
+    const palGo=[['Victoria Gardens — Phase 2','ProjectDetailDark.dc.html','Project'],['Plot 22, Folu Ayo · P-0012','ParcelDetailDark.dc.html','Parcel'],['Chidi Eze · SUB-0118','SubscriptionDetailDark.dc.html','Buyer'],['Unit C-05 · Victoria Gardens','SalesDark.dc.html','Unit'],['Roofing works agreement','DocumentsDark.dc.html','Contract']];
+    const mk=(xs)=>xs.map(([label,href,hint],i)=>({label,href,hint,bg:i===0?t.sel:'transparent'}));
+    return {
+      shOpen:open,shNavW:open?'232px':'68px',shJust:open?'flex-start':'center',shRot:open?0:180,shNavLabel:open?'Collapse sidebar':'Expand sidebar',shToggleNav:()=>this.setState({shNav:!open}),
+      shEntity:cur,shEntOpen:!!st.shEnt,shToggleEnt:()=>this.setState({...close,shEnt:!st.shEnt}),
+      shEntities:ents.map(([n,note])=>({name:n,note,on:n===cur,bg:n===cur?t.sel:'transparent',pick:()=>this.setState({shEntity:n,shEnt:false})})),
+      shNotifOpen:!!st.shNotif,shToggleNotif:()=>this.setState({...close,shNotif:!st.shNotif}),shUnread:read?0:N.length,shHasUnread:!read&&N.length>0,shMarkRead:()=>this.setState({shRead:true}),
+      shNotifs:N.map(([text,href,c,when])=>({text,href,c,when,bg:read?'transparent':t.sel})),
+      shUserOpen:!!st.shUser,shToggleUser:()=>this.setState({...close,shUser:!st.shUser}),
+      shUser:{name:me.name,short:me.short,ini:me.ini,role:me.label,email:me.email},
+      shDark:d,shDarkTrack:d?'#5B5CE0':t.border,shDarkKnob:d?16:2,shToggleDark:()=>this.setState({dark:!d}),
+      shRoles:Object.keys(R).map(k=>({label:R[k].label,who:R[k].name,href:R[k].home,bg:k===role?t.sel:'transparent'})).concat([{label:'Buyer portal',who:'Chidi Eze',href:'BuyerPortalMobile.dc.html',bg:'transparent'}]),
+      shApprN:{md:4,finance:3,land:1,pm:0,sales:0,hr:1,fm:0}[role]??0,shHasAppr:({md:4,finance:3,land:1,hr:1}[role]||0)>0,
+      aiOn:st.shAI??false,shAITrack:(st.shAI??false)?'#5B5CE0':t.border,shAIKnob:(st.shAI??false)?16:2,shToggleAI:()=>this.setState({shAI:!(st.shAI??false)}),
+      shPalOpen:!!st.shPal,shTogglePal:()=>this.setState({...close,shPal:!st.shPal}),
+      shPal:[{group:'Actions',items:mk(palAct)},{group:'Jump to',items:mk(palGo)}]
+    };}
+  bn(items,active,t){const I={diary:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',flag:'M5 21V4h11l-2 4 2 4H5',box:'M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7',alert:'M12 3l9.5 17h-19L12 3zM12 10v4M12 17h.01',more:'M5 12h.01M12 12h.01M19 12h.01',home:'M4 11l8-7 8 7M6 10v9h12v-9',grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',users:'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 3.5a4 4 0 0 1 0 7.5M22 21c0-3-1.5-5-4-5.7',cash:'M3 6h18v12H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',doc:'M7 3h7l5 5v13H7V3zM14 3v5h5',pay:'M3 7h18v12H3V7zM3 11h18',photo:'M4 7h4l2-3h4l2 3h4v13H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',wrench:'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z',fuel:'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M14 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3',land:'M12 3a6 6 0 0 0-6 6c0 4.5 6 11 6 11s6-6.5 6-11a6 6 0 0 0-6-6z'};return items.map(([l,ic,h])=>({label:l,icon:I[ic],href:h,cur:l===active?'page':'false',color:l===active?(t.dark?'#A5A6FB':'#4546C9'):t.muted}));}
+  renderVals(){
+    const d=this.state.dark??this.props.dark??true; const t=Object.assign(this.th(d),{dark:d}); const B=(k,l)=>this.b(k,l,d); const st=this.state;
+    const M=(()=>{
+
+const done=st.done??{}; const last=st.last??'';
+const K=[["My sales this quarter", "₦428m", "71% of ₦600m target", "text", "Commissions.dc.html"], ["Follow-ups due today", "4", "2 diaspora (time zones shown)", "amberText", "LeadDetail.dc.html"], ["Units I can sell", "31", "Victoria Gardens 18 · Abuja 13", "text", "Sales.dc.html"], ["Commission earned Q4", "₦9.6m", "₦2.1m pending clearance", "emeraldText", "Commissions.dc.html"]];
+const Q=[["s1", "Ifeoma Nnaji: deposit for C-06", "Hold ends in 31 h · Manchester (13:04 there)", "31 h", "rose", "Open lead", "LeadDetail.dc.html"], ["s2", "Reply to new lead Kelechi Obi (US)", "Instagram · 4-bed semi · reply within 1 h keeps SLA", "45 min", "rose", "Reply", "LeadDetail.dc.html"], ["s3", "Call Tolu Adeyemi about 5-bed pricing", "Houston (09:04 there) · negotiation", "16:00", "amber", "Open lead", "LeadDetail.dc.html"], ["s4", "Confirm Saturday site visit with Hauwa Bello", "4-bed semi · bring payment plan options", "Sat", "slate", "Confirm", "LeadDetail.dc.html"], ["s5", "Send Phase 2B price list to 9 warm leads", "New prices from 1 Feb", "This week", "slate", "Share", "Sales.dc.html"]];
+const vis=Q.filter(q=>!done[q[0]]);
+return {
+ kpis:K.map(([l,v,s,c,href])=>({l,v,s,href,c:t[c]||t.text})),
+ left:vis.length,clear:vis.length===0,
+ queue:vis.map(([k,label,meta,due,urg,action,href])=>({label,meta,due,action,href,dueC:urg==='rose'?t.roseText:urg==='amber'?t.amberText:t.muted,ring:urg==='rose'?'#F43F5E':urg==='amber'?'#F59E0B':t.border,check:()=>this.setState({done:{...done,[k]:true},last:k,toast:true})})),
+ toast:!!st.toast,undo:()=>{const n={...done};delete n[last];this.setState({done:n,toast:false});}
+};
+
+    })();
+    return Object.assign({t,nav:this.nav('Home','sales')},this.shell(d,t,'All entities','sales'),M);
+  }
+}
+</script>
+</body>
+</html>

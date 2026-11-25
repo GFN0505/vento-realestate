@@ -27,19 +27,19 @@
 **Behind the scenes:** photos compressed on the device before upload; entry appears in the project feed and, if marked "Share with buyers", in the buyer portal's progress gallery; attendance feeds site-worker pay.
 **Done when:** the entry is in the project's diary feed.
 **Watch for:** photos without GPS (allowed, flagged); two entries for the same day (allowed, grouped); sync conflict (keep both).
-**Target:** under 60 seconds, 3 taps plus typing. **Test:** `e2e/projects/site-diary-offline.spec.ts` **Status:** draft
+**Target:** under 30 seconds: location, yesterday's worker count and common phrases are pre-filled; every target ≥ 44px. **Test:** `e2e/projects/site-diary-offline.spec.ts` **Status:** draft
 
 ## J-PRJ-03 · Request materials, raise and receive a PO
 **Who / how often:** Site engineer requests; PM orders; weekly.
 
 **Steps**
-1. Site engineer: *Material request:* items and quantities from the BoQ, needed-by date. Submit.
+1. Site engineer: *Material request:* items and quantities from the BoQ, needed-by date. Submit. Requests under the PM's limit (default ₦5m) go straight to purchasing, and the sheet says so before sending.
 2. PM: opens the request, "Create purchase order", picks a vendor (scorecard shown), prices pre-filled from material rates. Submit for approval.
 3. Approver (per approval rules and amount): approves from the *Approvals inbox*. PO status `approved` → "Mark as ordered" → PO PDF sent to the vendor.
 4. On delivery: *Goods received:* quantities received per line, photo of the waybill. PO becomes `partially_received` or `received`.
 
 **Behind the scenes:** received value updates the phase's actual cost and budget variance; vendor scorecard updates (timeliness, price vs library); a vendor bill can be created from the PO (J-FIN-06); price far above the library rate raises an anomaly flag.
-**Watch for:** over-receipt (warn); cancelled PO after partial receipt; PO for a vendor with missing TIN (WHT warning).
+**Watch for:** over-receipt (warn); cancelled PO after partial receipt; PO for a vendor with missing TIN (WHT warning); a contractor whose COREN/CORBON registration has expired can't get new contracts or large payments (warning from 30 days before). The same four-step indicator (request → order → receive → bill) shows on each screen.
 **Test:** `e2e/projects/purchase-order.spec.ts` **Status:** draft
 
 ## J-PRJ-04 · Complete a milestone that bills buyers

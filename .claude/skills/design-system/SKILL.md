@@ -5,7 +5,9 @@ description: The app's visual language — tokens, colours, typography, spacing,
 
 # Design system
 
-The quality bar is Linear, Stripe Dashboard and Mercury: calm, fast, precise. If the approved Claude Design files exist in `docs/design/`, they override anything below.
+The quality bar is Linear, Stripe Dashboard and Mercury: calm, fast, precise.
+
+**The approved designs are in `docs/design/claude-design/`** (index in its README; every screen in `docs/design/SCREENS.md` names its board). Token values, the product rules the designer set, and the designer's notes are in `docs/design/DESIGN-NOTES.md`. Open the board before building a screen and match it. They override anything below.
 
 ## Screens without a design
 `docs/design/SCREENS.md` lists every screen the product needs. Many have no bespoke design, and that's expected. Build them from the patterns below so they look like they were designed:
@@ -32,46 +34,51 @@ Designs are a starting point, not a contract. If real data, a domain rule, acces
 ## Tokens (defined in `apps/web/src/styles.css`, consumed via Tailwind)
 | Purpose | Token / class |
 |---|---|
-| Brand / primary action | `bg-primary text-primary-foreground` (brand `#7677FB`) |
+| Primary action (buttons, links) | `bg-primary text-primary-foreground` (action fill `#5B5CE0`; white on the lighter brand violet fails contrast) |
+| Brand (focus, selection, charts, available units) | `ring-ring`, `text-brand`, `border-brand` (`#7677FB`, dark `#8A8BFC`) |
 | Page background | `bg-background` (light: slate-50 tone, dark: near-black) |
 | Card / surface | `bg-card text-card-foreground border` |
 | Secondary text | `text-muted-foreground` |
 | Destructive | `bg-destructive`, `text-destructive` |
 | Sidebar | `bg-sidebar text-sidebar-foreground` (dark navy in both themes) |
-| Focus ring | `ring-ring` (brand) |
-| Radius | `rounded-md` for controls, `rounded-lg` for cards, `rounded-full` for badges and avatars |
+| Status colours | `status-{emerald,amber,blue,rose,slate}` with `-fg` (dark text shade) and `-bg` / `-border` tints, values in DESIGN-NOTES |
+| Radius | `--radius: 0.625rem` (10px) for cards, inputs and buttons; `rounded-full` for badges and avatars. Subtle borders over shadows |
 
 **Never** write hex, rgb or arbitrary colour values in components. If a colour is missing, add a token in `styles.css`.
 
 ## Typography
-Poppins (self-hosted via `@fontsource`). Scale:
-- Page title `text-xl font-semibold`, section title `text-base font-semibold`
-- Body `text-sm`, secondary `text-sm text-muted-foreground`, caption `text-xs text-muted-foreground`
-- Numbers in tables and stats use `tabular-nums`
+**Poppins** for headings and the logo (`font-heading`); **Inter** for body, labels, tables and all numbers (`font-sans`). Both self-hosted via `@fontsource`. Scale:
+- Display `font-heading text-[32px] font-semibold` (executive numbers only), page title `font-heading text-2xl font-semibold`, section title `font-heading text-lg font-semibold`
+- Body `text-sm`, secondary `text-sm text-muted-foreground`, label `text-xs font-semibold uppercase tracking-wide`, caption `text-xs text-muted-foreground`
+- Money and numbers: `tabular-nums font-medium`
 
 ## Spacing and layout
 - 4px grid. Page padding `p-4 sm:p-6`, gaps between sections `gap-6`, inside cards `p-4 sm:p-6`, form fields `gap-4`.
-- App shell: fixed sidebar (`w-64`, collapsible to icons) on `lg+`, Sheet drawer below `lg`, top bar with search, notifications, theme toggle and user menu.
+- App shell: fixed navy sidebar (`w-64`, collapsible to icons) on `lg+` showing only the role's modules, Sheet drawer below `lg`, top bar with search, notifications, theme toggle and user menu (admins can "Preview as role"). On phones, four bottom tabs per role.
+- Customer-facing surfaces (buyer and realtor portals, PDFs, emails, receipts, board pack) use the developer's brand via DocumentLetterhead and stay light in dark mode.
 - Max content width `max-w-7xl` for forms and detail pages. Lists use the full width.
 - Forms: one column on mobile, two columns from `md`, using container queries inside dialogs.
 
 ## Components (shadcn only, from `@/components/ui`)
 Button (`default`, `secondary`, `outline`, `ghost`, `destructive`; sizes `sm`, `default`, `icon`), Input, Select, Combobox (Command + Popover), DatePicker (Calendar + Popover), Dialog, Sheet, DropdownMenu, Tabs, Table, Badge, Card, Skeleton, Tooltip, Sonner.
 App-level: PageHeader, DataTable, DataTableToolbar, StatusBadge, EmptyState, ConfirmDialog, MoneyInput, EntityCombobox, StatCard.
+From the designs: CodeInput (one box per digit, paste, error state), PasswordRules, SettingsNav (left sub-navigation for all settings), ChecklistRow (tick-off with owner and detail), PermissionCell (allowed / up to a limit / not allowed), DocumentLetterhead (developer's brand on PDFs and emails), ApprovalRow, TimelineItem (event / before → after / with approver; initials, not photos), ImportSteps, PlotShape (site plan), AiMarker (star + "AI", only on AI-produced content), ConfidenceMeter (bars and a word), AiSuggestionField (accept / edit / reject on a faint violet surface), UsageMeter, MaskedId (with e-KYC states).
 Don't create a second version of any of these. Extend with `variant`s via `cva`.
 
 ## Status colours (StatusBadge)
 | Meaning | Colour | Examples |
 |---|---|---|
-| Success / done | emerald | active subscription, paid, completed, granted, verified, available unit |
-| Waiting / attention | amber | pending KYC, due, partially paid, reserved, submitted, permit expiring |
-| In progress / info | blue | in construction, in progress, subscribed, allocated, upcoming |
-| Problem / ended | rose | overdue, defaulted, cancelled, rejected, flagged, active encumbrance |
-| Neutral | slate | draft, not started, blocked, handed over, closed, archived |
+| Success / done | emerald | active subscription, paid, fully paid unit, completed, granted, verified |
+| Waiting / attention | amber | pending KYC, due soon, partially paid, reserved, submitted, permit expiring |
+| In progress / info | blue | in construction, in progress, subscribed and paying, allocated, scheduled |
+| Problem / ended | rose | overdue, defaulted, cancelled, rejected, flagged, encumbered, expired |
+| Neutral | slate | draft, inactive, not started, blocked, handed over, closed, archived |
+
+**Available** units and plots are not a status colour: they carry the brand violet outline, because selecting one is an action.
 A badge is a dot plus a label on a tinted background. Never rely on colour alone.
 
 ## Developer ERP patterns
-- **Unit grid / availability map:** one tile per unit, grouped by block or phase, coloured by unit status (`available`, `reserved`, `subscribed`, `allocated`, `handed_over`, `blocked`) with a legend and counts. Tile shows unit number, type and price; click opens the unit side sheet. Never colour alone: status label in the tile tooltip and in list view.
+- **Unit grid / availability map:** one tile per unit, grouped by block or phase, coloured by unit status (violet outline for `available`; status colours for `reserved`, `subscribed`, `allocated`, `handed_over`, `blocked`, plus rose when a unit's buyer is overdue) with a legend and counts. Filters dim non-matching tiles instead of hiding them, so blocks keep their shape. Tile shows unit number, type and price; click opens the unit side sheet. Never colour alone: status label in the tile tooltip and in list view.
 - **Project progress:** phases in order (`site_prep` → … → `handover`) as a segmented bar with % complete, planned vs actual dates, and budget vs actual beside it. Delays show their reason.
 - **Payment plan timeline:** instalments in due-date order with amount, due date and derived status badge; received amount and balance at the top. Today's position marked. Overdue shows relative time ("12 days overdue").
 - **Title stage tracker:** stepper per parcel (e.g. survey plan → excision gazette → C of O → governor's consent) with stage status, dates and linked documents. An active encumbrance shows a rose warning banner wherever the parcel appears.
@@ -86,7 +93,7 @@ Every data view needs loading (skeleton), empty (illustration + action), filtere
 - Text contrast ≥ 4.5:1 (≥ 3:1 for large text and UI parts), checked in both themes.
 - Visible focus on everything interactive. Full keyboard use, and focus is trapped in dialogs.
 - Labels on every input. `aria-label` on icon-only buttons. Errors linked with `aria-describedby`.
-- Touch targets ≥ 40px on mobile. Respect `prefers-reduced-motion`.
+- Touch targets ≥ 44px on mobile. Respect `prefers-reduced-motion`.
 
 ## Responsive
 Design mobile-first. Test at 375px, 768px and 1280px. No horizontal page scroll. Tables hide secondary columns or switch to cards below `md`.

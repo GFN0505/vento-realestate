@@ -82,7 +82,7 @@ These make the product trustworthy and easy to adopt. They cost little to run, s
 | **Interactive estate layout** | Upload the site plan, draw or place plots/units on it, and use it to see status (available, reserved, sold, fully paid, overdue), open a unit, or start a sale. |
 | **Two-way WhatsApp** | Reminders, receipts and statements sent on WhatsApp; buyer replies land in the contact's timeline for the sales team. |
 | **Role homes and daily digest** | Each role lands on its own priorities. Optional morning digest by WhatsApp or email (e.g. the MD's cash, sales and risks summary). |
-| **Realtor portal** | External agents and brokers register leads (with duplicate protection), see the status of their deals and their commission. |
+| **Realtor portal** | External agents and brokers register leads (duplicates flagged for a person to decide ownership), see the status of their deals and their commission. |
 | **In-app help and product analytics** | Contextual help, a help centre, product analytics and session replay (personal data masked) to find where users struggle, and feature flags for gradual rollouts. |
 
 ## AI (optional add-on)

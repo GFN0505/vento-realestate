@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vento — Design System</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  body{margin:0}
+  .vd-root{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .vd-root *{box-sizing:border-box}
+  .vd-h{font-family:Poppins,system-ui,sans-serif}
+  .vd-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  .vd-btn{cursor:pointer;border:none;font-family:Inter,system-ui,sans-serif;transition:opacity .15s ease}
+  .vd-btn:hover{opacity:.88}
+  .vd-btn:active{opacity:.75}
+  .vd-card{border-radius:10px}
+  .vd-input{font-family:Inter,system-ui,sans-serif}
+  a.vd-link{color:#7677FB;text-decoration:none}
+  a.vd-link:hover{text-decoration:underline}
+</style>
+</helmet>
+
+<div class="vd-root" style="width:100%;max-width:1440px;margin:0 auto;background:#F5F6FC;padding:64px 80px 120px;display:flex;flex-direction:column;gap:64px;color:#15172B">
+
+  <!-- ===== Header ===== -->
+  <div style="display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #E3E5F3;padding-bottom:32px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="/_blob/12917ccdb9f010f737d346362339f636" alt="Vento logo" style="width:28px;height:28px;object-fit:contain">
+
+      <span class="vd-h" style="font-size:14px;font-weight:600;letter-spacing:.02em;color:#686D94;text-transform:uppercase">Vento</span>
+    </div>
+    <h1 class="vd-h" style="margin:8px 0 0;font-size:34px;font-weight:600">Design system</h1>
+    <p style="margin:0;font-size:15px;line-height:1.6;color:#686D94;max-width:640px">Foundations and components for Vento's ten modules. Colour carries status or action only — never decoration. Every money value uses tabular figures.</p>
+  </div>
+
+  <!-- ===== Colour ===== -->
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <h2 class="vd-h" style="margin:0 0 4px;font-size:20px;font-weight:600">Colour</h2>
+      <p style="margin:0;font-size:14px;color:#686D94">Brand violet #7677FB for focus rings, selection and charts. Buttons and links use the deeper #5B5CE0: white text on #7677FB is only 3.6:1, on #5B5CE0 it passes AA at 5.2:1.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:24px">
+      <div style="flex:1 1 440px;min-width:0;background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <span style="font-size:12px;font-weight:600;color:#686D94;text-transform:uppercase;letter-spacing:.04em">Light theme</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:12px">
+          <sc-for list="{{lightSwatches}}" as="sw" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="height:56px;border-radius:8px;border:1px solid rgba(0,0,0,.06);background:{{sw.hex}}"></div>
+              <span class="vd-num" style="font-size:12px;font-weight:600">{{sw.name}}</span>
+              <span class="vd-num" style="font-size:11px;color:#686D94">{{sw.hex}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:1 1 440px;min-width:0;background:#121A3F;border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <span style="font-size:12px;font-weight:600;color:#9499C2;text-transform:uppercase;letter-spacing:.04em">Dark theme</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:12px">
+          <sc-for list="{{darkSwatches}}" as="sw" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="height:56px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:{{sw.hex}}"></div>
+              <span class="vd-num" style="font-size:12px;font-weight:600;color:#F2F3FA">{{sw.name}}</span>
+              <span class="vd-num" style="font-size:11px;color:#9499C2">{{sw.hex}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:16px">
+      <span style="font-size:12px;font-weight:600;color:#686D94;text-transform:uppercase;letter-spacing:.04em">Status — meaning, not decoration</span>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:12px">
+        <sc-for list="{{statusTokens}}" as="s" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:{{s.bg}};border:1px solid {{s.border}}">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{s.hex}};flex:0 0 auto"></span>
+            <div style="display:flex;flex-direction:column">
+              <span style="font-size:13px;font-weight:600;color:{{s.txt}}">{{s.name}} · text {{s.txt}}</span>
+              <span style="font-size:11px;color:#686D94">{{s.meaning}}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Typography ===== -->
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <h2 class="vd-h" style="margin:0 0 4px;font-size:20px;font-weight:600">Typography</h2>
+      <p style="margin:0;font-size:14px;color:#686D94;max-width:760px">Poppins for brand and headings. Body and data run in Inter: a taller x-height and true tabular figures hold up better than Poppins across dense financial tables at 13–14px — Poppins stays reserved for headings, the logo and marketing surfaces.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:18px">
+      <sc-for list="{{typeScale}}" as="t" hint-placeholder-count="6">
+        <div style="display:flex;align-items:baseline;gap:20px;border-bottom:1px solid #F0F1FA;padding-bottom:16px">
+          <span style="width:110px;flex:0 0 auto;font-size:12px;color:#686D94;font-weight:600" class="vd-num">{{t.label}}</span>
+          <span style="flex:1 1 auto;font-family:{{t.family}};font-weight:{{t.weight}};font-size:{{t.size}}">{{t.sample}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- ===== Spacing & radius ===== -->
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <h2 class="vd-h" style="margin:0;font-size:20px;font-weight:600">Spacing &amp; radius</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:32px">
+      <div style="background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:14px;flex:1 1 320px">
+        <span style="font-size:12px;font-weight:600;color:#686D94;text-transform:uppercase">Spacing scale (4px base)</span>
+        <sc-for list="{{spacingScale}}" as="sp" hint-placeholder-count="7">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="vd-num" style="width:40px;font-size:12px;color:#686D94">{{sp.px}}px</span>
+            <div style="height:10px;border-radius:3px;background:#7677FB;width:{{sp.px}}px"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:14px;flex:1 1 320px">
+        <span style="font-size:12px;font-weight:600;color:#686D94;text-transform:uppercase">Radius</span>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:56px;height:56px;border-radius:10px;background:#ECECFF;border:1px solid #7677FB"></div>
+          <div style="display:flex;flex-direction:column">
+            <span style="font-size:13px;font-weight:600">10px — default</span>
+            <span style="font-size:12px;color:#686D94">Cards, inputs, buttons. Subtle borders over heavy shadows.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Component playground (themeable) ===== -->
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 class="vd-h" style="margin:0 0 4px;font-size:20px;font-weight:600">Components</h2>
+        <p style="margin:0;font-size:14px;color:#686D94">Live in both themes — toggle to check contrast.</p>
+      </div>
+      <button class="vd-btn" onClick="{{toggleTheme}}" style="display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;background:{{theme.surfaceAlt}};color:{{theme.text}};font-size:13px;font-weight:600;border:1px solid {{theme.border}}">
+        <span style="width:8px;height:8px;border-radius:50%;background:{{theme.accent}}"></span>
+        {{themeLabel}}
+      </button>
+    </div>
+
+    <div style="background:{{theme.bg}};border:1px solid {{theme.border}};border-radius:14px;padding:32px;display:flex;flex-direction:column;gap:32px">
+
+      <!-- Buttons -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Buttons</span>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <button class="vd-btn" style="padding:10px 18px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:14px;font-weight:600">Record receipt</button>
+          <button class="vd-btn" style="padding:10px 18px;border-radius:8px;background:{{theme.surfaceAlt}};color:{{theme.text}};font-size:14px;font-weight:600;border:1px solid {{theme.border}}">New subscription</button>
+          <button class="vd-btn" style="padding:10px 18px;border-radius:8px;background:transparent;color:{{theme.accent}};font-size:14px;font-weight:600">Cancel</button>
+          <button class="vd-btn" style="padding:10px 18px;border-radius:8px;background:#F43F5E;color:#fff;font-size:14px;font-weight:600">Delete parcel</button>
+          <button class="vd-btn" disabled style="padding:10px 18px;border-radius:8px;background:{{theme.surfaceAlt}};color:{{theme.textSecondary}};font-size:14px;font-weight:600;opacity:.5;cursor:not-allowed">Approve payroll</button>
+        </div>
+      </div>
+
+      <!-- Inputs -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Inputs</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:16px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="vd-buyer" style="font-size:12px;font-weight:600;color:{{theme.textSecondary}}">Buyer name</label>
+            <input id="vd-buyer" class="vd-input" type="text" value="Adaeze Okonkwo" style="padding:10px 12px;border-radius:8px;border:1px solid {{theme.border}};background:{{theme.surface}};color:{{theme.text}};font-size:14px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="vd-money" style="font-size:12px;font-weight:600;color:{{theme.textSecondary}}">Price</label>
+            <div style="display:flex;border-radius:8px;border:1px solid {{theme.border}};background:{{theme.surface}};overflow:hidden">
+              <span style="padding:10px 12px;background:{{theme.surfaceAlt}};color:{{theme.textSecondary}};font-size:13px;font-weight:600;border-right:1px solid {{theme.border}}">NGN</span>
+              <input id="vd-money" class="vd-input vd-num" type="text" value="85,000,000" style="flex:1;min-width:0;padding:10px 12px;border:none;background:transparent;color:{{theme.text}};font-size:14px">
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="vd-fx" style="font-size:12px;font-weight:600;color:{{theme.textSecondary}}">FX rate</label>
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;border:1px solid {{theme.border}};background:{{theme.surface}}">
+              <input id="vd-fx" class="vd-input vd-num" type="text" value="1,560.00" style="flex:1;min-width:0;border:none;background:transparent;color:{{theme.text}};font-size:14px">
+              <span style="font-size:11px;color:{{theme.textSecondary}};white-space:nowrap">CBN · editable</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="vd-date" style="font-size:12px;font-weight:600;color:{{theme.textSecondary}}">First instalment due</label>
+            <input id="vd-date" class="vd-input vd-num" type="date" value="2026-12-15" style="padding:9px 12px;border-radius:8px;border:1px solid {{theme.border}};background:{{theme.surface}};color:{{theme.text}};font-size:14px">
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Table</span>
+        <div style="border:1px solid {{theme.border}};border-radius:10px;overflow:auto;background:{{theme.surface}}">
+          <div role="table" aria-label="Subscriptions" style="min-width:720px">
+            <div role="row" style="display:grid;grid-template-columns:1.4fr 1.8fr 1.6fr 1.6fr 1fr;border-bottom:1px solid {{theme.border}}">
+              <sc-for list="{{tableCols}}" as="c" hint-placeholder-count="5"><span role="columnheader" style="padding:10px 16px;font-size:11px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.03em">{{c}}</span></sc-for>
+            </div>
+            <sc-for list="{{tableRows}}" as="r" hint-placeholder-count="3">
+              <div role="row" style="display:grid;grid-template-columns:1.4fr 1.8fr 1.6fr 1.6fr 1fr;align-items:center;border-bottom:1px solid {{theme.border}}">
+                <span role="cell" style="padding:12px 16px;font-size:13px;color:{{theme.text}}">{{r.buyer}}</span>
+                <span role="cell" style="padding:12px 16px;font-size:13px;color:{{theme.text}}">{{r.unit}}</span>
+                <span role="cell" class="vd-num" style="padding:12px 16px;font-size:13px;color:{{theme.text}}">{{r.amount}}</span>
+                <span role="cell" class="vd-num" style="padding:12px 16px;font-size:12px;color:{{theme.textSecondary}}">{{r.fx}}</span>
+                <span role="cell" style="padding:12px 16px"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:{{r.statusBg}};font-size:12px;font-weight:600;color:{{r.statusColor}}"><span style="width:6px;height:6px;border-radius:50%;background:{{r.statusColor}}"></span>{{r.status}}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stat card + Unit grid cell -->
+      <div style="display:flex;flex-wrap:wrap;gap:16px">
+        <div style="flex:1 1 220px;background:{{theme.surface}};border:1px solid {{theme.border}};border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}}">Revenue booked</span>
+          <span class="vd-num" style="font-size:26px;font-weight:600;color:{{theme.text}}">₦4.82bn</span>
+          <span style="font-size:12px;font-weight:600;color:#10B981">↑ 12.4% vs last month</span>
+        </div>
+
+        <div style="flex:1 1 320px;background:{{theme.surface}};border:1px solid {{theme.border}};border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase">Unit grid cell</span>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+            <sc-for list="{{unitCells}}" as="u" hint-placeholder-count="12">
+              <button class="vd-btn vd-num" onClick="{{u.pick}}" style="aspect-ratio:1;border-radius:6px;font-size:10px;font-weight:700;color:#fff;background:{{u.hex}};border:{{u.ring}}">{{u.label}}</button>
+            </sc-for>
+          </div>
+          <span style="font-size:12px;color:{{theme.textSecondary}}">{{selectedUnitLabel}}</span>
+        </div>
+      </div>
+
+      <!-- Stepper (title stage) -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Stepper — title stage tracker</span>
+        <div style="display:flex;align-items:flex-start;gap:0">
+          <sc-for list="{{stages}}" as="st" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;flex:1 1 0;min-width:0">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto">
+                <button class="vd-btn" onClick="{{st.pick}}" style="width:28px;height:28px;border-radius:50%;background:{{st.dot}};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:none">{{st.n}}</button>
+                <div style="text-align:center;max-width:120px">
+                  <div style="font-size:12px;font-weight:600;color:{{theme.text}}">{{st.label}}</div>
+                  <div class="vd-num" style="font-size:11px;color:{{theme.textSecondary}}">{{st.date}}</div>
+                </div>
+              </div>
+              <sc-if value="{{st.hasLine}}" hint-placeholder-val="{{true}}">
+                <div style="flex:1 1 auto;height:2px;background:{{st.lineColor}};margin-top:13px;min-width:20px"></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Timeline (payment plan) -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Timeline — payment plan</span>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <sc-for list="{{timeline}}" as="ev" hint-placeholder-count="4">
+            <div style="display:flex;gap:14px">
+              <div style="display:flex;flex-direction:column;align-items:center">
+                <span style="width:10px;height:10px;border-radius:50%;background:{{ev.dot}};flex:0 0 auto;margin-top:4px"></span>
+                <sc-if value="{{ev.hasLine}}" hint-placeholder-val="{{true}}">
+                  <div style="width:2px;flex:1 1 auto;background:{{theme.border}};min-height:28px"></div>
+                </sc-if>
+              </div>
+              <div style="padding-bottom:18px;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:13px;font-weight:600;color:{{theme.text}}">{{ev.label}}</span>
+                <span class="vd-num" style="font-size:12px;color:{{theme.textSecondary}}">{{ev.amount}} · {{ev.due}} · <span style="color:{{ev.dot}};font-weight:600">{{ev.status}}</span></span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Empty state + toast -->
+      <div style="display:flex;flex-wrap:wrap;gap:16px">
+        <div style="flex:1 1 320px;background:{{theme.surface}};border:1px dashed {{theme.border}};border-radius:10px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" stroke="{{theme.textSecondary}}" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span style="font-size:13px;font-weight:600;color:{{theme.text}}">No encumbrances found</span>
+          <span style="font-size:12px;color:{{theme.textSecondary}}">This parcel has a clean title history.</span>
+          <button class="vd-btn" style="margin-top:4px;padding:8px 14px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600">Add encumbrance</button>
+        </div>
+
+        <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Toast — with undo</span>
+          <button class="vd-btn" onClick="{{showToast}}" style="align-self:flex-start;padding:9px 16px;border-radius:8px;background:{{theme.surfaceAlt}};color:{{theme.text}};font-size:13px;font-weight:600;border:1px solid {{theme.border}}">Record a receipt</button>
+          <sc-if value="{{toastVisible}}" hint-placeholder-val="{{true}}">
+            <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;background:#121A3F;color:#fff;max-width:360px">
+              <span style="font-size:13px;flex:1">Receipt recorded — ₦5,000,000 applied to Instalment 3.</span>
+              <button class="vd-btn" onClick="{{showToast}}" style="background:transparent;color:#8A8BFC;font-size:12px;font-weight:700">UNDO</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <!-- Command palette -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Command palette — ⌘K</span>
+        <div style="max-width:480px;border-radius:10px;border:1px solid {{theme.border}};background:{{theme.surface}};overflow:hidden">
+          <div style="padding:12px 16px;border-bottom:1px solid {{theme.border}};display:flex;align-items:center;gap:10px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="{{theme.textSecondary}}" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="{{theme.textSecondary}}" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span style="font-size:13px;color:{{theme.textSecondary}}">Record receipt, Victoria Gardens, Unit A-14…</span>
+          </div>
+          <sc-for list="{{paletteItems}}" as="p" hint-placeholder-count="4">
+            <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid {{theme.border}}">
+              <span style="font-size:13px;color:{{theme.text}}">{{p.label}}</span>
+              <span style="font-size:11px;color:{{theme.textSecondary}}">{{p.group}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Tabs, filter pills, skeleton -->
+      <div style="display:flex;flex-wrap:wrap;gap:24px">
+        <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Tabs</span>
+          <div role="tablist" style="display:flex;gap:4px;border-bottom:1px solid {{theme.border}}">
+            <sc-for list="{{dsTabs}}" as="tb" hint-placeholder-count="3"><button class="vd-btn" role="tab" aria-selected="{{tb.on}}" onClick="{{tb.pick}}" style="padding:10px 10px 8px;background:transparent;font-size:13px;font-weight:600;color:{{tb.c}};border-bottom:2px solid {{tb.line}}">{{tb.l}}</button></sc-for>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em;margin-top:8px">Filter pills</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{dsPills}}" as="p" hint-placeholder-count="4"><button class="vd-btn vd-num" onClick="{{p.pick}}" aria-pressed="{{p.on}}" style="padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;background:{{p.bg}};color:{{p.c}};border:1px solid {{p.bd}}">{{p.l}}</button></sc-for></div>
+        </div>
+        <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Skeleton (loading)</span>
+          <div aria-busy="true" style="border:1px solid {{theme.border}};border-radius:10px;background:{{theme.surface}};padding:14px;display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{dsSkel}}" as="k" hint-placeholder-count="3"><div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:{{theme.surfaceAlt}}"></span><span style="flex:1;display:flex;flex-direction:column;gap:6px"><span style="height:9px;width:{{k}}%;border-radius:5px;background:{{theme.surfaceAlt}}"></span><span style="height:9px;width:40%;border-radius:5px;background:{{theme.surfaceAlt}}"></span></span></div></sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- Date picker -->
+      <div style="display:flex;flex-wrap:wrap;gap:24px">
+        <div style="flex:0 0 300px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Date picker</span>
+          <div style="border:1px solid {{theme.border}};border-radius:10px;background:{{theme.surface}};padding:14px;box-shadow:0 12px 32px rgba(10,12,30,.10)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><button class="vd-btn" aria-label="Previous month" style="width:28px;height:28px;border-radius:6px;background:transparent;color:{{theme.text}}">‹</button><span style="font-size:13px;font-weight:600;color:{{theme.text}}">December 2026</span><button class="vd-btn" aria-label="Next month" style="width:28px;height:28px;border-radius:6px;background:transparent;color:{{theme.text}}">›</button></div>
+            <div class="vd-num" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:11px;color:{{theme.textSecondary}};margin-bottom:4px"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+            <div class="vd-num" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"><sc-for list="{{dsDays}}" as="dd" hint-placeholder-count="35"><button class="vd-btn" onClick="{{dd.pick}}" aria-pressed="{{dd.on}}" style="height:32px;border-radius:7px;font-size:12px;font-weight:{{dd.w}};background:{{dd.bg}};color:{{dd.c}};opacity:{{dd.op}}">{{dd.n}}</button></sc-for></div>
+            <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><sc-for list="{{dsQuick}}" as="q" hint-placeholder-count="3"><button class="vd-btn" style="padding:5px 9px;border-radius:6px;background:{{theme.surfaceAlt}};color:{{theme.text}};font-size:11px;font-weight:600">{{q}}</button></sc-for></div>
+          </div>
+        </div>
+        <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Dialog — money, approvals, deletions only</span>
+          <div role="alertdialog" aria-label="Example confirmation" style="border:1px solid {{theme.border}};border-radius:12px;background:{{theme.surface}};padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 24px 64px rgba(10,12,30,.18);max-width:420px">
+            <span class="vd-h" style="font-size:16px;font-weight:600;color:{{theme.text}}">Remove Tobi Akande?</span>
+            <span style="font-size:13px;line-height:1.55;color:{{theme.textSecondary}}">They lose access now. Their records stay in the audit trail.</span>
+            <div style="display:flex;justify-content:flex-end;gap:8px"><button class="vd-btn" style="padding:9px 12px;border-radius:8px;background:transparent;color:{{theme.text}};font-size:13px;font-weight:600">Keep access</button><button class="vd-btn" style="padding:9px 14px;border-radius:8px;background:#BE123C;color:#fff;font-size:13px;font-weight:600">Remove Tobi's access</button></div>
+          </div>
+          <span style="font-size:12px;color:{{theme.textSecondary}}">The confirm button always states the exact effect. Destructive actions use rose; everything reversible gets a toast with Undo instead.</span>
+        </div>
+        <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Side sheet — edits</span>
+          <div style="border:1px solid {{theme.border}};border-radius:12px;background:{{theme.surface}};overflow:hidden;max-width:360px;box-shadow:-12px 0 40px rgba(10,12,30,.12)">
+            <div style="padding:14px 16px;border-bottom:1px solid {{theme.border}};display:flex;justify-content:space-between"><span class="vd-h" style="font-size:14px;font-weight:600;color:{{theme.text}}">Edit unit C-05</span><span style="color:{{theme.textSecondary}}">×</span></div>
+            <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px"><label for="ss-p" style="font-size:12px;font-weight:600;color:{{theme.textSecondary}}">List price</label><input id="ss-p" class="vd-input vd-num" value="₦112,000,000" style="padding:9px 12px;border-radius:8px;border:1px solid {{theme.border}};background:{{theme.surface}};color:{{theme.text}};font-size:14px"><span style="font-size:12px;color:#BE123C">Price is below the Phase 2B floor of ₦115m. Needs MD approval.</span></div>
+            <div style="padding:12px 16px;border-top:1px solid {{theme.border}};display:flex;justify-content:flex-end;gap:8px"><button class="vd-btn" style="padding:8px 12px;border-radius:8px;background:transparent;color:{{theme.text}};font-size:12px;font-weight:600">Cancel</button><button class="vd-btn" style="padding:8px 12px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:12px;font-weight:600">Save</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar + mobile nav -->
+      <div style="display:flex;flex-wrap:wrap;gap:20px">
+        <div style="flex:0 0 240px;background:{{theme.navy}};border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px">
+            <img src="/_blob/12917ccdb9f010f737d346362339f636" alt="" style="width:18px;height:18px;object-fit:contain">
+            <span style="font-size:11px;font-weight:600;color:#7C83C9;text-transform:uppercase;letter-spacing:.04em">Vento</span>
+          </div>
+          <sc-for list="{{sidebarItems}}" as="n" hint-placeholder-count="6">
+            <div style="padding:9px 10px;border-radius:7px;font-size:13px;font-weight:500;background:{{n.bg}};color:{{n.color}}">{{n.label}}</div>
+          </sc-for>
+        </div>
+        <div style="flex:0 0 240px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:12px;font-weight:600;color:{{theme.textSecondary}};text-transform:uppercase;letter-spacing:.04em">Mobile bottom nav</span>
+          <div style="border-radius:10px;border:1px solid {{theme.border}};background:{{theme.surface}};display:flex;justify-content:space-around;padding:10px 6px">
+            <sc-for list="{{mobileNav}}" as="m" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{m.color}}"></span>
+                <span style="font-size:10px;font-weight:600;color:{{m.color}}">{{m.label}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Theme"},"$preview":{"width":1440,"height":4400}}'>
+class Component extends DCLogic {
+  theme(dark) {
+    return dark ? {
+      bg:'#0B0E1F', surface:'#141833', surfaceAlt:'#1B2047', border:'#262B4A',
+      text:'#F2F3FA', textSecondary:'#9499C2', accent:'#8A8BFC', navy:'#0B0E1F'
+    } : {
+      bg:'#F5F6FC', surface:'#FFFFFF', surfaceAlt:'#F0F1FA', border:'#E3E5F3',
+      text:'#15172B', textSecondary:'#686D94', accent:'#7677FB', navy:'#121A3F'
+    };
+  }
+
+  renderVals() {
+    const dark = this.state.dark ?? this.props.dark ?? false;
+    const theme = this.theme(dark);
+    const toggleTheme = () => this.setState({ dark: !dark });
+    const showToast = () => this.setState({ toastVisible: !this.state.toastVisible });
+
+    const selectedUnit = this.state.selectedUnit ?? 'A-14';
+    const unitData = [
+      { label: 'A-01', status: 'sold' }, { label: 'A-02', status: 'sold' }, { label: 'A-03', status: 'reserved' },
+      { label: 'A-04', status: 'available' }, { label: 'A-05', status: 'available' }, { label: 'A-06', status: 'blocked' },
+      { label: 'A-07', status: 'available' }, { label: 'A-08', status: 'reserved' }, { label: 'A-09', status: 'sold' },
+      { label: 'A-10', status: 'available' }, { label: 'A-11', status: 'available' }, { label: 'A-14', status: 'reserved' }
+    ];
+    const unitColor = { sold: '#10B981', reserved: '#F59E0B', available: '#3B82F6', blocked: '#94A3B8' };
+    const unitWord = { sold: 'Sold', reserved: 'Reserved', available: 'Available', blocked: 'Blocked' };
+
+    const selectedStage = this.state.selectedStage ?? 2;
+    const stageLabels = [
+      { label: 'Survey plan', date: 'Jan 2025' },
+      { label: 'C of O', date: 'Aug 2025' },
+      { label: "Governor's consent", date: 'Pending' },
+      { label: 'Deed of assignment', date: '—' }
+    ];
+
+    return {
+      theme,
+      themeLabel: dark ? 'Dark theme' : 'Light theme',
+      toggleTheme,
+      showToast,
+      toastVisible: !!this.state.toastVisible,
+
+      dsTabs:[['plan','Payment plan'],['rcpt','Receipts · 5'],['docs','Documents']].map(([k,l])=>({l,on:k===(this.state.dsTab??'plan'),c:k===(this.state.dsTab??'plan')?theme.text:theme.textSecondary,line:k===(this.state.dsTab??'plan')?'#5B5CE0':'transparent',pick:()=>this.setState({dsTab:k})})),
+      dsPills:['All · 6','Titled · 2','In progress · 1','Encumbered · 3'].map((l,i)=>{const on=i===(this.state.dsPill??0);return {l,on,bg:on?(dark?'#262B63':'#ECECFF'):theme.surface,c:on?(dark?'#C7C8FF':'#3F40B8'):theme.text,bd:on?'#7677FB':theme.border,pick:()=>this.setState({dsPill:i})};}),
+      dsSkel:[72,58,66],
+      dsDays:Array.from({length:35},(_,i)=>{const n=i;const inM=n>=1&&n<=31;const on=n===(this.state.dsDay??15);return {n:inM?n:'',on,w:on?700:500,bg:on?'#5B5CE0':(n===2?theme.surfaceAlt:'transparent'),c:on?'#fff':theme.text,op:inM?1:0,pick:()=>inM&&this.setState({dsDay:n})};}),
+      dsQuick:['Today','+30 days','End of month'],
+      lightSwatches: [
+        { name: 'Background', hex: '#F5F6FC' }, { name: 'Surface', hex: '#FFFFFF' },
+        { name: 'Border', hex: '#E3E5F3' }, { name: 'Text', hex: '#15172B' },
+        { name: 'Text secondary', hex: '#686D94' }, { name: 'Brand violet', hex: '#7677FB' },
+        { name: 'Action fill', hex: '#5B5CE0' }
+      ],
+      darkSwatches: [
+        { name: 'Background', hex: '#0B0E1F' }, { name: 'Surface', hex: '#141833' },
+        { name: 'Border', hex: '#262B4A' }, { name: 'Text', hex: '#F2F3FA' },
+        { name: 'Text secondary', hex: '#9499C2' }, { name: 'Brand violet', hex: '#8A8BFC' },
+        { name: 'Action fill', hex: '#5B5CE0' }
+      ],
+      statusTokens: [
+        { name: 'Emerald', txt: '#047857', hex: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', meaning: 'Done · paid · titled' },
+        { name: 'Amber', txt: '#B45309', hex: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', meaning: 'Due soon · pending · partial' },
+        { name: 'Blue', txt: '#1D4ED8', hex: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', meaning: 'In progress · scheduled' },
+        { name: 'Rose', txt: '#BE123C', hex: '#F43F5E', bg: '#FFF1F2', border: '#FECDD3', meaning: 'Overdue · encumbered · expired' },
+        { name: 'Slate', txt: '#475569', hex: '#64748B', bg: '#F1F5F9', border: '#E2E8F0', meaning: 'Draft · inactive' }
+      ],
+
+      typeScale: [
+        { label: 'Display', family: 'Poppins', weight: 600, size: '32px', sample: 'Executive summary' },
+        { label: 'H1', family: 'Poppins', weight: 600, size: '24px', sample: 'Victoria Gardens — Phase 2' },
+        { label: 'H2', family: 'Poppins', weight: 600, size: '18px', sample: 'Payment plan' },
+        { label: 'Body', family: 'Inter', weight: 400, size: '14px', sample: 'Deposit of ₦15,000,000 received on 12 Nov 2026.' },
+        { label: 'Label', family: 'Inter', weight: 600, size: '12px', sample: 'BUYER NAME' },
+        { label: 'Data / mono-ish', family: 'Inter', weight: 500, size: '14px', sample: '₦85,000,000.00' }
+      ],
+      spacingScale: [4, 8, 12, 16, 24, 32, 48].map((px) => ({ px })),
+
+      tableCols: ['Buyer', 'Unit', 'Amount', 'FX', 'Status'],
+      tableRows: [
+        { buyer: 'Adaeze Okonkwo', unit: 'Victoria Gardens · A-14', amount: '₦85,000,000', fx: '—', status: 'In progress', statusColor: '#1D4ED8', statusBg: '#EFF6FF' },
+        { buyer: 'Chidi Eze (UK)', unit: 'Parkview · B-02', amount: '£42,000 → ₦82,320,000', fx: '1 GBP = ₦1,960 · CBN', status: 'Due soon', statusColor: '#B45309', statusBg: '#FFFBEB' },
+        { buyer: 'Tunde Bakare', unit: 'Lekki Pearl · C-09', amount: '₦120,000,000', fx: '—', status: 'Overdue', statusColor: '#BE123C', statusBg: '#FFF1F2' }
+      ],
+
+      unitCells: unitData.map((u) => ({
+        label: u.label,
+        hex: unitColor[u.status],
+        ring: selectedUnit === u.label ? '2px solid #121A3F' : 'none',
+        pick: () => this.setState({ selectedUnit: u.label, selectedUnitStatus: u.status })
+      })),
+      selectedUnitLabel: `Unit ${selectedUnit} · ${unitWord[(unitData.find(u => u.label === selectedUnit) || {}).status || 'reserved']}`,
+
+      stages: stageLabels.map((s, i) => ({
+        n: i + 1,
+        label: s.label,
+        date: s.date,
+        dot: i < selectedStage ? '#10B981' : i === selectedStage ? '#3B82F6' : '#94A3B8',
+        hasLine: i < stageLabels.length - 1,
+        lineColor: i < selectedStage ? '#10B981' : '#E3E5F3',
+        pick: () => this.setState({ selectedStage: i })
+      })),
+
+      timeline: [
+        { label: 'Deposit', amount: '₦15,000,000', due: '12 Jan 2026', status: 'Paid', dot: '#10B981', hasLine: true },
+        { label: 'Instalment 1', amount: '₦17,500,000', due: '12 Apr 2026', status: 'Paid', dot: '#10B981', hasLine: true },
+        { label: 'Instalment 2', amount: '₦17,500,000', due: '12 Jul 2026', status: 'Due in 12 days', dot: '#F59E0B', hasLine: true },
+        { label: 'Instalment 3', amount: '₦17,500,000', due: '12 Oct 2026', status: 'Scheduled', dot: '#94A3B8', hasLine: false }
+      ],
+
+      paletteItems: [
+        { label: 'Record receipt', group: 'Action' },
+        { label: 'New subscription', group: 'Action' },
+        { label: 'Victoria Gardens — Phase 2', group: 'Project' },
+        { label: 'Add site diary entry', group: 'Action' }
+      ],
+
+      sidebarItems: [
+        { label: 'Home', bg: 'rgba(118,119,251,.18)', color: '#C7C8FF' },
+        { label: 'Land & Title', bg: 'transparent', color: '#A9AEDC' },
+        { label: 'Projects', bg: 'transparent', color: '#A9AEDC' },
+        { label: 'Sales', bg: 'transparent', color: '#A9AEDC' },
+        { label: 'Finance', bg: 'transparent', color: '#A9AEDC' },
+        { label: 'Compliance', bg: 'transparent', color: '#A9AEDC' }
+      ],
+      mobileNav: [
+        { label: 'Leads', color: dark ? '#9499C2' : '#686D94' },
+        { label: 'Units', color: dark ? '#9499C2' : '#686D94' },
+        { label: 'Sales', color: '#7677FB' },
+        { label: 'Plans', color: dark ? '#9499C2' : '#686D94' },
+        { label: 'More', color: dark ? '#9499C2' : '#686D94' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

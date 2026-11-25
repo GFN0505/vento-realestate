@@ -5,7 +5,7 @@ A world-class ERP for Nigerian real estate developers: land & title, projects & 
 Read before working (map of all docs: `docs/README.md`):
 - `docs/PRODUCT.md` — vision, personas, the ten modules and how they connect. Keep each module lean; don't add features outside it without asking.
 - `docs/DOMAIN.md` — business vocabulary, statuses and rules.
-- `docs/design/SCREENS.md` — every screen the product needs and its design/build status. Update it whenever screens are added or changed; log deliberate departures from a design in `docs/design/CHANGES.md`.
+- `docs/design/SCREENS.md` — every screen the product needs, the approved design board for it (in `docs/design/claude-design/`) and its build status. Tokens and the rules the designs set are in `docs/design/DESIGN-NOTES.md`. Update it whenever screens are added or changed; log deliberate departures from a design in `docs/design/CHANGES.md`.
 - `docs/journeys/` — step-by-step user walkthroughs (start with `00-golden-thread.md`). Each journey is an e2e test and, once shipped, a help article.
 - `docs/decisions/` — why the big choices were made. Don't reverse one without a new record.
 

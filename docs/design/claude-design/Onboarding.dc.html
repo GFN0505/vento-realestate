@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vento — Onboarding</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.v{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.v *{box-sizing:border-box}
+.v-h{font-family:Poppins,system-ui,sans-serif}
+.v-n{font-variant-numeric:tabular-nums}
+.v-b{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
+.v-b:hover{opacity:.88}
+.v-b:focus-visible,.v a:focus-visible,.v input:focus-visible,.v select:focus-visible{outline:2px solid #7677FB;outline-offset:2px}
+.f{display:flex;flex-direction:column;gap:6px}
+.f label{font-size:12px;font-weight:600;color:#686D94}
+.f input,.f select{padding:11px 12px;border-radius:8px;border:1px solid #E3E5F3;background:#fff;color:#15172B;font-size:14px;font-family:inherit}
+a{color:#5B5CE0}
+</style>
+</helmet>
+<div class="v" style="width:100%;min-height:900px;display:flex;flex-wrap:wrap;background:#F5F6FC;color:#15172B">
+  <sc-if value="{{inSetup}}" hint-placeholder-val="{{true}}">
+    <aside style="flex:0 0 340px;background:#121A3F;color:#fff;padding:40px 36px;display:flex;flex-direction:column;gap:32px">
+      <div style="display:flex;align-items:center;gap:10px"><img src="/_blob/12917ccdb9f010f737d346362339f636" alt="Vento" style="width:28px;height:28px;object-fit:contain"><span class="v-h" style="font-size:18px;font-weight:600">Vento</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="v-h" style="font-size:22px;font-weight:600;line-height:1.3">Set up in about three minutes</span><span style="font-size:13px;color:#A9AEDC;line-height:1.5">Three steps get you to a working project. Everything else can wait for the checklist.</span></div>
+      <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px">
+        <sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+          <li style="display:flex;gap:14px;padding:10px 0"><span style="width:28px;height:28px;flex:0 0 auto;border-radius:50%;background:{{s.bg}};border:1.5px solid {{s.bd}};color:{{s.fg}};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">{{s.mark}}</span><div><div style="font-size:14px;font-weight:600;color:{{s.tc}}">{{s.label}}</div><div style="font-size:12px;color:#8A90C4">{{s.hint}}</div></div></li>
+        </sc-for>
+      </ol>
+      <div style="margin-top:auto;font-size:12px;color:#8A90C4" class="v-n">{{timeLeft}}</div>
+    </aside>
+    <main style="flex:999 1 560px;min-width:0;display:flex;justify-content:center;padding:56px 40px">
+      <div style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:22px">
+        <sc-if value="{{s1}}" hint-placeholder-val="{{true}}">
+          <div><h1 class="v-h" style="margin:0 0 6px;font-size:24px;font-weight:600">Your organisation</h1><p style="margin:0;font-size:14px;color:#686D94">The developer group as a whole. Project companies come next.</p></div>
+          <div class="f"><label for="o-name">Organisation name</label><input id="o-name" value="Vento Holdings Ltd"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="f"><label for="o-rc">CAC RC number</label><input id="o-rc" class="v-n" placeholder="RC 1234567"></div><div class="f"><label for="o-cur">Reporting currency</label><select id="o-cur"><option>NGN — Naira</option><option>USD</option></select></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="f"><label for="o-state">Head office state</label><select id="o-state"><option>Lagos</option><option>FCT Abuja</option><option>Rivers</option><option>Ogun</option></select></div><div class="f"><label for="o-fy">Financial year starts</label><select id="o-fy"><option>January</option><option>April</option><option>July</option></select></div></div>
+          <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:10px;border:1.5px dashed #D3D6EA;background:#fff"><span style="width:44px;height:44px;border-radius:10px;background:#F0F1FA;display:flex;align-items:center;justify-content:center;font-size:11px;color:#686D94;font-weight:600">Logo</span><div style="flex:1;font-size:13px"><b>Add your logo</b><div style="font-size:12px;color:#686D94">Used on receipts, offer letters and the buyer portal. Optional.</div></div><button class="v-b" style="padding:8px 12px;border-radius:8px;background:#fff;border:1px solid #E3E5F3;font-size:12px;font-weight:600;color:#15172B">Upload</button></div>
+        </sc-if>
+        <sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+          <div><h1 class="v-h" style="margin:0 0 6px;font-size:24px;font-weight:600">First entity</h1><p style="margin:0;font-size:14px;color:#686D94">Most projects sit in their own company (SPV). Books, bank accounts and tax are kept per entity.</p></div>
+          <div role="radiogroup" aria-label="Entity type" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><sc-for list="{{etypes}}" as="e" hint-placeholder-count="2"><button class="v-b" role="radio" aria-checked="{{e.on}}" onClick="{{e.pick}}" style="text-align:left;padding:14px;border-radius:10px;background:{{e.bg}};border:1.5px solid {{e.bd}};color:#15172B"><div style="font-size:14px;font-weight:600">{{e.l}}</div><div style="font-size:12px;color:#686D94;margin-top:2px">{{e.h}}</div></button></sc-for></div>
+          <div class="f"><label for="e-name">Entity name</label><input id="e-name" value="Parkview Residences Ltd"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="f"><label for="e-rc">RC number</label><input id="e-rc" class="v-n" placeholder="RC 1234567"></div><div class="f"><label for="e-tin">TIN</label><input id="e-tin" class="v-n" placeholder="12345678-0001"></div></div>
+          <div class="f"><label for="e-bank">Collections account (for buyer payments)</label><div style="display:flex;gap:8px"><select aria-label="Bank" style="flex:0 0 160px"><option>GTBank</option><option>Zenith</option><option>Access</option><option>Sterling</option></select><input id="e-bank" class="v-n" style="flex:1;min-width:0" value="0123456789"></div><span style="font-size:12px;color:#047857">✓ PARKVIEW RESIDENCES LTD — name confirmed</span></div>
+        </sc-if>
+        <sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+          <div><h1 class="v-h" style="margin:0 0 6px;font-size:24px;font-weight:600">First project and units</h1><p style="margin:0;font-size:14px;color:#686D94">Add unit types; Vento creates every unit. Prices and blocks are editable later.</p></div>
+          <div class="f"><label for="p-name">Project name</label><input id="p-name" value="Parkview Phase 1"></div>
+          <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px"><div class="f"><label for="p-area">Area</label><input id="p-area" value="Gbagada"></div><div class="f"><label for="p-lga">LGA</label><select id="p-lga"><option>Kosofe</option><option>Shomolu</option></select></div><div class="f"><label for="p-st">State</label><select id="p-st"><option>Lagos</option></select></div></div>
+          <div style="border:1px solid #E3E5F3;border-radius:10px;background:#fff;overflow:hidden">
+            <div class="v-n" style="display:grid;grid-template-columns:2fr .8fr 1.3fr 36px;gap:10px;padding:10px 14px;background:#F7F8FC;font-size:11px;font-weight:700;color:#686D94;text-transform:uppercase"><span>Unit type</span><span>Count</span><span>List price (₦)</span><span></span></div>
+            <sc-for list="{{types}}" as="u" hint-placeholder-count="2"><div class="v-n" style="display:grid;grid-template-columns:2fr .8fr 1.3fr 36px;gap:10px;padding:8px 14px;border-top:1px solid #E3E5F3;align-items:center"><input aria-label="Unit type" value="{{u.n}}" style="padding:8px 10px;border-radius:7px;border:1px solid #E3E5F3;font-size:13px;font-family:inherit"><input aria-label="Count" value="{{u.c}}" style="padding:8px 10px;border-radius:7px;border:1px solid #E3E5F3;font-size:13px;font-family:inherit"><input aria-label="Price" value="{{u.p}}" style="padding:8px 10px;border-radius:7px;border:1px solid #E3E5F3;font-size:13px;font-family:inherit"><button class="v-b" aria-label="Remove row" style="width:30px;height:30px;border-radius:7px;background:transparent;color:#686D94;font-size:16px">×</button></div></sc-for>
+            <button class="v-b" onClick="{{addType}}" style="width:100%;text-align:left;padding:10px 14px;border-top:1px solid #E3E5F3;background:#fff;color:#4546C9;font-size:13px;font-weight:600">+ Add unit type</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><span class="v-n" style="font-size:12px;font-weight:600;color:#686D94">Preview · {{unitCount}} units · {{unitValue}} list value</span><div style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px"><sc-for list="{{cells}}" as="c" hint-placeholder-count="24"><span style="height:18px;border-radius:3px;background:#fff;border:1.5px solid {{c}}"></span></sc-for></div></div>
+        </sc-if>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px">
+          <button class="v-b" onClick="{{back}}" style="padding:11px 16px;border-radius:8px;background:transparent;color:#15172B;font-size:14px;font-weight:600;opacity:{{backOp}}">Back</button>
+          <button class="v-b" onClick="{{next}}" style="padding:11px 20px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:14px;font-weight:600">{{nextLabel}}</button>
+        </div>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{done}}" hint-placeholder-val="{{false}}">
+    <main style="flex:1;padding:40px 48px;display:flex;flex-direction:column;gap:22px;max-width:1200px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:10px"><img src="/_blob/12917ccdb9f010f737d346362339f636" alt="Vento" style="width:24px;height:24px;object-fit:contain"><span class="v-h" style="font-size:22px;font-weight:600">Welcome to Vento</span></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <section aria-label="Setup checklist" style="flex:1 1 420px;background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><h2 class="v-h" style="margin:0;font-size:16px;font-weight:600">Finish setting up</h2><span class="v-n" style="font-size:12px;font-weight:600;color:#686D94">{{doneCount}} of 8</span></div>
+          <div style="height:6px;border-radius:3px;background:#E8EAF5;overflow:hidden"><div style="height:100%;width:{{pct}}%;background:#5B5CE0"></div></div>
+          <sc-for list="{{checklist}}" as="c" hint-placeholder-count="8">
+            <div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #F0F1FA"><span style="width:20px;height:20px;border-radius:50%;background:{{c.bg}};border:1.5px solid {{c.bd}};display:flex;align-items:center;justify-content:center;flex:0 0 auto"><sc-if value="{{c.done}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3" stroke-linecap="round"></path></svg></sc-if></span><div style="flex:1"><div style="font-size:14px;font-weight:500;color:{{c.tc}};text-decoration:{{c.dec}}">{{c.l}}</div><div style="font-size:12px;color:#686D94">{{c.h}}</div></div><sc-if value="{{c.todo}}" hint-placeholder-val="{{true}}"><button class="v-b" onClick="{{c.pick}}" style="padding:7px 12px;border-radius:7px;background:#F0F1FA;border:1px solid #E3E5F3;color:#15172B;font-size:12px;font-weight:600">{{c.cta}}</button></sc-if></div>
+          </sc-for>
+        </section>
+        <section style="flex:1 1 360px;display:flex;flex-direction:column;gap:14px">
+          <div style="background:#fff;border:1px dashed #D3D6EA;border-radius:10px;padding:28px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center"><span class="v-h" style="font-size:15px;font-weight:600">Parkview Phase 1 is ready to sell</span><span style="font-size:13px;color:#686D94;max-width:320px">24 units are live on the availability grid. Your dashboard fills in after the first subscription.</span><a href="NewSubscription.dc.html" style="margin-top:6px;padding:10px 16px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600;text-decoration:none">Create first subscription</a></div>
+          <div style="background:#fff;border:1px solid #E3E5F3;border-radius:10px;padding:18px 20px;font-size:13px;line-height:1.55;color:#686D94"><b style="color:#15172B">Tip:</b> press ⌘K anywhere to jump to a unit, buyer or document, or to run an action like “Record receipt”.</div>
+        </section>
+      </div>
+    </main>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals(){
+    const st=this.state; const step=st.step??1; const done=step>3; const et=st.et??'spv';
+    const S=[['Organisation','Name, RC number, currency'],['First entity','SPV, TIN, collections account'],['Project & units','Location and unit types']];
+    const types=st.types??[{n:'4-bed semi-detached',c:'16',p:'98,000,000'},{n:'3-bed terrace',c:'8',p:'72,000,000'}];
+    const count=types.reduce((a,x)=>a+(parseInt(x.c,10)||0),0);
+    const value=types.reduce((a,x)=>a+(parseInt(x.c,10)||0)*(parseInt(String(x.p).replace(/,/g,''),10)||0),0);
+    const checks=st.checks??{};
+    const C=[['org','Create organisation','Vento Holdings Ltd',true],['ent','Add first entity','Parkview Residences Ltd',true],['proj','Add first project & units','Parkview Phase 1 · 24 units',true],['team','Invite your team','Finance, sales, site and legal',false,'Invite'],['bank','Connect bank statements','Auto-match buyer transfers to instalments',false,'Connect'],['wa','Connect WhatsApp Business','Send reminders and receipts from your number',false,'Connect'],['buyers','Import existing buyers','CSV or Excel; we map the columns',false,'Import'],['title','Upload title documents','Survey plan, C of O, consent',false,'Upload']];
+    const doneCount=C.filter(c=>c[3]||checks[c[0]]).length;
+    return {
+      inSetup:!done,done,s1:step===1,s2:step===2,s3:step===3,
+      steps:S.map(([l,h],i)=>{const n=i+1;const past=n<step;const now=n===step;return {label:l,hint:h,mark:past?'✓':String(n),bg:past?'#10B981':now?'#5B5CE0':'transparent',bd:past?'#10B981':now?'#5B5CE0':'#3A4280',fg:'#fff',tc:now||past?'#fff':'#8A90C4'};}),
+      timeLeft:'Step '+Math.min(step,3)+' of 3 · about '+(4-Math.min(step,3))+' min left',
+      etypes:[['spv','Project company (SPV)','One project or phase'],['hold','Holding company','Owns the SPVs, shared costs']].map(([k,l,h])=>({l,h,on:k===et,bg:k===et?'#F5F5FF':'#fff',bd:k===et?'#7677FB':'#E3E5F3',pick:()=>this.setState({et:k})})),
+      types,unitCount:count,unitValue:'₦'+(value/1e9).toFixed(2)+'bn',
+      addType:()=>this.setState({types:types.concat([{n:'5-bed detached',c:'4',p:'150,000,000'}])}),
+      cells:Array.from({length:Math.min(count,48)},(_,i)=>i<parseInt(types[0].c,10)?'#7677FB':'#A5A6FB'),
+      back:()=>this.setState({step:Math.max(1,step-1)}),backOp:step===1?0:1,
+      next:()=>this.setState({step:step+1}),nextLabel:step===3?'Create project':'Continue',
+      doneCount,pct:Math.round(doneCount/8*100),
+      checklist:C.map(([k,l,h,auto,cta])=>{const d=auto||!!checks[k];return {l,h,cta:cta||'',done:d,todo:!d,bg:d?'#10B981':'#fff',bd:d?'#10B981':'#C9CCE0',tc:d?'#686D94':'#15172B',dec:d?'line-through':'none',pick:()=>this.setState({checks:{...checks,[k]:true}})};})
+    };
+  }
+}
+</script>
+</body>
+</html>

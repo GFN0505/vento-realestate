@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vento (dark) — Subscription SUB-0118</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.v{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.v *{box-sizing:border-box}
+.v-h{font-family:Poppins,system-ui,sans-serif}
+.v-n{font-variant-numeric:tabular-nums}
+.v-b{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
+.v-b:hover{opacity:.86}
+.v-b:focus-visible,.v a:focus-visible{outline:2px solid #7677FB;outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.v-menu{position:absolute;top:44px;border-radius:10px;box-shadow:0 12px 32px rgba(10,12,30,.16);overflow:hidden;z-index:30}
+a{color:#5B5CE0}a:hover{color:#4546C9}
+</style>
+</helmet>
+<div class="v" style="width:100%;min-height:1200px;display:flex;background:{{t.bg}};color:{{t.text}};position:relative">
+  <nav aria-label="Main" style="flex:0 0 auto;width:{{shNavW}};background:{{t.navy}};display:flex;flex-direction:column;padding:16px 12px;gap:2px">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 14px;justify-content:{{shJust}}">
+      <img src="/_blob/12917ccdb9f010f737d346362339f636" alt="Vento" style="width:24px;height:24px;object-fit:contain">
+      <sc-if value="{{shOpen}}" hint-placeholder-val="{{true}}"><span class="v-h" style="font-size:15px;font-weight:600;color:#fff">Vento</span></sc-if>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.showHeader}}" hint-placeholder-val="{{false}}"><span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8A90C4;text-transform:uppercase;padding:12px 12px 4px;white-space:nowrap">{{n.label}}</span></sc-if>
+      <sc-if value="{{n.isItem}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-label="{{n.label}}" aria-current="{{n.cur}}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;background:{{n.bg}};color:{{n.color}};justify-content:{{n.just}}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex:0 0 auto"><path d="{{n.icon}}" stroke="{{n.color}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <sc-if value="{{n.showLabel}}" hint-placeholder-val="{{true}}"><span style="white-space:nowrap">{{n.label}}</span></sc-if>
+        </a>
+      </sc-if>
+    </sc-for>
+    <button class="v-b" onClick="{{shToggleNav}}" aria-label="{{shNavLabel}}" style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:transparent;color:#8A90C4;font-size:13px;font-weight:500;justify-content:{{shJust}}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="transform:rotate({{shRot}}deg)"><path d="M15 6l-6 6 6 6" stroke="#8A90C4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <sc-if value="{{shOpen}}" hint-placeholder-val="{{true}}"><span>Collapse</span></sc-if>
+    </button>
+  </nav>
+  <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column">
+    <div style="min-height:60px;display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid {{t.border}};background:{{t.surface}};flex-wrap:wrap;position:relative;z-index:20">
+      <div style="position:relative">
+        <button class="v-b" onClick="{{shToggleEnt}}" aria-expanded="{{shEntOpen}}" aria-haspopup="menu" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{{t.alt}};border:1px solid {{t.border}};font-size:13px;font-weight:600;color:{{t.text}}"><span style="font-size:10px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">Entity</span>{{shEntity}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="{{t.muted}}" stroke-width="2" stroke-linecap="round"></path></svg></button>
+        <sc-if value="{{shEntOpen}}" hint-placeholder-val="{{false}}">
+          <div class="v-menu" role="menu" style="left:0;width:300px;background:{{t.surface}};border:1px solid {{t.border}}">
+            <sc-for list="{{shEntities}}" as="e" hint-placeholder-count="6"><button class="v-b" role="menuitemradio" aria-checked="{{e.on}}" onClick="{{e.pick}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:10px 14px;background:{{e.bg}};color:{{t.text}};font-size:13px;border-bottom:1px solid {{t.border}}"><span style="font-weight:600">{{e.name}}</span><span style="font-size:11px;color:{{t.muted}}">{{e.note}}</span></button></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <button class="v-b" aria-label="Switch project" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{{t.alt}};border:1px solid {{t.border}};font-size:13px;font-weight:600;color:{{t.text}}"><span style="font-size:10px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">Project</span>Parkview — Ph 1<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="{{t.muted}}" stroke-width="2" stroke-linecap="round"></path></svg></button>
+      <button class="v-b" onClick="{{shTogglePal}}" style="flex:1 1 220px;max-width:400px;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:{{t.alt}};border:1px solid {{t.border}};color:{{t.muted}};font-size:13px;text-align:left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="{{t.muted}}" stroke-width="1.8"></circle><path d="M20 20l-3.5-3.5" stroke="{{t.muted}}" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        <span style="flex:1">Search or run a command…</span><span style="font-size:11px;font-weight:600;border:1px solid {{t.border}};border-radius:4px;padding:1px 6px">⌘K</span></button>
+      <div style="flex:1 1 auto"></div>
+      <a href="ApprovalsDark.dc.html" aria-label="Approvals, {{shApprN}} waiting" style="position:relative;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;text-decoration:none;color:{{t.text}};font-size:13px;font-weight:600"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12l2 2 4-4M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="{{t.muted}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>Approvals</span><sc-if value="{{shHasAppr}}" hint-placeholder-val="{{true}}"><span class="v-n" style="min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#5B5CE0;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">{{shApprN}}</span></sc-if></a>
+      <div style="position:relative">
+        <button class="v-b" onClick="{{shToggleNotif}}" aria-expanded="{{shNotifOpen}}" aria-label="Notifications, {{shUnread}} unread" style="position:relative;width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10z" stroke="{{t.muted}}" stroke-width="1.7" stroke-linejoin="round"></path><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0" stroke="{{t.muted}}" stroke-width="1.7"></path></svg><sc-if value="{{shHasUnread}}" hint-placeholder-val="{{true}}"><span style="position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#F43F5E"></span></sc-if></button>
+        <sc-if value="{{shNotifOpen}}" hint-placeholder-val="{{false}}">
+          <div class="v-menu" role="dialog" aria-label="Notifications" style="right:0;width:340px;background:{{t.surface}};border:1px solid {{t.border}}">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid {{t.border}}"><span style="font-size:12px;font-weight:700;color:{{t.muted}};text-transform:uppercase">Notifications</span><button class="v-b" onClick="{{shMarkRead}}" style="background:transparent;color:#5B5CE0;font-size:12px;font-weight:600;padding:0">Mark all read</button></div>
+            <sc-for list="{{shNotifs}}" as="nf" hint-placeholder-count="4"><a href="{{nf.href}}" style="display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid {{t.border}};text-decoration:none;background:{{nf.bg}}"><span style="width:7px;height:7px;border-radius:50%;background:{{nf.c}};margin-top:6px;flex:0 0 auto"></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;color:{{t.text}}">{{nf.text}}</span><span style="font-size:11px;color:{{t.muted}}">{{nf.when}}</span></span></a></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="position:relative">
+        <button class="v-b" onClick="{{shToggleUser}}" aria-expanded="{{shUserOpen}}" aria-haspopup="menu" aria-label="Account: {{shUser.name}}" style="display:flex;align-items:center;gap:8px;padding:3px 10px 3px 3px;border-radius:999px;background:{{t.alt}};border:1px solid {{t.border}}"><span style="width:28px;height:28px;border-radius:50%;background:#5B5CE0;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">{{shUser.ini}}</span><span style="font-size:12px;font-weight:600;color:{{t.text}};white-space:nowrap">{{shUser.short}}</span></button>
+        <sc-if value="{{shUserOpen}}" hint-placeholder-val="{{false}}">
+          <div class="v-menu" role="menu" style="right:0;width:280px;background:{{t.surface}};border:1px solid {{t.border}}">
+            <div style="padding:14px;border-bottom:1px solid {{t.border}}"><div style="font-size:14px;font-weight:600;color:{{t.text}}">{{shUser.name}}</div><div style="font-size:12px;color:{{t.muted}}">{{shUser.role}} · {{shUser.email}}</div></div>
+            <button class="v-b" role="menuitemcheckbox" aria-checked="{{shDark}}" onClick="{{shToggleDark}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:transparent;color:{{t.text}};font-size:13px;border-bottom:1px solid {{t.border}}"><span>Dark mode</span><span style="width:34px;height:20px;border-radius:10px;background:{{shDarkTrack}};position:relative;display:block"><span style="position:absolute;top:2px;left:{{shDarkKnob}}px;width:16px;height:16px;border-radius:50%;background:#fff;display:block"></span></span></button>
+            <button class="v-b" role="menuitemcheckbox" aria-checked="{{aiOn}}" onClick="{{shToggleAI}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:transparent;color:{{t.text}};font-size:13px;border-bottom:1px solid {{t.border}}"><span style="display:flex;align-items:center;gap:8px">AI suggestions <span title="AI suggestion" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:999px;border:1px solid {{t.aiBorder}};background:{{t.aiBg}};color:{{t.aiText}};font-size:10px;font-weight:700;letter-spacing:.05em;line-height:16px;vertical-align:middle;white-space:nowrap"><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor"></path></svg>AI</span></span><span style="width:34px;height:20px;border-radius:10px;background:{{shAITrack}};position:relative;display:block"><span style="position:absolute;top:2px;left:{{shAIKnob}}px;width:16px;height:16px;border-radius:50%;background:#fff;display:block"></span></span></button>
+            <div style="padding:10px 14px 4px;font-size:11px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">Preview as role</div>
+            <sc-for list="{{shRoles}}" as="r" hint-placeholder-count="7"><a role="menuitem" href="{{r.href}}" style="display:flex;justify-content:space-between;padding:8px 14px;font-size:13px;color:{{t.text}};text-decoration:none;background:{{r.bg}}"><span>{{r.label}}</span><span style="font-size:11px;color:{{t.muted}}">{{r.who}}</span></a></sc-for>
+            <a role="menuitem" href="RolesSettingsDark.dc.html" style="display:block;padding:11px 14px;border-top:1px solid {{t.border}};margin-top:6px;font-size:13px;color:{{t.text}};text-decoration:none">Settings</a>
+            <a role="menuitem" href="Onboarding.dc.html" style="display:block;padding:11px 14px;border-top:1px solid {{t.border}};font-size:13px;color:{{t.roseText}};text-decoration:none">Sign out</a>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <main style="padding:20px 32px 56px;display:flex;flex-direction:column;gap:16px">
+      <nav aria-label="Breadcrumb" style="font-size:12px;color:{{t.muted}};display:flex;gap:6px"><a href="SalesDark.dc.html" style="text-decoration:none">Sales</a><span>/</span><span>SUB-0118</span></nav>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;gap:14px;align-items:center">
+          <span style="width:48px;height:48px;border-radius:50%;background:#5B5CE0;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">CE</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h1 class="v-h" style="margin:0;font-size:22px;font-weight:600">Chidi Eze</h1><span style="padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:{{bV.bg}};color:{{bV.color}}">Diaspora · UK</span><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:{{bR.bg}};color:{{bR.color}};font-size:12px;font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:{{bR.dot}}"></span>1 instalment overdue</span><sc-if value="{{aiOn}}" hint-placeholder-val="{{false}}"><span style="position:relative"><button class="v-b" onClick="{{toggleRisk}}" aria-expanded="{{riskOpen}}" style="display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 9px;border-radius:999px;background:{{t.amberBg}};border:1px solid {{t.amberBorder}};color:{{t.amberText}};font-size:12px;font-weight:600">Default risk: medium <span title="AI suggestion" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:999px;border:1px solid {{t.aiBorder}};background:{{t.aiBg}};color:{{t.aiText}};font-size:10px;font-weight:700;letter-spacing:.05em;line-height:16px;vertical-align:middle;white-space:nowrap"><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor"></path></svg>AI</span> <span style="text-decoration:underline;padding-right:4px">Why?</span></button><sc-if value="{{riskOpen}}" hint-placeholder-val="{{false}}"><span role="dialog" style="position:absolute;top:30px;left:0;width:320px;padding:12px 14px;border-radius:10px;background:{{t.surface}};border:1px solid {{t.border}};box-shadow:0 12px 32px rgba(10,12,30,.16);font-size:12px;line-height:1.5;color:{{t.text}};z-index:25;display:block">Instalment 5 is 23 days late after 5 on-time payments; he cited a salary delay. On the other side: 53% already paid and he replies within hours. Prediction only; it doesn't change terms.</span></sc-if></span></sc-if></div>
+            <span class="v-n" style="font-size:13px;color:{{t.muted}}">SUB-0118 · Parkview Ph 1 · Unit B-02 · 4-bed semi · 12-month plan in GBP · +44 7911 123 456</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="v-b" onClick="{{toggleRemind}}" style="padding:9px 14px;border-radius:8px;background:{{t.surface}};border:1px solid {{t.border}};color:{{t.text}};font-size:13px;font-weight:600">Send reminder</button>
+          <button class="v-b" onClick="{{openAlloc}}" style="padding:9px 14px;border-radius:8px;background:{{t.surface}};border:1px solid {{t.border}};color:{{t.text}};font-size:13px;font-weight:600">Issue allocation</button>
+          <button class="v-b" onClick="{{openReceipt}}" style="padding:9px 16px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600">Record receipt</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:stretch">
+        <div style="flex:0 0 auto;background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px">
+          <svg width="84" height="84" viewBox="0 0 84 84" role="img" aria-label="53% paid"><circle cx="42" cy="42" r="34" fill="none" stroke="{{t.track}}" stroke-width="9"></circle><circle cx="42" cy="42" r="34" fill="none" stroke="#5B5CE0" stroke-width="9" stroke-linecap="round" stroke-dasharray="113.2 213.6" transform="rotate(-90 42 42)"></circle><text x="42" y="47" text-anchor="middle" font-size="17" font-weight="700" fill="{{t.text}}" font-family="Inter">53%</text></svg>
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:600;color:{{t.muted}}">Paid to date</span><span class="v-n" style="font-size:20px;font-weight:600">£22,400</span><span class="v-n" style="font-size:12px;color:{{t.muted}}">of £42,000 · ₦43.9m received</span><span style="font-size:12px;font-weight:600;color:{{t.emeraldText}}">Allocation threshold (40%) reached</span></div>
+        </div>
+        <div style="flex:1 1 480px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:12px">
+          <sc-for list="{{facts}}" as="k" hint-placeholder-count="4"><div style="background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:600;color:{{t.muted}}">{{k.l}}</span><span class="v-n" style="font-size:18px;font-weight:600;color:{{k.c}}">{{k.v}}</span><span class="v-n" style="font-size:12px;color:{{t.muted}}">{{k.s}}</span></div></sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{reminded}}" hint-placeholder-val="{{false}}">
+        <div role="status" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:#121A3F;color:#fff;font-size:13px"><span style="flex:1">WhatsApp reminder sent to Chidi for £2,450 overdue (Instalment 5).</span><button class="v-b" onClick="{{toggleRemind}}" style="background:transparent;color:#A5A6FB;font-size:13px;font-weight:700">Undo</button></div>
+      </sc-if>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+        <section style="flex:999 1 600px;min-width:0;background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;overflow:hidden">
+          <div role="tablist" style="display:flex;gap:4px;padding:0 16px;border-bottom:1px solid {{t.border}};overflow-x:auto"><sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><button class="v-b" role="tab" aria-selected="{{tb.on}}" onClick="{{tb.pick}}" style="padding:14px 10px 12px;background:transparent;font-size:13px;font-weight:600;color:{{tb.color}};border-bottom:2px solid {{tb.line}};white-space:nowrap">{{tb.label}}</button></sc-for></div>
+
+          <sc-if value="{{isPlan}}" hint-placeholder-val="{{true}}">
+            <div style="padding:8px 20px 16px">
+              <sc-for list="{{plan}}" as="p" hint-placeholder-count="8">
+                <div style="display:flex;gap:14px">
+                  <div style="display:flex;flex-direction:column;align-items:center;width:14px"><span style="width:12px;height:12px;border-radius:50%;background:{{p.dotFill}};border:2px solid {{p.dot}};margin-top:15px;flex:0 0 auto"></span><sc-if value="{{p.line}}" hint-placeholder-val="{{true}}"><span style="width:2px;flex:1;background:{{p.lineC}}"></span></sc-if></div>
+                  <div class="v-n" style="flex:1;display:grid;grid-template-columns:1.5fr 1fr 1.2fr 1.1fr 1fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid {{t.border}};font-size:13px">
+                    <span style="font-weight:600">{{p.label}}</span><span style="color:{{t.muted}}">{{p.due}}</span><span style="text-align:right;font-weight:600">{{p.amt}}<span style="display:block;font-size:11px;font-weight:400;color:{{t.muted}}">{{p.ngn}}</span></span>
+                    <span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;background:{{p.b.bg}};color:{{p.b.color}};font-size:12px;font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:{{p.b.dot}}"></span>{{p.b.label}}</span></span>
+                    <span style="text-align:right;font-size:12px"><sc-if value="{{p.hasRcpt}}" hint-placeholder-val="{{false}}"><a href="Receipt.dc.html">{{p.rcpt}}</a></sc-if><sc-if value="{{p.canPay}}" hint-placeholder-val="{{false}}"><button class="v-b" onClick="{{openReceipt}}" style="background:transparent;color:#5B5CE0;font-size:12px;font-weight:600;padding:0">Record</button></sc-if></span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isReceipts}}" hint-placeholder-val="{{false}}">
+            <sc-for list="{{receipts}}" as="r" hint-placeholder-count="5"><a href="Receipt.dc.html" class="v-n" style="display:grid;grid-template-columns:1fr 1fr 1.3fr 1.2fr 1fr;gap:10px;padding:12px 20px;border-bottom:1px solid {{t.border}};font-size:13px;text-decoration:none;color:{{t.text}}"><span style="font-weight:600">{{r.no}}</span><span style="color:{{t.muted}}">{{r.date}}</span><span style="text-align:right;font-weight:600">{{r.amt}}<span style="display:block;font-size:11px;font-weight:400;color:{{t.muted}}">{{r.ngn}}</span></span><span>{{r.method}}</span><span style="text-align:right;color:#5B5CE0;font-weight:600">PDF · WhatsApp</span></a></sc-for>
+          </sc-if>
+
+          <sc-if value="{{isDocs}}" hint-placeholder-val="{{false}}">
+            <div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px">
+              <sc-for list="{{docs}}" as="dc" hint-placeholder-count="4"><div style="border:1px solid {{t.border}};border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:600">{{dc.name}}</span><span style="width:8px;height:8px;border-radius:50%;background:{{dc.b.dot}}"></span></div><span style="font-size:12px;color:{{dc.b.color}};font-weight:600">{{dc.b.label}}</span><span class="v-n" style="font-size:12px;color:{{t.muted}}">{{dc.meta}}</span><button class="v-b" onClick="{{dc.act}}" style="align-self:flex-start;padding:6px 10px;border-radius:7px;background:{{dc.btnBg}};color:{{dc.btnC}};border:1px solid {{dc.btnB}};font-size:12px;font-weight:600">{{dc.cta}}</button></div></sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isComm}}" hint-placeholder-val="{{false}}">
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+              <div class="v-n" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px"><sc-for list="{{comm}}" as="c" hint-placeholder-count="4"><div><div style="font-size:12px;font-weight:600;color:{{t.muted}}">{{c.l}}</div><div style="font-size:16px;font-weight:600">{{c.v}}</div></div></sc-for></div>
+              <span style="font-size:12px;color:{{t.muted}}">Agent: Tobi Akande (Lekki Realty) · 2.5% of receipts, paid monthly once each instalment clears. Overdue money earns nothing until it lands.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isMsgs}}" hint-placeholder-val="{{false}}">
+            <div style="padding:12px 20px;display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{msgs}}" as="m" hint-placeholder-count="4"><div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid {{t.border}}"><span style="width:30px;height:30px;border-radius:8px;flex:0 0 auto;background:{{m.bg}};color:{{m.fg}};font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">{{m.ch}}</span><div style="flex:1"><div style="font-size:13px">{{m.text}}</div><div style="font-size:11px;color:{{t.muted}};margin-top:2px">{{m.meta}}</div></div></div></sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+        <aside aria-label="Activity" style="flex:1 1 260px;min-width:0;background:{{t.surface}};border:1px solid {{t.border}};border-radius:10px;padding:18px 20px">
+          <h2 class="v-h" style="margin:0 0 14px;font-size:15px;font-weight:600">Activity</h2>
+          <sc-for list="{{activity}}" as="a" hint-placeholder-count="5"><div style="display:flex;gap:12px"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:9px;height:9px;border-radius:50%;background:{{a.c}};margin-top:4px"></span><span style="width:1px;flex:1;background:{{t.border}};min-height:22px"></span></div><div style="padding-bottom:14px"><div style="font-size:13px">{{a.text}}</div><sc-if value="{{a.hasDiff}}" hint-placeholder-val="{{false}}"><div class="v-n" style="margin-top:4px;padding:6px 8px;border-radius:6px;background:{{t.alt}};font-size:12px"><span style="color:{{t.muted}}">{{a.field}}:</span> <span style="text-decoration:line-through;color:{{t.muted}}">{{a.before}}</span> → <b>{{a.after}}</b></div></sc-if><sc-if value="{{a.hasAppr}}" hint-placeholder-val="{{false}}"><div style="margin-top:4px;display:inline-flex;padding:1px 8px;border-radius:999px;background:{{t.emeraldBg}};color:{{t.emeraldText}};font-size:11px;font-weight:600">Approved by {{a.appr}}</div></sc-if><div style="font-size:11px;color:{{t.muted}};margin-top:2px">{{a.when}}</div></div></div></sc-for>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <sc-if value="{{shPalOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position:absolute;inset:0;background:rgba(10,12,30,.45);display:flex;align-items:flex-start;justify-content:center;padding-top:110px;z-index:40">
+      <div role="dialog" aria-label="Command palette" style="width:580px;max-width:92%;background:{{t.surface}};border-radius:12px;box-shadow:0 24px 64px rgba(10,12,30,.35);overflow:hidden">
+        <div style="padding:14px 18px;border-bottom:1px solid {{t.border}};display:flex;align-items:center;gap:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="{{t.muted}}" stroke-width="1.8"></circle><path d="M20 20l-3.5-3.5" stroke="{{t.muted}}" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          <label for="sh-q" class="sr">Search or run a command</label><input id="sh-q" placeholder="Type a parcel, unit, buyer, document or action" style="flex:1;border:none;background:transparent;color:{{t.text}};font-size:15px;font-family:inherit;outline:none">
+          <button class="v-b" onClick="{{shTogglePal}}" style="background:{{t.alt}};border:1px solid {{t.border}};border-radius:5px;color:{{t.muted}};font-size:11px;font-weight:700;padding:2px 7px">ESC</button>
+        </div>
+        <sc-for list="{{shPal}}" as="g" hint-placeholder-count="2">
+          <div style="padding:8px 18px 4px;font-size:11px;font-weight:700;color:{{t.muted}};text-transform:uppercase;letter-spacing:.04em">{{g.group}}</div>
+          <sc-for list="{{g.items}}" as="p" hint-placeholder-count="3"><a href="{{p.href}}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;text-decoration:none;color:{{t.text}};font-size:13px;background:{{p.bg}}"><span>{{p.label}}</span><span style="font-size:11px;color:{{t.muted}}">{{p.hint}}</span></a></sc-for>
+        </sc-for>
+        <div style="display:flex;gap:16px;padding:10px 18px;border-top:1px solid {{t.border}};font-size:11px;color:{{t.muted}}"><span>↑↓ to move</span><span>↵ to open</span><span>Esc to close</span></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{rcptOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position:absolute;inset:0;background:rgba(10,12,30,.45);display:flex;align-items:flex-start;justify-content:center;padding-top:60px;z-index:10">
+      <div role="dialog" aria-labelledby="rr-t" style="width:600px;max-width:94%;background:{{t.surface}};border-radius:12px;box-shadow:0 24px 64px rgba(10,12,30,.3);display:flex;flex-direction:column;max-height:880px">
+        <div style="padding:18px 22px;border-bottom:1px solid {{t.border}};display:flex;justify-content:space-between;align-items:center"><div><h2 id="rr-t" class="v-h" style="margin:0;font-size:17px;font-weight:600">Record receipt</h2><span style="font-size:12px;color:{{t.muted}}">Chidi Eze · SUB-0118 · Parkview B-02</span></div><button class="v-b" onClick="{{closeReceipt}}" aria-label="Close" style="width:32px;height:32px;border-radius:8px;background:transparent;color:{{t.muted}};font-size:20px">×</button></div>
+        <div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px;overflow:auto">
+          <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px">
+            <div style="display:flex;flex-direction:column;gap:6px"><label for="rr-amt" style="font-size:12px;font-weight:600;color:{{t.muted}}">Amount received</label><div style="display:flex;border-radius:8px;border:1px solid {{t.border}};overflow:hidden"><select aria-label="Currency" style="padding:10px;border:none;border-right:1px solid {{t.border}};background:{{t.alt}};color:{{t.text}};font-size:13px;font-weight:700;font-family:inherit"><option>GBP</option><option>NGN</option><option>USD</option><option>EUR</option></select><input id="rr-amt" class="v-n" value="5,000.00" style="flex:1;min-width:0;padding:10px 12px;border:none;background:{{t.surface}};color:{{t.text}};font-size:16px;font-weight:600;font-family:inherit"></div></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label for="rr-date" style="font-size:12px;font-weight:600;color:{{t.muted}}">Value date</label><input id="rr-date" type="date" value="2026-11-25" style="padding:9px 10px;border-radius:8px;border:1px solid {{t.border}};background:{{t.surface}};color:{{t.text}};font-size:14px;font-family:inherit"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="rr-fx" style="font-size:12px;font-weight:600;color:{{t.muted}}">FX rate · 1 GBP =</label>
+            <div style="display:flex;gap:8px;align-items:center"><div style="flex:1;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid {{fxBorder}};background:{{t.surface}}"><span style="color:{{t.muted}}">₦</span><input id="rr-fx" class="v-n" value="{{fxVal}}" readonly="{{fxLocked}}" style="flex:1;min-width:0;border:none;background:transparent;color:{{t.text}};font-size:14px;font-family:inherit"><span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:{{fxTag.bg}};color:{{fxTag.color}}">{{fxTag.label}}</span></div><button class="v-b" onClick="{{toggleFx}}" style="padding:9px 12px;border-radius:8px;background:transparent;border:1px solid {{t.border}};color:{{t.text}};font-size:12px;font-weight:600">{{fxBtn}}</button></div>
+            <sc-if value="{{fxEdit}}" hint-placeholder-val="{{false}}"><label for="rr-why" class="sr">Reason for rate change</label><input id="rr-why" placeholder="Reason (required) — e.g. rate on bank credit advice" value="Bank credit advice rate, GTBank" style="padding:9px 12px;border-radius:8px;border:1px solid {{t.amberBorder}};background:{{t.surface}};color:{{t.text}};font-size:13px;font-family:inherit"></sc-if>
+            <span class="v-n" style="font-size:12px;color:{{t.muted}}">= <b style="color:{{t.text}}">{{ngnTotal}}</b> booked in the Parkview SPV ledger</span>
+          </div>
+          <fieldset style="border:none;margin:0;padding:0"><legend style="font-size:12px;font-weight:600;color:{{t.muted}};margin-bottom:8px">Method</legend><div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{methods}}" as="m" hint-placeholder-count="4"><button class="v-b" onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;background:{{m.bg}};color:{{m.color}};border:1.5px solid {{m.border}}">{{m.label}}</button></sc-for></div></fieldset>
+          <div style="display:flex;flex-direction:column;gap:6px"><label for="rr-ref" style="font-size:12px;font-weight:600;color:{{t.muted}}">{{refLabel}}</label><input id="rr-ref" class="v-n" value="{{refVal}}" style="padding:10px 12px;border-radius:8px;border:1px solid {{t.border}};background:{{t.surface}};color:{{t.text}};font-size:14px;font-family:inherit"></div>
+          <sc-if value="{{aml}}" hint-placeholder-val="{{false}}"><div role="alert" style="padding:12px 14px;border-radius:10px;background:{{t.amberBg}};border:1px solid {{t.amberBorder}};font-size:12px;line-height:1.5"><b style="color:{{t.amberText}}">Large cash receipt — AML review</b><br>Cash above ₦5,000,000 goes to the compliance queue before a receipt is issued. The buyer's balance updates now; the receipt follows approval.</div></sc-if>
+          <div style="border:1px solid {{t.border}};border-radius:10px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:{{t.alt}};font-size:12px;font-weight:600;color:{{t.muted}}"><span>Apply to instalments · oldest due first</span><button class="v-b" style="background:transparent;color:#5B5CE0;font-size:12px;font-weight:600;padding:0">Edit split</button></div>
+            <sc-for list="{{alloc}}" as="al" hint-placeholder-count="3"><div class="v-n" style="display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:10px;padding:10px 14px;border-top:1px solid {{t.border}};font-size:13px;align-items:center"><span>{{al.label}}<span style="display:block;font-size:11px;color:{{al.sc}};font-weight:600">{{al.status}}</span></span><span style="color:{{t.muted}}">{{al.due}}</span><span style="text-align:right;font-weight:600">{{al.amt}}</span></div></sc-for>
+          </div>
+        </div>
+        <div style="padding:14px 22px;border-top:1px solid {{t.border}};display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:12px;color:{{t.muted}}">Buyer gets the receipt on WhatsApp</span>
+          <div style="display:flex;gap:8px"><button class="v-b" onClick="{{closeReceipt}}" style="padding:10px 14px;border-radius:8px;background:transparent;color:{{t.text}};font-size:13px;font-weight:600">Cancel</button><a href="{{confirmHref}}" style="padding:10px 16px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600;text-decoration:none">{{confirmLabel}}</a></div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{allocOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position:absolute;inset:0;background:rgba(10,12,30,.45);display:flex;align-items:center;justify-content:center;z-index:10">
+      <div role="alertdialog" aria-labelledby="al-t" style="width:440px;max-width:92%;background:{{t.surface}};border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 64px rgba(10,12,30,.3)">
+        <h2 id="al-t" class="v-h" style="margin:0;font-size:17px;font-weight:600">Issue allocation letter?</h2>
+        <p style="margin:0;font-size:13px;line-height:1.55;color:{{t.muted}}">Chidi has paid 53% (threshold 40%). This allocates <b style="color:{{t.text}}">Unit B-02</b> to him permanently, generates the letter for MD e-signature, and sends it on WhatsApp once signed.</p>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px"><button class="v-b" onClick="{{closeAlloc}}" style="padding:10px 14px;border-radius:8px;background:transparent;color:{{t.text}};font-size:13px;font-weight:600">Not now</button><button class="v-b" onClick="{{closeAlloc}}" style="padding:10px 16px;border-radius:8px;background:#5B5CE0;color:#fff;font-size:13px;font-weight:600">Allocate B-02 &amp; send for signature</button></div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true,"section":"Theme"},"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  th(d){return d?{bg:'#0B0E1F',surface:'#141833',alt:'#1B2047',border:'#262B4A',text:'#F2F3FA',muted:'#9499C2',navy:'#080B1A',track:'#262B4A',sel:'#1E2350',chipOnBg:'#262B63',chipOnText:'#C7C8FF',roseBg:'rgba(244,63,94,.10)',roseBorder:'rgba(244,63,94,.35)',roseText:'#FB7185',amberBg:'rgba(245,158,11,.10)',amberBorder:'rgba(245,158,11,.35)',amberText:'#FBBF24',emeraldBg:'rgba(16,185,129,.10)',emeraldBorder:'rgba(16,185,129,.35)',emeraldText:'#34D399',blueBg:'rgba(59,130,246,.10)',blueBorder:'rgba(59,130,246,.35)',blueText:'#60A5FA',accentText:'#A5A6FB',mapBg:'#11152C',mapGrid:'rgba(255,255,255,.04)',water:'rgba(96,165,250,.14)',aiBg:'rgba(118,119,251,.14)',aiText:'#A5A6FB',aiBorder:'rgba(165,166,251,.45)'}:{bg:'#F5F6FC',surface:'#FFFFFF',alt:'#F0F1FA',border:'#E3E5F3',text:'#15172B',muted:'#686D94',navy:'#121A3F',track:'#E8EAF5',sel:'#F5F5FF',chipOnBg:'#ECECFF',chipOnText:'#3F40B8',roseBg:'#FFF1F2',roseBorder:'#FECDD3',roseText:'#BE123C',amberBg:'#FFFBEB',amberBorder:'#FDE68A',amberText:'#B45309',emeraldBg:'#ECFDF5',emeraldBorder:'#A7F3D0',emeraldText:'#047857',blueBg:'#EFF6FF',blueBorder:'#BFDBFE',blueText:'#1D4ED8',accentText:'#4546C9',mapBg:'#F3F4FA',mapGrid:'rgba(18,26,63,.05)',water:'rgba(59,130,246,.12)',aiBg:'#F3F3FF',aiText:'#4546C9',aiBorder:'#C7C8FF'};}
+  b(k,l,d){const base={emerald:'#10B981',amber:'#F59E0B',blue:'#3B82F6',rose:'#F43F5E',slate:'#64748B',violet:'#7677FB'}[k];const tx=d?{emerald:'#34D399',amber:'#FBBF24',blue:'#60A5FA',rose:'#FB7185',slate:'#94A3B8',violet:'#A5A6FB'}[k]:{emerald:'#047857',amber:'#B45309',blue:'#1D4ED8',rose:'#BE123C',slate:'#475569',violet:'#4546C9'}[k];return {label:l,dot:base,color:tx,bg:base+(d?'26':'1A')};}
+  cf(p,t){const hi=p>=90,md=p>=70;const on='currentColor';return {cl:(hi?'High':md?'Medium':'Low')+' · '+p+'%',cc:hi?t.emeraldText:md?t.amberText:t.roseText,c1:on,c2:md?on:t.border,c3:hi?on:t.border,hi,md};}
+  tabs(defs,cur,key,t){return defs.map(([k,l])=>({label:l,on:k===cur,color:k===cur?t.text:t.muted,line:k===cur?'#5B5CE0':'transparent',pick:()=>this.setState({[key]:k})}));}
+  roles(){return {md:{label:'Managing Director',name:'Olumide Bankole',short:'Olumide B.',ini:'OB',email:'olumide@ventohomes.ng',home:'ExecutiveHomeDark.dc.html'},land:{label:'Land & legal',name:'Ngozi Adeyemi',short:'Ngozi A.',ini:'NA',email:'ngozi@ventohomes.ng',home:'HomeLandDark.dc.html'},pm:{label:'Project manager',name:'Kunle Ojo',short:'Kunle O.',ini:'KO',email:'kunle@ventohomes.ng',home:'HomePMDark.dc.html'},sales:{label:'Sales',name:'Grace Umeh',short:'Grace U.',ini:'GU',email:'grace@ventohomes.ng',home:'HomeSalesDark.dc.html'},finance:{label:'Finance',name:'Aisha Bello',short:'Aisha B.',ini:'AB',email:'aisha@ventohomes.ng',home:'HomeFinanceDark.dc.html'},hr:{label:'HR',name:'Kemi Adebayo',short:'Kemi A.',ini:'KA',email:'kemi@ventohomes.ng',home:'HomeHRDark.dc.html'},fm:{label:'Facility manager',name:'Ope Martins',short:'Ope M.',ini:'OM',email:'ope@ventohomes.ng',home:'HomeFMDark.dc.html'}};}
+  nav(active,role){const I={home:'M4 11l8-7 8 7M6 10v9h12v-9',land:'M12 3a6 6 0 0 0-6 6c0 4.5 6 11 6 11s6-6.5 6-11a6 6 0 0 0-6-6zM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',proj:'M4 21V8l8-5 8 5v13M9 21v-6h6v6',estate:'M4 20V10l4-3 4 3v10M12 20V7l4-3 4 3v13',sales:'M12 3h6v6l-9 9-6-6 9-9zM15 6h.01',subs:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',fin:'M3 7h18v12H3V7zM3 7l2-3h14l2 3M7 13h2',hr:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 4-6 8-6s8 2 8 6',comp:'M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z',docs:'M7 3h7l5 5v13H7V3zM14 3v5h5',board:'M4 4h16v12H4zM8 20h8M12 16v4',appr:'M9 12l2 2 4-4M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z',diary:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',comm:'M12 3v18M17 7H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6',cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4'};
+    const R=this.roles(); const home=(R[role]||R.md).home;
+    const full=[['h','Overview'],['i','Home',home,'home'],['i','Approvals','ApprovalsDark.dc.html','appr'],['h','Land & assets'],['i','Land & Title','LandTitleDark.dc.html','land'],['i','Projects','ProjectsDark.dc.html','proj'],['i','Estates','EstateDark.dc.html','estate'],['h','Revenue'],['i','Sales','SalesDark.dc.html','sales'],['i','Subscriptions','SubscriptionDetailDark.dc.html','subs'],['i','Finance','FinanceDark.dc.html','fin'],['h','People & governance'],['i','HR & Payroll','HRPayrollDark.dc.html','hr'],['i','Compliance','ComplianceDark.dc.html','comp'],['i','Documents','DocumentsDark.dc.html','docs'],['i','Board pack','BoardPack.dc.html','board'],['i','Settings','RolesSettingsDark.dc.html','cog']];
+    const sets={land:['Home','Approvals','Land & Title','Projects','Compliance','Documents'],pm:['Home','Projects','Site diary','Compliance','Documents'],sales:['Home','Sales','Subscriptions','Commissions','Documents'],finance:['Home','Approvals','Finance','Subscriptions','HR & Payroll','Compliance','Board pack'],hr:['Home','Approvals','HR & Payroll','Compliance','Documents'],fm:['Home','Estates','Documents']};
+    const extra={'Site diary':['i','Site diary','SiteDiaryMobileDark.dc.html','diary'],'Commissions':['i','Commissions','CommissionsDark.dc.html','comm']};
+    let N=full; if(sets[role]){N=[['h','Workspace']].concat(sets[role].map(l=>extra[l]||full.find(r=>r[1]===l)));}
+    const open=this.state.shNav??true;
+    return N.map(r=>r[0]==='h'?{showHeader:open,isItem:false,label:r[1],href:'',icon:'',bg:'',color:'',cur:'false',just:'',showLabel:false}:{showHeader:false,isItem:true,label:r[1],href:r[2],icon:I[r[3]],cur:r[1]===active?'page':'false',bg:r[1]===active?'rgba(118,119,251,.22)':'transparent',color:r[1]===active?'#FFFFFF':'#A9AEDC',just:open?'flex-start':'center',showLabel:open});}
+  shell(d,t,entity,role){const st=this.state;const open=st.shNav??true;const R=this.roles();const me=R[role]||R.md;
+    const close={shEnt:false,shNotif:false,shUser:false};
+    const ents=[['All entities','Consolidated'],['Vento Holdings Ltd','Holding'],['Victoria Gardens Dev. Ltd','SPV · 2 projects'],['Parkview Residences SPV','SPV · 1 project'],['Lekki Pearl Estates Ltd','SPV · 1 project'],['Abuja Heights Ltd','SPV · 1 project']];
+    const cur=st.shEntity??entity; const read=!!st.shRead;
+    const N={md:[['PO-2291 needs your approval (₦23.5m)','ProjectDetailDark.dc.html','#F59E0B','1h ago'],['Tunde Bakare is 14 days overdue','SubscriptionDetailDark.dc.html','#F43F5E','5h ago'],['Payroll for November is ready to approve','HRPayrollDark.dc.html','#5B5CE0','Today'],['Parkview building permit expires in 9 days','ComplianceDark.dc.html','#F59E0B','Yesterday']],land:[['Court order served on Plot 22','ParcelDetailDark.dc.html','#F43F5E','Today'],['Consent file GC/LAG/2026/7781 queried','ParcelDetailDark.dc.html','#F59E0B','Mon'],['Excision gazette: Idu land still pending','ComplianceDark.dc.html','#64748B','Last week']],pm:[['PO-2291 sent for MD approval','ProjectDetailDark.dc.html','#3B82F6','1h ago'],['2 diary entries waiting to sync','SiteDiaryMobileDark.dc.html','#F59E0B','Today'],['Cement price up 13.9% vs BoQ','ProjectDetailDark.dc.html','#F43F5E','Mon']],sales:[['Ifeoma’s hold on C-06 ends in 31 h','LeadDetailDark.dc.html','#F43F5E','Now'],['New diaspora lead: Kelechi Obi (US)','LeadDetailDark.dc.html','#5B5CE0','2h ago'],['Commission for October paid','CommissionsDark.dc.html','#10B981','Mon']],finance:[['3 bank lines to match in Zenith','FinanceDark.dc.html','#F59E0B','Today'],['Payroll needs approval by Thu','HRPayrollDark.dc.html','#5B5CE0','Today'],['Cash receipt held for AML review','ComplianceDark.dc.html','#F59E0B','Today']],hr:[['3 leave requests waiting','HRPayrollDark.dc.html','#F59E0B','Today'],['ICAN membership expired: Tunde Ola','HRPayrollDark.dc.html','#F43F5E','Mon']],fm:[['Roof leak at House 31 is past SLA','HomeFMDark.dc.html','#F43F5E','Today'],['Generator A service due in 38 hrs','EstateDark.dc.html','#F59E0B','Today']]}[role]||[];
+    const palAct=[['Record receipt','RecordReceiptDark.dc.html','Action'],['New subscription','NewSubscriptionDark.dc.html','Action'],['Add site diary entry','SiteDiaryMobileDark.dc.html','Action'],['Upload title document','ParcelDetailDark.dc.html','Action']];
+    const palGo=[['Victoria Gardens — Phase 2','ProjectDetailDark.dc.html','Project'],['Plot 22, Folu Ayo · P-0012','ParcelDetailDark.dc.html','Parcel'],['Chidi Eze · SUB-0118','SubscriptionDetailDark.dc.html','Buyer'],['Unit C-05 · Victoria Gardens','SalesDark.dc.html','Unit'],['Roofing works agreement','DocumentsDark.dc.html','Contract']];
+    const mk=(xs)=>xs.map(([label,href,hint],i)=>({label,href,hint,bg:i===0?t.sel:'transparent'}));
+    return {
+      shOpen:open,shNavW:open?'232px':'68px',shJust:open?'flex-start':'center',shRot:open?0:180,shNavLabel:open?'Collapse sidebar':'Expand sidebar',shToggleNav:()=>this.setState({shNav:!open}),
+      shEntity:cur,shEntOpen:!!st.shEnt,shToggleEnt:()=>this.setState({...close,shEnt:!st.shEnt}),
+      shEntities:ents.map(([n,note])=>({name:n,note,on:n===cur,bg:n===cur?t.sel:'transparent',pick:()=>this.setState({shEntity:n,shEnt:false})})),
+      shNotifOpen:!!st.shNotif,shToggleNotif:()=>this.setState({...close,shNotif:!st.shNotif}),shUnread:read?0:N.length,shHasUnread:!read&&N.length>0,shMarkRead:()=>this.setState({shRead:true}),
+      shNotifs:N.map(([text,href,c,when])=>({text,href,c,when,bg:read?'transparent':t.sel})),
+      shUserOpen:!!st.shUser,shToggleUser:()=>this.setState({...close,shUser:!st.shUser}),
+      shUser:{name:me.name,short:me.short,ini:me.ini,role:me.label,email:me.email},
+      shDark:d,shDarkTrack:d?'#5B5CE0':t.border,shDarkKnob:d?16:2,shToggleDark:()=>this.setState({dark:!d}),
+      shRoles:Object.keys(R).map(k=>({label:R[k].label,who:R[k].name,href:R[k].home,bg:k===role?t.sel:'transparent'})).concat([{label:'Buyer portal',who:'Chidi Eze',href:'BuyerPortalMobile.dc.html',bg:'transparent'}]),
+      shApprN:{md:4,finance:3,land:1,pm:0,sales:0,hr:1,fm:0}[role]??0,shHasAppr:({md:4,finance:3,land:1,hr:1}[role]||0)>0,
+      aiOn:st.shAI??false,shAITrack:(st.shAI??false)?'#5B5CE0':t.border,shAIKnob:(st.shAI??false)?16:2,shToggleAI:()=>this.setState({shAI:!(st.shAI??false)}),
+      shPalOpen:!!st.shPal,shTogglePal:()=>this.setState({...close,shPal:!st.shPal}),
+      shPal:[{group:'Actions',items:mk(palAct)},{group:'Jump to',items:mk(palGo)}]
+    };}
+  bn(items,active,t){const I={diary:'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',flag:'M5 21V4h11l-2 4 2 4H5',box:'M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7',alert:'M12 3l9.5 17h-19L12 3zM12 10v4M12 17h.01',more:'M5 12h.01M12 12h.01M19 12h.01',home:'M4 11l8-7 8 7M6 10v9h12v-9',grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',users:'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 3.5a4 4 0 0 1 0 7.5M22 21c0-3-1.5-5-4-5.7',cash:'M3 6h18v12H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',doc:'M7 3h7l5 5v13H7V3zM14 3v5h5',pay:'M3 7h18v12H3V7zM3 11h18',photo:'M4 7h4l2-3h4l2 3h4v13H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',wrench:'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z',fuel:'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M14 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3',land:'M12 3a6 6 0 0 0-6 6c0 4.5 6 11 6 11s6-6.5 6-11a6 6 0 0 0-6-6z'};return items.map(([l,ic,h])=>({label:l,icon:I[ic],href:h,cur:l===active?'page':'false',color:l===active?(t.dark?'#A5A6FB':'#4546C9'):t.muted}));}
+  renderVals(){
+    const d=this.state.dark??this.props.dark??true; const t=Object.assign(this.th(d),{dark:d}); const B=(k,l)=>this.b(k,l,d); const st=this.state;
+    const M=(()=>{
+
+const tab=st.tab??'plan'; const method=st.method??'Bank transfer'; const fxEdit=!!st.fxEdit;
+const chip=(on)=>({bg:on?t.chipOnBg:t.surface,color:on?t.chipOnText:t.text,border:on?'#7677FB':t.border});
+const P=[['Deposit (30%)','02 Jun 2026','£12,600','₦24.1m @ 1,912','paid','RCT-0611'],['Instalment 1','02 Jul 2026','£2,450','₦4.7m @ 1,930','paid','RCT-0702'],['Instalment 2','02 Aug 2026','£2,450','₦4.7m @ 1,941','paid','RCT-0804'],['Instalment 3','02 Sep 2026','£2,450','₦4.8m @ 1,955','paid','RCT-0903'],['Instalment 4','02 Oct 2026','£2,450','₦4.8m @ 1,958','paid','RCT-1006'],['Instalment 5','02 Nov 2026','£2,450','23 days overdue','over',''],['Instalment 6','02 Dec 2026','£2,450','Due in 7 days','due',''],['Instalments 7–12','Jan – Jun 2027','£14,700','6 × £2,450','sched','']];
+const bmap={paid:['emerald','Paid'],over:['rose','Overdue'],due:['amber','Due soon'],sched:['blue','Scheduled']};
+const dotC={paid:'#10B981',over:'#F43F5E',due:'#F59E0B',sched:'#3B82F6'};
+const amlOn=method==='Cash';
+const fxV=fxEdit?'1,948.50':'1,960.00'; const rate=fxEdit?1948.5:1960;
+return {
+ riskOpen:!!st.rk,toggleRisk:()=>this.setState({rk:!st.rk}),
+ bV:B('violet',''),bR:B('rose',''),
+ facts:[{l:'Contract value',v:'£42,000',s:'₦82.3m at booking',c:t.text},{l:'Outstanding',v:'£19,600',s:'8 instalments',c:t.text},{l:'Overdue',v:'£2,450',s:'Since 02 Nov · 23 days',c:t.roseText},{l:'Next due',v:'02 Dec',s:'£2,450 · reminder 25 Nov',c:t.amberText}],
+ tabs:this.tabs([['plan','Payment plan'],['receipts','Receipts · 5'],['docs','Documents'],['comm','Commission'],['msgs','Communication']],tab,'tab',t),
+ isPlan:tab==='plan',isReceipts:tab==='receipts',isDocs:tab==='docs',isComm:tab==='comm',isMsgs:tab==='msgs',
+ plan:P.map(([l,du,a,n,k,r],i)=>({label:l,due:du,amt:a,ngn:n,b:B(...bmap[k]),dot:dotC[k],dotFill:k==='paid'?dotC[k]:t.surface,line:i<P.length-1,lineC:k==='paid'?'#10B981':t.border,hasRcpt:!!r,rcpt:r,canPay:k==='over'||k==='due'})),
+ receipts:P.filter(p=>p[5]).reverse().map(p=>({no:p[5],date:p[1],amt:p[2],ngn:p[3],method:p[0].startsWith('Dep')?'Bank transfer · GTBank':'Paystack · card'})),
+ docs:[['Letter of offer','emerald','Signed','Sent 28 May 2026','View',false],['Contract of sale','emerald','Signed both parties','E-signed 04 Jun 2026','View',false],['Allocation letter','amber','Ready to issue','Threshold met 02 Oct 2026','Issue now',true],['Deed of assignment','slate','After full payment','Expected Jul 2027','Preview',false]].map(([n,k,l,m,c,p])=>({name:n,b:B(k,l),meta:m,cta:c,btnBg:p?'#5B5CE0':t.surface,btnC:p?'#fff':t.text,btnB:p?'#5B5CE0':t.border,act:p?()=>this.setState({alloc:true}):()=>{}})),
+ comm:[{l:'Rate',v:'2.5%'},{l:'Earned',v:'£560'},{l:'Paid out',v:'£499'},{l:'Pending',v:'£61'}],
+ msgs:[{ch:'WA',bg:t.emeraldBg,fg:t.emeraldText,text:'Reminder: Instalment 5 of £2,450 is now 14 days overdue. Pay to GTBank 0123456789 (Parkview Residences).',meta:'WhatsApp · 16 Nov · Delivered, read'},{ch:'WA',bg:t.emeraldBg,fg:t.emeraldText,text:'Chidi: “Will send by end of month, salary delay. Sorry.”',meta:'WhatsApp · 16 Nov · reply'},{ch:'@',bg:t.blueBg,fg:t.blueText,text:'Construction update: Parkview Phase 1 is 81% complete (photos attached).',meta:'Email · 01 Nov · Opened'},{ch:'WA',bg:t.emeraldBg,fg:t.emeraldText,text:'Receipt RCT-1006 for £2,450 (₦4.8m at ₦1,958).',meta:'WhatsApp · 02 Oct · Delivered'}],
+ activity:[{text:'Instalment 5 due date moved',field:'Due date',before:'02 Nov 2026',after:'30 Nov 2026',appr:'Olumide Bankole',when:'16 Nov · Grace Umeh',c:'#F59E0B'},{text:'Reminder sent for overdue Instalment 5',when:'16 Nov',c:'#F59E0B'},{text:'Instalment 5 became overdue',when:'03 Nov',c:'#F43F5E'},{text:'40% threshold reached — allocation available',when:'02 Oct',c:'#10B981'},{text:'Receipt RCT-1006 recorded by Finance',when:'02 Oct',c:'#5B5CE0'},{text:'Contract e-signed by both parties',when:'04 Jun',c:'#10B981'}].map(a=>({...a,hasDiff:!!a.field,hasAppr:!!a.appr,field:a.field||'',before:a.before||'',after:a.after||'',appr:a.appr||''})),
+ reminded:!!st.rem,toggleRemind:()=>this.setState({rem:!st.rem}),
+ rcptOpen:st.rcpt??false,openReceipt:()=>this.setState({rcpt:true}),closeReceipt:()=>this.setState({rcpt:false}),
+ allocOpen:!!st.alloc,openAlloc:()=>this.setState({alloc:true}),closeAlloc:()=>this.setState({alloc:false}),
+ fxEdit,fxLocked:!fxEdit,fxVal:fxV,fxBorder:fxEdit?'#F59E0B':t.border,fxTag:fxEdit?B('amber','Edited'):B('emerald','CBN · 09:00'),fxBtn:fxEdit?'Reset to CBN':'Edit rate',toggleFx:()=>this.setState({fxEdit:!fxEdit}),
+ ngnTotal:'₦'+Math.round(5000*rate).toLocaleString('en-US'),
+ methods:['Bank transfer','Paystack','Cash','Cheque'].map(m=>({label:m,on:m===method,...chip(m===method),pick:()=>this.setState({method:m})})),
+ refLabel:method==='Paystack'?'Paystack reference':method==='Cash'?'Cash received by':method==='Cheque'?'Cheque number':'Bank reference (from credit alert)',
+ refVal:method==='Paystack'?'PSK_7Tq19xLm2a':method==='Cash'?'Bola Ade, cashier — Lekki office':method==='Cheque'?'00412817':'GTB/FT/261125/0098812',
+ aml:amlOn,
+ alloc:[{label:'Instalment 5',status:'Overdue → cleared',sc:t.emeraldText,due:'02 Nov 2026',amt:'£2,450.00'},{label:'Instalment 6',status:'Due soon → cleared',sc:t.emeraldText,due:'02 Dec 2026',amt:'£2,450.00'},{label:'Instalment 7',status:'Part-paid (£2,350 left)',sc:t.amberText,due:'02 Jan 2027',amt:'£100.00'}],
+ confirmHref:amlOn?'ComplianceDark.dc.html':'Receipt.dc.html',
+ confirmLabel:amlOn?'Record £5,000 & send to AML review':'Record £5,000 (₦'+Math.round(5000*rate).toLocaleString('en-US')+')'
+};
+
+    })();
+    return Object.assign({t,nav:this.nav('Subscriptions','md')},this.shell(d,t,'Parkview Residences SPV','md'),M);
+  }
+}
+</script>
+</body>
+</html>

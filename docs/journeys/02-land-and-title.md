@@ -6,7 +6,7 @@
 
 **Steps**
 1. *Add / edit parcel:* name/reference, state, LGA, area, size (hectares, plots or m²), acquisition cost and date, seller, entity.
-2. Boundary: draw on the map, or "Enter coordinates" for survey beacons.
+2. Boundary: draw on the map, type the beacons from the survey plan (Minna datum, UTM 31N), or on a phone walk the boundary capturing each beacon by GPS.
 3. Upload what exists now (family receipt, survey plan, purchase agreement). Each becomes a title document.
 4. "Save parcel" → *Parcel detail* with the title stage tracker showing the stages for this parcel's path (e.g. survey plan → excision gazette → C of O → governor's consent).
 
@@ -24,7 +24,7 @@
 2. Save. The tracker moves; the next stage becomes current.
 
 **Behind the scenes:** a granted C of O or governor's consent sets the parcel to `titled` once all required stages are granted; document versioned; audit event; the MD's digest mentions it.
-**Watch for:** `rejected` requires a reason and offers "Resubmit"; uploading a newer version of an existing document keeps the old one.
+**Watch for:** `rejected` requires a reason and offers "Resubmit"; uploading a document of a type that already exists adds a version instead of a new file.
 **Target:** 2 clicks plus upload. **Test:** `e2e/land/title-stage.spec.ts` **Status:** draft
 
 ## J-LND-03 · Record and clear an encumbrance
@@ -33,9 +33,9 @@
 
 **Steps**
 1. *Add / clear encumbrance:* type (`mortgage`, `caveat`, `court_order`, `lien`, `family_dispute`), party, date, reference, evidence upload, notes.
-2. Save. A rose banner appears on the parcel and everywhere it's used: its projects, their units, and the new subscription flow.
-3. Later: "Clear encumbrance" with the clearance date and evidence (court letter, discharge).
+2. Save. The parcel gets a rose badge in the list and a banner on its page, and **its units are blocked in Sales**: a court order has to stop a sale wherever one could start.
+3. Later: "Clear encumbrance" with the clearance date and evidence (court letter, discharge). Clearing needs **two approvals**; units unblock after the second.
 
-**Behind the scenes:** notifications to MD and sales manager; new subscriptions on affected units show a warning that must be acknowledged (not blocked; the business decides); audit events.
+**Behind the scenes:** notifications to MD and sales manager; affected units can't be subscribed while the encumbrance is active; audit events.
 **Watch for:** clearing without evidence (blocked); several active encumbrances on one parcel.
 **Test:** `e2e/land/encumbrance.spec.ts` **Status:** draft

@@ -7,7 +7,7 @@
 **Steps**
 1. *Record receipt dialog:* buyer (search by name, phone or unit), amount, date (today by default), method `bank_transfer`, bank account received into, reference.
 2. Allocation preview: oldest due instalment first ("₦2,500,000 → Instalment 4 (₦2,500,000), fully paid"). Change if the buyer asked otherwise.
-3. Confirm button reads "Record ₦2,500,000 receipt".
+3. Confirm button reads "Record ₦2,500,000 receipt" (both currencies for a foreign receipt). Choosing cash above the AML threshold (default ₦5m) turns it into "Send to AML review": the receipt is held, not refused.
 4. Toast with "Send receipt" (WhatsApp/email). Receipt PDF available.
 
 **Behind the scenes:** one transaction: receipt, allocations, instalment statuses, ledger entry in the SPV (Dr bank, Cr customer deposits/receivable), commission earning, AML rule check, audit event, buyer portal updated.
@@ -43,7 +43,7 @@
 
 **Steps**
 1. *Record receipt dialog* with currency GBP, amount £45,000, received into the domiciliary account.
-2. FX rate pre-filled with the CBN official rate for the receipt date (source shown); can be changed to the bank's actual rate (source `bank`), which shows a "differs from CBN by 2.1%" note.
+2. FX rate locked to the CBN official rate for the receipt date (source shown). Changing it (e.g. to the bank's actual rate, source `bank`) asks for a reason and tags the line "Edited", with a "differs from CBN by 2.1%" note.
 3. NGN equivalent shown before confirming.
 
 **Behind the scenes:** amount, currency, rate, source and rate date stored; allocation against an NGN-priced subscription uses the NGN equivalent; FX differences at settlement post to FX gain/loss.
@@ -56,7 +56,7 @@
 
 **Steps**
 1. Reason (duplicate, wrong buyer, bounced cheque, other) and notes. Submit for approval.
-2. Approver approves in the *Approvals inbox*.
+2. Approver approves in the *Approvals inbox*. The person who recorded the receipt can't approve its reversal.
 
 **Behind the scenes:** a reversing ledger entry (never a delete); allocations undone; instalment statuses recalculated; buyer portal and commission updated; the original receipt shows `reversed` with a link to the reversal.
 **Test:** `e2e/finance/reverse-receipt.spec.ts` **Status:** draft
@@ -67,7 +67,7 @@
 
 **Steps**
 1. Bill: vendor, invoice number, date, lines (from the PO if linked), VAT if charged.
-2. "Pay": amount, bank account. WHT shown automatically from the current statutory rule for that vendor type and service ("WHT 5%: ₦1,250,000 withheld; pay ₦23,750,000").
+2. "Pay": amount, bank account. WHT worked out on the amount before VAT, from the current statutory rule for that vendor type and service (the higher no-TIN rate applies if the vendor has no TIN) ("WHT 5%: ₦1,250,000 withheld; pay ₦23,750,000").
 3. Payment approval if above the threshold. Record payment. WHT credit note generated for the vendor.
 
 **Behind the scenes:** ledger: Dr payable, Cr bank, Cr WHT payable; WHT appears on the tax summary for remittance; vendor without TIN flagged.

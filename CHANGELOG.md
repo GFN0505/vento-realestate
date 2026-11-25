@@ -5,3 +5,4 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 ## [Unreleased]
 ### Added
 - Product, domain and design documentation, user journeys, decision records and the Claude Code agent team. No product features yet.
+- Approved Claude Design export (419 boards) with design notes, tokens and a screen inventory linked to each board.

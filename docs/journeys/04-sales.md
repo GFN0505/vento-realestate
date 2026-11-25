@@ -11,7 +11,7 @@
 4. Price list approval (default rule) → becomes active on its effective date.
 
 **Behind the scenes:** units `available`; a price list change is an approval request; existing subscriptions keep their contracted price.
-**Watch for:** duplicate unit numbers (blocked with the list); overlapping price list dates (the newer one wins from its date, shown clearly); units placed on the estate layout later.
+**Watch for:** bulk create never edits existing units: clashes are listed and skipped; new prices need Finance approval; a price below the phase floor needs MD approval; overlapping price list dates (the newer one wins from its date, shown clearly); units placed on the estate layout later.
 **Target:** under 3 minutes for 60 units. **Test:** `e2e/sales/units-and-prices.spec.ts` **Status:** draft
 
 ## J-SAL-02 · Lead to site inspection to sale
@@ -19,12 +19,12 @@
 **Starts from:** *Leads pipeline board*, a WhatsApp message landing on a contact, or a realtor-registered lead.
 
 **Steps**
-1. "Add lead": name, phone (with country code), email, source, segment, interest (project, unit type, budget). *Duplicate warning* if the phone or email already exists, with "Open existing".
+1. "Add lead": name, phone (with country code), email, source, segment, interest (project, unit type, budget). Duplicate check runs on phone and email as you type, with "Open existing"; "Create anyway" asks for a reason and is logged.
 2. Drag the card through `contacted` → `site_inspection` (book a date; reminder to the agent; WhatsApp confirmation to the lead) → `negotiation`.
 3. From the lead: "Start subscription" → J-SAL-03 with the contact pre-filled. Lead becomes `won`.
 4. Or "Mark lost" with a reason (price, location, timing, competitor, no response).
 
-**Watch for:** lead protected to a realtor (show who and until when); diaspora leads in other time zones (show their local time); lost reasons feed the sales dashboard.
+**Watch for:** lead also registered by a realtor (ownership is decided by a person, not the system); diaspora leads in other time zones (show their local time); lost reasons feed the sales dashboard.
 **Target:** add lead in under 30 seconds. **Test:** `e2e/sales/lead-pipeline.spec.ts` **Status:** draft
 
 ## J-SAL-03 · New subscription with a payment plan
@@ -33,14 +33,14 @@
 
 **Steps** (stepped sheet, *New subscription flow*)
 1. **Buyer:** pick an existing contact or add one (name, phone, email, country of residence, ID type).
-2. **Unit:** pre-selected if started from the grid; price from the active price list; currency (NGN default; USD/GBP for diaspora with the indicative rate shown).
+2. **Unit:** pre-selected if started from the grid; price from the active price list. Country of residence sets the diaspora tag and the currencies offered; diaspora plans stay fixed in the buyer's currency with the ₦ equivalent beside it.
 3. **Payment plan:** pick a template (outright, 6/12/24 months, construction-linked) → preview of the instalment schedule; edit deposit or first due date if allowed.
-4. **Review:** buyer, unit, price, schedule, realtor and commission (if any). "Create subscription".
+4. **Review:** buyer, unit, price, schedule, realtor and commission (if any). "Create subscription". Total, deposit and first due date stay pinned under every step.
 5. Success panel: "Send letter of offer" (WhatsApp/email), "Record deposit", "Open subscription".
 
 **Behind the scenes:** in one transaction: subscription `pending_kyc` (or `active` if KYC already verified), instalments generated, unit `subscribed`, commission record `pending`, audit event. Letter of offer generated from the template. Paystack dedicated virtual account requested for the buyer.
 **Done when:** the unit tile turns blue and the subscription shows its schedule.
-**Watch for:** two agents selling the same unit at once (second one gets "A-07 was just subscribed by Funmi" and picks another); encumbrance warning acknowledged; discount beyond the agent's limit (approval request); price list changed during the flow.
+**Watch for:** two agents selling the same unit at once (second one gets "A-14 was just subscribed by Grace" and picks another); units on an encumbered parcel are blocked; discount beyond the agent's limit (approval request); price list changed during the flow.
 **Target:** ≤ 3 minutes, 6 clicks after the buyer exists. **Test:** `e2e/sales/new-subscription.spec.ts` **Status:** draft
 
 ## J-SAL-04 · Chase overdue instalments
@@ -73,7 +73,7 @@
 **Starts from:** *Subscription detail* → "Cancel subscription" (buyer request) or "Mark as defaulted" (from delinquency).
 
 **Steps**
-1. *Cancel / default a subscription:* reason, effective date. Refund calculation shown: amount paid, contractual deductions (admin fee %, from the contract terms), refund due, refund currency.
+1. *Cancel / default a subscription:* reason, effective date. Refund calculation shown: amount paid, contractual deductions (each line quotes the contract clause it comes from), refund due, refund currency.
 2. "Submit for approval". Approver approves.
 3. Finance pays the refund (bank transfer details captured; payment recorded).
 
@@ -100,7 +100,7 @@
 
 **Steps**
 1. *Commission detail:* subscription, rate, which receipts earned it, amount earned to date, already paid.
-2. Select earned commissions → "Approve for payment" (approval rule) → finance records the payment with WHT deducted.
+2. Select earned commissions → "Approve for payment" (approval rule) → finance records the payment with WHT deducted (shown before payment).
 
 **Behind the scenes:** commission earned only on cleared receipts; payment posts to the ledger; the realtor sees `paid` in their portal with the WHT credit note.
 **Test:** `e2e/sales/commission-payout.spec.ts` **Status:** draft

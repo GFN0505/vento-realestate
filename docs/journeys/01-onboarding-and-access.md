@@ -22,9 +22,9 @@
 
 **Steps**
 1. *Team members* → "Invite people". Paste several emails, pick a role template for each (Site engineer, Sales agent, Finance officer…).
-2. Optionally limit access to entities or projects ("Halima: Palm Grove only").
+2. Optionally limit access to entities or projects ("Halima: Victoria Gardens only").
 3. "Send invites". Invitees get the invite email (and WhatsApp if a phone number was given).
-4. Invitee: *Accept invitation* (shows organization and role) → set password → two-factor prompt (required for finance and owner roles) → lands on their role home.
+4. Invitee: *Accept invitation* (shows organization, role and what the role can approve) → set password → two-factor prompt (required for finance and owner roles) → lands on their role home.
 
 **Behind the scenes:** invitations expire after 7 days; role changes are audit events; permissions are enforced server-side.
 **Done when:** the member appears as `active` with their role.
@@ -38,12 +38,12 @@
 **Steps**
 1. *Excel import wizard:* pick what to import (units, buyers, subscriptions, payments to date), download the template or upload their own file.
 2. Map columns (auto-matched by header name, adjustable).
-3. Preview with row-level errors ("Row 14: unit A-07 not found", "Row 22: amount is not a number"). Fix in the file and re-upload, or skip bad rows.
+3. Preview with row-level errors, each fixable in the preview table with one click. Nothing saves until Import ("Row 14: unit A-14 not found", "Row 22: amount is not a number"). Fix in the file and re-upload, or skip bad rows.
 4. "Import 238 rows". Progress, then a summary with links.
 
 **Behind the scenes:** one import job; rows created in batches inside transactions; historical receipts post to the ledger with their original dates in an open period, or to an opening-balance journal if the period is closed. Every created row is tagged with the job id.
 **Done when:** the import shows `imported` and the records are visible.
-**Watch for:** duplicates of existing buyers (match by phone/email and offer merge); money in strings like "85m" or "₦85,000,000" (parse or flag); undo after receipts have been allocated further (blocked with explanation).
+**Watch for:** duplicates of existing buyers (match by phone/email and offer merge); money in strings like "85m" or "₦85,000,000" (parse or flag); undo is available for 7 days and removes exactly what the import added; blocked with an explanation once those records are used further (e.g. receipts allocated).
 **Target:** under 10 minutes for 500 rows. **Test:** `e2e/settings/excel-import.spec.ts` **Status:** draft
 
 ## J-ONB-04 · Sign in with two-factor, recover access
@@ -54,5 +54,5 @@
 2. Forgot password: *Forgot / reset password* → email link → new password → signed in, other sessions ended.
 3. Lost authenticator: backup code, or an owner resets their two-factor (audit event, the member is notified).
 
-**Watch for:** rate-limited attempts with a clear wait message; session expired mid-form (draft kept, sign in again returns them to the page); *Session expired / signed out elsewhere* screen.
+**Watch for:** five wrong two-step codes lock sign-in for 15 minutes and email the user; the code boxes turn rose with a message saying what to do; session expired mid-form (draft kept, sign in again returns them to the page); *Session expired / signed out elsewhere* screen.
 **Test:** `e2e/auth/sign-in.spec.ts` **Status:** draft

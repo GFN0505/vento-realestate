@@ -9,7 +9,9 @@ Everything about Vento that isn't code lives in `docs/`. If you're new, read in 
 | [journeys/](journeys/README.md) | Step-by-step user walkthroughs; each becomes an e2e test and a help article | product-manager (writes), tester (tests) | A flow is added or changes |
 | [specs/](specs/README.md) | One spec per feature: problem, flow, acceptance criteria | product-manager | Before building any feature |
 | [decisions/](decisions/README.md) | Why the big choices were made | architect proposes, implementer commits | A hard-to-reverse or cross-module choice |
-| [design/SCREENS.md](design/SCREENS.md) | Every screen, its design and build status | product-manager, frontend | A screen is added, built or changed |
+| [design/claude-design/](design/claude-design/README.md) | The approved designs: 419 boards from Claude Design | (exported, never hand-edited) | A new design pass is exported |
+| [design/DESIGN-NOTES.md](design/DESIGN-NOTES.md) | Tokens, product rules the designs set, designer's notes, fictional world | frontend, ui-designer | A new design pass |
+| [design/SCREENS.md](design/SCREENS.md) | Every screen, its design board and build status | product-manager, frontend | A screen is added, built or changed |
 | [design/CHANGES.md](design/CHANGES.md) | Where a build deliberately differs from its design | frontend | A designed screen is changed |
 | [design/](design/) prompts | Claude Design prompts used to produce the designs | product-manager | A new design pass |
 | [help/](help/README.md) | Customer help-centre articles | frontend (writes), ui-designer (reviews copy) | A journey ships |
