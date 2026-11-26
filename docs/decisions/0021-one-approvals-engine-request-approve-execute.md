@@ -1,7 +1,7 @@
 # 0021 · One approvals engine: request, approve, execute
 
 - **Date:** 2026-11-26
-- **Status:** proposed
+- **Status:** accepted
 
 ## Context
 Decision 0006 says sensitive actions run only after a different member approves them. Brick 4 builds this before any money module exists, and receipts, refunds, price lists, POs, payroll and journals will all need it. If each module builds its own "pending" state, the rules, the inbox, separation of duties and the audit trail would each be built several times, and some would drift.

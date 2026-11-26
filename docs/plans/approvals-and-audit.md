@@ -1,10 +1,10 @@
 # Plan: Approvals and audit (brick 4)
 
-- **Status:** draft, for the owner's approval. Build starts only after the admin console merges to `main`.
+- **Status:** approved (owner, 26 Nov 2026, all 8 plan questions as recommended). Build starts only after the admin console merges to `main`.
 - **Spec:** [docs/specs/approvals-and-audit.md](../specs/approvals-and-audit.md) (approved, all 8 recommendations, 26 Nov 2026)
 - **Journeys:** J-EXE-02 (rewritten), J-ONB-11 and J-ONB-12 (new), J-ONB-08 and J-ONB-06 (approval step added)
 - **Branch:** `brick/04-approvals-audit`, cut from `main` **after the admin console merges**. **One pull request.**
-- **Decision record:** [0021 One approvals engine: request, approve, execute](../decisions/0021-one-approvals-engine-request-approve-execute.md) (committed with this plan; renumbered if the console takes 0021)
+- **Decision record:** [0021 One approvals engine: request, approve, execute](../decisions/0021-one-approvals-engine-request-approve-execute.md) (accepted; renumbered if the console takes 0021)
 - **Written:** 26 Nov 2026, against `main` at `af849c1` (3d merged: oRPC 1.16, Drizzle, TanStack Router, migrations up to `0010_passkey_guards.sql`)
 
 ## Summary (plain English)
@@ -372,7 +372,7 @@ If the console adds organization-side audit actions (for example "Vento viewed y
   - The 3d grace banner and 7-day window apply. CHANGELOG and a help line explain why.
 - **R7. Email fan-out to many approvers.** Capped at 50 per step, and sent after commit so a mail failure never undoes a decision.
 
-## 14. Plan questions
+## 14. Plan questions (owner approved all recommendations, 26 Nov 2026)
 Each has a recommendation.
 
 1. **Role edits that need approval.** *Recommended:* **only edits to a role at least one person holds.** A role nobody holds changes nobody's access, so its edits (and creating roles) run at once. Assigning a role to someone stays instant (the 3c ceiling bounds it), as the spec left it.
