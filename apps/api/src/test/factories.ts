@@ -393,7 +393,7 @@ export async function archiveEntityRow(
  * The ceiling's standard case: a custom "Office manager" with Settings create, edit and delete
  * plus everything Sales has, and no Finance or HR (two-step on, as the role requires it).
  */
-export async function createOfficeManager(db: DbOrTx, org: TestOrg) {
+export async function createOfficeManager(db: DbOrTx, org: TestOrg, user?: TestUser) {
   const permissions = defaultPermissionsFor('sales')
   permissions.settings = ['view', 'create', 'edit', 'delete']
   const role = await createCustomRole(db, org, {
@@ -405,6 +405,7 @@ export async function createOfficeManager(db: DbOrTx, org: TestOrg) {
     role: 'admin',
     roleId: role.id,
     name: 'Ngozi Eze',
+    ...(user && { user }),
   })
   return { role, ...holder }
 }
