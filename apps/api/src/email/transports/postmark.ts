@@ -72,14 +72,20 @@ export function outcomeOf(reply: PostmarkReply): SendResult {
   return { status: 'failed', kind: 'rejected', code }
 }
 
-/** A whole call's outcome when Postmark didn't answer per message. */
+/**
+ * A whole call's outcome when Postmark didn't accept it. Its JSON `ErrorCode` decides first
+ * (an inactive recipient is HTTP 422 with ErrorCode 406, a bad token 401 with ErrorCode 10); the
+ * HTTP status only when there's no usable code (401 → config, 429 or 5xx → transient, retried).
+ */
 function callFailure(status: number, reply: PostmarkReply | null): Failure {
-  if (status === 401 || reply?.ErrorCode === BAD_TOKEN) {
-    return { status: 'failed', kind: 'config', code: reply?.ErrorCode ?? status }
+  const code = reply?.ErrorCode
+  if (typeof code === 'number' && code !== 0) {
+    const result = outcomeOf({ ErrorCode: code })
+    return result.status === 'failed' ? result : { status: 'failed', kind: 'rejected', code }
   }
+  if (status === 401) return { status: 'failed', kind: 'config', code: status }
   if (status === 429 || status >= 500) return { status: 'failed', kind: 'transient', code: status }
-  const result = outcomeOf({ ErrorCode: reply?.ErrorCode ?? status })
-  return result.status === 'failed' ? result : { status: 'failed', kind: 'rejected', code: status }
+  return { status: 'failed', kind: 'rejected', code: status }
 }
 
 async function readJson(response: Response): Promise<unknown> {

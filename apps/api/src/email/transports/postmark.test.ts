@@ -100,8 +100,24 @@ describe('the Postmark transport', () => {
     ])
   })
 
-  it('maps a refused message and a rejected token', async () => {
+  it('maps by Postmark’s ErrorCode first: inactive, refused and a rejected token', async () => {
     vi.spyOn(logger, 'error').mockImplementation(() => {})
+    vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    const inactive = transport(
+      json(
+        {
+          ErrorCode: 406,
+          Message: 'You tried to send to recipient(s) that have been marked as inactive.',
+        },
+        422,
+      ),
+    )
+    expect(await inactive.mailer.send(reset)).toEqual({
+      status: 'failed',
+      kind: 'inactive',
+      code: 406,
+    })
+
     const refused = transport(json({ ErrorCode: 300, Message: 'Invalid email request' }, 422))
     expect(await refused.mailer.send(reset)).toEqual({
       status: 'failed',
@@ -109,13 +125,39 @@ describe('the Postmark transport', () => {
       code: 300,
     })
 
-    const badToken = transport(json({ ErrorCode: 10, Message: 'Bad or missing API token' }, 401))
+    const badToken = transport(
+      json(
+        {
+          ErrorCode: 10,
+          Message: 'No Account or Server API tokens were supplied in the HTTP headers.',
+        },
+        401,
+      ),
+    )
     expect(await badToken.mailer.send(reset)).toEqual({
       status: 'failed',
       kind: 'config',
       code: 10,
     })
     expect(badToken.fetch).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to the HTTP status when there is no usable body', async () => {
+    vi.spyOn(logger, 'error').mockImplementation(() => {})
+    const unauthorized = transport(new Response('Unauthorized', { status: 401 }))
+    expect(await unauthorized.mailer.send(reset)).toEqual({
+      status: 'failed',
+      kind: 'config',
+      code: 401,
+    })
+    expect(unauthorized.fetch).toHaveBeenCalledOnce()
+
+    const badRequest = transport(new Response('', { status: 400 }))
+    expect(await badRequest.mailer.send(reset)).toEqual({
+      status: 'failed',
+      kind: 'rejected',
+      code: 400,
+    })
   })
 
   it('retries a network error or 5xx once, then reports transient', async () => {
