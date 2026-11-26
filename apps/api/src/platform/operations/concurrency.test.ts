@@ -88,10 +88,11 @@ describe('at the same moment', () => {
         expect.objectContaining({ message: `There's already a plan called "${key}".` }),
       ])
     } finally {
-      // Archived, so no other test's plan lists or hints include it.
+      // Archived, so no other test's plan lists or hints include it. Its position moves out of the
+      // range tests use (sort order is unique, and snapshot.test inserts at 99).
       await pool
         .update(plans)
-        .set({ archivedAt: new Date(), sortOrder: 99 })
+        .set({ archivedAt: new Date(), sortOrder: 10_000 + (Date.now() % 20_000) })
         .where(and(eq(plans.key, key)))
     }
   })
