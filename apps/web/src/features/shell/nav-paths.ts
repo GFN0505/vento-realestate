@@ -13,5 +13,7 @@ export const NAV_PATHS = [
   '/compliance',
   '/documents',
   '/reports',
+  '/settings',
+  '/help',
 ] as const
 export type NavPath = (typeof NAV_PATHS)[number]

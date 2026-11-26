@@ -1,12 +1,11 @@
 import { EyeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { clearPreview } from '@/features/preview/preview-role'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
-import { useShellActions } from '@/features/shell/use-shell-actions'
 
 /** Stays above the top bar while previewing, so nobody forgets (spec departure: banner). */
 export function PreviewBanner() {
   const { previewing } = useEffectiveAccess()
-  const actions = useShellActions()
   if (!previewing) return null
   return (
     <div
@@ -18,7 +17,7 @@ export function PreviewBanner() {
         <span className="font-semibold">Previewing as {previewing.name}.</span>{' '}
         <span className="max-sm:hidden">You still have your own access.</span>
       </p>
-      <Button size="sm" variant="outline" className="max-md:h-9" onClick={actions.stopPreview}>
+      <Button size="sm" variant="outline" className="max-md:h-9" onClick={clearPreview}>
         Stop preview
       </Button>
     </div>

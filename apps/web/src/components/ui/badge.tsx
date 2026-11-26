@@ -10,9 +10,6 @@ const badgeVariants = cva(
         default: 'border-transparent bg-primary text-primary-foreground',
         outline: 'border-border bg-card text-muted-foreground',
         muted: 'border-transparent bg-muted text-muted-foreground',
-        // A tag on the navy sidebar (e.g. "Soon"): 5.5:1 on navy.
-        sidebar:
-          'border-sidebar-border bg-transparent px-1.5 py-0 text-[10px] text-sidebar-faint-foreground',
       },
     },
     defaultVariants: { variant: 'default' },

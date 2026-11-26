@@ -9,7 +9,16 @@ import {
   type SystemRoleKey,
 } from '@vento/shared'
 import { describe, expect, it } from 'vitest'
-import { canView, mobileTabs, moreItems, NAV, sidebarSections, visibleNav } from './nav'
+import {
+  canView,
+  footerNav,
+  mobileTabs,
+  moreItems,
+  NAV,
+  sidebarSections,
+  visibleNav,
+  workspaceModules,
+} from './nav'
 import { NAV_PATHS } from './nav-paths'
 
 const perms = (key: SystemRoleKey) => defaultPermissions(defaultRole(key))
@@ -18,7 +27,8 @@ const labels = (items: { label: string }[]) => items.map((i) => i.label)
 describe('sidebar', () => {
   it.each(SYSTEM_ROLE_KEYS)('shows exactly the modules %s can view, in spec order', (key) => {
     const expected = NAV.filter(
-      (i) => i.module === null || defaultRoleAllows(key, i.module, 'view'),
+      (i) =>
+        i.group !== 'footer' && (i.module === null || defaultRoleAllows(key, i.module, 'view')),
     )
     const shown = sidebarSections(perms(key)).flatMap((s) => s.items)
     expect(labels(shown)).toEqual(labels(expected))
@@ -48,11 +58,11 @@ describe('sidebar', () => {
 
   it('never shows a module the role cannot view', () => {
     expect(labels(visibleNav(perms('sales')))).not.toContain('HR & payroll')
-    expect(labels(visibleNav(perms('hr')))).toEqual(['Home', 'HR & payroll', 'Documents'])
+    expect(labels(visibleNav(perms('hr')))).toEqual(['Home', 'HR & payroll', 'Documents', 'Help'])
   })
 
-  it('shows only Home to someone with no permissions', () => {
-    expect(labels(visibleNav(null))).toEqual(['Home'])
+  it('shows only Home and Help to someone with no permissions', () => {
+    expect(labels(visibleNav(null))).toEqual(['Home', 'Help'])
   })
 })
 
@@ -92,6 +102,20 @@ describe('mobile tabs', () => {
   })
 })
 
+describe('sidebar footer', () => {
+  it('shows Settings only to roles that can view it, and Help to everyone', () => {
+    expect(labels(footerNav(perms('owner')))).toEqual(['Settings', 'Help'])
+    expect(labels(footerNav(perms('admin')))).toEqual(['Settings', 'Help'])
+    for (const key of SYSTEM_ROLE_KEYS.filter((k) => k !== 'owner' && k !== 'admin')) {
+      expect(labels(footerNav(perms(key)))).toEqual(['Help'])
+    }
+  })
+
+  it('keeps the workspace grid to modules, without Home or the footer', () => {
+    expect(labels(workspaceModules(perms('hr')))).toEqual(['HR & payroll', 'Documents'])
+  })
+})
+
 describe('hidden modules', () => {
   it('hides a module everywhere when its status is hidden', () => {
     const sales = NAV.find((i) => i.key === 'sales')
@@ -99,9 +123,9 @@ describe('hidden modules', () => {
     expect(canView(perms('owner'), { ...sales, status: 'hidden' })).toBe(false)
   })
 
-  it('maps every permission module except settings to one entry', () => {
+  it('maps every permission module to exactly one entry', () => {
     const modules = NAV.flatMap((i) => (i.module ? [i.module] : []))
-    expect([...modules, 'settings'].sort()).toEqual([...PERMISSION_MODULES].sort())
+    expect(modules.sort()).toEqual([...PERMISSION_MODULES].sort())
   })
 })
 

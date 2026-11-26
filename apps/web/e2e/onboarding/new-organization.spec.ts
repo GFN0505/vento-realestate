@@ -43,7 +43,7 @@ test('a new owner signs up, sets up the organization and entity, and ends up sig
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Amaka$/ }),
   ).toBeVisible()
   await expect(page.getByRole('main').getByText(company)).toBeVisible()
-  await expect(page.getByText(/matter to you as Owner/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Get set up' })).toBeVisible()
 })
 
 test('a wrong verification code shows what to do and keeps the person on the page', async ({

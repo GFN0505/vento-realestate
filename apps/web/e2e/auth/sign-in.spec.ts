@@ -35,7 +35,7 @@ test('a member with two-step signs in, is refused a wrong code, then gets in wit
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Olumide$/ }),
   ).toBeVisible()
   await expect(page.getByRole('main').getByText(member.organizationName)).toBeVisible()
-  await expect(page.getByText(/matter to you as Owner/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Get set up' })).toBeVisible()
 })
 
 test('a wrong password gets the same message as an unknown email', async ({ page }) => {

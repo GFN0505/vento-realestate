@@ -25,11 +25,13 @@ import { Route as AppShellComplianceRouteImport } from './routes/_app/_shell/com
 import { Route as AppShellDocumentsRouteImport } from './routes/_app/_shell/documents'
 import { Route as AppShellEstatesRouteImport } from './routes/_app/_shell/estates'
 import { Route as AppShellFinanceRouteImport } from './routes/_app/_shell/finance'
+import { Route as AppShellHelpRouteImport } from './routes/_app/_shell/help'
 import { Route as AppShellHrRouteImport } from './routes/_app/_shell/hr'
 import { Route as AppShellLandRouteImport } from './routes/_app/_shell/land'
 import { Route as AppShellProjectsRouteImport } from './routes/_app/_shell/projects'
 import { Route as AppShellReportsRouteImport } from './routes/_app/_shell/reports'
 import { Route as AppShellSalesRouteImport } from './routes/_app/_shell/sales'
+import { Route as AppShellSettingsRouteImport } from './routes/_app/_shell/settings'
 import { Route as AppTwoStepSetupRouteImport } from './routes/_app/two-step.setup'
 import { Route as AuthAcceptInvitationTokenRouteImport } from './routes/_auth/accept-invitation.$token'
 
@@ -110,6 +112,11 @@ const AppShellFinanceRoute = AppShellFinanceRouteImport.update({
   path: '/finance',
   getParentRoute: () => AppShellRoute,
 } as any)
+const AppShellHelpRoute = AppShellHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => AppShellRoute,
+} as any)
 const AppShellHrRoute = AppShellHrRouteImport.update({
   id: '/hr',
   path: '/hr',
@@ -133,6 +140,11 @@ const AppShellReportsRoute = AppShellReportsRouteImport.update({
 const AppShellSalesRoute = AppShellSalesRouteImport.update({
   id: '/sales',
   path: '/sales',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellSettingsRoute = AppShellSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppShellRoute,
 } as any)
 const AppTwoStepSetupRoute = AppTwoStepSetupRouteImport.update({
@@ -161,11 +173,13 @@ export interface FileRoutesByFullPath {
   '/documents': typeof AppShellDocumentsRoute
   '/estates': typeof AppShellEstatesRoute
   '/finance': typeof AppShellFinanceRoute
+  '/help': typeof AppShellHelpRoute
   '/hr': typeof AppShellHrRoute
   '/land': typeof AppShellLandRoute
   '/projects': typeof AppShellProjectsRoute
   '/reports': typeof AppShellReportsRoute
   '/sales': typeof AppShellSalesRoute
+  '/settings': typeof AppShellSettingsRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
 }
@@ -183,11 +197,13 @@ export interface FileRoutesByTo {
   '/documents': typeof AppShellDocumentsRoute
   '/estates': typeof AppShellEstatesRoute
   '/finance': typeof AppShellFinanceRoute
+  '/help': typeof AppShellHelpRoute
   '/hr': typeof AppShellHrRoute
   '/land': typeof AppShellLandRoute
   '/projects': typeof AppShellProjectsRoute
   '/reports': typeof AppShellReportsRoute
   '/sales': typeof AppShellSalesRoute
+  '/settings': typeof AppShellSettingsRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
 }
@@ -208,11 +224,13 @@ export interface FileRoutesById {
   '/_app/_shell/documents': typeof AppShellDocumentsRoute
   '/_app/_shell/estates': typeof AppShellEstatesRoute
   '/_app/_shell/finance': typeof AppShellFinanceRoute
+  '/_app/_shell/help': typeof AppShellHelpRoute
   '/_app/_shell/hr': typeof AppShellHrRoute
   '/_app/_shell/land': typeof AppShellLandRoute
   '/_app/_shell/projects': typeof AppShellProjectsRoute
   '/_app/_shell/reports': typeof AppShellReportsRoute
   '/_app/_shell/sales': typeof AppShellSalesRoute
+  '/_app/_shell/settings': typeof AppShellSettingsRoute
   '/_app/two-step/setup': typeof AppTwoStepSetupRoute
   '/_auth/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
   '/_app/_shell/': typeof AppShellIndexRoute
@@ -233,11 +251,13 @@ export interface FileRouteTypes {
     | '/documents'
     | '/estates'
     | '/finance'
+    | '/help'
     | '/hr'
     | '/land'
     | '/projects'
     | '/reports'
     | '/sales'
+    | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -255,11 +275,13 @@ export interface FileRouteTypes {
     | '/documents'
     | '/estates'
     | '/finance'
+    | '/help'
     | '/hr'
     | '/land'
     | '/projects'
     | '/reports'
     | '/sales'
+    | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
   id:
@@ -279,11 +301,13 @@ export interface FileRouteTypes {
     | '/_app/_shell/documents'
     | '/_app/_shell/estates'
     | '/_app/_shell/finance'
+    | '/_app/_shell/help'
     | '/_app/_shell/hr'
     | '/_app/_shell/land'
     | '/_app/_shell/projects'
     | '/_app/_shell/reports'
     | '/_app/_shell/sales'
+    | '/_app/_shell/settings'
     | '/_app/two-step/setup'
     | '/_auth/accept-invitation/$token'
     | '/_app/_shell/'
@@ -409,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppShellFinanceRouteImport
       parentRoute: typeof AppShellRoute
     }
+    '/_app/_shell/help': {
+      id: '/_app/_shell/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof AppShellHelpRouteImport
+      parentRoute: typeof AppShellRoute
+    }
     '/_app/_shell/hr': {
       id: '/_app/_shell/hr'
       path: '/hr'
@@ -444,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppShellSalesRouteImport
       parentRoute: typeof AppShellRoute
     }
+    '/_app/_shell/settings': {
+      id: '/_app/_shell/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppShellSettingsRouteImport
+      parentRoute: typeof AppShellRoute
+    }
     '/_app/two-step/setup': {
       id: '/_app/two-step/setup'
       path: '/two-step/setup'
@@ -467,11 +505,13 @@ interface AppShellRouteChildren {
   AppShellDocumentsRoute: typeof AppShellDocumentsRoute
   AppShellEstatesRoute: typeof AppShellEstatesRoute
   AppShellFinanceRoute: typeof AppShellFinanceRoute
+  AppShellHelpRoute: typeof AppShellHelpRoute
   AppShellHrRoute: typeof AppShellHrRoute
   AppShellLandRoute: typeof AppShellLandRoute
   AppShellProjectsRoute: typeof AppShellProjectsRoute
   AppShellReportsRoute: typeof AppShellReportsRoute
   AppShellSalesRoute: typeof AppShellSalesRoute
+  AppShellSettingsRoute: typeof AppShellSettingsRoute
   AppShellIndexRoute: typeof AppShellIndexRoute
 }
 
@@ -481,11 +521,13 @@ const AppShellRouteChildren: AppShellRouteChildren = {
   AppShellDocumentsRoute: AppShellDocumentsRoute,
   AppShellEstatesRoute: AppShellEstatesRoute,
   AppShellFinanceRoute: AppShellFinanceRoute,
+  AppShellHelpRoute: AppShellHelpRoute,
   AppShellHrRoute: AppShellHrRoute,
   AppShellLandRoute: AppShellLandRoute,
   AppShellProjectsRoute: AppShellProjectsRoute,
   AppShellReportsRoute: AppShellReportsRoute,
   AppShellSalesRoute: AppShellSalesRoute,
+  AppShellSettingsRoute: AppShellSettingsRoute,
   AppShellIndexRoute: AppShellIndexRoute,
 }
 

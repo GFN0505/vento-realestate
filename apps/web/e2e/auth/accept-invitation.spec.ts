@@ -30,7 +30,7 @@ test('a new person accepts a Finance invitation, sets up two-step and lands sign
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Chidi$/ }),
   ).toBeVisible()
   await expect(page.getByRole('main').getByText(invite.organizationName)).toBeVisible()
-  await expect(page.getByText(/matter to you as Finance/)).toBeVisible()
+  await expect(page.getByText('Cash, all entities')).toBeVisible()
 })
 
 test('an invitation link that does not exist says so instead of showing a form', async ({

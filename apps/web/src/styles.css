@@ -58,9 +58,14 @@
   --sidebar-muted-foreground: #a9aedc;
   --sidebar-faint-foreground: #8a90c4;
   --sidebar-border: #3a4280;
-  /* Board ExecutiveHome: the active entry is brand violet at 22% on navy (white text 12.5:1). */
+  /* The organization avatar: brand violet at 22% on navy, its initials in light violet. */
   --sidebar-accent: rgb(118 119 251 / 0.22);
-  --sidebar-hover: rgb(255 255 255 / 0.06);
+  --sidebar-accent-foreground: #c7c8ff;
+  /* Rows: a soft white pill when active (white text 14:1), fainter on hover. */
+  --sidebar-active: rgb(255 255 255 / 0.09);
+  --sidebar-hover: rgb(255 255 255 / 0.05);
+  /* The active row's icon carries the brand (7.2:1 on navy). */
+  --sidebar-active-icon: #a5a6fb;
   --sidebar-active-foreground: #ffffff;
   /* Light: the navy meets the page on its own. Dark: same shade as the page, so a hairline. */
   --sidebar-edge: transparent;
@@ -231,6 +236,9 @@
   --color-sidebar-faint-foreground: var(--sidebar-faint-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-icon: var(--sidebar-active-icon);
   --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
   --color-sidebar-edge: var(--sidebar-edge);
@@ -271,11 +279,17 @@
  * so the sidebar and the content beside it start at their final width (no layout shift).
  */
 :root {
-  --sidebar-width: 232px;
+  /*
+   * 248px, tested against 240 and 256: every module label and group heading fits at all three,
+   * and organization names up to about 22 characters ("Lekki Partners Ltd") fit the card;
+   * longer ones truncate with a tooltip at every width. 256 bought 8px of name and cost 8px of
+   * content; 240 felt cramped beside the card. 248 matches Linear and Mercury's proportions.
+   */
+  --sidebar-width: 248px;
   --topbar-height: 60px;
 }
 :root[data-sidebar="collapsed"] {
-  --sidebar-width: 68px;
+  --sidebar-width: 64px;
 }
 
 @layer base {

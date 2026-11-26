@@ -1,25 +1,16 @@
-import { EyeIcon, KeyboardIcon, LogOutIcon } from 'lucide-react'
+import { ChevronsUpDownIcon } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 import { Avatar } from '@/components/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Kbd } from '@/components/ui/kbd'
-import { canPreview, useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
-import { shellUi } from '@/features/shell/shell-ui'
-import { useShellActions } from '@/features/shell/use-shell-actions'
-import { setTheme, type Theme, useTheme } from '@/lib/theme'
-import { PreviewRoles } from './preview-roles'
-import { THEME_OPTIONS } from './theme-icons'
+import { useMe } from '@/features/preview/use-effective-permissions'
+import { cn } from '@/lib/utils'
+
+const loadItems = () => import('./user-menu-items')
+const UserMenuItems = lazy(() => loadItems().then((m) => ({ default: m.UserMenuItems })))
 
 /** "Olumide Bankole" → "Olumide B." (board ExecutiveHome account button). */
 function shortName(name: string): string {
@@ -28,91 +19,69 @@ function shortName(name: string): string {
   return last ? `${first} ${last[0]?.toUpperCase()}.` : (first ?? name)
 }
 
-/** Board ExecutiveHome user menu, with the spec's Theme choice and Preview as role. */
-export function UserMenu() {
+type Props = {
+  /** `topbar`: the pill on tablets; `sidebar`: the card at the bottom-left on desktop. */
+  variant: 'topbar' | 'sidebar'
+  collapsed?: boolean
+}
+
+/**
+ * Board ExecutiveHome user menu, with the spec's Theme choice and Preview as role. On desktop it
+ * lives at the bottom of the sidebar (like Linear and Mercury), so the top bar holds only the
+ * entity and search.
+ */
+export function UserMenu({ variant, collapsed = false }: Props) {
   const me = useMe()
-  const access = useEffectiveAccess()
-  const theme = useTheme()
-  const actions = useShellActions()
   const role = me.member?.role.name
+  // Fetch the menu's rows as soon as someone heads for it.
+  const preload = { onPointerEnter: () => void loadItems(), onFocus: () => void loadItems() }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-9 items-center gap-2 rounded-full border bg-background py-0.5 pr-3 pl-0.5 outline-none transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:border-input-hover">
-        <Avatar name={me.user.name} />
-        <span className="sr-only">Account: </span>
-        <span className="max-w-[140px] truncate font-semibold text-xs max-xl:sr-only">
-          {shortName(me.user.name)}
-        </span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[280px]">
-        <div className="px-2.5 pt-2 pb-2.5">
-          <p className="truncate font-semibold text-sm">{me.user.name}</p>
-          <p className="truncate text-muted-foreground text-xs" title={me.user.email}>
-            {role ? `${role} · ` : ''}
-            {me.user.email}
-          </p>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
-          {THEME_OPTIONS.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
-              <option.icon aria-hidden />
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        {canPreview(me) && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <EyeIcon aria-hidden />
-              Preview as role
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-[240px]">
-              <DropdownMenuRadioGroup
-                value={access.previewing?.id ?? ''}
-                onValueChange={actions.preview}
-              >
-                <PreviewRoles
-                  row={(r) => (
-                    <DropdownMenuRadioItem key={r.id} value={r.id}>
-                      {r.name}
-                    </DropdownMenuRadioItem>
-                  )}
-                  status={(message, retry) => (
-                    <DropdownMenuItem
-                      disabled={!retry}
-                      onSelect={(e) => {
-                        e.preventDefault()
-                        retry?.()
-                      }}
-                    >
-                      {message}
-                    </DropdownMenuItem>
-                  )}
-                />
-              </DropdownMenuRadioGroup>
-              {access.previewing && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={actions.stopPreview}>Stop preview</DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
-        <DropdownMenuItem onSelect={() => shellUi.open('shortcuts')}>
-          <KeyboardIcon aria-hidden />
-          Keyboard shortcuts
-          <Kbd className="ml-auto">?</Kbd>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void actions.signOut()}>
-          <LogOutIcon aria-hidden />
-          Sign out
-        </DropdownMenuItem>
+      {variant === 'topbar' ? (
+        <DropdownMenuTrigger
+          {...preload}
+          className="flex size-10 items-center justify-center rounded-full outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <Avatar name={me.user.name} />
+          <span className="sr-only">Account: {shortName(me.user.name)}</span>
+        </DropdownMenuTrigger>
+      ) : (
+        <DropdownMenuTrigger
+          {...preload}
+          className={cn(
+            'flex h-12 w-full items-center gap-2.5 rounded-lg px-2 text-left outline-none transition-colors hover:bg-sidebar-hover focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 data-[state=open]:bg-sidebar-hover',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <Avatar name={me.user.name} />
+          {collapsed ? (
+            <span className="sr-only">Account: {shortName(me.user.name)}</span>
+          ) : (
+            <>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-semibold text-[13px] text-sidebar-foreground">
+                  <span className="sr-only">Account: </span>
+                  {me.user.name}
+                </span>
+                <span className="truncate text-[11.5px] text-sidebar-muted-foreground">{role}</span>
+              </span>
+              <ChevronsUpDownIcon
+                aria-hidden
+                className="size-4 shrink-0 text-sidebar-faint-foreground"
+              />
+            </>
+          )}
+        </DropdownMenuTrigger>
+      )}
+      <DropdownMenuContent
+        align={variant === 'topbar' ? 'end' : 'start'}
+        side={variant === 'topbar' ? 'bottom' : 'top'}
+        className="w-[272px]"
+      >
+        <Suspense fallback={<div className="h-[318px]" aria-busy="true" />}>
+          <UserMenuItems />
+        </Suspense>
       </DropdownMenuContent>
     </DropdownMenu>
   )

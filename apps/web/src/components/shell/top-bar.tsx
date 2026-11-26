@@ -18,7 +18,9 @@ export function TopBar() {
         <EntitySwitcher />
         <SearchButton variant="bar" />
         <div className="flex-1" />
-        <UserMenu />
+        <div className="lg:hidden">
+          <UserMenu variant="topbar" />
+        </div>
       </div>
       <div className="flex items-center gap-3 border-b bg-card px-[18px] py-3 md:hidden">
         <VentoMark size={26} wordmark={false} />

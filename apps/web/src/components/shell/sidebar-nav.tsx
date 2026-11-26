@@ -1,8 +1,7 @@
 import { Link } from '@tanstack/react-router'
-import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
-import { type NavItem, sidebarSections } from '@/features/shell/nav'
+import { footerNav, type NavItem, sidebarSections } from '@/features/shell/nav'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -16,23 +15,23 @@ type Props = {
 export function SidebarNav({ collapsed = false, onNavigate }: Props) {
   const { permissions } = useEffectiveAccess()
   return (
-    <div className="flex flex-col gap-0.5">
-      {sidebarSections(permissions).map((section) => (
+    <div className="flex flex-col gap-3">
+      {sidebarSections(permissions).map((section, index) => (
         <fieldset
           key={section.heading}
           aria-label={section.heading}
-          className="flex flex-col gap-0.5"
+          className="flex flex-col gap-px"
         >
-          <span
-            aria-hidden
-            className={cn(
-              'truncate px-3 pt-3 pb-1 font-bold text-[10px] text-sidebar-faint-foreground uppercase tracking-[0.06em]',
-              // Collapsed: keep a little air between groups, no text.
-              collapsed && 'h-2 p-0 text-transparent',
-            )}
-          >
-            {!collapsed && section.heading}
-          </span>
+          {collapsed ? (
+            index > 0 && <span aria-hidden className="mx-auto mb-2 h-px w-5 bg-sidebar-border/60" />
+          ) : (
+            <span
+              aria-hidden
+              className="truncate px-2.5 pb-1 font-semibold text-[10.5px] text-sidebar-faint-foreground uppercase tracking-[0.07em]"
+            >
+              {section.heading}
+            </span>
+          )}
           {section.items.map((item) => (
             <SidebarLink key={item.key} item={item} collapsed={collapsed} onNavigate={onNavigate} />
           ))}
@@ -41,6 +40,21 @@ export function SidebarNav({ collapsed = false, onNavigate }: Props) {
     </div>
   )
 }
+
+/** Settings (owners and admins) and Help, above Collapse. */
+export function SidebarFooterNav({ collapsed = false, onNavigate }: Props) {
+  const { permissions } = useEffectiveAccess()
+  return (
+    <div className="flex flex-col gap-px">
+      {footerNav(permissions).map((item) => (
+        <SidebarLink key={item.key} item={item} collapsed={collapsed} onNavigate={onNavigate} />
+      ))}
+    </div>
+  )
+}
+
+export const sidebarRow =
+  'group flex h-[34px] items-center gap-2.5 rounded-lg px-2.5 font-medium text-[13.5px] outline-none transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 max-lg:h-11'
 
 function SidebarLink({
   item,
@@ -51,27 +65,46 @@ function SidebarLink({
   collapsed: boolean
   onNavigate: (() => void) | undefined
 }) {
+  const soon = item.status === 'soon'
   const link = (
     <Link
       to={item.to}
       activeOptions={{ exact: item.to === '/', includeSearch: false }}
       onClick={onNavigate}
-      aria-label={collapsed ? item.label : undefined}
       className={cn(
-        'group flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-[13px] text-sidebar-muted-foreground outline-none transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 active:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-active-foreground max-lg:min-h-11',
+        sidebarRow,
+        // Unbuilt modules read quieter; the page itself says "Coming soon".
+        soon ? 'text-sidebar-faint-foreground' : 'text-sidebar-muted-foreground',
+        'data-[status=active]:bg-sidebar-active data-[status=active]:text-sidebar-foreground',
         collapsed && 'justify-center px-0',
       )}
     >
-      <item.icon aria-hidden className="size-[17px] shrink-0" strokeWidth={1.7} />
-      {!collapsed && <span className="truncate">{item.label}</span>}
-      {!collapsed && item.status === 'soon' && (
-        // On the active row the tag lightens to keep 5.8:1 on the violet tint.
-        <Badge
-          variant="sidebar"
-          className="ml-auto group-data-[status=active]:text-sidebar-muted-foreground"
-        >
-          Soon
-        </Badge>
+      <item.icon
+        aria-hidden
+        className="size-4 shrink-0 group-data-[status=active]:text-sidebar-active-icon"
+        strokeWidth={1.75}
+      />
+      {collapsed ? (
+        <span className="sr-only">
+          {item.label}
+          {soon ? ', coming soon' : ''}
+        </span>
+      ) : (
+        <>
+          <span className="truncate">{item.label}</span>
+          {soon && (
+            <>
+              <span className="sr-only">, coming soon</span>
+              {/* The word appears on hover or focus only, never as a row of pills. */}
+              <span
+                aria-hidden
+                className="ml-auto text-[11px] text-sidebar-faint-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              >
+                Soon
+              </span>
+            </>
+          )}
+        </>
       )}
     </Link>
   )
@@ -81,7 +114,7 @@ function SidebarLink({
       <TooltipTrigger asChild>{link}</TooltipTrigger>
       <TooltipContent side="right">
         {item.label}
-        {item.status === 'soon' ? ' · Soon' : ''}
+        {soon ? ' · Soon' : ''}
       </TooltipContent>
     </Tooltip>
   )

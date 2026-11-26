@@ -12,8 +12,8 @@ if (!isCI) {
 // Locally, e2e starts its own API and web server on separate ports, so it never meets the
 // rate limits of a running `pnpm dev` and never shares its sessions. CI uses the usual ports.
 // E2E_API_PORT and E2E_WEB_PORT override both, e.g. to run CI mode next to `pnpm dev`.
-const apiPort = Number(process.env.E2E_API_PORT) || (isCI ? 3000 : 3100)
-const webPort = Number(process.env.E2E_WEB_PORT) || (isCI ? 5173 : 5174)
+const apiPort = Number(process.env.E2E_API_PORT) || (isCI ? 3000 : 3193)
+const webPort = Number(process.env.E2E_WEB_PORT) || (isCI ? 5173 : 5193)
 const webOrigin = `http://localhost:${webPort}`
 const apiUrl = `http://localhost:${apiPort}`
 

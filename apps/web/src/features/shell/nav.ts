@@ -5,8 +5,10 @@ import {
   ChartColumn,
   FileText,
   House,
+  LifeBuoy,
   type LucideIcon,
   MapPin,
+  Settings,
   ShieldCheck,
   Tag,
   Users,
@@ -34,10 +36,13 @@ export type NavKey =
   | 'compliance'
   | 'documents'
   | 'reports'
+  | 'settings'
+  | 'help'
 
-type NavGroup = 'overview' | 'land_assets' | 'revenue' | 'people'
+/** `footer` items sit at the bottom of the sidebar (Settings, Help), not in the module groups. */
+type NavGroup = 'overview' | 'land_assets' | 'revenue' | 'people' | 'footer'
 
-/** `soon` shows with a "Soon" tag and a Coming soon page; `hidden` is the one-switch hide. */
+/** `soon` is a quieter sidebar entry and a Coming soon page; `hidden` is the one-switch hide. */
 export type NavStatus = 'built' | 'soon' | 'hidden'
 
 export type NavItem = {
@@ -51,6 +56,8 @@ export type NavItem = {
   status: NavStatus
   /** The Coming soon page's one line (spec UI copy). */
   comingSoon?: string
+  /** A few words for Home's workspace grid. */
+  summary?: string
   /** Extra words ⌘K matches on. */
   keywords: readonly string[]
 }
@@ -71,6 +78,7 @@ export const NAV: readonly NavItem[] = [
     module: 'land',
     label: 'Land & title',
     to: '/land',
+    summary: 'Parcels, titles and encumbrances',
     icon: MapPin,
     group: 'land_assets',
     status: 'soon',
@@ -83,6 +91,7 @@ export const NAV: readonly NavItem[] = [
     module: 'projects',
     label: 'Projects',
     to: '/projects',
+    summary: 'Phases, budgets and the site diary',
     icon: Building2,
     group: 'land_assets',
     status: 'soon',
@@ -94,6 +103,7 @@ export const NAV: readonly NavItem[] = [
     module: 'facility',
     label: 'Estates',
     to: '/estates',
+    summary: 'Service charge and maintenance',
     icon: Building,
     group: 'land_assets',
     status: 'soon',
@@ -105,6 +115,7 @@ export const NAV: readonly NavItem[] = [
     module: 'sales',
     label: 'Sales',
     to: '/sales',
+    summary: 'Leads, units and subscriptions',
     icon: Tag,
     group: 'revenue',
     status: 'soon',
@@ -116,6 +127,7 @@ export const NAV: readonly NavItem[] = [
     module: 'finance',
     label: 'Finance',
     to: '/finance',
+    summary: 'Receipts, ledgers and tax',
     icon: Wallet,
     group: 'revenue',
     status: 'soon',
@@ -127,6 +139,7 @@ export const NAV: readonly NavItem[] = [
     module: 'hr',
     label: 'HR & payroll',
     to: '/hr',
+    summary: 'Staff and payroll',
     icon: Users,
     group: 'people',
     status: 'soon',
@@ -138,6 +151,7 @@ export const NAV: readonly NavItem[] = [
     module: 'compliance',
     label: 'Compliance',
     to: '/compliance',
+    summary: 'Permits, buyer KYC and AML',
     icon: ShieldCheck,
     group: 'people',
     status: 'soon',
@@ -149,6 +163,7 @@ export const NAV: readonly NavItem[] = [
     module: 'documents',
     label: 'Documents',
     to: '/documents',
+    summary: 'Contracts and letters',
     icon: FileText,
     group: 'people',
     status: 'soon',
@@ -160,15 +175,38 @@ export const NAV: readonly NavItem[] = [
     module: 'analytics',
     label: 'Reports',
     to: '/reports',
+    summary: 'Dashboards and board packs',
     icon: ChartColumn,
     group: 'people',
     status: 'soon',
     keywords: ['analytics', 'dashboards', 'board pack', 'returns'],
     comingSoon: 'Dashboards, project returns and board packs.',
   },
+  {
+    key: 'settings',
+    module: 'settings',
+    label: 'Settings',
+    to: '/settings',
+    icon: Settings,
+    group: 'footer',
+    status: 'soon',
+    keywords: ['team', 'members', 'roles', 'permissions', 'entities', 'organization', 'security'],
+    comingSoon: 'Your team, roles and permissions, entities and your own security.',
+  },
+  {
+    key: 'help',
+    module: null,
+    label: 'Help',
+    to: '/help',
+    icon: LifeBuoy,
+    group: 'footer',
+    status: 'soon',
+    keywords: ['support', 'guides', 'how to', 'help centre'],
+    comingSoon: 'Short guides for each task, written for your role. They arrive with each module.',
+  },
 ]
 
-const GROUP_HEADINGS: Record<NavGroup, string> = {
+const GROUP_HEADINGS: Record<Exclude<NavGroup, 'footer'>, string> = {
   overview: 'Overview',
   land_assets: 'Land & assets',
   revenue: 'Revenue',
@@ -207,9 +245,9 @@ export function visibleNav(permissions: PermissionSet | null): NavItem[] {
 export function sidebarSections(
   permissions: PermissionSet | null,
 ): { heading: string; items: NavItem[] }[] {
-  const items = visibleNav(permissions)
+  const items = visibleNav(permissions).filter((i) => i.group !== 'footer')
   if (items.length <= GROUPED_ABOVE) return [{ heading: 'Workspace', items }]
-  const groups = Object.keys(GROUP_HEADINGS) as NavGroup[]
+  const groups = Object.keys(GROUP_HEADINGS) as Exclude<NavGroup, 'footer'>[]
   return groups
     .map((group) => ({
       heading: GROUP_HEADINGS[group],
@@ -224,13 +262,23 @@ export function mobileTabs(
   roleKey: SystemRoleKey | null,
 ): NavItem[] {
   const viewable = visibleNav(permissions)
-  const modules = viewable.filter((item) => item.module !== null)
+  const modules = viewable.filter((item) => item.module !== null && item.group !== 'footer')
   const priority = roleKey ? MOBILE_TAB_PRIORITY[roleKey] : null
   const picked = priority
     ? priority.flatMap((key) => modules.filter((item) => item.key === key))
     : modules
-  const home = viewable.filter((item) => item.module === null)
+  const home = viewable.filter((item) => item.key === 'home')
   return [...home, ...picked.slice(0, MAX_MODULE_TABS)]
+}
+
+/** Settings (owners and admins by default) and Help, at the bottom of the sidebar. */
+export function footerNav(permissions: PermissionSet | null): NavItem[] {
+  return visibleNav(permissions).filter((item) => item.group === 'footer')
+}
+
+/** The modules for Home's "Your workspace" grid: the sidebar's entries, without Home. */
+export function workspaceModules(permissions: PermissionSet | null): NavItem[] {
+  return visibleNav(permissions).filter((item) => item.group !== 'footer' && item.key !== 'home')
 }
 
 /** The role's modules that didn't fit in the tabs, for the More sheet. */
