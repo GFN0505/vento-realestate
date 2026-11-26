@@ -18,7 +18,7 @@ import { planLimitMessage } from './limits'
 
 const spv = (name: string) => ({ name, type: 'spv' as const })
 
-/** A Starter organization (2 active entities, 10 people) already at its entity limit. */
+/** A Starter organization (2 active companies, 10 people) already at its entity limit. */
 async function starterAtEntityLimit(tx: DbOrTx): Promise<TestOrg> {
   const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
   await createEntity(tx, org, { name: 'Lekki Partners Holdings Ltd', type: 'holding' })
@@ -42,7 +42,7 @@ describe('plan limits: entities', () => {
       await expect(client.entities.create(spv('Third SPV Ltd'))).rejects.toMatchObject({
         code: 'FORBIDDEN',
         message:
-          'Your Starter plan includes 2 active entities. Archive an entity or talk to Vento about Growth.',
+          'Your Starter plan includes 2 active companies. Archive one, or talk to Vento about Growth.',
         data: { reason: 'plan_limit', limit: 'entities', included: 2 },
       })
       expect(await auditCount(tx, org, 'entity.created')).toBe(0)
@@ -57,7 +57,7 @@ describe('plan limits: entities', () => {
       expect(error).toMatchObject({
         code: 'FORBIDDEN',
         message:
-          'Your organization has reached its limit of 2 active entities. Ask Olumide Bankole (owner).',
+          'Your organization has reached its limit of 2 active companies. Ask Olumide Bankole (owner).',
         data: { reason: 'plan_limit', askName: 'Olumide Bankole', askRole: 'owner' },
       })
       expect(JSON.stringify(error)).not.toMatch(/Starter|Growth/)
@@ -82,7 +82,7 @@ describe('plan limits: entities', () => {
       await client.entities.create(spv('Third SPV Ltd'))
       await expect(client.entities.create(spv('Fourth SPV Ltd'))).rejects.toMatchObject({
         message:
-          'Your plan includes 3 active entities. Archive an entity or talk to Vento about Growth.',
+          'Your plan includes 3 active companies. Archive one, or talk to Vento about Growth.',
         data: { included: 3 },
       })
     }))

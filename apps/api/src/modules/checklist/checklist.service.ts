@@ -14,6 +14,8 @@ import {
 type FactsRow = {
   has_entity: boolean | null
   first_entity_name: string | null
+  entity_count: number
+  single_company_confirmed: boolean | null
   other_members: number
   first_other_name: string | null
   invited_people: number
@@ -42,6 +44,9 @@ async function loadFacts(ctx: ServiceContext) {
         as has_entity,
       (select name from entities where organization_id = ${org} and status = 'active'${withinViewerLimit(ctx)}
         order by created_at, id limit 1) as first_entity_name,
+      (select count(*) from entities where organization_id = ${org})::int as entity_count,
+      (select single_company_confirmed_at is not null from organizations where id = ${org})
+        as single_company_confirmed,
       (select count(*) from members where organization_id = ${org} and status = 'active'
         and user_id <> ${ctx.user.id})::int as other_members,
       (select u.name from members o join users u on u.id = o.user_id
@@ -59,6 +64,8 @@ async function loadFacts(ctx: ServiceContext) {
     organizationName: ctx.organizationName,
     hasEntity: Boolean(row?.has_entity),
     firstEntityName: row?.first_entity_name ?? null,
+    entityCount: row?.entity_count ?? 0,
+    singleCompanyConfirmed: Boolean(row?.single_company_confirmed),
     viewerTwoStepOn: Boolean(row?.viewer_two_step_on),
     otherMembers: row?.other_members ?? 0,
     firstOtherName: row?.first_other_name ?? null,
@@ -89,7 +96,9 @@ export async function getChecklist(
   registry: readonly ChecklistEntry[] = CHECKLIST_ITEMS,
 ): Promise<Checklist> {
   const { facts, hiddenAt, completedAt } = await loadFacts(ctx)
-  const items = evaluateChecklist(registry, (key) => ctx.features.has(key), facts)
+  const items = evaluateChecklist(registry, (key) => ctx.features.has(key), facts, {
+    allEntities: ctx.member.entityIds === null,
+  })
   const allDone = items.every((i) => i.done)
   let completed = completedAt
   if (allDone && !completed) {

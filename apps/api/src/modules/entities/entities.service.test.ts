@@ -65,14 +65,14 @@ describe('entities', () => {
       await createMember(tx, org, { role: 'sales', entityIds: [parkview.id, lekki.id] })
       const ctx = await contextFor(tx, org.owner, org)
       expect(await archivePreview(ctx, parkview.id)).toEqual({
-        membersOnlyThisEntity: 2,
         isLastActive: false,
+        members: { count: 2, names: ['facility person', 'project_manager person'] },
       })
       const archived = await archiveEntity(ctx, parkview.id)
       expect(archived.status).toBe('archived')
       expect(await archivePreview(ctx, lekki.id)).toEqual({
-        membersOnlyThisEntity: 1,
         isLastActive: true,
+        members: { count: 1, names: ['sales person'] },
       })
     }))
 

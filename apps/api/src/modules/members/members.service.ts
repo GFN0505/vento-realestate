@@ -1,4 +1,4 @@
-import type { TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
+import type { PermissionSet, TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
 import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, type ServiceContext } from '@/access/context'
@@ -21,6 +21,7 @@ import { twoStepResetAlert } from '@/email/templates/security-alert'
 import { conflict, forbidden, notFound } from '@/lib/errors'
 import { recordAccountEvent, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
+import { loadRoles, lockAssignableRoles, onArchivedRole } from '@/modules/roles/roles.service'
 import { memberRowById } from '@/modules/team/team.service'
 
 const isOwnerKey = (key: string | null) => key === 'owner'
@@ -33,6 +34,8 @@ type Target = {
   roleId: string
   roleKey: string | null
   roleName: string
+  /** What their role can do, for the permission ceiling. */
+  permissions: PermissionSet
   /** Current entity limits, by name; empty = all entities. */
   limits: { id: string; name: string }[]
 }
@@ -64,31 +67,38 @@ async function lockTarget(tx: DbOrTx, ctx: ServiceContext, memberId: string): Pr
     )
     .for('update', { of: members })
   if (!row) throw notFound()
-  return { ...row, limits: await currentLimits(tx, ctx, row.id) }
+  const [role] = await loadRoles(tx, ctx.organizationId, [row.roleId], { includeArchived: true })
+  if (!role) throw notFound()
+  return { ...row, permissions: role.permissions, limits: await currentLimits(tx, ctx, row.id) }
 }
 
 /**
- * Throws the manage rules' refusal (own access, owner only, wider access), if any. The owner's
- * name for "Ask … (owner)" is looked up only when the target's access is wider than the viewer's.
+ * Throws the manage rules' refusal (own access, owner only, wider permissions, wider access), if
+ * any. The owner's name for "Ask … (owner)" is looked up only when a refusal line needs it.
  */
 async function assertMayManage(
   tx: DbOrTx,
   ctx: ServiceContext,
   target: Target,
   action: MemberAction,
-  newRoleKey?: string | null,
+  newRole?: { key: string | null; permissions: PermissionSet },
 ): Promise<void> {
   const viewer = viewerOf(ctx)
   const subject = {
     userId: target.userId,
     name: target.name,
     roleKey: target.roleKey,
+    permissions: target.permissions,
     entityIds: target.limits.length ? target.limits.map((e) => e.id) : null,
   }
   const ownerName = needsOwnerName(viewer, subject)
     ? ((await firstOwner(tx, ctx.organizationId, ctx.user.id))?.name ?? null)
     : null
-  const refusal = memberRefusal(viewer, subject, action, { newRoleKey, ownerName })
+  const refusal = memberRefusal(viewer, subject, action, {
+    newRoleKey: newRole?.key,
+    newRolePermissions: newRole?.permissions,
+    ownerName,
+  })
   if (refusal) throw forbidden(refusal.reason, refusal.message)
 }
 
@@ -135,12 +145,10 @@ export async function updateMemberAccess(
   const result = await ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
     const target = await lockTarget(tx, ctx, input.memberId)
-    const [role] = await tx
-      .select({ id: roles.id, key: roles.key, name: roles.name })
-      .from(roles)
-      .where(and(eq(roles.organizationId, ctx.organizationId), eq(roles.id, input.roleId)))
+    // Locked for share: a delete of this role waits, or wins and this is role_unavailable.
+    const [role] = await lockAssignableRoles(tx, ctx.organizationId, [input.roleId])
     if (!role) throw notFound()
-    await assertMayManage(tx, ctx, target, 'change', role.key)
+    await assertMayManage(tx, ctx, target, 'change', role)
     if (isOwnerKey(target.roleKey) && !isOwnerKey(role.key)) {
       if ((await otherActiveOwners(tx, ctx, target.id)) < 1) {
         throw conflict('last_owner', lastOwnerMessage(ctx))
@@ -148,7 +156,9 @@ export async function updateMemberAccess(
     }
     const newLimits = await assertGrantableEntities(tx, ctx, input.entityIds)
 
-    await tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id))
+    await onArchivedRole(
+      tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id)),
+    )
     await tx.delete(memberEntityLimits).where(eq(memberEntityLimits.memberId, target.id))
     if (newLimits.length) {
       await tx.insert(memberEntityLimits).values(

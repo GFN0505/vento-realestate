@@ -137,7 +137,7 @@ describe('invitations', () => {
       await expect(invite(null)).rejects.toMatchObject({
         code: 'FORBIDDEN',
         message:
-          'You can only give access to the entities you can see. Choose them instead of all entities.',
+          'You can only give access to the companies you can see. Choose them instead of all companies.',
         data: { reason: 'entity_limit' },
       })
       await expect(invite([victoria.id])).rejects.toMatchObject({ code: 'NOT_FOUND' })
@@ -554,7 +554,7 @@ describe('invitations from the Team page', () => {
         }),
       ).rejects.toMatchObject({
         code: 'CONFLICT',
-        message: 'One of the entities you chose is no longer available. Choose again.',
+        message: 'One of the companies you chose is no longer available. Choose again.',
         data: { reason: 'entity_unavailable' },
       })
     }))

@@ -283,7 +283,7 @@ describe('members from the Team page', () => {
       const refusal = {
         code: 'FORBIDDEN',
         message:
-          "Aisha Bello has access to entities you can't see. Ask Olumide Bankole (owner) to change it.",
+          "Aisha Bello has access to companies you can't see. Ask Olumide Bankole (owner) to change it.",
         data: { reason: 'entity_limit' },
       }
       await expect(resetMemberTwoStep(ctx, aisha.member.id)).rejects.toMatchObject(refusal)

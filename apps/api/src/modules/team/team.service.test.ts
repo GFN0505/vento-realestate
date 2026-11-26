@@ -2,6 +2,7 @@ import { listTeamInput, type TeamInvitationRow, type TeamMemberRow } from '@vent
 import { describe, expect, it } from 'vitest'
 import type { ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
+import { likePattern } from '@/lib/like'
 import { removeMember } from '@/modules/members/members.service'
 import { countingDb } from '@/test/counting-db'
 import { withRollback } from '@/test/db'
@@ -14,7 +15,7 @@ import {
   createUser,
   type TestOrg,
 } from '@/test/factories'
-import { likePattern, listTeam } from './team.service'
+import { listTeam } from './team.service'
 
 const MINUTE = 60_000
 const list = (ctx: ServiceContext, input: Record<string, unknown> = {}) =>
@@ -147,7 +148,7 @@ describe('team.list', () => {
       expect(aisha?.readOnly).toEqual({
         reason: 'wider_access',
         message:
-          "Aisha Bello has access to entities you can't see. Ask Olumide Bankole (owner) to change it.",
+          "Aisha Bello has access to companies you can't see. Ask Olumide Bankole (owner) to change it.",
       })
       expect(memberNamed(result.items, 'Kunle Ojo')?.can.changeAccess).toBe(true)
       expect(JSON.stringify(result)).not.toContain('Lekki')

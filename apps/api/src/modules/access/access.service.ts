@@ -1,5 +1,5 @@
 import type { PermissionModule, WhoCanChangeAccess } from '@vento/shared'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { accessContacts } from '@/access/access-contacts'
 import type { ServiceContext } from '@/access/context'
 import { systemRoleOrder } from '@/access/who-can-grant'
@@ -22,6 +22,8 @@ async function rolesThatCanView(ctx: ServiceContext, module: PermissionModule): 
     .where(
       and(
         eq(roles.organizationId, ctx.organizationId),
+        // A deleted custom role kept for history isn't a role anyone can be given.
+        isNull(roles.archivedAt),
         eq(rolePermissions.module, module),
         eq(rolePermissions.action, 'view'),
       ),

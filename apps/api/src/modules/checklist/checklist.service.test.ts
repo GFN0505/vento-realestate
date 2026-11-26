@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { members } from '@/db/schema'
+import { answerSingleCompany } from '@/modules/organization/organization.service'
 import { withRollback } from '@/test/db'
 import {
   contextFor,
@@ -20,7 +21,7 @@ const alwaysOpen: ChecklistEntry = {
 }
 
 describe('setup checklist', () => {
-  it('starts a new owner at 2 of 4, from data alone', () =>
+  it('starts a new owner at 2 of 5, from data alone', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       const checklist = await getChecklist(await contextFor(tx, org.owner, org))
@@ -31,6 +32,7 @@ describe('setup checklist', () => {
         items: [
           { key: 'organization', done: true, detail: 'Vento Homes Ltd' },
           { key: 'first_entity', done: false, detail: null },
+          { key: 'other_companies', done: false, detail: null },
           { key: 'two_step', done: true, detail: 'On for you' },
           { key: 'invite_team', done: false, detail: null },
         ],
@@ -112,6 +114,7 @@ describe('setup checklist', () => {
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       await createEntity(tx, org)
+      await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
       await createMember(tx, org, { role: 'sales' })
       const ctx = await contextFor(tx, org.owner, org)
       // 10:00 Lagos; 23:30 UTC the same evening is already the next day in Lagos.
@@ -130,6 +133,7 @@ describe('setup checklist', () => {
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       await createEntity(tx, org)
+      await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
       await createMember(tx, org, { role: 'sales' })
       const ctx = await contextFor(tx, org.owner, org)
       await getChecklist(ctx, new Date(Date.now() - 2 * DAY))
@@ -147,12 +151,67 @@ describe('setup checklist', () => {
       organizationName: 'Vento Homes Ltd',
       hasEntity: false,
       firstEntityName: null,
+      entityCount: 0,
+      singleCompanyConfirmed: false,
       viewerTwoStepOn: true,
       otherMembers: 0,
       firstOtherName: null,
       invitedPeople: 0,
     }
-    expect(evaluateChecklist([gated], () => false, facts)).toEqual([])
-    expect(evaluateChecklist([gated], () => true, facts)).toHaveLength(1)
+    const viewer = { allEntities: true }
+    expect(evaluateChecklist([gated], () => false, facts, viewer)).toEqual([])
+    expect(evaluateChecklist([gated], () => true, facts, viewer)).toHaveLength(1)
+  })
+
+  describe('other companies (SPVs)', () => {
+    const otherCompanies = async (ctx: Awaited<ReturnType<typeof contextFor>>) =>
+      (await getChecklist(ctx)).items.find((i) => i.key === 'other_companies')
+
+    it('opens with one company, then ticks itself when a second exists, archived ones too', () =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx)
+        await createEntity(tx, org, { name: 'Victoria Gardens Dev. Ltd', type: 'holding' })
+        const ctx = await contextFor(tx, org.owner, org)
+        expect(await otherCompanies(ctx)).toEqual({
+          key: 'other_companies',
+          done: false,
+          detail: null,
+        })
+        await createEntity(tx, org, { status: 'archived', archivedAt: new Date() })
+        expect(await otherCompanies(ctx)).toEqual({
+          key: 'other_companies',
+          done: true,
+          detail: '2 companies',
+        })
+      }))
+
+    it('is done by the one-company answer, and the count wins once a second company exists', () =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx)
+        await createEntity(tx, org, { name: 'Victoria Gardens Dev. Ltd', type: 'holding' })
+        const ctx = await contextFor(tx, org.owner, org)
+        await answerSingleCompany(ctx, true)
+        expect((await otherCompanies(ctx))?.detail).toBe('Just Victoria Gardens Dev. Ltd')
+        await createEntity(tx, org)
+        await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
+        expect((await otherCompanies(ctx))?.detail).toBe('3 companies')
+      }))
+
+    it('is hidden from an admin limited to some companies', () =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx)
+        const parkview = await createEntity(tx, org)
+        const admin = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+        expect(await otherCompanies(await contextFor(tx, admin.user, org))).toBeUndefined()
+      }))
+
+    it("doesn't count another organization's companies", () =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx)
+        await createEntity(tx, org)
+        const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+        await createEntity(tx, theirs, { name: 'Their SPV Ltd' })
+        expect((await otherCompanies(await contextFor(tx, org.owner, org)))?.done).toBe(false)
+      }))
   })
 })

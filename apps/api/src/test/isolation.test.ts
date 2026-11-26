@@ -168,6 +168,7 @@ describe('organization isolation', () => {
       const { items } = await client.checklist.get()
       expect(items.filter((i) => !i.done).map((i) => i.key)).toEqual([
         'first_entity',
+        'other_companies',
         'invite_team',
       ])
     }))
