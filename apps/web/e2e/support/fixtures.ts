@@ -234,3 +234,32 @@ export type NoCompanyFixture = {
 
 /** Kunle can see only an archived company. */
 export const createNoCompanyFixture = () => runFixture<NoCompanyFixture>('no-company')
+
+export type SecurityTeamFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  /** owner, admin and finance have two-step on (with secrets); sales and viewer use the password alone. */
+  members: Record<'owner' | 'admin' | 'finance' | 'sales' | 'viewer', TeamMember>
+}
+
+/** An internal organization (passkeys available) for My security, passkeys and require-two-step. */
+export const createSecurityTeamFixture = () => runFixture<SecurityTeamFixture>('security-team')
+
+/** Stored passkeys, not usable to sign in, until the person has `total` (the limit of 10). */
+export const fillPasskeys = (email: string, total: number) =>
+  runFixture<{ passkeys: number }>('fill-passkeys', email, String(total))
+
+/** The "require two-step" switch is 8 days old and this person's sessions 9: the 7 days ran out. */
+export const expireGrace = (email: string) =>
+  runFixture<{ sessions: number }>('expire-grace', email)
+
+/** A password reset is required, yet any passkey is kept (the race path). */
+export const forceReset = (email: string) => runFixture<{ email: string }>('force-reset', email)
+
+/** Closes the 5-minute "Confirm it's you" window, so the next sensitive action asks for the password. */
+export const ageReauth = (email: string) => runFixture<{ sessions: number }>('age-reauth', email)
+
+/** Days until the person's newest session expires on the server, and whether it is persistent. */
+export const sessionExpiry = (email: string) =>
+  runFixture<{ days: number; persistent: boolean }>('session-expiry', email)
