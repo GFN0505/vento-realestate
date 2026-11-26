@@ -55,6 +55,10 @@ Query by role and label (`getByRole('button', { name: 'Save subscription' })`). 
 - Selectors: `getByRole`, `getByLabel`, `getByText`. No CSS selectors, and no `waitForTimeout`.
 - Each spec seeds its own data through the API.
 
+## Console (super-admin)
+- API: `consoleClientAs(...)` in `apps/api/src/test/router-client.ts` calls console procedures as a super-admin with an open console window; `createSuperAdmin(...)` in `factories.ts` makes one (it can also make a revoked one). The access walk in `procedure-guard.test.ts` covers every `area: 'console'` procedure automatically.
+- e2e: console specs live in `apps/web/e2e/console/`. A spec that changes a global release stage restores it afterwards, runs serially, and uses only stage keys no other spec uses.
+
 ## Naming and style
 Test names are sentences describing behaviour. Arrange, act, assert, with no logic in tests. Keep each test under ~30 lines.
 
