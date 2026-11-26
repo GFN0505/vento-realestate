@@ -4,6 +4,9 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 
 ## [Unreleased]
 ### Added
+- Companies: add, edit, archive and restore your companies (SPVs) with their RC number, TIN and VAT status, from Settings, the Company menu at the top or the setup checklist. A duplicate RC number is refused; archived companies can be restored within your plan.
+- Roles & permissions: see exactly what each role can do, and make your own role (for example Site engineer) by duplicating one and ticking what it needs. Nobody can give more access than they have themselves; changes reach people on their next click, with Undo.
+- Organization details: name, head office state and financial year.
 - Real email delivery: invitations, sign-in codes, password resets and security alerts are sent through Postmark, from "{your company} via Vento" with replies going to the person who sent them. An invitation that can't be delivered shows "Email not delivered" on Team.
 - Team: one list of everyone in your organization and everyone you've invited, with roles you can change in place (and undo), access limited to some companies, two-step status and last activity. Invite up to 20 people at once by pasting a list; mistakes, duplicates and people already on the team are marked, and the rest still go. Reset a colleague's two-step when they lose their phone, make someone an owner, remove a leaver (history kept) and invite them again later. The list follows the company you pick at the top. Owners see how many places their plan has left.
 - Setup checklist on Home for owners and admins: each step ticks itself from what you've done; hide it any time and bring it back from ⌘K.
@@ -14,3 +17,6 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 - Foundation: monorepo with web app, API and shared types; local database; automatic checks on every change. The home page shows whether the API and database are connected.
 - Product, domain and design documentation, user journeys, decision records and the Claude Code agent team. No product features yet.
 - Approved Claude Design export (419 boards) with design notes, tokens and a screen inventory linked to each board.
+
+### Changed
+- "Entity" is now "Company" everywhere you read it.

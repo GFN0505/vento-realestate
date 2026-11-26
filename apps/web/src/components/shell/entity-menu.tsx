@@ -1,15 +1,25 @@
+import { PlusIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { type LazyMenuProps, useAutoFocus } from '@/components/ui/lazy-menu'
+import { openAddCompany } from '@/features/companies/open-add-company'
 import { entityNote } from '@/features/entity/current-entity'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
-import { useMe } from '@/features/preview/use-effective-permissions'
-import { EntityTriggerContent, entityTriggerClass } from './entity-switcher'
+import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
+import { preloadCompanySheet } from '@/features/shell/shell-ui'
+import {
+  EntityTriggerContent,
+  entityTriggerClass,
+  switcherLabel,
+  useCanAddCompany,
+} from './entity-switcher'
 
 const ALL = 'all'
 
@@ -20,14 +30,21 @@ export function EntityMenu({
   autoFocus,
 }: LazyMenuProps & { compact: boolean }) {
   const me = useMe()
+  const { showUpgradeHints } = useEffectiveAccess()
   const current = useCurrentEntity()
+  const canAdd = useCanAddCompany()
   const trigger = useAutoFocus<HTMLButtonElement>(autoFocus)
-  const label = current.entity?.name ?? 'All entities'
+  const label = switcherLabel(current)
+  // One company: its row (checked), then Add company. Otherwise "All" first.
+  const single = current.locked || current.options.length <= 1
 
   return (
     <DropdownMenu
       defaultOpen={defaultOpen}
-      onOpenChange={(open) => open && current.status === 'error' && current.refetch()}
+      onOpenChange={(open) => {
+        if (open && current.status === 'error') current.refetch()
+        if (open && canAdd) preloadCompanySheet()
+      }}
     >
       <DropdownMenuTrigger ref={trigger} className={entityTriggerClass({ compact })}>
         <EntityTriggerContent
@@ -39,11 +56,11 @@ export function EntityMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[min(300px,calc(100vw-2rem))]">
         <DropdownMenuRadioGroup
-          value={current.entity?.id ?? ALL}
+          value={current.entity?.id ?? (single ? (current.options[0]?.id ?? ALL) : ALL)}
           onValueChange={(value) => current.select(value === ALL ? null : value)}
         >
-          <EntityRow value={ALL} name="All entities" note={null} />
-          {current.options.map((entity) => (
+          {!single && <EntityRow value={ALL} name="All companies" note={null} />}
+          {holdingFirst(current.options).map((entity) => (
             <EntityRow
               key={entity.id}
               value={entity.id}
@@ -52,9 +69,21 @@ export function EntityMenu({
             />
           ))}
         </DropdownMenuRadioGroup>
+        {canAdd && (
+          <>
+            {current.options.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem
+              onSelect={() => openAddCompany(showUpgradeHints ? me.plan : null)}
+              className="font-semibold text-link [&_svg]:text-link!"
+            >
+              <PlusIcon aria-hidden />
+              Add company
+            </DropdownMenuItem>
+          </>
+        )}
         {current.status === 'error' && (
           <p className="px-2.5 py-2 text-muted-foreground text-xs" role="status">
-            Couldn't load your entities. Close and open this menu to try again.
+            Couldn't load your companies. Close and open this menu to try again.
           </p>
         )}
       </DropdownMenuContent>
@@ -71,4 +100,9 @@ function EntityRow({ value, name, note }: { value: string; name: string; note: s
       {note && <span className="shrink-0 text-[11px] text-muted-foreground">{note}</span>}
     </DropdownMenuRadioItem>
   )
+}
+
+/** The holding company first, then the SPVs in the server's A–Z order. */
+function holdingFirst<T extends { type: string }>(options: readonly T[]): T[] {
+  return [...options].sort((a, b) => Number(b.type === 'holding') - Number(a.type === 'holding'))
 }

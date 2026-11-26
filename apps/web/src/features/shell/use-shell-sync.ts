@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { toast } from 'sonner'
 import { useMe } from '@/features/preview/use-effective-permissions'
+import { notify } from '@/lib/notify'
 import { syncTabOrganization, takeOrganizationNotice } from '@/lib/tab-organization'
 
 /**
@@ -15,7 +15,7 @@ export function useShellSync() {
 
   useEffect(() => {
     const notice = takeOrganizationNotice()
-    if (notice) toast(notice)
+    if (notice) notify((toast) => toast(notice))
   }, [])
 
   useEffect(() => {

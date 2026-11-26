@@ -9,6 +9,6 @@ export const onboardingRouter = {
     createOrganization(context.db, { user: context.user, sessionId: context.session.id }, input),
   ),
   createFirstEntity: memberPendingTwoStep.onboarding.createFirstEntity
-    .use(requirePermission('settings', 'create', 'add entities'))
+    .use(requirePermission('settings', 'create', 'add companies'))
     .handler(({ context, input }) => createFirstEntity(serviceContext(context), input)),
 }

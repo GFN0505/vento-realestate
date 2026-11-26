@@ -81,5 +81,14 @@ EMAIL_ALLOWED_RECIPIENTS=you@example.com,@your-test-domain.com
 
 **Checking the transport against Postmark** (opt-in, never in CI): `VENTO_EMAIL_INTEGRATION=1 POSTMARK_SERVER_TOKEN=POSTMARK_API_TEST pnpm --filter @vento/api email:check`. It uses Postmark's test token only, which delivers nothing.
 
+## Deploy notes per migration
+Checks to run against production **before** the release step, for migrations that add a constraint existing rows must already meet.
+
+- **`0007_roles_and_organization`** adds `roles_system_key_consistent` (a built-in role has a key and `is_system`; a custom role has neither). Every row written by Vento so far satisfies it, but confirm first; the query must return no rows:
+  ```sql
+  select id, organization_id, key, is_system from roles where (key is null) <> (not is_system);
+  ```
+  If it returns rows, stop and fix them (a built-in with no key, or a custom role marked system) before migrating; otherwise the migration fails on that check and nothing in it is applied.
+
 ## Environment variables
 Every variable is in `.env.example`. Production also needs `SUPPORT_EMAIL` (the API refuses to start without it) and the email settings in section 5.

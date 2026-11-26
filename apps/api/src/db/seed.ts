@@ -1,6 +1,17 @@
-import { PASSWORD_RULE_LABELS, type SystemRoleKey, unmetPasswordRules } from '@vento/shared'
+import {
+  customRolePluralName,
+  defaultPermissions,
+  defaultRole,
+  normalisePermissions,
+  PASSWORD_RULE_LABELS,
+  PERMISSION_ACTIONS,
+  PERMISSION_MODULES,
+  type PermissionSet,
+  type SystemRoleKey,
+  unmetPasswordRules,
+} from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { and, eq, isNotNull, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import { setActiveOrganization } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import { webUrl } from '@/auth/hooks/deps'
@@ -15,6 +26,7 @@ import { bootstrapStartingData, SETUP_ACTOR } from '@/platform/seed-plans'
 import { type DbOrTx, db, pool } from './client'
 import {
   accounts,
+  auditEvents,
   entities,
   invitations,
   memberEntityLimits,
@@ -24,6 +36,8 @@ import {
   organizations,
   passwordHistories,
   platformAdmins,
+  rolePermissions,
+  roles,
   users,
 } from './schema'
 
@@ -47,6 +61,8 @@ type Person = {
   name: string
   email: string
   role: SystemRoleKey
+  /** A custom role by name; `role` is then unused for access. */
+  customRole?: string
   onlyEntity?: string
   /** Team page "Last active": days ago, or null for never since joining. */
   activeDaysAgo?: number | null
@@ -76,7 +92,54 @@ const PEOPLE: Person[] = [
     onlyEntity: 'RC 1789234',
     activeDaysAgo: 1,
   },
+  // Holds the custom "Site engineer" role (J-ONB-08). Not "Emeka": Emeka Nwosu is the removed member.
+  {
+    name: 'Bayo Ogunleye',
+    email: 'bayo@ventohomes.ng',
+    role: 'viewer',
+    customRole: 'Site engineer',
+    onlyEntity: 'RC 1789234',
+    activeDaysAgo: 1,
+  },
 ]
+
+/** Brick 3c custom roles. Auditor is held by nobody, so Delete role is offered on it. */
+function siteEngineerPermissions(): PermissionSet {
+  const set = defaultPermissions(defaultRole('project_manager'))
+  set.land = []
+  set.sales = []
+  set.documents = ['view', 'create']
+  return set
+}
+
+const CUSTOM_ROLES: {
+  name: string
+  description: string
+  requiresTwoStep: boolean
+  permissions: () => PermissionSet
+}[] = [
+  {
+    name: 'Site engineer',
+    description: 'Based on Project manager',
+    requiresTwoStep: false,
+    permissions: siteEngineerPermissions,
+  },
+  {
+    name: 'Auditor',
+    description: 'Based on Viewer',
+    requiresTwoStep: false,
+    permissions: () =>
+      normalisePermissions(Object.fromEntries(PERMISSION_MODULES.map((m) => [m, ['view']]))),
+  },
+]
+
+/** An SPV wound up a month ago: the Archived chip, "Archived … by …" and the RC clash. */
+const ARCHIVED_ENTITY = {
+  name: 'Ikoyi Crest SPV Ltd',
+  type: 'spv',
+  rcNumber: 'RC 1832276',
+  tin: null,
+} as const
 
 /** Someone who left, for the Team page's Removed chip. */
 const REMOVED = { name: 'Emeka Nwosu', email: 'emeka@ventohomes.ng', role: 'sales' } as const
@@ -89,6 +152,82 @@ const INVITES = [
 ] as const
 
 const DAY_MS = 24 * 3600_000
+
+/** By name among live roles (the partial unique index); permissions replaced, as syncSystemRoles. */
+async function upsertCustomRoles(tx: DbOrTx, organizationId: string): Promise<Map<string, string>> {
+  const ids = new Map<string, string>()
+  for (const role of CUSTOM_ROLES) {
+    const values = {
+      name: role.name,
+      pluralName: customRolePluralName(role.name),
+      description: role.description,
+      requiresTwoStep: role.requiresTwoStep,
+    }
+    const [existing] = await tx
+      .select({ id: roles.id })
+      .from(roles)
+      .where(
+        and(
+          eq(roles.organizationId, organizationId),
+          isNull(roles.archivedAt),
+          sql`lower(${roles.name}) = lower(${role.name})`,
+        ),
+      )
+    const id =
+      existing?.id ??
+      (
+        await tx
+          .insert(roles)
+          .values({ ...values, organizationId, key: null, isSystem: false })
+          .returning({ id: roles.id })
+      )[0]?.id
+    if (!id) throw new Error(`Role insert failed for ${role.name}`)
+    if (existing) await tx.update(roles).set(values).where(eq(roles.id, id))
+    await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, id))
+    const set = role.permissions()
+    await tx.insert(rolePermissions).values(
+      PERMISSION_MODULES.flatMap((module) =>
+        PERMISSION_ACTIONS.filter((a) => set[module].includes(a)).map((action) => ({
+          organizationId,
+          roleId: id,
+          module,
+          action,
+        })),
+      ),
+    )
+    ids.set(role.name, id)
+  }
+  return ids
+}
+
+/** Archived once, 30 days ago by the owner, with its audit row; left alone after that. */
+async function upsertArchivedEntity(tx: DbOrTx, organizationId: string, ownerId: string) {
+  const ids = await upsertEntities(tx, organizationId, [ARCHIVED_ENTITY])
+  const id = ids.get(ARCHIVED_ENTITY.rcNumber)
+  if (!id) throw new Error('Archived entity insert failed')
+  const archivedAt = new Date(Date.now() - 30 * DAY_MS)
+  const [row] = await tx
+    .update(entities)
+    .set({ status: 'archived', archivedAt, archivedByUserId: ownerId })
+    .where(and(eq(entities.id, id), eq(entities.status, 'active')))
+    .returning({ id: entities.id })
+  if (!row) return
+  const [owner] = await tx.select({ name: users.name }).from(users).where(eq(users.id, ownerId))
+  await tx.insert(auditEvents).values({
+    organizationId,
+    actorUserId: ownerId,
+    actorName: owner?.name ?? 'Olumide Bankole',
+    action: 'entity.archived',
+    targetType: 'entity',
+    targetId: id,
+    targetLabel: ARCHIVED_ENTITY.name,
+    before: { status: 'active' },
+    after: { status: 'archived' },
+    metadata: { membersOnlyThisEntity: 0 },
+    createdAt: archivedAt,
+    updatedAt: archivedAt,
+  })
+}
 
 async function upsertOrganization(
   tx: DbOrTx,
@@ -320,6 +459,7 @@ async function seed() {
     const organizationId = await upsertOrganization(tx)
     const roleIds = await syncSystemRoles(tx, organizationId)
     const entityIds = await upsertEntities(tx, organizationId)
+    const customRoleIds = await upsertCustomRoles(tx, organizationId)
     let ownerId = ''
     for (const person of PEOPLE) {
       const userId = await upsertPerson(tx, person, passwordHash)
@@ -327,7 +467,9 @@ async function seed() {
       await upsertMembership(tx, {
         organizationId,
         userId,
-        roleId: roleIds.get(person.role) ?? '',
+        roleId: person.customRole
+          ? (customRoleIds.get(person.customRole) ?? '')
+          : (roleIds.get(person.role) ?? ''),
         entityId: person.onlyEntity ? entityIds.get(person.onlyEntity) : undefined,
         activeDaysAgo: person.activeDaysAgo,
       })
@@ -338,6 +480,7 @@ async function seed() {
       roleId: roleIds.get(REMOVED.role) ?? '',
       ownerId,
     })
+    await upsertArchivedEntity(tx, organizationId, ownerId)
     return upsertInvitations(tx, organizationId, roleIds, ownerId)
   })
 
@@ -347,6 +490,8 @@ async function seed() {
 
   logger.info('Seeded Vento Homes Ltd and Lekki Partners Ltd', {
     people: PEOPLE.length + LEKKI_PEOPLE.length,
+    customRoles: CUSTOM_ROLES.map((r) => r.name),
+    archivedCompanies: [ARCHIVED_ENTITY.name],
   })
   const everyone = [...PEOPLE, ...LEKKI_PEOPLE, SUPER_ADMIN].map((p) => p.email)
   process.stdout.write(

@@ -39,7 +39,7 @@ import { canViewModule, type NavAccess } from './nav'
 export type HomeKpi = { label: string; icon: LucideIcon; module: PermissionModule }
 
 const EXECUTIVE: readonly HomeKpi[] = [
-  { label: 'Cash across entities', icon: Landmark, module: 'finance' },
+  { label: 'Cash across companies', icon: Landmark, module: 'finance' },
   { label: 'Collected this month', icon: HandCoins, module: 'finance' },
   { label: 'Overdue', icon: CalendarClock, module: 'sales' },
   { label: 'Units sold', icon: KeyRound, module: 'sales' },
@@ -68,7 +68,7 @@ export const HOME_KPIS: Record<SystemRoleKey, readonly HomeKpi[]> = {
     { label: 'Commission earned', icon: BadgePercent, module: 'sales' },
   ],
   finance: [
-    { label: 'Cash, all entities', icon: Landmark, module: 'finance' },
+    { label: 'Cash, all companies', icon: Landmark, module: 'finance' },
     { label: 'Bank lines to match', icon: ArrowLeftRight, module: 'finance' },
     { label: 'Receipts held for AML', icon: ShieldAlert, module: 'compliance' },
     { label: 'Month-end close', icon: CalendarCheck, module: 'finance' },

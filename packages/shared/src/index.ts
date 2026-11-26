@@ -1,5 +1,6 @@
 export * from './access/default-roles'
 export * from './access/permissions'
+export * from './access/role-rules'
 export * from './access/schema'
 export * from './account/schema'
 export * from './audit/actions'

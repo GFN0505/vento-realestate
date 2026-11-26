@@ -4,14 +4,14 @@ export function invitationEmail(p: {
   organizationName: string
   inviterName: string
   roleName: string
-  /** Entity names, or 'all'. */
+  /** Company (entity) names, or 'all'. */
   entities: string[] | 'all'
   canApprove: string[]
   twoStepRequired: boolean
   expiresOn: string
   url: string
 }): RenderedEmail {
-  const access = p.entities === 'all' ? 'All entities' : p.entities.join(', ')
+  const access = p.entities === 'all' ? 'All companies' : p.entities.join(', ')
   return renderEmail(
     `${p.inviterName} invited you to ${p.organizationName} on Vento`,
     `Join ${p.organizationName} on Vento`,

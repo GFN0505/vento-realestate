@@ -153,3 +153,26 @@ describe('account.switchOrganization', () => {
       })
     }))
 })
+
+describe('account.me canAddCompany', () => {
+  it('is true for owners and all-company admins, false for a limited admin and for Sales', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const parkview = await createEntity(tx, org)
+      const admin = await createMember(tx, org, { role: 'admin' })
+      const limited = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+      const sales = await createMember(tx, org, { role: 'sales' })
+      const can = async (user: typeof org.owner) =>
+        (await clientAs(tx, user).client.account.me()).canAddCompany
+      expect(await can(org.owner)).toBe(true)
+      expect(await can(admin.user)).toBe(true)
+      expect(await can(limited.user)).toBe(false)
+      expect(await can(sales.user)).toBe(false)
+    }))
+
+  it('is false with no organization', () =>
+    withRollback(async (tx) => {
+      const loner = await createUser(tx, { name: 'Ada Eze' })
+      expect((await clientAs(tx, loner).client.account.me()).canAddCompany).toBe(false)
+    }))
+})

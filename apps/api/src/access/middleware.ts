@@ -15,7 +15,8 @@ import {
   twoStepRequired,
   writeBackActiveOrganization,
 } from './context'
-import { whoCanGrant } from './who-can-grant'
+import { allEntitiesMessage } from './role-refusals'
+import { firstOwner, whoCanGrant } from './who-can-grant'
 
 const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?vento\.session_token=/
 
@@ -152,6 +153,25 @@ export function requirePermission(
         advice.askName && advice.askRole
           ? { askName: advice.askName, askRole: advice.askRole }
           : undefined,
+      )
+    }
+    return next()
+  })
+}
+
+/**
+ * Organization-wide changes (the organization profile, adding, archiving and restoring
+ * companies, making, editing or deleting roles) need access to every company. Runs after
+ * requirePermission; the owner's name is looked up only on refusal.
+ */
+export function requireAllEntities() {
+  return baseOs.$context<MemberRequestContext>().middleware(async ({ context, next }) => {
+    if (context.member.entityIds !== null) {
+      const owner = await firstOwner(context.db, context.organizationId, context.user.id)
+      throw forbidden(
+        'all_entities_required',
+        allEntitiesMessage(owner?.name ?? null),
+        owner ? { askName: owner.name, askRole: 'owner' } : undefined,
       )
     }
     return next()

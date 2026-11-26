@@ -165,3 +165,72 @@ export const createTeamInvitation = (
     state,
     ...(email ? [email] : []),
   )
+
+type Entity = { id: string; name: string }
+type Person = { email: string; name: string; totpSecret?: string }
+
+export type CompaniesFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  entities: {
+    holding: Entity
+    parkview: Entity & { rcNumber: string }
+    /** Absent on the `starter` variant. */
+    lekki?: Entity & { rcNumber: string }
+    ikoyi: Entity & { rcNumber: string }
+  }
+  /**
+   * Default: owner, parkviewAdmin (Parkview only), kunle and ope (Lekki Gardens only), sales.
+   * `starter`: owner, admin (all companies), sales; two active companies on the Starter plan.
+   */
+  members: Record<string, Person>
+}
+
+/** Settings → Companies (J-ONB-07). `starter` is at 2 of 2 active companies. */
+export const createCompaniesFixture = (mode?: 'starter') => {
+  const fixture = runFixture<CompaniesFixture>('companies', ...(mode ? [mode] : []))
+  // Starter publishes plans, which the API reads from its snapshot.
+  return mode ? afterSnapshotReload(fixture) : fixture
+}
+
+export type CustomRoleFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  role: { id: string; name: string }
+  owner: Required<Person>
+  /** Holds the custom role. */
+  holder: Person
+  /** A viewer, free to be given it. */
+  viewer: Person
+}
+
+/** A custom role copied from Project manager, held by Bayo; Chidi (viewer) can be given it. */
+export const createCustomRoleFixture = (name?: string) =>
+  runFixture<CustomRoleFixture>('custom-role', ...(name ? [name] : []))
+
+export type RoleEditorFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  role: { id: string; name: string }
+  editor: Required<Person>
+  admin: Required<Person>
+  sales: Person
+}
+
+/** Ngozi holds "Office manager" (Settings create, edit, delete; no Finance); Kemi is an admin. */
+export const createRoleEditorFixture = () => runFixture<RoleEditorFixture>('role-editor')
+
+export type NoCompanyFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  archived: Entity
+  owner: Person
+  member: Person
+}
+
+/** Kunle can see only an archived company. */
+export const createNoCompanyFixture = () => runFixture<NoCompanyFixture>('no-company')

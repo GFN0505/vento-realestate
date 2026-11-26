@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "bundle:check": "node scripts/bundle-check.mjs",
+    "bundle:check": "vite build --sourcemap hidden --outDir node_modules/.bundle-check --emptyOutDir --logLevel warn && node scripts/bundle-check.mjs node_modules/.bundle-check",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",

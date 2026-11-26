@@ -47,11 +47,21 @@ export function testMe(roleKey: SystemRoleKey, overrides: Partial<Me> = {}): Me 
     },
     nextStep: 'ready',
     twoStepRequired: false,
+    // As the server computes it: settings create and all-companies access.
+    canAddCompany: roleKey === 'owner' || roleKey === 'admin',
     ...overrides,
   }
 }
 
-/** The built-in roles as `roles.list` returns them; Finance can approve finance. */
+const BUILT_IN_READ_ONLY = {
+  reason: 'built_in',
+  message: "Built-in roles can't be changed. Duplicate this role to make your own version.",
+} as const
+
+/**
+ * The built-in roles as `roles.list` returns them to an owner; Finance can approve finance.
+ * Nobody holds them unless a test says so.
+ */
 export function testRoles(): Role[] {
   return DEFAULT_ROLES.map((r) => ({
     id: `role-${r.key}`,
@@ -63,5 +73,32 @@ export function testRoles(): Role[] {
     requiresTwoStep: r.requiresTwoStep,
     permissions: defaultPermissions(r),
     canApprove: r.key === 'finance' ? ['finance'] : [],
+    version: 1,
+    memberCount: 0,
+    invitedCount: 0,
+    can: { assign: true, edit: false, delete: false, duplicate: true },
+    readOnly: BUILT_IN_READ_ONLY,
   }))
+}
+
+/** A custom role an owner can edit and delete ("Site engineer", from Project manager). */
+export function testCustomRole(overrides: Partial<Role> = {}): Role {
+  const base = defaultRole('project_manager')
+  return {
+    id: 'role-site-engineer',
+    key: null,
+    name: 'Site engineer',
+    pluralName: 'people with the Site engineer role',
+    description: 'Based on Project manager',
+    isSystem: false,
+    requiresTwoStep: false,
+    permissions: defaultPermissions(base),
+    canApprove: [],
+    version: 1,
+    memberCount: 0,
+    invitedCount: 0,
+    can: { assign: true, edit: true, delete: true, duplicate: true },
+    readOnly: null,
+    ...overrides,
+  }
 }

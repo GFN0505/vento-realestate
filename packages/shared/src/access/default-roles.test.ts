@@ -7,6 +7,7 @@ import {
   SYSTEM_ROLE_KEYS,
 } from './default-roles'
 import { approvableModules, PERMISSION_MODULES } from './permissions'
+import { roleNeedsTwoStep } from './role-rules'
 
 describe('default roles', () => {
   it('ships the nine built-in roles in the spec order', () => {
@@ -16,6 +17,12 @@ describe('default roles', () => {
   it('requires two-step for owner, admin, finance and HR only', () => {
     const required = DEFAULT_ROLES.filter((r) => r.requiresTwoStep).map((r) => r.key)
     expect(required).toEqual(['owner', 'admin', 'finance', 'hr'])
+  })
+
+  it('requires two-step exactly where the custom-role rule would lock it on', () => {
+    for (const role of DEFAULT_ROLES) {
+      expect(roleNeedsTwoStep(defaultPermissions(role)), role.key).toBe(role.requiresTwoStep)
+    }
   })
 
   it('gives every role a level for every module', () => {

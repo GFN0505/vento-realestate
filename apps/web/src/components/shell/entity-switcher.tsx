@@ -3,16 +3,24 @@ import type { ComponentType } from 'react'
 import { LazyMenu, type LazyMenuProps } from '@/components/ui/lazy-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
-import { useMe } from '@/features/preview/use-effective-permissions'
+import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
+import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
+
+/** "+ Add company" in the menu: the server's answer, narrowed by a preview (spec). */
+export function useCanAddCompany(): boolean {
+  const me = useMe()
+  const { permissions } = useEffectiveAccess()
+  return me.canAddCompany && can(permissions, 'settings', 'create')
+}
 
 type Variant = { compact: boolean }
 
 export const entityTriggerClass = ({ compact }: Variant) =>
   compact
     ? // Phones: the organization and the entity are one 44px button.
-      '-mx-1.5 flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-lg px-1.5 text-left outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
-    : 'inline-flex h-9 min-w-0 max-w-[280px] items-center gap-2 rounded-lg border bg-background px-3 font-semibold text-[13px] text-foreground outline-none transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:border-input-hover'
+      '-mx-1.5 flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-lg px-1.5 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+    : 'inline-flex h-9 min-w-0 max-w-[280px] items-center gap-2 rounded-lg border bg-background px-3 font-semibold text-[13px] text-foreground outline-hidden transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:border-input-hover'
 
 /** What the trigger shows; shared by the plain button and the loaded menu's trigger. */
 export function EntityTriggerContent({
@@ -36,14 +44,14 @@ export function EntityTriggerContent({
           </span>
           {menu && <ChevronDownIcon aria-hidden className="size-3.5 shrink-0" />}
         </span>
-        {menu && <span className="sr-only">, change entity</span>}
+        {menu && <span className="sr-only">, change company</span>}
       </>
     )
   }
   return (
     <>
       <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
-        Entity
+        Company
       </span>
       <span className="truncate" title={label}>
         {label}
@@ -68,8 +76,9 @@ const loaders = { compact: loadMenu(true), bar: loadMenu(false) }
 export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
   const me = useMe()
   const current = useCurrentEntity()
+  const canAdd = useCanAddCompany()
   const organization = me.organization?.name ?? 'Vento'
-  const label = current.entity?.name ?? 'All entities'
+  const label = switcherLabel(current)
 
   if (current.status === 'pending' && !current.locked) {
     return compact ? (
@@ -84,7 +93,8 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
     )
   }
 
-  if (current.locked) {
+  // One company (or none left) and nothing to add: a label, not a menu of one.
+  if ((current.locked || current.noCompany) && !canAdd) {
     return (
       <div className={cn(entityTriggerClass({ compact }), 'cursor-default active:bg-transparent')}>
         <EntityTriggerContent
@@ -105,4 +115,10 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
       <EntityTriggerContent compact={compact} organization={organization} label={label} menu />
     </LazyMenu>
   )
+}
+
+/** The company name, "All companies", or "No company" when every one of theirs is archived. */
+export function switcherLabel(current: ReturnType<typeof useCurrentEntity>): string {
+  if (current.entity) return current.entity.name
+  return current.noCompany ? 'No company' : 'All companies'
 }

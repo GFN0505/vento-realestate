@@ -1,10 +1,21 @@
 import { ORPCError } from '@orpc/server'
-import type { ConflictData, ConflictReason, CountLimitKey, ForbiddenReason } from '@vento/shared'
+import type {
+  BadRequestReason,
+  ConflictData,
+  ConflictReason,
+  CountLimitKey,
+  ForbiddenReason,
+} from '@vento/shared'
 
 // Services throw these; oRPC formats them. Messages are end-user copy.
 
 export function notFound(): ORPCError<'NOT_FOUND', undefined> {
   return new ORPCError('NOT_FOUND', { message: "We couldn't find that. It may have been removed." })
+}
+
+/** A rule zod can't check (it needs the stored row), with the reason the web maps to a field. */
+export function badRequest(reason: BadRequestReason, message: string) {
+  return new ORPCError('BAD_REQUEST', { message, data: { reason } })
 }
 
 export function conflict(
@@ -54,6 +65,21 @@ export function planLimit(
 export function isUniqueViolation(error: unknown, constraint?: string): boolean {
   const e = findPgError(error)
   return e?.code === '23505' && (!constraint || e.constraint === constraint)
+}
+
+/** The guard triggers of migration 0008 (custom roles), named in their CONSTRAINT. */
+export type GuardName =
+  | 'members_role_not_archived'
+  | 'invitations_role_not_archived'
+  | 'roles_archive_unheld'
+
+/**
+ * A database guard trigger refused the write (check_violation naming the guard). The services
+ * check first, so this only maps a race or a forgotten path to the same CONFLICT copy.
+ */
+export function isGuardViolation(error: unknown, name: GuardName): boolean {
+  const e = findPgError(error)
+  return e?.code === '23514' && e.constraint === name
 }
 
 type PgError = { code?: string; constraint?: string }

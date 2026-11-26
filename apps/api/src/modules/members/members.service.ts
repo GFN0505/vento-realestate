@@ -1,7 +1,7 @@
-import type { TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
+import type { PermissionSet, TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
 import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
-import { actorOf, type ServiceContext } from '@/access/context'
+import { actorOf, lockViewer, type ServiceContext } from '@/access/context'
 import { assertGrantableEntities } from '@/access/grants'
 import { type MemberAction, memberRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
 import { newOwnerAlerts } from '@/access/new-owner-alerts'
@@ -21,6 +21,7 @@ import { twoStepResetAlert } from '@/email/templates/security-alert'
 import { conflict, forbidden, notFound } from '@/lib/errors'
 import { recordAccountEvent, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
+import { loadRoles, lockAssignableRoles, onArchivedRole } from '@/modules/roles/roles.service'
 import { memberRowById } from '@/modules/team/team.service'
 
 const isOwnerKey = (key: string | null) => key === 'owner'
@@ -33,6 +34,8 @@ type Target = {
   roleId: string
   roleKey: string | null
   roleName: string
+  /** What their role can do, for the permission ceiling. */
+  permissions: PermissionSet
   /** Current entity limits, by name; empty = all entities. */
   limits: { id: string; name: string }[]
 }
@@ -64,31 +67,38 @@ async function lockTarget(tx: DbOrTx, ctx: ServiceContext, memberId: string): Pr
     )
     .for('update', { of: members })
   if (!row) throw notFound()
-  return { ...row, limits: await currentLimits(tx, ctx, row.id) }
+  const [role] = await loadRoles(tx, ctx.organizationId, [row.roleId], { includeArchived: true })
+  if (!role) throw notFound()
+  return { ...row, permissions: role.permissions, limits: await currentLimits(tx, ctx, row.id) }
 }
 
 /**
- * Throws the manage rules' refusal (own access, owner only, wider access), if any. The owner's
- * name for "Ask … (owner)" is looked up only when the target's access is wider than the viewer's.
+ * Throws the manage rules' refusal (own access, owner only, wider permissions, wider access), if
+ * any. The owner's name for "Ask … (owner)" is looked up only when a refusal line needs it.
  */
 async function assertMayManage(
   tx: DbOrTx,
   ctx: ServiceContext,
   target: Target,
   action: MemberAction,
-  newRoleKey?: string | null,
+  newRole?: { key: string | null; permissions: PermissionSet },
 ): Promise<void> {
   const viewer = viewerOf(ctx)
   const subject = {
     userId: target.userId,
     name: target.name,
     roleKey: target.roleKey,
+    permissions: target.permissions,
     entityIds: target.limits.length ? target.limits.map((e) => e.id) : null,
   }
   const ownerName = needsOwnerName(viewer, subject)
     ? ((await firstOwner(tx, ctx.organizationId, ctx.user.id))?.name ?? null)
     : null
-  const refusal = memberRefusal(viewer, subject, action, { newRoleKey, ownerName })
+  const refusal = memberRefusal(viewer, subject, action, {
+    newRoleKey: newRole?.key,
+    newRolePermissions: newRole?.permissions,
+    ownerName,
+  })
   if (refusal) throw forbidden(refusal.reason, refusal.message)
 }
 
@@ -134,35 +144,37 @@ export async function updateMemberAccess(
 ): Promise<{ notice: string; row: TeamMemberRow; emails: EmailMessage[] }> {
   const result = await ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
-    const target = await lockTarget(tx, ctx, input.memberId)
-    const [role] = await tx
-      .select({ id: roles.id, key: roles.key, name: roles.name })
-      .from(roles)
-      .where(and(eq(roles.organizationId, ctx.organizationId), eq(roles.id, input.roleId)))
+    // The viewer as they are now: a change to their own access waits for this write.
+    const live = await lockViewer(tx, ctx)
+    const target = await lockTarget(tx, live, input.memberId)
+    // Locked for share: a delete of this role waits, or wins and this is role_unavailable.
+    const [role] = await lockAssignableRoles(tx, live.organizationId, [input.roleId])
     if (!role) throw notFound()
-    await assertMayManage(tx, ctx, target, 'change', role.key)
+    await assertMayManage(tx, live, target, 'change', role)
     if (isOwnerKey(target.roleKey) && !isOwnerKey(role.key)) {
-      if ((await otherActiveOwners(tx, ctx, target.id)) < 1) {
-        throw conflict('last_owner', lastOwnerMessage(ctx))
+      if ((await otherActiveOwners(tx, live, target.id)) < 1) {
+        throw conflict('last_owner', lastOwnerMessage(live))
       }
     }
-    const newLimits = await assertGrantableEntities(tx, ctx, input.entityIds)
+    const newLimits = await assertGrantableEntities(tx, live, input.entityIds)
 
-    await tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id))
+    await onArchivedRole(
+      tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id)),
+    )
     await tx.delete(memberEntityLimits).where(eq(memberEntityLimits.memberId, target.id))
     if (newLimits.length) {
       await tx.insert(memberEntityLimits).values(
         newLimits.map((e) => ({
-          organizationId: ctx.organizationId,
+          organizationId: live.organizationId,
           memberId: target.id,
           entityId: e.id,
         })),
       )
     }
     await recordAudit(tx, {
-      organizationId: ctx.organizationId,
+      organizationId: live.organizationId,
       action: 'member.access_changed',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'member', id: target.id, label: target.name },
       before: {
         role: target.roleName,
@@ -176,9 +188,9 @@ export async function updateMemberAccess(
     const emails =
       isOwnerKey(role.key) && !isOwnerKey(target.roleKey)
         ? await newOwnerAlerts(tx, {
-            organizationId: ctx.organizationId,
-            organizationName: ctx.organizationName,
-            byName: ctx.user.name,
+            organizationId: live.organizationId,
+            organizationName: live.organizationName,
+            byName: live.user.name,
             newOwnerName: target.name,
           })
         : []
@@ -199,14 +211,16 @@ export async function removeMember(
 ): Promise<{ notice: string }> {
   return ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
-    const target = await lockTarget(tx, ctx, memberId)
-    await assertMayManage(tx, ctx, target, 'remove')
-    if (isOwnerKey(target.roleKey) && (await otherActiveOwners(tx, ctx, target.id)) < 1) {
-      throw conflict('last_owner', lastOwnerMessage(ctx))
+    // The viewer as they are now: a change to their own access waits for this write.
+    const live = await lockViewer(tx, ctx)
+    const target = await lockTarget(tx, live, memberId)
+    await assertMayManage(tx, live, target, 'remove')
+    if (isOwnerKey(target.roleKey) && (await otherActiveOwners(tx, live, target.id)) < 1) {
+      throw conflict('last_owner', lastOwnerMessage(live))
     }
     await tx
       .update(members)
-      .set({ status: 'removed', removedAt: new Date(), removedByUserId: ctx.user.id })
+      .set({ status: 'removed', removedAt: new Date(), removedByUserId: live.user.id })
       .where(eq(members.id, target.id))
     // Their sessions in this organization end at once; sessions in their other organizations stay.
     const ended = await tx
@@ -215,24 +229,24 @@ export async function removeMember(
         and(
           eq(sessions.userId, target.userId),
           or(
-            eq(sessions.activeOrganizationId, ctx.organizationId),
+            eq(sessions.activeOrganizationId, live.organizationId),
             isNull(sessions.activeOrganizationId),
           ),
         ),
       )
       .returning({ id: sessions.id })
     await recordAudit(tx, {
-      organizationId: ctx.organizationId,
+      organizationId: live.organizationId,
       action: 'member.removed',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'member', id: target.id, label: target.name },
       before: { status: 'active', role: target.roleName },
       after: { status: 'removed' },
     })
     await recordAudit(tx, {
-      organizationId: ctx.organizationId,
+      organizationId: live.organizationId,
       action: 'session.revoked_by_removal',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'user', id: target.userId, label: target.name },
       metadata: { count: ended.length },
     })
@@ -252,8 +266,12 @@ export async function resetMemberTwoStep(
   memberId: string,
 ): Promise<{ notice: string; emails: EmailMessage[]; resetPasswordFor: string }> {
   return ctx.db.transaction(async (tx) => {
-    const target = await lockTarget(tx, ctx, memberId)
-    await assertMayManage(tx, ctx, target, 'reset')
+    // Serialises with other access changes, so two people resetting each other can't deadlock.
+    await lockOrganization(tx, ctx.organizationId)
+    // The viewer as they are now: a change to their own access waits for this write.
+    const live = await lockViewer(tx, ctx)
+    const target = await lockTarget(tx, live, memberId)
+    await assertMayManage(tx, live, target, 'reset')
     await tx.delete(twoFactors).where(eq(twoFactors.userId, target.userId))
     await tx
       .update(users)
@@ -266,11 +284,11 @@ export async function resetMemberTwoStep(
     await recordAccountEvent(tx, {
       userId: target.userId,
       action: 'two_step.reset',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'user', id: target.userId, label: target.name },
-      metadata: { resetFrom: ctx.organizationName, sessionsEnded: ended.length },
+      metadata: { resetFrom: live.organizationName, sessionsEnded: ended.length },
     })
-    const alert = twoStepResetAlert({ byName: ctx.user.name })
+    const alert = twoStepResetAlert({ byName: live.user.name })
     return {
       notice: `Two-step reset for ${target.name}. We've emailed them a link to set a new password.`,
       emails: [{ to: target.email, tag: 'security_alert', ...alert }],

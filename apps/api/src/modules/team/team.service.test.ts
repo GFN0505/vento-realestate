@@ -2,6 +2,7 @@ import { listTeamInput, type TeamInvitationRow, type TeamMemberRow } from '@vent
 import { describe, expect, it } from 'vitest'
 import type { ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
+import { likePattern } from '@/lib/like'
 import { removeMember } from '@/modules/members/members.service'
 import { countingDb } from '@/test/counting-db'
 import { withRollback } from '@/test/db'
@@ -10,11 +11,12 @@ import {
   createEntity,
   createInvitation,
   createMember,
+  createOfficeManager,
   createOrganization,
   createUser,
   type TestOrg,
 } from '@/test/factories'
-import { likePattern, listTeam } from './team.service'
+import { listTeam } from './team.service'
 
 const MINUTE = 60_000
 const list = (ctx: ServiceContext, input: Record<string, unknown> = {}) =>
@@ -147,7 +149,7 @@ describe('team.list', () => {
       expect(aisha?.readOnly).toEqual({
         reason: 'wider_access',
         message:
-          "Aisha Bello has access to entities you can't see. Ask Olumide Bankole (owner) to change it.",
+          "Aisha Bello has access to companies you can't see. Ask Olumide Bankole (owner) to change it.",
       })
       expect(memberNamed(result.items, 'Kunle Ojo')?.can.changeAccess).toBe(true)
       expect(JSON.stringify(result)).not.toContain('Lekki')
@@ -275,5 +277,28 @@ describe('team.list with the location switcher', () => {
       const foreign = await createEntity(tx, theirs, { name: 'Their SPV Ltd' })
       const result = await list(await contextFor(tx, org.owner, org), { entityId: foreign.id })
       expect(result).toMatchObject({ items: [], total: 0, counts: { members: 0, invited: 0 } })
+    }))
+})
+
+describe('team.list with the permission ceiling', () => {
+  it("shows an office manager an admin's row read-only, naming the owner", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const office = await createOfficeManager(tx, org)
+      await createMember(tx, org, { role: 'admin', name: 'Kemi Adebayo' })
+      await createMember(tx, org, { role: 'sales', name: 'Grace Umeh' })
+      const rows = (await list(await contextFor(tx, office.user, org))).items
+      expect(memberNamed(rows, 'Kemi Adebayo')).toMatchObject({
+        can: { changeAccess: false, resetTwoStep: false, remove: false },
+        readOnly: {
+          reason: 'wider_permissions',
+          message:
+            "Kemi Adebayo can do things you can't. Ask Olumide Bankole (owner) to change it.",
+        },
+      })
+      expect(memberNamed(rows, 'Grace Umeh')).toMatchObject({
+        can: { changeAccess: true, remove: true },
+        readOnly: null,
+      })
     }))
 })

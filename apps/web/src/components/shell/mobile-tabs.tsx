@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 const MoreSheet = lazy(() => import('./more-sheet').then((m) => ({ default: m.MoreSheet })))
 
 const tab =
-  'flex min-h-12 flex-1 flex-col items-center justify-center gap-[3px] rounded-lg font-semibold text-[11px] text-muted-foreground outline-none transition-colors focus-visible:outline-2 focus-visible:outline-ring active:bg-muted data-[status=active]:text-nav-active'
+  'flex min-h-12 flex-1 flex-col items-center justify-center gap-[3px] rounded-lg font-semibold text-[11px] text-muted-foreground outline-hidden transition-colors focus-visible:outline-2 focus-visible:outline-ring active:bg-muted data-[status=active]:text-nav-active'
 
 /** Phones: Home, up to three of the modules the member can open, and More (boards *Mobile). */
 export function MobileTabs() {

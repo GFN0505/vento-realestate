@@ -39,7 +39,7 @@ export function TeamTable({ rows, onOpen }: Props) {
               Role
             </th>
             <th scope="col" className={th}>
-              Entity access
+              Company access
             </th>
             <th scope="col" className={th}>
               Two-step
@@ -125,7 +125,7 @@ function Person({ row, onOpen }: { row: ListRow; onOpen: () => void }) {
             type="button"
             data-team-row={row.id}
             onClick={onOpen}
-            className="truncate rounded-sm text-left font-semibold outline-none hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="truncate rounded-sm text-left font-semibold outline-hidden hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {title}
           </button>

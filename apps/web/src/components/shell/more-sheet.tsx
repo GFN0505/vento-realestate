@@ -22,7 +22,7 @@ import { ThemeSegments } from './theme-segments'
 type Props = { open: boolean; onOpenChange: (open: boolean) => void }
 
 export const sheetRow =
-  'flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
+  'flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
 
 /** Phones: the rest of the role's modules and the account menu (spec "More"). */
 export function MoreSheet({ open, onOpenChange }: Props) {

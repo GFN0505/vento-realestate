@@ -1,5 +1,6 @@
-import { requirePermission } from '@/access/middleware'
+import { requireAllEntities, requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
+import { answerSingleCompany } from '@/modules/organization/organization.service'
 import { member } from '@/orpc'
 import { getChecklist, hideChecklist, showChecklist } from './checklist.service'
 
@@ -16,4 +17,11 @@ export const checklistRouter = {
   show: member.checklist.show
     .use(canSetUp())
     .handler(({ context }) => showChecklist(serviceContext(context))),
+  // Like adding a company: it answers for the whole group.
+  answerSingleCompany: member.checklist.answerSingleCompany
+    .use(requirePermission('settings', 'create', 'add companies'))
+    .use(requireAllEntities())
+    .handler(({ context, input }) =>
+      answerSingleCompany(serviceContext(context), input.singleCompany),
+    ),
 }

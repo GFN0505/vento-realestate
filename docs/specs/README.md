@@ -10,5 +10,6 @@ A spec links to the journeys it adds or changes (`docs/journeys/`), the screens 
 | [App shell (brick 3a)](app-shell.md) | Platform | J-ONB-05, J-ONB-01 | shipped (PR #3) |
 | [Feature flags and plan entitlements](feature-flags.md) | Platform | J-ADM-01, J-ADM-02, J-ONB-05, J-AI-04 | shipped (PR #4) |
 | [Team (brick 3b)](team.md) | Platform | J-ONB-02, J-ONB-06, J-ONB-01 | approved, in build |
+| [Roles and organization (brick 3c)](roles-and-organization.md) | Platform | J-ONB-07, J-ONB-08, J-ONB-01, J-ONB-05 | built (PR pending) |
 
 Status: `draft` · `approved` (owner agreed, ready to plan) · `in build` · `shipped` · `dropped`

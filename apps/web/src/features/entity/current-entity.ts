@@ -7,7 +7,7 @@ import { readItem, writeItem } from '@/lib/storage'
  * with the member's entity limits once list procedures take it.
  */
 
-export const ENTITY_NOT_AVAILABLE = "That entity isn't available. Showing all entities."
+export const ENTITY_NOT_AVAILABLE = "That company isn't available. Showing all companies."
 
 const key = (organizationId: string) => `vento-entity:${organizationId}`
 

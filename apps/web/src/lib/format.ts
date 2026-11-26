@@ -50,3 +50,11 @@ export function formatDayMonth(iso: string): string {
   const date = new Date(iso)
   return Number.isNaN(date.getTime()) ? iso : dayMonthFormat.format(date)
 }
+
+const monthName = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' })
+const month = (n: number) => monthName.format(new Date(Date.UTC(2026, ((n - 1 + 12) % 12) | 0, 1)))
+
+/** The financial year that starts in a month (1–12): 4 → "April – March". */
+export function financialYearSpan(startMonth: number): string {
+  return `${month(startMonth)} – ${month(startMonth - 1)}`
+}

@@ -1,18 +1,32 @@
+import type { Entity } from '@vento/shared'
 import { useSyncExternalStore } from 'react'
 
 /*
- * Which shell overlays are open: the ⌘K palette, the `?` shortcuts dialog and the Invite people
- * sheet. A tiny store so the key listener, the top bar, Home, Team and ⌘K can all open them.
+ * Which shell overlays are open: the ⌘K palette, the `?` shortcuts dialog, the Invite people
+ * sheet, the Company sheet and the company plan message. A tiny store so the key listener, the
+ * top bar, Home, Settings and ⌘K can all open them.
  */
 
-type Overlay = 'palette' | 'shortcuts' | 'invite'
+export type Overlay = 'palette' | 'shortcuts' | 'invite' | 'company' | 'companyPlan'
 type State = Readonly<Record<Overlay, boolean>>
 
 /** What "Invite again" fills in: the removed person's email and the role they had. */
 export type InvitePrefill = { emails: readonly string[]; roleId?: string }
 
-let state: State = { palette: false, shortcuts: false, invite: false }
+/** What the Company sheet shows: a new company, or one from a list (its latest copy). */
+export type CompanyTarget = { mode: 'add' } | { mode: 'edit'; company: Entity }
+
+const CLOSED: State = {
+  palette: false,
+  shortcuts: false,
+  invite: false,
+  company: false,
+  companyPlan: false,
+}
+
+let state: State = CLOSED
 let prefill: InvitePrefill | null = null
+let companyTarget: CompanyTarget = { mode: 'add' }
 const listeners = new Set<() => void>()
 
 function set(next: Partial<State>) {
@@ -23,11 +37,7 @@ function set(next: Partial<State>) {
 export const shellUi = {
   open(overlay: Overlay) {
     // One overlay at a time: opening one closes the others.
-    set({
-      palette: overlay === 'palette',
-      shortcuts: overlay === 'shortcuts',
-      invite: overlay === 'invite',
-    })
+    set({ ...CLOSED, [overlay]: true })
   },
   /** Invite people, from Team, Home's checklist or ⌘K; optionally with rows filled in. */
   openInvite(fill?: InvitePrefill) {
@@ -40,6 +50,18 @@ export const shellUi = {
     const taken = prefill
     prefill = null
     return taken
+  },
+  /** The Company sheet, to add one or edit one. Use `openAddCompany` for every Add button. */
+  openCompany(target: CompanyTarget) {
+    companyTarget = target
+    preloadCompanySheet()
+    shellUi.open('company')
+  },
+  companyTarget(): CompanyTarget {
+    return companyTarget
+  },
+  isOpen(overlay: Overlay): boolean {
+    return state[overlay]
   },
   close(overlay: Overlay) {
     set({ [overlay]: false })
@@ -93,6 +115,27 @@ export function loadInvite() {
 /** Starts downloading the sheet when someone heads for an Invite people button. */
 export function preloadInvite(): void {
   loadInvite().catch(() => {
+    // Offline: opening the sheet tries again.
+  })
+}
+
+let companyPromise: Promise<typeof import('@/features/companies/sheet/company-overlays')> | null =
+  null
+
+/** The Company sheet and the plan message: one chunk, shared by every Add company button. */
+export function loadCompanySheet() {
+  companyPromise ??= import('@/features/companies/sheet/company-overlays').catch(
+    (error: unknown) => {
+      companyPromise = null
+      throw error
+    },
+  )
+  return companyPromise
+}
+
+/** Starts downloading the sheet when someone heads for an Add company button or a company row. */
+export function preloadCompanySheet(): void {
+  loadCompanySheet().catch(() => {
     // Offline: opening the sheet tries again.
   })
 }

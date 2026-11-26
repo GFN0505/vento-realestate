@@ -77,7 +77,7 @@ export function InvitationSheet({ row, ...frame }: Props) {
       <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-2.5 text-[13px]">
         <dt className="text-muted-foreground">Role</dt>
         <dd>{row.role.name}</dd>
-        <dt className="text-muted-foreground">Entity access</dt>
+        <dt className="text-muted-foreground">Company access</dt>
         <dd>
           <AccessText access={row.access} />
         </dd>

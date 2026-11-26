@@ -23,5 +23,6 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0015](0015-platform-configuration-lives-outside-organizations.md) | Platform configuration lives outside organizations | accepted |
 | [0016](0016-feature-availability-declared-in-the-contract-enforced-in-me.md) | Feature availability: declared in the contract, enforced in member, read from memory | accepted |
 | [0017](0017-transactional-email-through-postmark-with-delivery-tracked-o.md) | Transactional email through Postmark, with delivery tracked on invitations | accepted |
+| [0018](0018-entities-are-called-companies-on-screen.md) | Entities are called companies on screen; code keeps "entity" | accepted |
 
 Template: [0000-template.md](0000-template.md)

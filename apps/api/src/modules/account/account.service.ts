@@ -5,12 +5,14 @@ import type {
   SessionItem,
   SwitchOrganizationOutput,
 } from '@vento/shared'
+import { hasPermission } from '@vento/shared'
 import { and, count, desc, eq, gt, ne } from 'drizzle-orm'
 import {
   type AuthSession,
   type AuthUser,
   listActiveMemberships,
   loadMembership,
+  type MemberContext,
   type Membership,
   resolveMembership,
   setActiveOrganization,
@@ -124,7 +126,13 @@ export async function getMe(
       : null,
     nextStep,
     twoStepRequired: twoStepRequired(user, membership?.member ?? null),
+    canAddCompany: membership ? canAddCompany(membership.member) : false,
   }
+}
+
+/** Settings create and access to every company: "+ Add company" in the switcher, Home and ⌘K. */
+export function canAddCompany(member: Pick<MemberContext, 'permissions' | 'entityIds'>): boolean {
+  return hasPermission(member.permissions, 'settings', 'create') && member.entityIds === null
 }
 
 /**

@@ -20,7 +20,7 @@ export function TeamCards({ rows, onOpen }: Props) {
               type="button"
               data-team-row={row.id}
               onClick={() => onOpen(row)}
-              className="flex min-h-[72px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex min-h-[72px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
             >
               <PersonAvatar name={title} invited={!member} />
               <span className="flex min-w-0 flex-1 flex-col gap-1">

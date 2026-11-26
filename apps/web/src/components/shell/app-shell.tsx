@@ -7,7 +7,13 @@ import { useEntitySync } from '@/features/entity/use-current-entity'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { canView, isAvailable, navItemForModule } from '@/features/shell/nav'
 import { routeModule } from '@/features/shell/route-module'
-import { loadInvite, loadPalette, preloadPalette, useOverlay } from '@/features/shell/shell-ui'
+import {
+  loadCompanySheet,
+  loadInvite,
+  loadPalette,
+  preloadPalette,
+  useOverlay,
+} from '@/features/shell/shell-ui'
 import { useRouteFocus } from '@/features/shell/use-route-focus'
 import { useShellSync } from '@/features/shell/use-shell-sync'
 import { useShortcuts } from '@/features/shell/use-shortcuts'
@@ -19,6 +25,7 @@ import { TopBar } from './top-bar'
 
 const CommandPalette = lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })))
 const InviteSheet = lazy(() => loadInvite().then((m) => ({ default: m.InviteSheet })))
+const CompanyOverlays = lazy(() => loadCompanySheet().then((m) => ({ default: m.CompanyOverlays })))
 const ShortcutsDialog = lazy(() =>
   import('@/features/shell/shortcuts-dialog').then((m) => ({ default: m.ShortcutsDialog })),
 )
@@ -87,12 +94,26 @@ function ShellOverlays() {
   const palette = useOverlay('palette')
   const shortcuts = useOverlay('shortcuts')
   const invite = useOverlay('invite')
-  const [used, setUsed] = useState({ palette: false, shortcuts: false, invite: false })
-  if ((palette && !used.palette) || (shortcuts && !used.shortcuts) || (invite && !used.invite)) {
+  const companySheet = useOverlay('company')
+  const companyPlan = useOverlay('companyPlan')
+  const company = companySheet || companyPlan
+  const [used, setUsed] = useState({
+    palette: false,
+    shortcuts: false,
+    invite: false,
+    company: false,
+  })
+  if (
+    (palette && !used.palette) ||
+    (shortcuts && !used.shortcuts) ||
+    (invite && !used.invite) ||
+    (company && !used.company)
+  ) {
     setUsed({
       palette: used.palette || palette,
       shortcuts: used.shortcuts || shortcuts,
       invite: used.invite || invite,
+      company: used.company || company,
     })
   }
 
@@ -107,6 +128,7 @@ function ShellOverlays() {
       {used.palette && <CommandPalette />}
       {used.shortcuts && <ShortcutsDialog />}
       {used.invite && <InviteSheet />}
+      {used.company && <CompanyOverlays />}
     </Suspense>
   )
 }

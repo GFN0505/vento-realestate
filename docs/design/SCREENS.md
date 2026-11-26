@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 171 rows · 135 designed (18 of them partly) · 36 without a design.
+**Coverage:** 175 rows · 137 designed (21 of them partly) · 38 without a design.
 
 
 
@@ -19,8 +19,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
 | Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
-| Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K) | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | built |
-| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
+| Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K; brick 3c: "Add your first company" and "Add your other companies (SPVs)" with "We only have one company") | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | built |
+| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K; brick 3c: switcher labelled "Company", "+ Add company" for owners and admins, "No company" state) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
 | ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
 | Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | pattern (component built; first used in 3b) |
@@ -190,13 +190,17 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Screen | Design | Status |
 |---|---|---|
 | Settings layout with left sub-navigation (brick 3b: only built sections the member can view; no sub-navigation while there's one section; Settings in the sidebar footer, user menu and More) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | built |
-| Organization profile and entities: add, edit, archive (brick 3c) | [SetOrg](claude-design/SetOrg.dc.html) | todo |
+| Organization profile: name, head office state, financial year; base currency shown (brick 3c; organization-wide, no company switcher) | [SetOrg](claude-design/SetOrg.dc.html) (Company and Defaults cards, partly) | built |
+| Companies (entities): Active and Archived chips, owner's plan usage line, edit, archive with Undo or a confirm naming people who'd lose access, restore (brick 3c; organization-wide) | [SetOrg](claude-design/SetOrg.dc.html) (entities table, partly) | built |
+| Add company / Company sheet: name, type, RC number, TIN, VAT registered, "create a project instead" line; archived read-only with Restore; owner's plan message at the limit (brick 3c; opens from Settings, the company switcher, the Home checklist and ⌘K) | – | pattern |
 | Branding: logo and colours on documents, emails and portals (proposed: with the first customer-facing document) | [SetBranding](claude-design/SetBranding.dc.html) | todo |
 | Team: one list of members and open invitations (role in place, entity access, two-step, last active, invitation and delivery state), search, role filter, Invited and Removed chips, owner's plan usage line, confirms for remove, reset two-step and make owner (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built |
 | Invite people sheet: up to 20 emails, role for everyone or per row, entity access, row problems, plan places (brick 3b; also opens from the Home checklist and ⌘K; follows the entity switcher) | – | pattern |
 | Member sheet: role, entity access with Save changes, two-step, reset two-step, make owner, remove; invitation sheet for open invitations (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built |
 | Member and invitation sheets: facts, change role and entity access, reset two-step, remove; resend, withdraw (brick 3b) | – | todo |
-| Permissions: role × module matrix, copy and edit custom roles (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | todo |
+| Roles & permissions list: built-in and custom roles, people and invited counts (link to Team), two-step, row menu (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html) (partly) | built |
+| Role page: module × action grid (read-only for built-in roles, editable for custom), two-step switch with lock, save bar, Duplicate role, Preview this role, Delete role (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | built |
+| New role dialog (name, start from) and delete role confirm (brick 3c) | – | pattern |
 | Approval rules | [SetApprovalRules](claude-design/SetApprovalRules.dc.html) | todo |
 | Fee and sales defaults, grace periods | – | todo |
 | Numbering (receipts, invoices, documents) | – | todo |

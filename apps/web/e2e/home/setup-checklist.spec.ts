@@ -6,22 +6,25 @@ import { chooseRole, pasteEmails, uniqueAddress } from '../support/team'
 
 // J-ONB-01 step 7: the setup checklist on Home, for owners and admins.
 
-test('a new owner sees three of four done and Invite your team open', async ({ page }) => {
+test('a new owner sees three of five done, with the other companies and Invite your team open', async ({
+  page,
+}) => {
   const owner = createMemberFixture()
   await signInWithTotp(page, owner)
 
   const card = page.getByRole('region', { name: 'Finish setting up' })
-  await expect(card).toContainText('3 of 4 done')
+  await expect(card).toContainText('3 of 5 done')
   await expect(card).toContainText('3 steps done')
   await expect(card).toContainText('two-step sign-in')
   await expect(card.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute(
     'aria-valuenow',
     '3',
   )
+  await expect(card.getByText('Add your other companies (SPVs), to do')).toBeVisible()
   await expect(card.getByText('Invite your team, to do')).toBeVisible()
 })
 
-test('Invite people opens the invite sheet over Home, and sending completes the checklist', async ({
+test('Invite people opens the invite sheet over Home, and sending, then answering the companies step, completes the checklist', async ({
   page,
 }) => {
   const owner = createMemberFixture()
@@ -37,7 +40,10 @@ test('Invite people opens the invite sheet over Home, and sending completes the 
   await sheet.getByRole('button', { name: 'Send invitation', exact: true }).click()
 
   await expect(page.getByText(/^Invitation sent to /)).toBeVisible()
-  await expect(card).toContainText('4 of 4 done')
+  await expect(card).toContainText('4 of 5 done')
+  // The last open step: this organization runs one company.
+  await card.getByRole('button', { name: 'We only have one company' }).click()
+  await expect(card).toContainText('5 of 5 done')
   await expect(card).toContainText(
     "You're set up. New steps appear here as you add projects and sales.",
   )

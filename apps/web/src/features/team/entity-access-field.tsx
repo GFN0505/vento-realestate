@@ -28,7 +28,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
   if (!entities) {
     return (
       <FieldSet>
-        <FieldLegend className="text-foreground text-sm">Entity access</FieldLegend>
+        <FieldLegend className="text-foreground text-sm">Company access</FieldLegend>
         <Skeleton className="h-16 w-full" />
       </FieldSet>
     )
@@ -37,7 +37,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
   if (only) {
     return (
       <div className="flex flex-col gap-1">
-        <span className="font-semibold text-sm">Entity access</span>
+        <span className="font-semibold text-sm">Company access</span>
         <span className="text-sm">{only.name}</span>
       </div>
     )
@@ -46,7 +46,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
   const toggle = (id: string, on: boolean) =>
     onChange({ mode: 'some', ids: on ? [...value.ids, id] : value.ids.filter((x) => x !== id) })
   const list = (
-    <ul aria-label="Entities" className="flex flex-col gap-0.5">
+    <ul aria-label="Companies" className="flex flex-col gap-0.5">
       {entities.map((entity) => (
         <li key={entity.id}>
           <label
@@ -68,7 +68,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
 
   return (
     <FieldSet aria-describedby={error ? `${name}-error` : undefined}>
-      <FieldLegend className="mb-0 text-foreground text-sm">Entity access</FieldLegend>
+      <FieldLegend className="mb-0 text-foreground text-sm">Company access</FieldLegend>
       {limits ? (
         list
       ) : (
@@ -84,7 +84,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
               className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-muted max-md:min-h-11"
             >
               <RadioGroupItem id={`${name}-${mode}`} value={mode} />
-              {mode === 'all' ? 'All entities' : 'Only some entities'}
+              {mode === 'all' ? 'All companies' : 'Only some companies'}
             </label>
           ))}
           {value.mode === 'some' && <div className="ml-7 border-l pl-2">{list}</div>}

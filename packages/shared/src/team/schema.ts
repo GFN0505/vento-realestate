@@ -59,7 +59,14 @@ export const invitationDelivery = z.enum(['queued', 'sent', 'failed', 'bounced',
 export type InvitationDelivery = z.infer<typeof invitationDelivery>
 
 /** Why a row has no actions for this viewer, with the one line the sheet shows. */
-export const readOnlyReason = z.enum(['self', 'owner', 'wider_access'])
+export const readOnlyReason = z.enum([
+  'self',
+  'owner',
+  /** Can see companies the viewer can't. */
+  'wider_access',
+  /** Their role can do things the viewer's can't (the permission ceiling). */
+  'wider_permissions',
+])
 export type ReadOnlyReason = z.infer<typeof readOnlyReason>
 export const readOnly = z.object({ reason: readOnlyReason, message: z.string() }).nullable()
 export type ReadOnly = z.infer<typeof readOnly>
@@ -140,7 +147,14 @@ export const listTeamOutput = paginated(teamRow).extend({
 export type ListTeamOutput = z.infer<typeof listTeamOutput>
 
 /** Setup checklist items, in display order. Later bricks append theirs. */
-export const checklistItemKey = z.enum(['organization', 'first_entity', 'two_step', 'invite_team'])
+export const checklistItemKey = z.enum([
+  'organization',
+  'first_entity',
+  /** "Add your other companies (SPVs)": owners and admins with all-companies access only. */
+  'other_companies',
+  'two_step',
+  'invite_team',
+])
 export type ChecklistItemKey = z.infer<typeof checklistItemKey>
 
 export const checklistItem = z.object({

@@ -27,7 +27,7 @@ type Props = {
 }
 
 const link =
-  'rounded-sm font-semibold underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-1'
+  'rounded-sm font-semibold underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-1'
 
 export function InviteRows({
   rows,

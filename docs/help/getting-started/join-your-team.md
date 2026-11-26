@@ -1,6 +1,6 @@
 # Join your team on Vento
 
-Someone at your company invited you. The invitation email shows the company, who invited you, your role and which companies (entities) you can see. Invitations last 7 days.
+Someone at your company invited you. The invitation email shows the company, who invited you, your role and which companies you can see. Invitations last 7 days.
 
 1. Click **Accept invitation** in the email.
 2. Check the details: company, role, what your role can approve, and whether two-step sign-in is required.

@@ -31,6 +31,7 @@ function renderSheet(me = testMe('owner', { plan: null })) {
       page: 1,
       pageSize: 100,
       total: 0,
+      counts: { active: 0, archived: 0 },
     }),
   )
   act(() => shellUi.open('invite'))
@@ -67,6 +68,7 @@ describe('InviteSheet', () => {
         page: 1,
         pageSize: 100,
         total: 0,
+        counts: { active: 0, archived: 0 },
       }),
     )
 
