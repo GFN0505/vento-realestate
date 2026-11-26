@@ -16,6 +16,12 @@ export const listTeamInput = paginationInput
     /** A role from another organization simply matches nobody (it's a filter, not a lookup). */
     roleId: id.optional(),
     show: teamShow.default('everyone'),
+    /**
+     * The location switcher (decision 0014): people who can work in this entity (all-entities
+     * access or a limit including it; owners always). Outside the viewer's limits, or unknown:
+     * an empty list. Chip counts follow it too.
+     */
+    entityId: id.optional(),
     pageSize: z.coerce.number().int().min(1).max(100).default(50),
   })
   .strict()
@@ -123,7 +129,7 @@ export const teamRow = z.discriminatedUnion('kind', [
 export type TeamRow = z.infer<typeof teamRow>
 
 export const listTeamOutput = paginated(teamRow).extend({
-  /** Organization-wide, whatever the filters: for the context line and the chips. */
+  /** For the context line and the chips: the whole organization, or the chosen entity only. */
   counts: z.object({
     members: z.number().int().min(0),
     /** Open invitations, expired ones included (they're listed until resent or withdrawn). */

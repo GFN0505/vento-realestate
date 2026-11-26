@@ -52,7 +52,15 @@ type RawRow = {
   removed_by_name: string | null
 }
 
-type Filters = { q?: string; roleId?: string; ids?: readonly string[] }
+type Filters = {
+  q?: string
+  roleId?: string
+  ids?: readonly string[]
+  /** The location switcher (decision 0014): people who can work in this entity. */
+  entityId?: string
+  /** The entity is outside the viewer's own limits: nothing matches. */
+  none?: boolean
+}
 
 /** `%` and `_` typed in the search box are literal characters, not wildcards. */
 export function likePattern(q: string): string {
@@ -65,8 +73,30 @@ const idList = (ids: readonly string[]) =>
     sql`, `,
   )
 
-function filterSql(f: Filters, columns: { role: SQL; id: SQL; search: SQL[] }): SQL {
+/**
+ * Rows whose access covers the entity: all entities (no limit rows), a limit that includes it,
+ * or `always` (owners). The entity must be this organization's, so a foreign id matches nobody.
+ */
+function coversEntity(
+  organizationId: string,
+  entityId: string,
+  limits: { table: SQL; owner: SQL; id: SQL; always?: SQL },
+): SQL {
+  return sql`exists (select 1 from entities e where e.organization_id = ${organizationId}
+      and e.id = ${entityId}::uuid)
+    and (${limits.always ?? sql`false`}
+      or not exists (select 1 from ${limits.table} l where l.${limits.owner} = ${limits.id})
+      or exists (select 1 from ${limits.table} l where l.${limits.owner} = ${limits.id}
+        and l.entity_id = ${entityId}::uuid))`
+}
+
+function filterSql(
+  f: Filters,
+  columns: { role: SQL; id: SQL; search: SQL[]; entity?: (entityId: string) => SQL },
+): SQL {
   const parts: SQL[] = []
+  if (f.none) parts.push(sql` and false`)
+  if (f.entityId && columns.entity) parts.push(sql` and (${columns.entity(f.entityId)})`)
   if (f.roleId) parts.push(sql` and ${columns.role} = ${f.roleId}::uuid`)
   if (f.ids) parts.push(sql` and ${columns.id} in (${idList(f.ids)})`)
   if (f.q) {
@@ -100,6 +130,13 @@ function activeMembersSql(organizationId: string, f: Filters): SQL {
       role: sql`m.role_id`,
       id: sql`m.id`,
       search: [sql`u.name`, sql`u.email`],
+      entity: (e) =>
+        coversEntity(organizationId, e, {
+          table: sql`member_entity_limits`,
+          owner: sql`member_id`,
+          id: sql`m.id`,
+          always: sql`r.key = 'owner'`,
+        }),
     })}`
 }
 
@@ -122,6 +159,12 @@ function openInvitationsSql(organizationId: string, f: Filters): SQL {
       role: sql`i.role_id`,
       id: sql`i.id`,
       search: [sql`i.email`],
+      entity: (e) =>
+        coversEntity(organizationId, e, {
+          table: sql`invitation_entity_limits`,
+          owner: sql`invitation_id`,
+          id: sql`i.id`,
+        }),
     })}`
 }
 
@@ -154,11 +197,34 @@ function removedSql(organizationId: string, f: Filters): SQL {
       role: sql`latest.role_id`,
       id: sql`latest.id`,
       search: [sql`latest.name`, sql`latest.email`],
+      entity: (e) =>
+        coversEntity(organizationId, e, {
+          table: sql`member_entity_limits`,
+          owner: sql`member_id`,
+          id: sql`latest.id`,
+          always: sql`latest.role_key = 'owner'`,
+        }),
     })}`
 }
 
-function setSql(input: z.output<typeof listTeamInput>, organizationId: string): SQL {
-  const f: Filters = { q: input.q || undefined, roleId: input.roleId }
+/**
+ * The entity filter, intersected with the viewer's own limits (decision 0014): an entity outside
+ * them reads like one that doesn't exist, an empty list.
+ */
+function entityFilter(
+  entityId: string | undefined,
+  viewerLimit: readonly string[] | null,
+): Pick<Filters, 'entityId' | 'none'> {
+  if (!entityId) return {}
+  return { entityId, none: viewerLimit !== null && !viewerLimit.includes(entityId) }
+}
+
+function setSql(
+  input: z.output<typeof listTeamInput>,
+  organizationId: string,
+  scope: Filters,
+): SQL {
+  const f: Filters = { ...scope, q: input.q || undefined, roleId: input.roleId }
   if (input.show === 'invited') return openInvitationsSql(organizationId, f)
   if (input.show === 'removed') return removedSql(organizationId, f)
   return sql`${activeMembersSql(organizationId, f)} union all ${openInvitationsSql(organizationId, f)}`
@@ -176,18 +242,18 @@ function orderSql(show: z.output<typeof listTeamInput>['show']): SQL {
 
 type Counts = ListTeamOutput['counts'] & { total: number }
 
-async function countsFor(db: DbOrTx, organizationId: string, filtered: SQL): Promise<Counts> {
+/** Chip counts follow the location filter only (not search or role); total follows everything. */
+async function countsFor(
+  db: DbOrTx,
+  organizationId: string,
+  scope: Filters,
+  filtered: SQL,
+): Promise<Counts> {
   const result = await db.execute<Counts>(sql`
     select
-      (select count(*) from members
-        where organization_id = ${organizationId} and status = 'active')::int as members,
-      (select count(*) from invitations
-        where organization_id = ${organizationId} and status = 'pending')::int as invited,
-      (select count(distinct m.user_id) from members m
-        where m.organization_id = ${organizationId} and m.status = 'removed'
-          and not exists (select 1 from members again
-            where again.organization_id = m.organization_id and again.user_id = m.user_id
-              and again.status = 'active'))::int as removed,
+      (select count(*) from (${activeMembersSql(organizationId, scope)}) m)::int as members,
+      (select count(*) from (${openInvitationsSql(organizationId, scope)}) i)::int as invited,
+      (select count(*) from (${removedSql(organizationId, scope)}) r)::int as removed,
       (select count(*) from (${filtered}) f)::int as total
   `)
   const row = result.rows[0]
@@ -377,12 +443,13 @@ export async function listTeam(
   input: z.output<typeof listTeamInput>,
 ): Promise<ListTeamOutput> {
   const { limit, offset } = pageOffset(input)
-  const filtered = setSql(input, ctx.organizationId)
+  const scope = entityFilter(input.entityId, ctx.member.entityIds)
+  const filtered = setSql(input, ctx.organizationId, scope)
   const [page, counts] = await runQueries(ctx.db, [
     () =>
       ctx.db.execute<RawRow>(sql`
         select * from (${filtered}) t ${orderSql(input.show)} limit ${limit} offset ${offset}`),
-    () => countsFor(ctx.db, ctx.organizationId, filtered),
+    () => countsFor(ctx.db, ctx.organizationId, scope, filtered),
   ])
   const items = await hydrate(ctx, page.rows)
   const { total, ...organizationCounts } = counts

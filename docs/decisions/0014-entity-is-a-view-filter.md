@@ -13,6 +13,7 @@ The chosen entity is held in the page address (`?entity=<id>`), kept across navi
 - Links carry the entity, so shared links and back/forward work.
 - Access stays defined in one place (member entity limits); the switcher can't widen it.
 - Every entity-aware list procedure must accept `entityId` explicitly and test the intersection.
+- Every page whose data belongs to a location follows the switcher; only organization-wide pages (company profile, plan, roles) hide it. Team follows it too: it lists the people who can work in the chosen entity (owner, 26 Nov 2026).
 
 ## Alternatives considered
 - Entity on the session (like the organization): breaks shared links and makes two tabs fight over one value.

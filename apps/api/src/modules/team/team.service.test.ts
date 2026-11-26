@@ -200,3 +200,80 @@ describe('team.list', () => {
       expect(page2.items).toHaveLength(2)
     }))
 })
+
+describe('team.list with the location switcher', () => {
+  async function located(tx: DbOrTx) {
+    const org = await createOrganization(tx)
+    const parkview = await createEntity(tx, org)
+    const lekki = await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
+    await createMember(tx, org, { role: 'finance', name: 'Aisha Bello' })
+    await createMember(tx, org, { role: 'sales', name: 'Kunle Ojo', entityIds: [parkview.id] })
+    await createMember(tx, org, { role: 'sales', name: 'Femi Lekki', entityIds: [lekki.id] })
+    const sent = (minutesAgo: number) => new Date(Date.now() - minutesAgo * MINUTE)
+    await createInvitation(tx, org, {
+      role: 'sales',
+      email: 'all@ventohomes.ng',
+      lastSentAt: sent(30),
+    })
+    await createInvitation(tx, org, {
+      role: 'sales',
+      email: 'parkview@ventohomes.ng',
+      entityIds: [parkview.id],
+      lastSentAt: sent(20),
+    })
+    await createInvitation(tx, org, {
+      role: 'sales',
+      email: 'lekki@ventohomes.ng',
+      entityIds: [lekki.id],
+      lastSentAt: sent(10),
+    })
+    return { org, parkview, lekki }
+  }
+  const labels = (items: Awaited<ReturnType<typeof list>>['items']) =>
+    items.map((r) => (r.kind === 'invitation' ? r.email : r.name))
+
+  it('keeps owners, all-entities people and those limited to include the entity', () =>
+    withRollback(async (tx) => {
+      const { org, parkview } = await located(tx)
+      const result = await list(await contextFor(tx, org.owner, org), { entityId: parkview.id })
+      expect(labels(result.items)).toEqual([
+        'Olumide Bankole',
+        'Aisha Bello',
+        'Kunle Ojo',
+        'parkview@ventohomes.ng',
+        'all@ventohomes.ng',
+      ])
+      expect(result.total).toBe(5)
+    }))
+
+  it('counts the chips with the same filter', () =>
+    withRollback(async (tx) => {
+      const { org, lekki } = await located(tx)
+      const ctx = await contextFor(tx, org.owner, org)
+      expect((await list(ctx)).counts).toEqual({ members: 4, invited: 3, removed: 0 })
+      const invited = await list(ctx, { entityId: lekki.id, show: 'invited' })
+      expect(labels(invited.items)).toEqual(['lekki@ventohomes.ng', 'all@ventohomes.ng'])
+      expect(invited.counts).toEqual({ members: 3, invited: 2, removed: 0 })
+    }))
+
+  it('gives a viewer limited to Lekki an empty list for Parkview', () =>
+    withRollback(async (tx) => {
+      const { org, parkview, lekki } = await located(tx)
+      const admin = await createMember(tx, org, { role: 'admin', entityIds: [lekki.id] })
+      const result = await list(await contextFor(tx, admin.user, org), { entityId: parkview.id })
+      expect(result).toMatchObject({
+        items: [],
+        total: 0,
+        counts: { members: 0, invited: 0, removed: 0 },
+      })
+    }))
+
+  it("gives an empty list for another organization's entity, owners included", () =>
+    withRollback(async (tx) => {
+      const { org } = await located(tx)
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      const foreign = await createEntity(tx, theirs, { name: 'Their SPV Ltd' })
+      const result = await list(await contextFor(tx, org.owner, org), { entityId: foreign.id })
+      expect(result).toMatchObject({ items: [], total: 0, counts: { members: 0, invited: 0 } })
+    }))
+})

@@ -69,6 +69,7 @@ Olumide has set up Vento Homes Ltd and its first entity, and nobody else can get
 - **Primary action:** **Invite people** (top right; on phones, a sticky button above the tabs). Shown only with permission to invite.
 - **Toolbar:** search ("Search by name or email"), a **Role** filter, and three chips: **Everyone** (default) · **Invited** · **Removed**. All held in the address (`/settings/team?q=aisha&role=…&show=invited`) and remembered on this device.
 - **One list, people first.** Active members and open invitations (pending or expired) sit in one list, members first (owners first, then everyone A–Z by name), then open invitations (newest sent first), so "who's on my team, including who I've asked" is a single glance. Withdrawn, declined and accepted invitations aren't listed (accepted ones are members). Server-paginated, 50 per page.
+- **Follows the location switcher** (decision 0014). With an entity chosen, the list shows the people who can work in it: owners, members with all-entities access, and members limited to a set that includes it; open invitations granting all entities or including it; removed people the same way. The chips and the context line count with the same filter. An entity outside the viewer's own limits, or one that doesn't exist, gives an empty list. With *All entities* the whole team shows.
 
 | Column | Member row | Invitation row |
 |---|---|---|
@@ -197,7 +198,7 @@ Olumide has set up Vento Homes Ltd and its first entity, and nobody else can get
 ## Behind the scenes
 - **Existing API (2a), used as is:** `roles.list`, `members.updateAccess`, `members.remove`, `members.resetTwoStep`, `invitations.create`, `invitations.resend`, `invitations.withdraw`, `entities.list`. All audited.
 - **API additions (small; for the architect):**
-  - `team.list({ q, roleId, show: 'everyone' | 'invited' | 'removed', page, pageSize })`: one paginated list of members and open invitations (or removed members), members first (owners first, then everyone A–Z by name), then open invitations (newest sent first), with entity names filtered to the viewer's own access limits and a `canManage` flag per row computed with the rules above. Replaces two calls and keeps one pagination.
+  - `team.list({ q, roleId, entityId, show: 'everyone' | 'invited' | 'removed', page, pageSize })`: one paginated list of members and open invitations (or removed members), members first (owners first, then everyone A–Z by name), then open invitations (newest sent first), with entity names filtered to the viewer's own access limits and a `canManage` flag per row computed with the rules above. Replaces two calls and keeps one pagination.
   - Member fields: `lastActiveAt` (updated at most once an hour per member per organization on any request) and `twoStep: 'on' | 'off' | 'setup_required' | 'reset_pending'`.
   - Invitation fields: `delivery: 'sent' | 'failed' | 'bounced' | 'complained'` and its time; Postmark's message ID or the metadata ID stored for the webhook.
   - Conflict data: `already_member` and `already_invited` carry `emails: string[]`.
@@ -292,7 +293,7 @@ To add to `docs/DOMAIN.md` once approved:
 - Billing: the usage line and limit messages only point to **Talk to Vento**.
 
 ## Owner's decisions (26 Nov 2026)
-All 12 recommendations below were approved, plus the plan's questions (new-owner alert also on accepting an owner invitation; only owners resend owner invitations; a skipped staging email shows "Email not delivered"; the old `members.list` / `invitations.list` endpoints are retired). **List order (owner, 26 Nov 2026, replacing the plan's "open invitations first"):** members first (owners first, then everyone A–Z by name), then open invitations (newest sent first); `id` breaks ties. Added by the owner: **real emails can be sent while testing manually in the browser** (development, through Postmark, only to addresses on an allow-list you set; automated tests, CI and e2e can never send real email).
+All 12 recommendations below were approved, plus the plan's questions (new-owner alert also on accepting an owner invitation; only owners resend owner invitations; a skipped staging email shows "Email not delivered"; the old `members.list` / `invitations.list` endpoints are retired). **List order (owner, 26 Nov 2026, replacing the plan's "open invitations first"):** members first (owners first, then everyone A–Z by name), then open invitations (newest sent first); `id` breaks ties. **The location switcher filters Team:** people who can work in the chosen entity (owner, 26 Nov 2026). Added by the owner: **real emails can be sent while testing manually in the browser** (development, through Postmark, only to addresses on an allow-list you set; automated tests, CI and e2e can never send real email).
 
 ## Open questions (answered above; defaults in bold)
 1. **Two pull requests for 3b** (Team screens first, Postmark second) so DNS and Postmark approval don't block your review? **Yes.**
