@@ -13,16 +13,21 @@
 **Test:** `e2e/home/executive-home.spec.ts` **Status:** draft
 
 ## J-EXE-02 · Approve sensitive actions from the inbox
-**Who / how often:** Any approver, daily.
-**Starts from:** Notification, digest, or *Approvals inbox*.
+**Who / how often:** Any approver (MD, finance, any role with Approve), daily, often on a phone.
+**Starts from:** The "Approval needed" email, the **Approvals** count in the top bar, or ⌘K "Go to Approvals".
+
+Spec: [approvals-and-audit](../specs/approvals-and-audit.md) (brick 4).
 
 **Steps**
-1. Inbox grouped by type (refunds, reversals, POs, payroll, price lists, journals), each showing who asked, what changes, the amount, and the reason.
-2. Open one: before/after or side-by-side view. "Approve" needs no second confirm (the button names the effect); "Reject" needs a comment.
+1. **Approvals** (1): tab *Waiting for me*, oldest first; the first request is open on the right. Each row shows its type chip, title, amount, who asked and their reason, and age.
+2. Read the *Field · Before · After* table, the maker's reason, the policy line and the steps chain (who has approved so far) → **Approve ₦23.52m PO** (2). No second confirm (the button names the effect), except payroll and payment out, which ask once with the amount. Toast "PO-2291 approved"; the next request opens.
+3. Or type a comment and **Reject** (3). The maker is emailed with the comment.
+4. Makers follow their own under *My requests* and can **Cancel request** while it waits; *Decided* lists what you approved or rejected.
 
-**Behind the scenes:** the maker can't approve their own request (they see "This is your own request" and can only cancel it); anyone with a conflict of interest is skipped; approvals never happen from email or while offline; the action runs only on approval, in one transaction; both decisions are audit events; the maker is notified.
-**Watch for:** stale requests (the record changed since; re-check before approving); expiry after the configured days.
-**Target:** 2 clicks per approval. **Test:** `e2e/platform/approvals-inbox.spec.ts` **Status:** draft
+**Behind the scenes:** the request keeps a copy of its rule's steps; each step is one person holding one of the step's roles, with Approve in that module and access to the request's company. The maker can't approve any step, nobody approves two steps of one request, and the action can exclude more people (e.g. whoever recorded the receipt). On the last approval the action runs in the same transaction and its audit event names the approvers; if the record changed since, the request expires instead. Every request, step, rejection, cancellation and expiry is an audit event. Emails go to the next step's approvers and to the maker on the decision; approving never happens from email or offline.
+**Done when:** the request is approved (the change is made) or rejected (nothing changed), and the maker knows.
+**Watch for:** your own request ("This is your own request", Cancel only); two approvers at once (second sees "Aisha Bello approved this a moment ago."); the record changed since ("…so this request has expired."); expired after 7 days; you approved step 1 (step 2 isn't yours); role or company access changed (it leaves your inbox); maker removed (request cancelled); no comment on reject; offline (buttons disabled); 375 px (list and detail are separate pages, sticky buttons above the tabs).
+**Target:** 2 clicks per approval, 3 to reject. **Test:** `e2e/platform/approvals-inbox.spec.ts` **Status:** draft
 
 ## J-EXE-03 · Build a board pack
 **Who / how often:** MD or finance manager, quarterly.

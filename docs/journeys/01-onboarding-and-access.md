@@ -167,6 +167,39 @@ Spec: [my-security](../specs/my-security.md) (brick 3d; owner's decision of 26 N
 **Watch for:** an admin or a read-only settings viewer (switch read-only: "Only owners can change this."); everyone already on ("Everyone already has two-step on."); someone with "Keep me signed in" who doesn't sign in for days (required after 7 days, setup opens over their page and keeps their work); a person in two organizations (asked only when they're in this one); two owners changing it at once (later wins, both audited); a passkey-only member (still sets up the authenticator app); custom role two-step switch (on and locked with the reason); organization switched in another tab (tab guard).
 **Target:** 3 clicks. **Test:** `e2e/settings/require-two-step.spec.ts` **Status:** built
 
+## J-ONB-11 · Set approval rules
+**Who / how often:** Owner; at setup, then a few times a year (a new SPV, a bigger PO limit).
+**Starts from:** *Settings → Approval rules*, ⌘K "Approval rules", or the role page's "Approves:" line.
+
+Spec: [approvals-and-audit](../specs/approvals-and-audit.md) (brick 4).
+
+**Steps**
+1. *Approval rules* (1): rules grouped by action, each with When ("Any" or "Over ₦5,000,000"), Approved by ("Finance → MD", "Owner or Admin"), Companies and the action's fixed extra condition. Under an action with thresholds: "Below ₦5,000,000: no approval needed". Brick 4 ships two defaults: *Change a role's permissions* (Owner or Admin) and *Make someone an owner* (Owner).
+2. **Add rule** (2) → *Rule sheet*: Action (3) → When → Approvers in order, 1 to 3 steps, each one or more roles that have Approve in that module (4) → Companies ("All companies" or chosen) → **Save rule** (5). Toast "Rule saved. Applies to new requests."
+3. Edit a row the same way; **Delete rule** asks first. Deleting or loosening a rule emails every other owner.
+
+**Behind the scenes:** `approval_rule.created`, `approval_rule.updated` and `approval_rule.deleted` audit events with before → after. Pending requests keep the steps they were created with. A company's own rules beat all-company rules; the highest threshold the amount is over wins.
+**Done when:** the rules match how the organization signs things off, and no row shows the amber "Nobody can approve" warning.
+**Watch for:** an admin or other Settings viewer (read-only: "Only owners can change approval rules."); a duplicate rule (same action, companies and threshold: refused); a role without Approve in that module (listed disabled with why); a step nobody can approve in some company (amber warning on the row); a role used in a rule being deleted (refused on the role page); an archived company (rule greyed, back on restore); 375 px (one card per rule, tap for the sheet).
+**Target:** under 60 seconds and 5 clicks to add a rule. **Test:** `e2e/settings/approval-rules.spec.ts` **Status:** draft
+
+## J-ONB-12 · Find out who changed something
+**Who / how often:** Owner or admin with access to every company; monthly, and urgently when a balance, price or access is disputed.
+**Starts from:** *Settings → Audit log*, ⌘K "Audit log", or **View history** on a role page or member sheet.
+
+Spec: [approvals-and-audit](../specs/approvals-and-audit.md) (brick 4).
+
+**Steps**
+1. *Audit log* (1): the last 7 days, newest first: When · Who · Module · What · Before → after · Where, in plain words.
+2. Search "Finance manager" (a name, record or number), or filter by module, person, company and dates. Filters stay in the address, so the view can be shared.
+3. Open the row (2): every changed field with labels, who approved it, and a link to the record.
+4. **Export CSV** for an auditor (up to 50,000 rows).
+
+**Behind the scenes:** reads the organization's append-only `audit_events`; nothing on the page can change history. Exporting is itself an audit event (`audit.exported`). Platform changes show "Vento" as the actor; jobs show "System"; companies are labelled "company", never "entity".
+**Done when:** you know who made the change, when, from where, what it was before and after, and who approved it.
+**Watch for:** a member limited to some companies or without Settings edit (403); a field Vento has no label for ("Other details changed"); more than 50,000 rows to export ("Narrow the dates…"); no matches ("No entries match these filters." → Clear filters); another organization's entry id (not found); 375 px (rows become cards, the entry opens as a full page).
+**Target:** under 30 seconds and 2 clicks from Settings to the answer. **Test:** `e2e/settings/audit-log.spec.ts` **Status:** draft
+
 ## J-ONB-05 · Find your way around the workspace
 **Who / how often:** Every member, many times a day. Admins previewing roles: at setup and when roles change.
 **Starts from:** Signing in, a shared link, or ⌘K from any page.
