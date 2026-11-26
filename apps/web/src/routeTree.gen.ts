@@ -35,7 +35,12 @@ import { Route as AppShellSettingsRouteImport } from './routes/_app/_shell/setti
 import { Route as AppTwoStepSetupRouteImport } from './routes/_app/two-step.setup'
 import { Route as AuthAcceptInvitationTokenRouteImport } from './routes/_auth/accept-invitation.$token'
 import { Route as AppShellSettingsIndexRouteImport } from './routes/_app/_shell/settings/index'
+import { Route as AppShellSettingsCompaniesRouteImport } from './routes/_app/_shell/settings/companies'
+import { Route as AppShellSettingsOrganizationRouteImport } from './routes/_app/_shell/settings/organization'
+import { Route as AppShellSettingsRolesRouteImport } from './routes/_app/_shell/settings/roles'
 import { Route as AppShellSettingsTeamRouteImport } from './routes/_app/_shell/settings/team'
+import { Route as AppShellSettingsRolesIndexRouteImport } from './routes/_app/_shell/settings/roles/index'
+import { Route as AppShellSettingsRolesRoleIdRouteImport } from './routes/_app/_shell/settings/roles/$roleId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -165,11 +170,40 @@ const AppShellSettingsIndexRoute = AppShellSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppShellSettingsRoute,
 } as any)
+const AppShellSettingsCompaniesRoute =
+  AppShellSettingsCompaniesRouteImport.update({
+    id: '/companies',
+    path: '/companies',
+    getParentRoute: () => AppShellSettingsRoute,
+  } as any)
+const AppShellSettingsOrganizationRoute =
+  AppShellSettingsOrganizationRouteImport.update({
+    id: '/organization',
+    path: '/organization',
+    getParentRoute: () => AppShellSettingsRoute,
+  } as any)
+const AppShellSettingsRolesRoute = AppShellSettingsRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AppShellSettingsRoute,
+} as any)
 const AppShellSettingsTeamRoute = AppShellSettingsTeamRouteImport.update({
   id: '/team',
   path: '/team',
   getParentRoute: () => AppShellSettingsRoute,
 } as any)
+const AppShellSettingsRolesIndexRoute =
+  AppShellSettingsRolesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppShellSettingsRolesRoute,
+  } as any)
+const AppShellSettingsRolesRoleIdRoute =
+  AppShellSettingsRolesRoleIdRouteImport.update({
+    id: '/$roleId',
+    path: '/$roleId',
+    getParentRoute: () => AppShellSettingsRolesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppShellIndexRoute
@@ -194,8 +228,13 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppShellSettingsRouteWithChildren
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/settings/companies': typeof AppShellSettingsCompaniesRoute
+  '/settings/organization': typeof AppShellSettingsOrganizationRoute
+  '/settings/roles': typeof AppShellSettingsRolesRouteWithChildren
   '/settings/team': typeof AppShellSettingsTeamRoute
   '/settings/': typeof AppShellSettingsIndexRoute
+  '/settings/roles/$roleId': typeof AppShellSettingsRolesRoleIdRoute
+  '/settings/roles/': typeof AppShellSettingsRolesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppShellIndexRoute
@@ -219,8 +258,12 @@ export interface FileRoutesByTo {
   '/sales': typeof AppShellSalesRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/settings/companies': typeof AppShellSettingsCompaniesRoute
+  '/settings/organization': typeof AppShellSettingsOrganizationRoute
   '/settings/team': typeof AppShellSettingsTeamRoute
   '/settings': typeof AppShellSettingsIndexRoute
+  '/settings/roles/$roleId': typeof AppShellSettingsRolesRoleIdRoute
+  '/settings/roles': typeof AppShellSettingsRolesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -249,8 +292,13 @@ export interface FileRoutesById {
   '/_app/two-step/setup': typeof AppTwoStepSetupRoute
   '/_auth/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
   '/_app/_shell/': typeof AppShellIndexRoute
+  '/_app/_shell/settings/companies': typeof AppShellSettingsCompaniesRoute
+  '/_app/_shell/settings/organization': typeof AppShellSettingsOrganizationRoute
+  '/_app/_shell/settings/roles': typeof AppShellSettingsRolesRouteWithChildren
   '/_app/_shell/settings/team': typeof AppShellSettingsTeamRoute
   '/_app/_shell/settings/': typeof AppShellSettingsIndexRoute
+  '/_app/_shell/settings/roles/$roleId': typeof AppShellSettingsRolesRoleIdRoute
+  '/_app/_shell/settings/roles/': typeof AppShellSettingsRolesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -277,8 +325,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
+    | '/settings/companies'
+    | '/settings/organization'
+    | '/settings/roles'
     | '/settings/team'
     | '/settings/'
+    | '/settings/roles/$roleId'
+    | '/settings/roles/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -302,8 +355,12 @@ export interface FileRouteTypes {
     | '/sales'
     | '/two-step/setup'
     | '/accept-invitation/$token'
+    | '/settings/companies'
+    | '/settings/organization'
     | '/settings/team'
     | '/settings'
+    | '/settings/roles/$roleId'
+    | '/settings/roles'
   id:
     | '__root__'
     | '/_app'
@@ -331,8 +388,13 @@ export interface FileRouteTypes {
     | '/_app/two-step/setup'
     | '/_auth/accept-invitation/$token'
     | '/_app/_shell/'
+    | '/_app/_shell/settings/companies'
+    | '/_app/_shell/settings/organization'
+    | '/_app/_shell/settings/roles'
     | '/_app/_shell/settings/team'
     | '/_app/_shell/settings/'
+    | '/_app/_shell/settings/roles/$roleId'
+    | '/_app/_shell/settings/roles/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -525,6 +587,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppShellSettingsIndexRouteImport
       parentRoute: typeof AppShellSettingsRoute
     }
+    '/_app/_shell/settings/companies': {
+      id: '/_app/_shell/settings/companies'
+      path: '/companies'
+      fullPath: '/settings/companies'
+      preLoaderRoute: typeof AppShellSettingsCompaniesRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
+    '/_app/_shell/settings/organization': {
+      id: '/_app/_shell/settings/organization'
+      path: '/organization'
+      fullPath: '/settings/organization'
+      preLoaderRoute: typeof AppShellSettingsOrganizationRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
+    '/_app/_shell/settings/roles': {
+      id: '/_app/_shell/settings/roles'
+      path: '/roles'
+      fullPath: '/settings/roles'
+      preLoaderRoute: typeof AppShellSettingsRolesRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
     '/_app/_shell/settings/team': {
       id: '/_app/_shell/settings/team'
       path: '/team'
@@ -532,15 +615,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppShellSettingsTeamRouteImport
       parentRoute: typeof AppShellSettingsRoute
     }
+    '/_app/_shell/settings/roles/': {
+      id: '/_app/_shell/settings/roles/'
+      path: '/'
+      fullPath: '/settings/roles/'
+      preLoaderRoute: typeof AppShellSettingsRolesIndexRouteImport
+      parentRoute: typeof AppShellSettingsRolesRoute
+    }
+    '/_app/_shell/settings/roles/$roleId': {
+      id: '/_app/_shell/settings/roles/$roleId'
+      path: '/$roleId'
+      fullPath: '/settings/roles/$roleId'
+      preLoaderRoute: typeof AppShellSettingsRolesRoleIdRouteImport
+      parentRoute: typeof AppShellSettingsRolesRoute
+    }
   }
 }
 
+interface AppShellSettingsRolesRouteChildren {
+  AppShellSettingsRolesRoleIdRoute: typeof AppShellSettingsRolesRoleIdRoute
+  AppShellSettingsRolesIndexRoute: typeof AppShellSettingsRolesIndexRoute
+}
+
+const AppShellSettingsRolesRouteChildren: AppShellSettingsRolesRouteChildren = {
+  AppShellSettingsRolesRoleIdRoute: AppShellSettingsRolesRoleIdRoute,
+  AppShellSettingsRolesIndexRoute: AppShellSettingsRolesIndexRoute,
+}
+
+const AppShellSettingsRolesRouteWithChildren =
+  AppShellSettingsRolesRoute._addFileChildren(
+    AppShellSettingsRolesRouteChildren,
+  )
+
 interface AppShellSettingsRouteChildren {
+  AppShellSettingsCompaniesRoute: typeof AppShellSettingsCompaniesRoute
+  AppShellSettingsOrganizationRoute: typeof AppShellSettingsOrganizationRoute
+  AppShellSettingsRolesRoute: typeof AppShellSettingsRolesRouteWithChildren
   AppShellSettingsTeamRoute: typeof AppShellSettingsTeamRoute
   AppShellSettingsIndexRoute: typeof AppShellSettingsIndexRoute
 }
 
 const AppShellSettingsRouteChildren: AppShellSettingsRouteChildren = {
+  AppShellSettingsCompaniesRoute: AppShellSettingsCompaniesRoute,
+  AppShellSettingsOrganizationRoute: AppShellSettingsOrganizationRoute,
+  AppShellSettingsRolesRoute: AppShellSettingsRolesRouteWithChildren,
   AppShellSettingsTeamRoute: AppShellSettingsTeamRoute,
   AppShellSettingsIndexRoute: AppShellSettingsIndexRoute,
 }

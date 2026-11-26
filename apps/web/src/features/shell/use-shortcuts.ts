@@ -10,7 +10,7 @@ export function useShortcuts() {
   useEffect(() => {
     const match = createShortcutMatcher()
     function onKeyDown(event: KeyboardEvent) {
-      const id = match(event)
+      const id = match(event, window.location.pathname)
       if (!id) return
       // A single key pressed while a dialog or menu is open belongs to it.
       const overlayOpen =

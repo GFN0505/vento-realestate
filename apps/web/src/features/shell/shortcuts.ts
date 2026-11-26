@@ -4,7 +4,15 @@
  * gating it on the role's view permission.
  */
 
-export type ShortcutId = 'palette' | 'help' | 'sidebar' | 'home' | 'team-invite' | 'team-search'
+export type ShortcutId =
+  | 'palette'
+  | 'help'
+  | 'sidebar'
+  | 'home'
+  | 'team-invite'
+  | 'team-search'
+  | 'companies-add'
+  | 'roles-new'
 
 /**
  * Shortcuts that belong to one page are announced with this window event (detail: the id); the
@@ -77,6 +85,22 @@ export const SHORTCUTS: readonly Shortcut[] = [
     allowInFields: false,
     page: { path: '/settings/team', name: 'Team' },
   },
+  {
+    id: 'companies-add',
+    label: 'Add company',
+    keys: ['N'],
+    trigger: { kind: 'key', key: 'n' },
+    allowInFields: false,
+    page: { path: '/settings/companies', name: 'Companies' },
+  },
+  {
+    id: 'roles-new',
+    label: 'New role',
+    keys: ['N'],
+    trigger: { kind: 'key', key: 'n' },
+    allowInFields: false,
+    page: { path: '/settings/roles', name: 'Roles & permissions' },
+  },
 ]
 
 /** Listed in the `?` dialog but handled by each dialog and menu (Radix). */
@@ -116,7 +140,11 @@ export function createShortcutMatcher(
 ) {
   let pending: { key: string; at: number } | null = null
 
-  return function match(event: KeyInput): ShortcutId | null {
+  /**
+   * `pathname`: the page the key was pressed on. Page shortcuts only match there, so two pages
+   * can give the same key different meanings (`n` on Companies and on Roles). Without it, any.
+   */
+  return function match(event: KeyInput, pathname?: string): ShortcutId | null {
     if (event.isComposing) return null
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
     const typing = isTypingTarget(event.target)
@@ -150,7 +178,9 @@ export function createShortcutMatcher(
       }
     }
     for (const s of shortcuts) {
-      if (s.trigger.kind === 'key' && key === s.trigger.key) return s.id
+      if (s.trigger.kind !== 'key' || key !== s.trigger.key) continue
+      if (s.page && pathname !== undefined && s.page.path !== pathname) continue
+      return s.id
     }
     if (shortcuts.some((s) => s.trigger.kind === 'sequence' && s.trigger.keys[0] === key)) {
       pending = { key, at: now() }
