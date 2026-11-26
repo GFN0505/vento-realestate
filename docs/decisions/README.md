@@ -20,5 +20,7 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0012](0012-uuidv7-and-same-organization-keys.md) | Database-generated UUID v7 ids and same-organization foreign keys | accepted |
 | [0013](0013-tab-organization-guard.md) | Each tab names its organization; the server refuses a mismatch | accepted |
 | [0014](0014-entity-is-a-view-filter.md) | The current entity is a view filter in the URL, never an access input | accepted |
+| [0015](0015-platform-configuration-lives-outside-organizations.md) | Platform configuration lives outside organizations | accepted |
+| [0016](0016-feature-availability-declared-in-the-contract-enforced-in-me.md) | Feature availability: declared in the contract, enforced in member, read from memory | accepted |
 
 Template: [0000-template.md](0000-template.md)
