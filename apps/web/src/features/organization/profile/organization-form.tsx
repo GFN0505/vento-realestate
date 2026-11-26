@@ -141,7 +141,7 @@ export function OrganizationForm({ org, editable, form, save, submit }: Props) {
               value="NGN · ₦"
               readOnly
               tabIndex={-1}
-              className="bg-muted text-muted-foreground"
+              className="bg-muted text-foreground"
               aria-describedby={`${ids.currency}-hint`}
             />
             <FieldDescription id={`${ids.currency}-hint`}>

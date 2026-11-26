@@ -34,7 +34,19 @@ type Props = {
   onClose: () => void
 }
 
-const copyOf = (role: Role | undefined) => (role ? `Copy of ${role.name}` : '')
+/**
+ * "Copy of Sales", or the first free "Copy of Sales 2", "Copy of Sales 3"… so the dialog never
+ * opens on a name that's already taken (names are unique ignoring case).
+ */
+function copyOf(role: Role | undefined, taken: ReadonlySet<string> = new Set()): string {
+  if (!role) return ''
+  const base = `Copy of ${role.name}`
+  if (!taken.has(base.toLowerCase())) return base
+  for (let n = 2; ; n++) {
+    const next = `${base} ${n}`
+    if (!taken.has(next.toLowerCase())) return next
+  }
+}
 
 /**
  * New role (pattern: dialog). A name, prefilled and selected so typing replaces it, and the role
@@ -43,6 +55,7 @@ const copyOf = (role: Role | undefined) => (role ? `Copy of ${role.name}` : '')
 export function NewRoleDialog({ open, from, onClose }: Props) {
   const roles = useQuery(rolesQuery())
   const sources = roles.data?.items.filter((r) => r.can.duplicate) ?? []
+  const taken = new Set(roles.data?.items.map((r) => r.name.toLowerCase()) ?? [])
   const preset =
     sources.find((r) => r.id === from) ?? sources.find((r) => r.key === 'viewer') ?? sources[0]
   return (
@@ -58,6 +71,7 @@ export function NewRoleDialog({ open, from, onClose }: Props) {
           <NewRoleForm
             key={`${open}:${preset.id}`}
             sources={sources}
+            taken={taken}
             preset={preset}
             onClose={onClose}
           />
@@ -94,10 +108,13 @@ export function NewRoleDialog({ open, from, onClose }: Props) {
 
 function NewRoleForm({
   sources,
+  taken,
   preset,
   onClose,
 }: {
   sources: readonly Role[]
+  /** Every role's name, lower-cased. */
+  taken: ReadonlySet<string>
   preset: Role
   onClose: () => void
 }) {
@@ -105,7 +122,7 @@ function NewRoleForm({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [sourceId, setSourceId] = useState(preset.id)
-  const [name, setName] = useState(copyOf(preset))
+  const [name, setName] = useState(copyOf(preset, taken))
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [pending, setPending] = useState(false)
@@ -114,7 +131,13 @@ function NewRoleForm({
 
   function pickSource(id: string) {
     // An untouched "Copy of …" follows the new choice; a typed name stays.
-    if (name === copyOf(source)) setName(copyOf(sources.find((r) => r.id === id)))
+    if (name === copyOf(source, taken))
+      setName(
+        copyOf(
+          sources.find((r) => r.id === id),
+          taken,
+        ),
+      )
     setSourceId(id)
   }
 

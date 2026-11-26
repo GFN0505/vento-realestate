@@ -181,7 +181,8 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
           people={role.memberCount}
           empty={draft.empty}
           pending={save.pending}
-          error={save.error}
+          // A name clash is said under the name, not twice.
+          error={errorReason(save.error) === 'role_name_taken' ? null : save.error}
           stale={save.stale}
           onDiscard={() => {
             const previous = draft.draft

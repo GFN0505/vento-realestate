@@ -34,12 +34,9 @@ export function PermissionsMobileList({
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-center gap-2 font-semibold text-[14px]">
                   {MODULE_LABELS[module]}
-                  {changed && (
-                    <span className="size-1.5 rounded-full bg-brand">
-                      <span className="sr-only">, changed</span>
-                    </span>
-                  )}
+                  {changed && <span aria-hidden className="size-1.5 rounded-full bg-brand" />}
                 </span>
+                {/* A real space, so the visible text reads "Sales & CRM View" inside its name. */}{' '}
                 <span
                   className={cn(
                     'text-[13px]',
@@ -59,11 +56,12 @@ export function PermissionsMobileList({
               {onToggle ? (
                 <button
                   type="button"
+                  // Starts with the visible words ("Sales & CRM … View"), then what a tap does.
+                  aria-label={`${MODULE_LABELS[module]}: ${words}${changed ? ', changed' : ''}. Change`}
                   onClick={() => {
                     setShown(module)
                     setOpen(module)
                   }}
-                  aria-label={`${MODULE_LABELS[module]}: ${words}. Change`}
                   className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   {content}
