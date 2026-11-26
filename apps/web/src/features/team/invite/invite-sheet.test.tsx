@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client'
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, configure, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { entitiesQuery } from '@/features/entity/use-current-entity'
@@ -47,6 +47,7 @@ beforeEach(() => {
   localStorage.clear()
 })
 afterEach(() => {
+  configure({ reactStrictMode: false })
   act(() => shellUi.close('invite'))
   vi.mocked(client.invitations.create).mockReset()
 })
@@ -54,6 +55,26 @@ afterEach(() => {
 const sent = () => vi.mocked(client.invitations.create).mock.calls[0]?.[0]
 
 describe('InviteSheet', () => {
+  it('Invite again keeps the email and last role over every default, even in StrictMode', () => {
+    const me = testMe('owner', { plan: null })
+    // As in the app: the shell mounts the sheet already open, in StrictMode.
+    act(() => shellUi.openInvite({ emails: ['grace@ventohomes.ng'], roleId: 'role-hr' }))
+    // As in the app (main.tsx): StrictMode runs mount effects twice in development.
+    configure({ reactStrictMode: true })
+    renderWithMe(<InviteSheet />, me, roles, (queryClient) =>
+      queryClient.setQueryData(entitiesQuery().queryKey, {
+        items: [],
+        page: 1,
+        pageSize: 100,
+        total: 0,
+      }),
+    )
+
+    const list = screen.getByRole('list', { name: 'People to invite' })
+    expect(within(list).getByText('grace@ventohomes.ng')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Role' })).toHaveTextContent('HR')
+  })
+
   it('turns a pasted column into rows, with a role already chosen', () => {
     renderSheet()
     paste('aisha@ventohomes.ng\ngrace@ventohomes.ng\nkunle@ventohomes.ng')

@@ -34,7 +34,7 @@ export function InviteSheet() {
   const draft = useInviteDraft()
   const roles = useQuery(rolesQuery())
   const entities = useQuery(entitiesQuery())
-  const current = useCurrentEntity()
+  const picked = useCurrentEntity()
   const limits = me.member?.entityIds ?? null
   const grantable = roles.data
     ? grantableRoles(roles.data.items, access.roleKey === 'owner')
@@ -60,20 +60,28 @@ export function InviteSheet() {
   const errors = tried ? validateDraft(draft, plan.sendable) : NO_ERRORS
 
   // Opening: "Invite again" fills its row; otherwise a sheet with nothing typed starts fresh.
+  // Runs once per opening (a ref, so React's dev double-run can't wipe a prefill it just took).
+  const opened = useRef(false)
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per opening
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      opened.current = false
+      return
+    }
+    if (opened.current) return
+    opened.current = true
     const fill = shellUi.takeInvitePrefill()
-    const fresh = fill !== null || (draft.rows.length === 0 && draft.text === '')
+    const current = inviteDraft.get()
+    const fresh = fill !== null || (current.rows.length === 0 && current.text === '')
     if (fresh) inviteDraft.reset(limits)
     if (fill) {
+      // A prefill (email and last role) wins over every default below.
       inviteDraft.add(fill.emails.join('\n'))
       if (fill.roleId) inviteDraft.setRole(fill.roleId)
-    }
-    // With one entity picked in the top bar, new people start with access to just that entity.
-    if (fresh && current.entity && !current.locked) {
+    } else if (fresh && picked.entity && !picked.locked) {
+      // With one entity picked in the top bar, new people start with access to just that entity.
       inviteDraft.setEntityMode('some')
-      inviteDraft.setEntityIds([current.entity.id])
+      inviteDraft.setEntityIds([picked.entity.id])
     }
     setTried(false)
   }, [open])

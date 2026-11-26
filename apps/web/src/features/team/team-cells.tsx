@@ -23,7 +23,8 @@ export function PersonAvatar({ name, invited }: { name: string; invited?: boolea
 
 export function YouTag() {
   return (
-    <span className="rounded-full bg-muted px-1.5 py-px font-semibold text-[10.5px] text-muted-foreground leading-4">
+    // Foreground on muted: small text needs the full contrast (AA in both themes).
+    <span className="rounded-full bg-muted px-1.5 py-px font-semibold text-[11px] text-foreground leading-4">
       You
     </span>
   )
