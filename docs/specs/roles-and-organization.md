@@ -1,6 +1,6 @@
 # Roles and organization (brick 3c)
 
-- **Status:** draft
+- **Status:** approved (owner, 26 Nov 2026)
 - **Module:** Platform
 - **Journeys:** J-ONB-07 (new: organization profile and companies), J-ONB-08 (new: make a custom role), J-ONB-01 (step 7: a new checklist item), J-ONB-05 (step 3: the switcher is labelled "Company" and gains **+ Add company**), J-ONB-02 and J-ONB-06 (copy only: "Company access")
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
@@ -349,7 +349,10 @@ To add to `docs/DOMAIN.md` once approved:
 - Deleting a company, merging companies, transferring records between companies, intercompany setup (Finance R3).
 - CAC or tax-ID lookups; any change to how a financial-year change affects closed periods (Finance).
 
-## Open questions (recommendations in bold)
+## Owner's decisions (26 Nov 2026)
+All 14 recommendations below were approved as written.
+
+## Open questions (answered above; recommendations in bold)
 1. **"Company" or "Entity" on screen?** The owner's note suggests "Company" for the switcher. *Recommended:* **"Company" everywhere a user reads it** (switcher, Settings → Companies, Team's "Company access", checklist), with `entity` kept in code, the API and DOMAIN. Mixing the two words would be worse than either. It costs a copy change to 3a and 3b screens, tests and help articles in this brick.
 2. **One rule for organization-wide changes.** Only people with access to every company can edit the organization profile, add, archive or restore companies, and make, edit or delete roles. A limited admin can still fix their own company's details. *Recommended:* **yes.** A Parkview-only admin shouldn't add companies they then can't see, or change a role used across the group.
 3. **Permission ceiling.** Nobody can make, edit or give a role with actions they don't have, or manage someone whose role can do more than theirs. It only bites custom roles (owners and admins have everything). *Recommended:* **yes.** Without it, a custom "Office manager" with Settings: Edit could make someone an Admin.
