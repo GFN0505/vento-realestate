@@ -1,5 +1,7 @@
 import { StatCard } from '@/components/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { canSeeChecklist } from '@/features/checklist/checklist-queries'
+import { SetupChecklist } from '@/features/checklist/setup-checklist'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
 import { TrialLine } from '@/features/plan/trial-line'
 import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
@@ -11,8 +13,8 @@ import { usePageTitle } from './use-page-title'
 import { WorkspaceGrid } from './workspace-grid'
 
 /**
- * Home (boards ExecutiveHome and the role homes): a hero greeting on the brand's navy, the
- * role's four numbers, then the modules this member can open. The same shape for every role and
+ * Home (boards ExecutiveHome and the role homes): a hero greeting on the brand's navy, the setup
+ * checklist for owners and admins, the role's four numbers, then the modules this member can open. The same shape for every role and
  * in Preview. Honest: a number appears only when the module that owns it ships.
  */
 export function HomePage() {
@@ -44,6 +46,7 @@ export function HomePage() {
         }
       />
       <TrialLine />
+      {canSeeChecklist(access) && <SetupChecklist />}
       {kpis.length > 0 && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

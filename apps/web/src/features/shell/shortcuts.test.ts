@@ -27,6 +27,13 @@ describe('shortcuts', () => {
     expect(match(press('K', { ctrlKey: true, target: field('input') }))).toBe('palette')
   })
 
+  it('maps the Team page keys, i and /, outside fields', () => {
+    const match = createShortcutMatcher()
+    expect(match(press('i'))).toBe('team-invite')
+    expect(match(press('/'))).toBe('team-search')
+    expect(match(press('i', { target: field('input') }))).toBeNull()
+  })
+
   it('maps ? and [ outside fields', () => {
     const match = createShortcutMatcher()
     expect(match(press('?'))).toBe('help')

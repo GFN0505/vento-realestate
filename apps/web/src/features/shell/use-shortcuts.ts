@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { toggleSidebar } from '@/lib/theme'
 import { shellUi } from './shell-ui'
-import { createShortcutMatcher } from './shortcuts'
+import { createShortcutMatcher, PAGE_SHORTCUT_EVENT, SHORTCUTS } from './shortcuts'
 
 /** The shell's one keydown listener (no dependency). Esc is left to Radix dialogs and menus. */
 export function useShortcuts() {
@@ -18,6 +18,13 @@ export function useShortcuts() {
           '[role="dialog"][data-state="open"],[role="menu"][data-state="open"]',
         ) !== null
       if (id !== 'palette' && overlayOpen) return
+      const page = SHORTCUTS.find((s) => s.id === id)?.page
+      if (page) {
+        if (window.location.pathname !== page.path) return
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent(PAGE_SHORTCUT_EVENT, { detail: id }))
+        return
+      }
       event.preventDefault()
       if (id === 'palette') shellUi.toggle('palette')
       if (id === 'help') shellUi.open('shortcuts')

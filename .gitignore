@@ -30,3 +30,6 @@ apps/web/e2e/.auth/
 
 # development email output
 .mail/
+
+# local demo logins written by hand from pnpm db:seed (never commit)
+.seed-logins.txt

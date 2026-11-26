@@ -7,7 +7,7 @@ import { useEntitySync } from '@/features/entity/use-current-entity'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { canView, isAvailable, navItemForModule } from '@/features/shell/nav'
 import { routeModule } from '@/features/shell/route-module'
-import { loadPalette, preloadPalette, useOverlay } from '@/features/shell/shell-ui'
+import { loadInvite, loadPalette, preloadPalette, useOverlay } from '@/features/shell/shell-ui'
 import { useRouteFocus } from '@/features/shell/use-route-focus'
 import { useShellSync } from '@/features/shell/use-shell-sync'
 import { useShortcuts } from '@/features/shell/use-shortcuts'
@@ -18,6 +18,7 @@ import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
 
 const CommandPalette = lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })))
+const InviteSheet = lazy(() => loadInvite().then((m) => ({ default: m.InviteSheet })))
 const ShortcutsDialog = lazy(() =>
   import('@/features/shell/shortcuts-dialog').then((m) => ({ default: m.ShortcutsDialog })),
 )
@@ -85,9 +86,14 @@ function PermittedPage({ children }: { children: ReactNode }) {
 function ShellOverlays() {
   const palette = useOverlay('palette')
   const shortcuts = useOverlay('shortcuts')
-  const [used, setUsed] = useState({ palette: false, shortcuts: false })
-  if ((palette && !used.palette) || (shortcuts && !used.shortcuts)) {
-    setUsed({ palette: used.palette || palette, shortcuts: used.shortcuts || shortcuts })
+  const invite = useOverlay('invite')
+  const [used, setUsed] = useState({ palette: false, shortcuts: false, invite: false })
+  if ((palette && !used.palette) || (shortcuts && !used.shortcuts) || (invite && !used.invite)) {
+    setUsed({
+      palette: used.palette || palette,
+      shortcuts: used.shortcuts || shortcuts,
+      invite: used.invite || invite,
+    })
   }
 
   // The palette's code arrives in the background once the page is idle, so ⌘K opens at once.
@@ -100,6 +106,7 @@ function ShellOverlays() {
     <Suspense fallback={null}>
       {used.palette && <CommandPalette />}
       {used.shortcuts && <ShortcutsDialog />}
+      {used.invite && <InviteSheet />}
     </Suspense>
   )
 }

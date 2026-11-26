@@ -89,11 +89,14 @@ async function expectNoModules(scope: Page | Locator, labels: readonly string[])
   }
 }
 
-async function expectNoModulesAnywhere(page: Page, mobile: boolean) {
+/** `owner`: Settings is core (every plan), so an owner keeps it in the sidebar footer. */
+async function expectNoModulesAnywhere(page: Page, mobile: boolean, owner = false) {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
   const shell = page.getByRole('navigation', { name: mobile ? 'Tabs' : 'Main' })
-  await expect(shell.getByRole('link')).toHaveText(['Home'])
+  await expect(shell.getByRole('link')).toHaveText(
+    owner && !mobile ? ['Home', 'Settings'] : ['Home'],
+  )
   await expectNoModules(page, MODULES)
   if (mobile) {
     await shell.getByRole('button', { name: 'More' }).click()
@@ -103,7 +106,7 @@ async function expectNoModulesAnywhere(page: Page, mobile: boolean) {
     await page.keyboard.press('Escape')
   }
   await openPalette(page)
-  await expect(page.getByRole('option', { name: /^Go to (?!Home)/ })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: /^Go to (?!Home|Settings|Team)/ })).toHaveCount(0)
   await page.getByPlaceholder('Type a page or action').fill('parcels')
   await expect(page.getByText('No pages or actions match "parcels".')).toBeVisible()
   await closePalette(page)
@@ -122,7 +125,7 @@ test.describe('a standard organization on Starter', () => {
     const org = createStarterOrgFixture()
     await signInWithTotp(page, totpCredentials(org.owner, org.password))
 
-    await expectNoModulesAnywhere(page, isMobile(testInfo))
+    await expectNoModulesAnywhere(page, isMobile(testInfo), true)
   })
 
   test('shows Not found, not a 403, for a typed link to an unreleased module', async ({ page }) => {

@@ -1,0 +1,128 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { ChecklistItem } from '@vento/shared'
+import { CheckIcon, EllipsisIcon, UserPlusIcon } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { LazyMenu, type LazyMenuProps } from '@/components/ui/lazy-menu'
+import { preloadInvite, shellUi } from '@/features/shell/shell-ui'
+import { cn } from '@/lib/utils'
+import { ALL_DONE_LINE, CHECKLIST_COPY } from './checklist-copy'
+import { checklistQuery } from './checklist-queries'
+
+export const checklistMenuTrigger =
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted max-md:size-11'
+
+const loadMenu = () =>
+  import('./checklist-menu-panel').then((m): ComponentType<LazyMenuProps> => m.ChecklistMenuPanel)
+
+/**
+ * Finish setting up (boards Onboarding checklist, DSAdditions ChecklistRow), on Home for people
+ * who can invite (owners and admins). Every tick comes from data; only steps someone can act on
+ * are listed. Organization-wide, so it ignores the chosen entity.
+ */
+export function SetupChecklist() {
+  const checklist = useQuery(checklistQuery())
+  const queryClient = useQueryClient()
+  const data = checklist.data
+  if (!data?.shown || data.items.length === 0) return null
+  const done = data.items.filter((item) => item.done).length
+  const total = data.items.length
+
+  return (
+    <section
+      aria-labelledby="setup-title"
+      className="flex flex-col gap-3 rounded-[12px] border bg-card px-4 pt-4 pb-2 shadow-lift sm:px-5 motion-safe:animate-in motion-safe:fade-in-0"
+    >
+      <div className="flex items-center gap-3">
+        <h2 id="setup-title" className="font-heading font-semibold text-base tracking-[-0.01em]">
+          Finish setting up
+        </h2>
+        <span className="font-semibold text-muted-foreground text-xs tabular-nums">
+          {done} of {total} done
+        </span>
+        <span className="ml-auto">
+          <LazyMenu load={loadMenu} className={checklistMenuTrigger} label="Checklist options">
+            <EllipsisIcon aria-hidden className="size-4" />
+          </LazyMenu>
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Setup progress"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={done}
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out motion-reduce:transition-none"
+          style={{ width: `${Math.round((done / total) * 100)}%` }}
+        />
+      </div>
+      {data.allDone ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t py-3 text-[13px] text-muted-foreground">
+          <p>{ALL_DONE_LINE}</p>
+          <button
+            type="button"
+            onClick={() =>
+              void import('./checklist-visibility').then((m) => m.hideChecklist(queryClient))
+            }
+            className="rounded-md px-2 py-1 font-semibold text-foreground outline-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+          >
+            Hide checklist
+          </button>
+        </div>
+      ) : (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
+          {data.items.map((item) => (
+            <ChecklistRow key={item.key} item={item} />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** ChecklistRow: a tick, the step and its detail, and the one action while it's open. */
+function ChecklistRow({ item }: { item: ChecklistItem }) {
+  const copy = CHECKLIST_COPY[item.key]
+  const detail = item.done ? item.detail : copy.open
+  return (
+    <li className="flex min-h-[60px] items-center gap-3 border-t py-2.5">
+      <span
+        aria-hidden
+        className={cn(
+          'flex size-5 shrink-0 items-center justify-center rounded-full border-[1.5px]',
+          item.done
+            ? 'border-status-emerald bg-status-emerald text-primary-foreground'
+            : 'border-border bg-card',
+        )}
+      >
+        {item.done && <CheckIcon className="size-3" strokeWidth={3} />}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span
+          className={cn(
+            'truncate font-medium text-sm',
+            item.done && 'text-muted-foreground line-through decoration-border',
+          )}
+        >
+          {copy.label}
+          <span className="sr-only">{item.done ? ', done' : ', to do'}</span>
+        </span>
+        {detail && <span className="truncate text-muted-foreground text-xs">{detail}</span>}
+      </div>
+      {!item.done && item.key === 'invite_team' && (
+        <button
+          type="button"
+          onPointerEnter={preloadInvite}
+          onFocus={preloadInvite}
+          onClick={() => shellUi.openInvite()}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border bg-muted px-3 font-semibold text-xs outline-none transition-colors hover:bg-border/60 focus-visible:outline-2 focus-visible:outline-ring max-md:h-11"
+        >
+          <UserPlusIcon aria-hidden className="size-3.5" />
+          Invite people
+        </button>
+      )}
+    </li>
+  )
+}
