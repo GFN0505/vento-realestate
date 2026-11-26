@@ -80,7 +80,10 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-AI-04 | Turn on AI and set a budget | Owner | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-ADM-01 | Release a feature, stage by stage | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; commands are break-glass; e2e being written) |
 | J-ADM-02 | Put an organization on a plan, start a trial, record a deal | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; commands are break-glass; e2e being written) |
-| J-ADM-03 | Manage super-admins and review platform activity | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; e2e being written) |
+| J-ADM-03 | Invite and manage super-admins, review platform activity | Super-admin | [12-vento-admin](12-vento-admin.md) | changed (slice 1 built; 1b invitations, reset two-step and staff accounts draft, same PR) |
+| J-ADM-05 | Join as a super-admin (staff sign-up) | Invited staff member | [12-vento-admin](12-vento-admin.md) | draft (1b) |
+| J-ADM-06 | Start the day on the Dashboard | Super-admin | [12-vento-admin](12-vento-admin.md) | draft (1b) |
+| J-ADM-07 | Manage my staff sign-in (My account) | Super-admin | [12-vento-admin](12-vento-admin.md) | draft (1b) |
 
 ## Assumptions to confirm
 Writing these journeys meant picking defaults the product docs don't settle. The approved designs settled some of them (now written into the journeys and `docs/design/DESIGN-NOTES.md`). Each is a setting or rule, not hard-coded.
@@ -157,3 +160,12 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 **Still need the owner's yes (admin-console build)**
 - Every console change sheet has a **Review** step between its fields and the confirm, so a plan change is 5 clicks from *Organizations* instead of the spec's 4.
 - *Activity* filters by organization only from an organization's **See all** link, not from a drop-down.
+
+**Settled by the owner (27 Nov 2026, admin-console slice 1b)**
+- Super-admins are **staff-only accounts** added by invitation; sign-in lands on the console **Dashboard**; the product is always **Vento Real Estate** at `realestate.ventoerp.com`.
+
+**Still need the owner's yes (admin-console slice 1b)**
+- Staff accounts stay out of **every** organization, internal ones included; existing super-admins who are members **stop being super-admins at deploy** and re-join by invitation.
+- Staff invitations last **48 hours**, at most **5 open**.
+- The Dashboard leaves **internal organizations** out of its numbers and feed; "gone quiet" is **14 days** without member activity.
+- Short forms of the name: the logo lockup counts as the full name; "Staff · all customers" on the console's phone top bar; "Ask Vento" becomes **"Ask"**.
