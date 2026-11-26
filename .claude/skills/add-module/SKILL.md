@@ -97,6 +97,7 @@ Then follow the `db-migration` skill.
 - Multi-table writes go inside `ctx.db.transaction(async (tx) => …)`: activating a subscription generates its instalments from the payment plan and moves the unit to `subscribed` in the same transaction.
 - Use the decimal library for any maths on `price` and instalment amounts.
 - Lists: build filters with `and(...)`, return `{ items, page, pageSize, total }` using `pageOffset` and `toPage` from `@/lib/paginate`.
+- Location filter (decision 0014): every page whose data belongs to a location follows the switcher. List inputs take an optional `entityId`, intersected with the viewer's entity limits (outside them, or not in this organization, is an empty list or NOT_FOUND). Only organization-wide pages (company profile, plan, roles) hide it. Test the intersection.
 - Emails or messages: return them from the service and send them in the router after the transaction commits (`sendAll`).
 - Plan limits: a create that counts against a limit calls `assertWithinLimit(tx, ctx, 'projects', 1)` (`@/platform/limits`) inside its transaction; register the counter in `LIMIT_USAGE` (`@/platform/usage.ts`) and the module's record counter in `FEATURE_RECORD_COUNTERS` for the `flags stage` warning.
 - Optional behaviour inside a handler checks `ctx.features.has('platform.whatsapp')`. Jobs and messages check `availabilityForOrganization(db, orgId)` (`@/platform/snapshot`) at send time and skip organizations that lost the feature.
