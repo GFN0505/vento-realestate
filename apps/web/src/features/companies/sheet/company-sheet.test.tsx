@@ -18,6 +18,15 @@ vi.mock('@/lib/orpc', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/orpc')>()),
   client: { entities: api },
 }))
+// A successful save refetches `me` and the checklist, which hits the network in jsdom; on a slow
+// runner the failed fetch's health probe marks the app offline before the next test. Stay online.
+vi.mock('@/lib/connection', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/connection')>()
+  return {
+    ...real,
+    connection: { ...real.connection, isOnline: () => true, reportNetworkFailure: () => {} },
+  }
+})
 vi.mock('@/features/entity/use-current-entity', () => ({
   useCurrentEntity: () => ({ select: vi.fn() }),
 }))
