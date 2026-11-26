@@ -24,6 +24,7 @@ import { errorReason, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { client } from '@/lib/orpc'
 import { hasFinePointer } from '@/lib/pointer'
+import { markJustCreated } from './just-created'
 import { StartFromSelect } from './start-from-select'
 
 type Props = {
@@ -136,6 +137,7 @@ function NewRoleForm({
       queryClient.setQueryData(roleQuery(role.id).queryKey, role)
       void queryClient.invalidateQueries({ queryKey: rolesQuery().queryKey })
       toast.success(`${role.name} created`)
+      markJustCreated(role.id)
       void navigate({ to: '/settings/roles/$roleId', params: { roleId: role.id }, search: {} })
     } catch (caught) {
       if (errorReason(caught) === 'role_name_taken' && caught instanceof Error) {
@@ -165,7 +167,7 @@ function NewRoleForm({
             enterKeyHint="done"
             // Desktop: the cursor waits in the name with it selected; phones keep the keyboard down.
             autoFocus={hasFinePointer()}
-            onFocus={(event) => event.currentTarget.select()}
+            onFocus={(event) => hasFinePointer() && event.currentTarget.select()}
             onChange={(event) => {
               setName(event.target.value)
               setFieldError(null)

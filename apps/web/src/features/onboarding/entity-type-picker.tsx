@@ -27,7 +27,7 @@ export function EntityTypePicker({
           key={option.value}
           value={option.value}
           className={cn(
-            'rounded-lg border-[1.5px] bg-card p-3.5 text-left outline-none transition-colors',
+            'rounded-lg border-[1.5px] bg-card p-3.5 text-left outline-hidden transition-colors',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
             'data-[state=checked]:border-selected-border data-[state=checked]:bg-selected',
           )}

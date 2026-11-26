@@ -83,6 +83,8 @@ export function useRoleDraft(role: Role) {
     setDescription: (description: string) => setDraft((d) => ({ ...d, description })),
     setTwoStep: (twoStepChoice: boolean) => setDraft((d) => ({ ...d, twoStepChoice })),
     discard: () => setDraft(draftFrom(role)),
+    /** Undo for Discard: the edits come back as they were. */
+    restore: (previous: RoleDraft) => setDraft(previous),
   }
 }
 

@@ -81,7 +81,7 @@ export function OrganizationForm({ org, editable, form, save, submit }: Props) {
       <SaveErrorAlert error={save.error} />
       <fieldset disabled={!editable} className="contents">
         <Section
-          title="Organization"
+          title="Name and head office"
           description="Shown in the sidebar, on emails your team receives and on documents."
         >
           <Field data-invalid={!!errors.name} className="sm:col-span-2">

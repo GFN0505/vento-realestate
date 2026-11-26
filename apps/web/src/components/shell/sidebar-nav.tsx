@@ -59,7 +59,7 @@ export function SidebarFooterNav({ collapsed = false, onNavigate }: Props) {
 }
 
 export const sidebarRow =
-  'group flex h-[34px] items-center gap-2.5 rounded-lg px-2.5 font-medium text-[13.5px] outline-none transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 max-lg:h-11'
+  'group flex h-[34px] items-center gap-2.5 rounded-lg px-2.5 font-medium text-[13.5px] outline-hidden transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 max-lg:h-11'
 
 const TAG_COPY: Record<NavTag, { word: string; spoken: string; hint?: string }> = {
   soon: { word: 'Soon', spoken: ', coming soon' },

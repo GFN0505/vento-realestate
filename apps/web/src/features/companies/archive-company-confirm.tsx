@@ -25,8 +25,11 @@ export function ArchiveCompanyConfirm({
       pending={actions.pendingId !== null}
       onConfirm={() => void actions.confirmArchive().then((done) => done && onArchived?.())}
     >
-      {shown ? `${dependantsLine(shown.members)} ` : ''}Its records stay, and you can restore it
-      later.
+      {shown?.company.type === 'holding'
+        ? "It's your holding company, which owns the SPVs and carries shared costs. "
+        : ''}
+      {shown && shown.members.count > 0 ? `${dependantsLine(shown.members)} ` : ''}Its records stay,
+      and you can restore it later.
     </ConfirmDialog>
   )
 }

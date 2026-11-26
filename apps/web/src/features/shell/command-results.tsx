@@ -118,10 +118,15 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
     )
   }
 
+  const goToPaths = new Set<string>([
+    ...visibleNav(access).map((item) => item.to),
+    ...visibleSections(access).map((section) => section.to),
+  ])
   const recent = me.organization
     ? readRecentPages(me.user.id, me.organization.id).filter((p) => {
-        // The page you're on isn't "recent".
-        if (p.href.split('?')[0] === pathname) return false
+        // The page you're on isn't "recent", and pages listed under Go to aren't repeated.
+        const path = p.href.split('?')[0]
+        if (path === pathname || goToPaths.has(path ?? '')) return false
         const item = p.module ? navItemForModule(p.module) : undefined
         return !item || canView(access, item)
       })

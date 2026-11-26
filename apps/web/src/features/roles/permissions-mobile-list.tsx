@@ -64,7 +64,7 @@ export function PermissionsMobileList({
                     setOpen(module)
                   }}
                   aria-label={`${MODULE_LABELS[module]}: ${words}. Change`}
-                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   {content}
                 </button>
@@ -81,6 +81,7 @@ export function PermissionsMobileList({
           onOpenChange={(next) => !next && setOpen(null)}
           module={shown}
           permissions={permissions}
+          saved={saved}
           ceiling={ceiling}
           onToggle={onToggle}
         />

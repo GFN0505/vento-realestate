@@ -5,6 +5,7 @@ import {
   type PermissionModule,
   type PermissionSet,
 } from '@vento/shared'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -22,6 +23,8 @@ type Props = {
   onOpenChange: (open: boolean) => void
   module: PermissionModule
   permissions: PermissionSet
+  /** The saved role, to mark switches that changed. */
+  saved: PermissionSet
   ceiling: PermissionSet | null
   onToggle: (module: PermissionModule, action: PermissionAction, on: boolean) => void
 }
@@ -32,10 +35,22 @@ export function ModuleActionsSheet({
   onOpenChange,
   module,
   permissions,
+  saved,
   ceiling,
   onToggle,
 }: Props) {
   const label = MODULE_LABELS[module]
+  // Turning View off clears the row (shared rule); say which switches went with it.
+  const [cleared, setCleared] = useState<{ module: PermissionModule; actions: string } | null>(null)
+  const toggle = (action: PermissionAction, on: boolean) => {
+    const others = (permissions[module] ?? []).filter((a) => a !== 'view')
+    setCleared(
+      action === 'view' && !on && others.length > 0
+        ? { module, actions: others.map((a) => ACTION_LABELS[a]).join(', ') }
+        : null,
+    )
+    onToggle(module, action, on)
+  }
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" showCloseButton={false} className="gap-0">
@@ -59,7 +74,14 @@ export function ModuleActionsSheet({
                   className="flex min-h-14 cursor-pointer items-center justify-between gap-4 px-5 py-2.5 has-disabled:cursor-not-allowed"
                 >
                   <span className="flex min-w-0 flex-col">
-                    <span className="font-medium text-[15px]">{ACTION_LABELS[action]}</span>
+                    <span className="flex items-center gap-2 font-medium text-[15px]">
+                      {ACTION_LABELS[action]}
+                      {on !== (saved[module]?.includes(action) ?? false) && (
+                        <span className="size-1.5 rounded-full bg-brand">
+                          <span className="sr-only">, changed</span>
+                        </span>
+                      )}
+                    </span>
                     {hint && <span className="text-muted-foreground text-xs">{hint}</span>}
                   </span>
                   <Switch
@@ -67,13 +89,19 @@ export function ModuleActionsSheet({
                     aria-label={`${label}: ${ACTION_LABELS[action]}`}
                     checked={on}
                     disabled={locked}
-                    onCheckedChange={(next) => onToggle(module, action, next)}
+                    onCheckedChange={(next) => toggle(action, next)}
                   />
                 </label>
               </li>
             )
           })}
         </ul>
+        <p
+          aria-live="polite"
+          className="min-h-0 px-5 pt-2 text-muted-foreground text-xs empty:hidden"
+        >
+          {cleared?.module === module ? `Turning off View also turned off ${cleared.actions}.` : ''}
+        </p>
         <div className="px-5 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
           <Button className="h-11 w-full" onClick={() => onOpenChange(false)}>
             Done

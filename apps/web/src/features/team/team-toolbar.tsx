@@ -115,7 +115,7 @@ export function TeamToolbar({ search, update }: Props) {
               aria-pressed={on}
               onClick={() => update({ show: chip.show === 'everyone' ? undefined : chip.show })}
               className={cn(
-                'inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 font-semibold text-[13px] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-ring md:h-8 md:px-3.5',
+                'inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 font-semibold text-[13px] outline-hidden transition-colors focus-visible:outline-2 focus-visible:outline-ring md:h-8 md:px-3.5',
                 on
                   ? 'border-selected-border bg-selected text-selected-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground',

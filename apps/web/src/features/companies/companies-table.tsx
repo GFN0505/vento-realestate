@@ -1,6 +1,7 @@
 import type { Entity } from '@vento/shared'
 import type { ReactNode } from 'react'
 import { StatusBadge } from '@/components/status-badge'
+import { formatDate } from '@/lib/format'
 import { companyTypeLabel, NOT_ADDED } from './company-rights'
 
 const th =
@@ -25,10 +26,10 @@ export function CompaniesTable({ rows, onOpen, menu }: Props) {
       <table className="w-full table-fixed text-[13px]">
         <caption className="sr-only">Companies</caption>
         <colgroup>
-          <col className="w-2/5" />
-          <col className="w-[19%]" />
-          <col className="w-[19%]" />
-          <col className="w-[22%] @3xl:w-[16%]" />
+          <col className="w-1/2 @3xl:w-2/5" />
+          <col className="w-1/4 @3xl:w-[19%]" />
+          <col className="hidden @3xl:table-column @3xl:w-[19%]" />
+          <col className="w-1/4 @3xl:w-[16%]" />
           <col className="w-12" />
         </colgroup>
         <thead className="border-b bg-muted/40">
@@ -39,7 +40,7 @@ export function CompaniesTable({ rows, onOpen, menu }: Props) {
             <th scope="col" className={th}>
               RC number
             </th>
-            <th scope="col" className={th}>
+            <th scope="col" className={`${th} hidden @3xl:table-cell`}>
               TIN
             </th>
             <th scope="col" className={th}>
@@ -67,7 +68,7 @@ export function CompaniesTable({ rows, onOpen, menu }: Props) {
                     type="button"
                     data-company-row={company.id}
                     onClick={() => onOpen(company)}
-                    className="truncate rounded-sm text-left font-semibold outline-none hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="truncate rounded-sm text-left font-semibold outline-hidden hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     title={company.name}
                   >
                     {company.name}
@@ -75,12 +76,20 @@ export function CompaniesTable({ rows, onOpen, menu }: Props) {
                   <span className="truncate text-muted-foreground text-xs">
                     {companyTypeLabel(company.type)}
                   </span>
+                  {company.status === 'archived' && (
+                    <span
+                      className="truncate text-muted-foreground text-xs"
+                      title={archivedLine(company)}
+                    >
+                      {archivedLine(company)}
+                    </span>
+                  )}
                 </div>
               </td>
               <td className={`${td} tabular-nums`}>
                 <Code value={company.rcNumber} />
               </td>
-              <td className={`${td} tabular-nums`}>
+              <td className={`${td} hidden tabular-nums @3xl:table-cell`}>
                 <Code value={company.tin} />
               </td>
               <td className={td}>
@@ -111,4 +120,11 @@ export function VatCell({ registered }: { registered: boolean }) {
   ) : (
     <span className="text-muted-foreground">Not registered</span>
   )
+}
+
+/** "Archived 26 Nov 2026 by Olumide Bankole". */
+export function archivedLine(company: Pick<Entity, 'archivedAt' | 'archivedByName'>): string {
+  const when = company.archivedAt ? ` ${formatDate(company.archivedAt)}` : ''
+  const who = company.archivedByName ? ` by ${company.archivedByName}` : ''
+  return `Archived${when}${who}`
 }

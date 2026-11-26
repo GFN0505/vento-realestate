@@ -1,10 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { ROLE_NAME_MAX, type Role } from '@vento/shared'
-import { ChevronLeftIcon, CopyIcon, EyeIcon, ShieldCheckIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ChevronLeftIcon, CopyIcon, EyeIcon, PencilIcon, ShieldCheckIcon } from 'lucide-react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { hasFinePointer } from '@/lib/pointer'
 import { cn } from '@/lib/utils'
+import { takeJustCreated } from './just-created'
 import { peopleLine } from './role-people'
 import type { RoleDraftApi } from './use-role-draft'
 
@@ -20,24 +22,29 @@ type Props = {
 }
 
 const inPlace =
-  'min-w-0 rounded-md border border-transparent bg-transparent px-2 -mx-2 outline-none transition-[border-color,box-shadow] duration-150 hover:border-input focus-visible:border-ring focus-visible:bg-card focus-visible:ring-[3px] focus-visible:ring-ring/30 aria-invalid:border-destructive'
+  'min-w-0 rounded-md border border-transparent bg-transparent px-2 -mx-2 underline decoration-transparent decoration-dashed underline-offset-[6px] hover:decoration-control-border focus-visible:decoration-transparent outline-none transition-[border-color,box-shadow] duration-150 hover:border-input focus-visible:border-ring focus-visible:bg-card focus-visible:ring-[3px] focus-visible:ring-ring/30 aria-invalid:border-destructive'
 
 /**
  * The role's name and what it's for (editable in place on custom roles), who holds it, and
  * Duplicate role · Preview this role · ⋯ (boards SetPermissions, PermissionsMobile).
  */
 export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, menu }: Props) {
+  const nameRef = useRef<HTMLInputElement>(null)
+  // A role just made from New role: the name is ready to retype (desktop only, no phone keyboard).
+  useEffect(() => {
+    if (draft && takeJustCreated(role.id) && hasFinePointer()) nameRef.current?.select()
+  }, [draft, role.id])
   const dirty = draft?.dirty ?? false
   return (
     <header className="flex flex-col gap-3">
       <Link
         to="/settings/roles"
-        className="-ml-1 inline-flex w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+        className="-ml-1 inline-flex w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-hidden hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
       >
         <ChevronLeftIcon aria-hidden className="size-4" />
         Roles & permissions
       </Link>
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-2.5">
             <h1
@@ -46,6 +53,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
             >
               {draft ? (
                 <input
+                  ref={nameRef}
                   aria-label="Role name"
                   name="role-name"
                   value={draft.draft.name}
@@ -65,9 +73,21 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
                   )}
                 />
               ) : (
-                role.name
+                <span className="block truncate" title={role.name}>
+                  {role.name}
+                </span>
               )}
             </h1>
+            {draft && (
+              <button
+                type="button"
+                aria-label="Rename role"
+                onClick={() => nameRef.current?.focus()}
+                className="-ml-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-hidden hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <PencilIcon aria-hidden className="size-3.5" />
+              </button>
+            )}
             {role.isSystem ? (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-[11px] text-foreground">
                 <ShieldCheckIcon aria-hidden className="size-3" />
@@ -105,7 +125,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
             <Link
               to="/settings/team"
               search={{ role: role.id }}
-              className="rounded-sm font-semibold text-link underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+              className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
             >
               {peopleLine(role)}
             </Link>
@@ -114,7 +134,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
             )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {onDuplicate && (
             <SaveFirstButton onClick={onDuplicate} dirty={dirty} reason="duplicate">
               <CopyIcon aria-hidden />

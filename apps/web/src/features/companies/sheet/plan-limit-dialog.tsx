@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { CircleFadingArrowUpIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,8 +55,13 @@ export function PlanLimitDialog() {
           </DialogDescription>
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={close} className="max-sm:h-11">
+          <Button variant="ghost" onClick={close} className="max-sm:h-11 sm:mr-auto">
             Close
+          </Button>
+          <Button asChild variant="outline" className="max-sm:h-11">
+            <Link to="/settings/companies" search={{ show: 'archived' }} onClick={close}>
+              See archived companies
+            </Link>
           </Button>
           {href && (
             <Button asChild className="max-sm:h-11">

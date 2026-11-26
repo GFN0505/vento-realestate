@@ -3,6 +3,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { PERMISSION_MODULES, type Role, roleName } from '@vento/shared'
 import { CloudOffIcon, SearchXIcon } from 'lucide-react'
 import { type RefObject, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,7 @@ import { roleQuery } from '@/features/settings/role-queries'
 import { usePageTitle } from '@/features/shell/use-page-title'
 import { errorReason, isNotFound } from '@/lib/error-data'
 import { reloadPage } from '@/lib/reload'
-import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
+import { useMediaQuery } from '@/lib/use-media-query'
 import { useSaveShortcut, useUnsavedGuard } from '@/lib/use-unsaved-guard'
 import { DeleteRoleConfirm } from './delete-role-confirm'
 import { NewRoleDialog } from './new-role-dialog'
@@ -27,7 +28,9 @@ import { RoleSaveBar } from './role-save-bar'
 import { TwoStepField } from './two-step-field'
 import { useRoleRights } from './use-role-actions'
 import { updateFrom, useRoleDraft } from './use-role-draft'
-import { useRoleUndo, useSaveRole } from './use-save-role'
+import { UNDO_MS, useRoleUndo, useSaveRole } from './use-save-role'
+
+const GRID_QUERY = '(max-width: 1279px)'
 
 const route = getRouteApi('/_app/_shell/settings/roles/$roleId')
 
@@ -114,7 +117,8 @@ type EditorProps = {
 function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
   const me = useMe()
   const rights = useRoleRights()
-  const phone = useMediaQuery(PHONE_QUERY)
+  // Below xl the content column is too narrow for six columns: the list and its sheet instead.
+  const compact = useMediaQuery(GRID_QUERY)
   const navigate = route.useNavigate()
   const editable = rights.canEdit(role)
   const draft = useRoleDraft(role)
@@ -165,7 +169,7 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
         menu={<RolePageMenu role={role} disabled={dirty} onDelete={() => setDeleting(true)} />}
       />
       {role.readOnly && <ReadOnlyNote>{role.readOnly.message}</ReadOnlyNote>}
-      {phone ? <PermissionsMobileList {...grid} /> : <PermissionsGrid {...grid} />}
+      {compact ? <PermissionsMobileList {...grid} /> : <PermissionsGrid {...grid} />}
       <TwoStepField
         checked={editable ? draft.requiresTwoStep : role.requiresTwoStep}
         locked={draft.twoStepLocked}
@@ -180,8 +184,13 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
           error={save.error}
           stale={save.stale}
           onDiscard={() => {
+            const previous = draft.draft
             draft.discard()
             save.clearError()
+            toast('Changes discarded', {
+              duration: UNDO_MS,
+              action: { label: 'Undo', onClick: () => draft.restore(previous) },
+            })
           }}
           onSave={submit}
           onReload={() => (save.accessChanged ? reloadPage() : void save.reload(role.id))}

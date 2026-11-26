@@ -60,7 +60,7 @@ export function EntityMenu({
           onValueChange={(value) => current.select(value === ALL ? null : value)}
         >
           {!single && <EntityRow value={ALL} name="All companies" note={null} />}
-          {current.options.map((entity) => (
+          {holdingFirst(current.options).map((entity) => (
             <EntityRow
               key={entity.id}
               value={entity.id}
@@ -100,4 +100,9 @@ function EntityRow({ value, name, note }: { value: string; name: string; note: s
       {note && <span className="shrink-0 text-[11px] text-muted-foreground">{note}</span>}
     </DropdownMenuRadioItem>
   )
+}
+
+/** The holding company first, then the SPVs in the server's A–Z order. */
+function holdingFirst<T extends { type: string }>(options: readonly T[]): T[] {
+  return [...options].sort((a, b) => Number(b.type === 'holding') - Number(a.type === 'holding'))
 }

@@ -22,7 +22,7 @@ export function orgCardClass(collapsed: boolean, interactive: boolean) {
     'flex w-full items-center gap-2 rounded-lg border border-sidebar-border/50 bg-sidebar-hover p-2 text-left text-sidebar-foreground',
     collapsed && 'justify-center border-transparent bg-transparent p-1',
     interactive &&
-      'outline-none transition-colors hover:bg-sidebar-active focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 data-[state=open]:bg-sidebar-active',
+      'outline-hidden transition-colors hover:bg-sidebar-active focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 data-[state=open]:bg-sidebar-active',
   )
 }
 

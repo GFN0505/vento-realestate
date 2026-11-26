@@ -25,7 +25,7 @@ import { CompaniesTable } from './companies-table'
 import { CompaniesToolbar } from './companies-toolbar'
 import { companyRights } from './company-rights'
 import { CompanyRowMenu } from './company-row-menu'
-import { openAddCompany } from './open-add-company'
+import { companyLimitReached, openAddCompany } from './open-add-company'
 import { useArchiveCompany } from './use-archive-company'
 
 const route = getRouteApi('/_app/_shell/settings/companies')
@@ -39,6 +39,8 @@ export function CompaniesPage() {
   const me = useMe()
   const access = useEffectiveAccess()
   const phone = useMediaQuery(PHONE_QUERY)
+  // Below xl the settings column is too narrow for four columns: cards, and actions in the sheet.
+  const compact = useMediaQuery('(max-width: 1279px)')
   const search = route.useSearch()
   const navigate = route.useNavigate()
   const list = useQuery(companiesListQuery(search))
@@ -50,7 +52,10 @@ export function CompaniesPage() {
 
   const update = (patch: Partial<CompaniesSearch>, options?: { replace?: boolean }) =>
     void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: options?.replace })
-  const add = () => openAddCompany(access.showUpgradeHints ? me.plan : null)
+  const plan = access.showUpgradeHints ? me.plan : null
+  // Owners know their limit: Restore at the limit opens the plan message instead of a refusal.
+  const atLimit = companyLimitReached(plan)
+  const add = () => openAddCompany(plan)
   const open = (company: Entity) => shellUi.openCompany({ mode: 'edit', company })
   useAddShortcut(rights.add, add)
 
@@ -58,7 +63,7 @@ export function CompaniesPage() {
     <div className="flex flex-col gap-5 pb-20 md:pb-0">
       <PageHeader
         title="Companies"
-        description={<CompaniesContextLine counts={data?.counts} />}
+        description={<CompaniesContextLine counts={data?.counts} archived={archived} />}
         actions={rights.add && <AddCompanyButton onClick={add} />}
         className="[&>div:last-child]:max-md:hidden"
       />
@@ -73,14 +78,14 @@ export function CompaniesPage() {
         {list.isError && !data ? (
           <CompaniesError onRetry={() => void list.refetch()} retrying={list.isFetching} />
         ) : !data ? (
-          <CompaniesSkeleton phone={phone} />
+          <CompaniesSkeleton phone={compact} />
         ) : data.items.length === 0 ? (
           <CompaniesEmpty
             archived={archived}
             query={search.q}
             onClear={() => update({ q: undefined, page: undefined })}
           />
-        ) : phone ? (
+        ) : compact ? (
           <CompaniesCards rows={data.items} onOpen={open} />
         ) : (
           <CompaniesTable
@@ -94,7 +99,12 @@ export function CompaniesPage() {
                 organizationName={organizationName}
                 onEdit={() => open(company)}
                 onArchive={() => void archive.archive(company)}
-                onRestore={() => void archive.restore(company)}
+                restoreNote={atLimit ? "All your plan's companies are in use." : null}
+                onRestore={() =>
+                  atLimit
+                    ? window.setTimeout(() => shellUi.open('companyPlan'), 150)
+                    : void archive.restore(company)
+                }
               />
             )}
           />

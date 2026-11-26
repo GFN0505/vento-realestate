@@ -18,10 +18,12 @@ type Props = {
   onEdit: () => void
   onArchive: () => void
   onRestore: () => void
+  /** Owners at the company limit: why Restore will open the plan message instead. */
+  restoreNote: string | null
 }
 
 const trigger =
-  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground'
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground'
 
 /** ⋯ on a company: Edit · Archive (active) or Restore (archived); only what the viewer may do. */
 export function CompanyRowMenu({
@@ -32,6 +34,7 @@ export function CompanyRowMenu({
   onEdit,
   onArchive,
   onRestore,
+  restoreNote,
 }: Props) {
   const archived = company.status === 'archived'
   const canEdit = rights.edit && !archived
@@ -51,9 +54,14 @@ export function CompanyRowMenu({
         {rights.archive && canEdit && <DropdownMenuSeparator />}
         {rights.archive &&
           (archived ? (
-            <DropdownMenuItem onSelect={onRestore}>
-              <ArchiveRestoreIcon aria-hidden />
-              Restore
+            <DropdownMenuItem onSelect={onRestore} className="items-start">
+              <ArchiveRestoreIcon aria-hidden className="mt-0.5" />
+              <span className="flex flex-col gap-0.5">
+                Restore
+                {restoreNote && (
+                  <span className="text-muted-foreground text-xs">{restoreNote}</span>
+                )}
+              </span>
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem disabled={lastActive} onSelect={onArchive} className="items-start">

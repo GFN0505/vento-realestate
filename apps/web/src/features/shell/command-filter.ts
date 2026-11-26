@@ -19,6 +19,10 @@ export function commandScore(
 ): number {
   const tokens = words(search)
   if (tokens.length === 0) return 1
+  // What was typed is how the label starts ("rol" → "Roles & permissions"): that ranks first.
+  const typed = search.trim().toLowerCase()
+  const plain = label.toLowerCase().replace(/^(go to|switch to) /, '')
+  if (plain.startsWith(typed) || label.toLowerCase().startsWith(typed)) return 1
   const labelWords = words(label)
   const keywordWords = keywords.flatMap(words)
   let score = 1

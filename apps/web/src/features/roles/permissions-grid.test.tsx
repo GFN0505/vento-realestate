@@ -86,9 +86,24 @@ describe('PermissionsGrid', () => {
 
   it('locks the boxes the editor lacks', () => {
     render(<Editable ceiling={defaultPermissions(defaultRole('project_manager'))} />)
-    expect(screen.getByRole('checkbox', { name: 'Finance: Edit' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Finance: Edit' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('checkbox', { name: 'Finance: Edit' })).toHaveAccessibleDescription(
+      'You can only give access you have yourself.',
+    )
     expect(screen.getByRole('checkbox', { name: 'Projects & construction: Edit' })).toBeEnabled()
-    expect(screen.getByText(/actions you don't have yourself/)).toBeInTheDocument()
+    expect(screen.getByText(/Boxes with a lock/)).toBeInTheDocument()
+  })
+
+  it('moves between boxes with the arrow keys', async () => {
+    render(<Editable ceiling={defaultPermissions(defaultRole('owner'))} />)
+    screen.getByRole('checkbox', { name: 'Land & title: View' }).focus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(screen.getByRole('checkbox', { name: 'Land & title: Create' })).toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}')
+    expect(screen.getByRole('checkbox', { name: 'Projects & construction: Create' })).toHaveFocus()
   })
 
   it('labels each column', () => {

@@ -82,6 +82,7 @@ function LoadedOrganization({ org }: { org: Organization }) {
         title="Organization"
         description={DESCRIPTION}
         actions={editable && saveButton('max-md:hidden')}
+        className="[&>div:last-child]:ml-auto"
       />
       {refusal && <OrgWideReadOnlyNote refusal={refusal} />}
       <OrganizationForm org={org} editable={editable} {...state} />

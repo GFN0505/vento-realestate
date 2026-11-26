@@ -19,9 +19,12 @@ export type RoleActions = {
 }
 
 const trigger =
-  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground max-md:size-11'
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground max-md:size-11'
 
-/** Delete for a custom role nobody holds; otherwise who to move first, linked to Team. */
+/**
+ * Delete for a custom role nobody holds. Held: shown disabled with who to move first, and a link
+ * to them on Team.
+ */
 export function DeleteItem({ role, onDelete }: { role: Role; onDelete: () => void }) {
   if (role.isSystem) return null
   if (role.can.delete) {
@@ -37,12 +40,21 @@ export function DeleteItem({ role, onDelete }: { role: Role; onDelete: () => voi
   }
   if (!role.can.edit || holders(role) === 0) return null
   return (
-    <DropdownMenuItem asChild>
-      <Link to="/settings/team" search={{ role: role.id }}>
-        <UsersIcon aria-hidden />
-        {moveFirstLine(role)}
-      </Link>
-    </DropdownMenuItem>
+    <>
+      <DropdownMenuItem disabled className="items-start">
+        <Trash2Icon aria-hidden className="mt-0.5" />
+        <span className="flex flex-col gap-0.5">
+          Delete role
+          <span className="text-muted-foreground text-xs">{moveFirstLine(role)}</span>
+        </span>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link to="/settings/team" search={{ role: role.id }}>
+          <UsersIcon aria-hidden />
+          Show who has it
+        </Link>
+      </DropdownMenuItem>
+    </>
   )
 }
 

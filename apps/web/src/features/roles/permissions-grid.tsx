@@ -6,11 +6,12 @@ import {
   type PermissionModule,
   type PermissionSet,
 } from '@vento/shared'
-import { InfoIcon } from 'lucide-react'
+import { InfoIcon, LockIcon } from 'lucide-react'
+import type { KeyboardEvent } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { ACTION_LABELS, APPROVE_TOOLTIP, MODULE_LINES, SETTINGS_ACTIONS_LINE } from './module-lines'
-import { PermissionCell } from './permission-cell'
+import { CEILING_REASON, CEILING_REASON_ID, PermissionCell } from './permission-cell'
 
 export type GridProps = {
   roleName: string
@@ -38,7 +39,11 @@ export function PermissionsGrid({ roleName, permissions, saved, onToggle, ceilin
 
   return (
     <div className="overflow-hidden rounded-[12px] border bg-card">
-      <table className="w-full table-fixed border-collapse text-[13px]">
+      {/* Arrow keys move between boxes, like a spreadsheet; Tab still walks them in order. */}
+      <table
+        className="w-full table-fixed border-collapse text-[13px]"
+        onKeyDown={onToggle ? moveFocus : undefined}
+      >
         <caption className="sr-only">What {roleName} can do in each area</caption>
         <colgroup>
           <col />
@@ -80,11 +85,7 @@ export function PermissionsGrid({ roleName, permissions, saved, onToggle, ceilin
                   >
                     {MODULE_LINES[module]}
                   </span>
-                  {module === 'settings' && (
-                    <span className="mt-1 block text-pretty text-[11.5px] text-muted-foreground leading-snug">
-                      {SETTINGS_ACTIONS_LINE}
-                    </span>
-                  )}
+                  {module === 'settings' && <SettingsCovers />}
                 </th>
                 {PERMISSION_ACTIONS.map((action) => (
                   <td key={action} className="px-1 py-3 text-center align-middle">
@@ -106,8 +107,9 @@ export function PermissionsGrid({ roleName, permissions, saved, onToggle, ceilin
       </table>
       {lockedAny && (
         <p className="flex items-center gap-2 border-t bg-muted/40 px-5 py-2.5 text-muted-foreground text-xs">
-          <InfoIcon aria-hidden className="size-3.5 shrink-0" />
-          Greyed boxes are actions you don't have yourself. You can only give access you have.
+          <LockIcon aria-hidden className="size-3.5 shrink-0" />
+          <span id={CEILING_REASON_ID}>{CEILING_REASON}</span>
+          <span>Boxes with a lock are actions you don't have.</span>
         </p>
       )}
     </div>
@@ -120,7 +122,7 @@ function ApproveHeader() {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-sm font-semibold uppercase tracking-[0.04em] underline decoration-border decoration-dotted underline-offset-4 outline-none focus-visible:outline-2 focus-visible:outline-ring"
+          className="inline-flex items-center gap-1 rounded-sm font-semibold uppercase tracking-[0.04em] underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-2 focus-visible:outline-ring"
         >
           Approve
           <span className="sr-only">: {APPROVE_TOOLTIP}</span>
@@ -129,4 +131,47 @@ function ApproveHeader() {
       <TooltipContent className="normal-case tracking-normal">{APPROVE_TOOLTIP}</TooltipContent>
     </Tooltip>
   )
+}
+
+/** Settings' actions aren't obvious; the explanation waits behind one quiet link. */
+function SettingsCovers() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="mt-0.5 inline-flex items-center gap-1 rounded-sm text-link text-xs outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <InfoIcon aria-hidden className="size-3" />
+          What this covers
+          <span className="sr-only">: {SETTINGS_ACTIONS_LINE}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-sm leading-relaxed">{SETTINGS_ACTIONS_LINE}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+const MODULE_INDEX = new Map(PERMISSION_MODULES.map((m, i) => [m, i]))
+const ACTION_INDEX = new Map(PERMISSION_ACTIONS.map((a, i) => [a, i]))
+const STEPS: Record<string, [number, number]> = {
+  ArrowUp: [-1, 0],
+  ArrowDown: [1, 0],
+  ArrowLeft: [0, -1],
+  ArrowRight: [0, 1],
+}
+
+function moveFocus(event: KeyboardEvent<HTMLTableElement>) {
+  const step = STEPS[event.key]
+  const at = (event.target as HTMLElement).closest<HTMLElement>('[data-cell]')?.dataset.cell
+  if (!step || !at) return
+  const [module, action] = at.split(':') as [PermissionModule, PermissionAction]
+  const row = (MODULE_INDEX.get(module) ?? 0) + step[0]
+  const col = (ACTION_INDEX.get(action) ?? 0) + step[1]
+  const next = event.currentTarget.querySelector<HTMLElement>(
+    `[data-cell="${PERMISSION_MODULES[row]}:${PERMISSION_ACTIONS[col]}"]`,
+  )
+  if (!next) return
+  event.preventDefault()
+  next.focus()
 }

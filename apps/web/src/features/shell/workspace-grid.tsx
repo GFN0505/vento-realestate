@@ -42,7 +42,7 @@ export function WorkspaceGrid({
             <li key={item.key} className="flex">
               <Link
                 to={item.to}
-                className="group relative flex w-full items-center gap-3.5 rounded-xl border bg-card p-4 outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-input-hover hover:shadow-lift focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-5"
+                className="group relative flex w-full items-center gap-3.5 rounded-xl border bg-card p-4 outline-hidden transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-input-hover hover:shadow-lift focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-5"
               >
                 <span
                   aria-hidden

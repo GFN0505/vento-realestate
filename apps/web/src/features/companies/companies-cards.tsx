@@ -1,5 +1,6 @@
 import type { Entity } from '@vento/shared'
 import { ChevronRightIcon } from 'lucide-react'
+import { archivedLine } from './companies-table'
 import { companyTypeLabel, NOT_ADDED } from './company-rights'
 
 type Props = { rows: readonly Entity[]; onOpen: (company: Entity) => void }
@@ -17,12 +18,14 @@ export function CompaniesCards({ rows, onOpen }: Props) {
             type="button"
             data-company-row={company.id}
             onClick={() => onOpen(company)}
-            className="flex min-h-[72px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+            className="flex min-h-[72px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
           >
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate font-semibold text-[14px]">{company.name}</span>
               <span className="truncate text-muted-foreground text-xs">
-                {companyTypeLabel(company.type)}
+                {company.status === 'archived'
+                  ? archivedLine(company)
+                  : companyTypeLabel(company.type)}
               </span>
               <span className="truncate text-muted-foreground text-xs tabular-nums">
                 {company.rcNumber ?? `RC ${NOT_ADDED.toLowerCase()}`} ·{' '}

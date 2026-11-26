@@ -19,8 +19,8 @@ type Variant = { compact: boolean }
 export const entityTriggerClass = ({ compact }: Variant) =>
   compact
     ? // Phones: the organization and the entity are one 44px button.
-      '-mx-1.5 flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-lg px-1.5 text-left outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
-    : 'inline-flex h-9 min-w-0 max-w-[280px] items-center gap-2 rounded-lg border bg-background px-3 font-semibold text-[13px] text-foreground outline-none transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:border-input-hover'
+      '-mx-1.5 flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-lg px-1.5 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+    : 'inline-flex h-9 min-w-0 max-w-[280px] items-center gap-2 rounded-lg border bg-background px-3 font-semibold text-[13px] text-foreground outline-hidden transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:border-input-hover'
 
 /** What the trigger shows; shared by the plain button and the loaded menu's trigger. */
 export function EntityTriggerContent({

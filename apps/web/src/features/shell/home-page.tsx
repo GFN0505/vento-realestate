@@ -59,7 +59,7 @@ export function HomePage() {
         </Suspense>
       )}
       {canSeeChecklist(access) && <HomeChecklist />}
-      {kpis.length > 0 && (
+      {kpis.length > 0 && !entity.noCompany && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {kpis.map((kpi) => (
@@ -69,7 +69,7 @@ export function HomePage() {
           {note && <p className="text-muted-foreground text-xs">{note}</p>}
         </section>
       )}
-      <WorkspaceGrid modules={modules} access={access} />
+      {!entity.noCompany && <WorkspaceGrid modules={modules} access={access} />}
     </div>
   )
 }

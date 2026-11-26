@@ -13,6 +13,7 @@ import { companiesKey } from './companies-queries'
 /** Undo stays on screen this long (spec: 8 seconds). */
 const UNDO_MS = 8000
 
+/** Asks first when people would lose their only company, or for the holding company. */
 export type ArchiveConfirm = { company: Entity; members: EntityArchivePreview['members'] }
 
 /** Someone else got there first: say so and show the latest list. */
@@ -44,7 +45,9 @@ export function useArchiveCompany() {
       return
     }
     if (isPlanLimit(error)) {
-      if (showUpgradeHints && me.plan) shellUi.open('companyPlan')
+      // Owners get the plan message, once a closing menu has handed focus back; everyone else
+      // (and anyone if it can't open) reads the server's sentence.
+      if (showUpgradeHints && me.plan) window.setTimeout(() => shellUi.open('companyPlan'), 150)
       else toast.error(error.message)
       return
     }
@@ -93,7 +96,7 @@ export function useArchiveCompany() {
         toast(`${me.organization?.name ?? 'Your organization'} needs at least one active company.`)
         return false
       }
-      if (preview.members.count > 0) {
+      if (preview.members.count > 0 || company.type === 'holding') {
         setConfirm({ company, members: preview.members })
         return false
       }
