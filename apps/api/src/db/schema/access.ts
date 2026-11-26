@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -50,6 +51,10 @@ export const roles = pgTable(
     description: text().notNull().default(''),
     isSystem: boolean().notNull().default(false),
     requiresTwoStep: boolean().notNull().default(false),
+    /** Bumped on every save (optimistic concurrency). Any cache of permissions keys on it. */
+    version: integer().notNull().default(1),
+    /** A deleted custom role that history still refers to: hidden, its name free again. */
+    archivedAt: timestamptz(),
     ...timestamps,
   },
   (t) => [
@@ -57,7 +62,12 @@ export const roles = pgTable(
     uniqueIndex('roles_org_key_unique')
       .on(t.organizationId, t.key)
       .where(sql`${t.key} is not null`),
-    uniqueIndex('roles_org_name_unique').on(t.organizationId, sql`lower(${t.name})`),
+    uniqueIndex('roles_org_name_unique')
+      .on(t.organizationId, sql`lower(${t.name})`)
+      .where(sql`${t.archivedAt} is null`),
+    check('roles_version_positive', sql`${t.version} >= 1`),
+    check('roles_system_key_consistent', sql`(${t.key} is null) = (not ${t.isSystem})`),
+    check('roles_archived_custom_only', sql`${t.archivedAt} is null or not ${t.isSystem}`),
   ],
 )
 
