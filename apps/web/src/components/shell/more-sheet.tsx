@@ -1,5 +1,12 @@
 import { Link } from '@tanstack/react-router'
-import { CheckIcon, ChevronRightIcon, EyeIcon, KeyboardIcon, LogOutIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  EyeIcon,
+  KeyboardIcon,
+  LockKeyholeIcon,
+  LogOutIcon,
+} from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Avatar } from '@/components/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -65,6 +72,11 @@ export function MoreSheet({ open, onOpenChange }: Props) {
                 </p>
               </div>
             </div>
+            <Link to="/settings/security" onClick={close} className={cn(sheetRow, 'mb-1')}>
+              <LockKeyholeIcon aria-hidden />
+              <span className="flex-1">My security</span>
+              <ChevronRightIcon aria-hidden />
+            </Link>
             {modules.length > 0 && (
               <Section title="Modules">
                 {modules.map((item) => (

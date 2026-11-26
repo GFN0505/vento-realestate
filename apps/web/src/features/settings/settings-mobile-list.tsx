@@ -19,8 +19,14 @@ export function SettingsMobileList({ sections }: { sections: readonly SettingsSe
         description={`${me.organization?.name ?? ''} · ${me.member?.role.name ?? ''}`}
       />
       <ul className="flex flex-col gap-2.5">
-        {sections.map((section) => (
-          <li key={section.key}>
+        {sections.map((section, index) => (
+          <li
+            key={section.key}
+            // My security, the person's own page, stands apart from the organization's sections.
+            className={
+              index > 0 && section.group !== sections[index - 1]?.group ? 'mt-3' : undefined
+            }
+          >
             <Link
               to={section.to}
               className="flex min-h-14 items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"

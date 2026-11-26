@@ -14,6 +14,7 @@ const access = (key: 'owner' | 'admin' | 'sales') => ({
 const fake = (label: string): SettingsSection => ({
   key: 'team',
   label,
+  group: 'organization',
   summary: '',
   to: '/settings/team',
   keywords: [],
@@ -21,14 +22,28 @@ const fake = (label: string): SettingsSection => ({
 })
 
 describe('settings sections', () => {
-  it('lists the four sections in order for owners and admins', () => {
-    const order = ['Organization', 'Companies', 'Team', 'Roles & permissions']
+  it('lists the organization sections, then My security, for owners and admins', () => {
+    const order = ['Organization', 'Companies', 'Team', 'Roles & permissions', 'My security']
     expect(visibleSections(access('owner')).map((s) => s.label)).toEqual(order)
     expect(visibleSections(access('admin')).map((s) => s.label)).toEqual(order)
   })
 
-  it('lists nothing for a role without settings view', () => {
-    expect(visibleSections(access('sales'))).toEqual([])
+  it('lists only My security for a role without settings view, with no sub-navigation', () => {
+    const sections = visibleSections(access('sales'))
+    expect(sections.map((s) => s.label)).toEqual(['My security'])
+    expect(showsSettingsNav(sections)).toBe(false)
+  })
+
+  it('sends /settings to My security for a role without settings view, on any screen', () => {
+    const sections = visibleSections(access('sales'))
+    expect(settingsLanding(sections, false)).toBe('/settings/security')
+    expect(settingsLanding(sections, true)).toBe('/settings/security')
+  })
+
+  it('keeps My security last, in its own group after the organization sections', () => {
+    const sections = visibleSections(access('owner'))
+    expect(sections.at(-1)?.group).toBe('personal')
+    expect(sections.slice(0, -1).every((s) => s.group === 'organization')).toBe(true)
   })
 
   it('opens Organization on larger screens and the section list on phones', () => {

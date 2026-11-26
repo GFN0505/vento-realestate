@@ -6,20 +6,25 @@ import {
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
+  FingerprintIcon,
   KeyboardIcon,
+  KeyRoundIcon,
   LaptopMinimalIcon,
   LayersIcon,
   ListChecksIcon,
+  LockKeyholeIcon,
   LogOutIcon,
   PlusIcon,
   ShieldCheckIcon,
   ShieldPlusIcon,
+  SmartphoneIcon,
   UserPlusIcon,
   UsersIcon,
 } from 'lucide-react'
 import { PreviewRoles } from '@/components/shell/preview-roles'
 import { THEME_OPTIONS } from '@/components/shell/theme-icons'
 import { CommandGroup, CommandHint, CommandItem } from '@/components/ui/command'
+import { useFeature } from '@/features/availability/use-available-features'
 import { checklistQuery } from '@/features/checklist/checklist-queries'
 import { showChecklist } from '@/features/checklist/checklist-visibility'
 import { openAddCompany } from '@/features/companies/open-add-company'
@@ -33,7 +38,9 @@ import {
   useMe,
 } from '@/features/preview/use-effective-permissions'
 import { type SettingsKey, type SettingsPath, visibleSections } from '@/features/settings/sections'
+import type { SecurityIntent } from '@/features/settings/security-search'
 import { NAV_COPY } from '@/features/shell/nav-copy'
+import { browserSupportsPasskeys } from '@/lib/passkey-support'
 import { can } from '@/lib/permissions'
 import { setTheme, useTheme } from '@/lib/theme'
 import { canView, type NavPath, navItemForModule, navTag, visibleNav } from './nav'
@@ -46,6 +53,7 @@ const SECTION_ICONS: Record<SettingsKey, typeof UsersIcon> = {
   companies: BuildingIcon,
   team: UsersIcon,
   roles: ShieldCheckIcon,
+  security: LockKeyholeIcon,
 }
 
 type Props = {
@@ -82,10 +90,14 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
   // Roles by name, only once the list is cached: ⌘K never fetches roles itself.
   const canSeeRoles = can(access.permissions, 'settings', 'view')
   const roles = useQuery({ ...rolesQuery(), enabled: false }).data?.items ?? []
+  // My security's actions follow the person, not the previewed role (spec).
+  const canAddPasskey = useFeature('platform.passkeys') && browserSupportsPasskeys()
   const run = (fn: () => void) => () => {
     close()
     fn()
   }
+  const onSecurity = (intent: SecurityIntent) =>
+    run(() => void router.navigate({ to: '/settings/security', search: { do: intent } }))
 
   if (page === 'preview') {
     return (
@@ -170,7 +182,7 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             >
               <Icon aria-hidden />
               Go to {section.label}
-              <CommandHint>Settings</CommandHint>
+              {section.group === 'organization' && <CommandHint>Settings</CommandHint>}
             </CommandItem>
           )
         })}
@@ -324,6 +336,34 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
           Keyboard shortcuts
           <CommandHint>?</CommandHint>
         </CommandItem>
+        <CommandItem
+          value="security:change-password"
+          keywords={['Change password', 'my security account']}
+          onSelect={onSecurity('change-password')}
+        >
+          <KeyRoundIcon aria-hidden />
+          Change password
+        </CommandItem>
+        {canAddPasskey && (
+          <CommandItem
+            value="security:add-passkey"
+            keywords={['Add a passkey', 'face id touch id fingerprint windows hello my security']}
+            onSelect={onSecurity('add-passkey')}
+          >
+            <FingerprintIcon aria-hidden />
+            Add a passkey
+          </CommandItem>
+        )}
+        {!me.user.twoFactorEnabled && (
+          <CommandItem
+            value="security:turn-on"
+            keywords={['Turn on two-step', 'two-factor 2fa authenticator app my security']}
+            onSelect={onSecurity('turn-on')}
+          >
+            <SmartphoneIcon aria-hidden />
+            Turn on two-step
+          </CommandItem>
+        )}
         <CommandItem
           value="sign-out-others"
           keywords={['Sign out everywhere else', 'other devices sessions']}
