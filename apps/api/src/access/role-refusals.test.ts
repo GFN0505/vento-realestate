@@ -77,8 +77,8 @@ describe('roleRefusal', () => {
     ['owner', OWNER, SITE_ENGINEER, null],
     ['a limited admin', LIMITED_ADMIN, SITE_ENGINEER, 'all_entities_required'],
     ['an office manager', OFFICE, OFFICE_ROLE, 'own_role'],
-    // Deleting takes no access away from anyone (nobody holds it), so the ceiling doesn't apply.
-    ['an office manager', OFFICE, FINANCE_LEAD, null],
+    ['an office manager', OFFICE, FINANCE_LEAD, 'wider_permissions'],
+    ['an office manager', OFFICE, custom('clerk', 'Clerk', perms('sales')), null],
   ] as const)('deleting: %s × %s → %s', (_who, v, role, expected) => {
     expect(roleRefusal(v, role, 'delete', ask)?.reason ?? null).toBe(expected)
   })

@@ -100,7 +100,7 @@ describe('members', () => {
       })
     }))
 
-  it('refuses to remove the last owner when two owners act at once', () =>
+  it('refuses an owner removed meanwhile, so the last owner stays', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       const second = await createMember(tx, org, { role: 'owner' })
@@ -108,14 +108,15 @@ describe('members', () => {
       const firstCtx = await contextFor(tx, org.owner, org)
       const secondCtx = await contextFor(tx, second.user, org)
       await removeMember(firstCtx, second.member.id)
+      // The second owner's access is re-read inside the write: they're gone, so refused first.
       await expect(removeMember(secondCtx, org.ownerMemberId)).rejects.toMatchObject({
-        code: 'CONFLICT',
-        message: 'Vento Homes Ltd needs at least one owner. Make someone else an owner first.',
-        data: { reason: 'last_owner' },
+        code: 'FORBIDDEN',
+        message: 'Your access has changed. Reload the page to continue.',
+        data: { reason: 'permission' },
       })
     }))
 
-  it('refuses to demote the last owner', () =>
+  it('refuses to demote the last owner, by someone removed meanwhile', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       const second = await createMember(tx, org, { role: 'owner' })
@@ -127,7 +128,7 @@ describe('members', () => {
           roleId: org.roleIds.get('viewer') ?? '',
           entityIds: null,
         }),
-      ).rejects.toMatchObject({ data: { reason: 'last_owner' } })
+      ).rejects.toMatchObject({ data: { reason: 'permission' } })
     }))
 
   it('backs up the last-owner rule in the database itself', () =>
@@ -368,7 +369,7 @@ describe('members from the Team page', () => {
 describe('two owners removing each other at the same moment', () => {
   // Real commits on separate connections: the only way to prove the organization lock
   // serialises them (the test database is recreated each run).
-  it('lets one succeed and refuses the other as the last owner', async () => {
+  it('lets one succeed and refuses the other, who is no longer a member', async () => {
     const org = await createOrganization(db, { name: `Owner Race ${uniqueEmail('org')}` })
     const second = await createMember(db, org, { role: 'owner', name: 'Ngozi Adeyemi' })
     // Both loaded their access before either acted, as two open browsers would have.
@@ -382,10 +383,11 @@ describe('two owners removing each other at the same moment', () => {
 
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
     const refused = results.find((r) => r.status === 'rejected')
+    // Serialised by the organization lock; the loser is re-read inside its write and is gone.
     expect(refused?.status === 'rejected' && refused.reason).toMatchObject({
-      code: 'CONFLICT',
-      message: `${org.name} needs at least one owner. Make someone else an owner first.`,
-      data: { reason: 'last_owner' },
+      code: 'FORBIDDEN',
+      message: 'Your access has changed. Reload the page to continue.',
+      data: { reason: 'permission' },
     })
     const owners = await db
       .select()

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { auditEvents, invitations, members, sessions, users } from '@/db/schema'
+import { deleteRole } from '@/modules/roles/roles.service'
 import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
@@ -651,5 +652,26 @@ describe('invitations: the permission ceiling and custom roles', () => {
       }
       await expect(resendInvitation(ctx, invitation.id)).rejects.toMatchObject(refused)
       await expect(withdrawInvitation(ctx, invitation.id)).rejects.toMatchObject(refused)
+    }))
+
+  it('refuses resending an expired invitation whose role was deleted meanwhile', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const site = await createCustomRole(tx, org, { permissions: { projects: ['view'] } })
+      const { invitation } = await createInvitation(tx, org, {
+        role: 'viewer',
+        roleId: site.id,
+        status: 'expired',
+        expiresAt: new Date(Date.now() - DAY),
+      })
+      // Kept for history (the expired invitation refers to it), so archived, not erased.
+      await deleteRole(await contextFor(tx, org.owner, org), site.id)
+      await expect(
+        resendInvitation(await contextFor(tx, org.owner, org), invitation.id),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        data: { reason: 'role_unavailable' },
+        message: 'That role no longer exists. Choose another.',
+      })
     }))
 })

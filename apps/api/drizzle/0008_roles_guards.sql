@@ -15,14 +15,20 @@ WHERE e.status = 'archived';
 -- map a hit to the same copy (isGuardViolation).
 CREATE FUNCTION members_role_not_archived() RETURNS trigger
 LANGUAGE plpgsql AS $$
+DECLARE
+  role_archived_at timestamptz;
 BEGIN
-  IF NEW.status = 'active' AND EXISTS (
-    SELECT 1 FROM roles r
+  IF NEW.status = 'active' THEN
+    -- FOR SHARE: an archive of this role in flight (it holds the row FOR UPDATE) finishes
+    -- first and this check sees it; an archive that starts later waits for this transaction,
+    -- and roles_archive_unheld then sees this row.
+    SELECT r.archived_at INTO role_archived_at FROM roles r
     WHERE r.id = NEW.role_id AND r.organization_id = NEW.organization_id
-      AND r.archived_at IS NOT NULL
-  ) THEN
-    RAISE EXCEPTION 'an active member cannot hold an archived role'
-      USING ERRCODE = 'check_violation', CONSTRAINT = 'members_role_not_archived';
+    FOR SHARE;
+    IF role_archived_at IS NOT NULL THEN
+      RAISE EXCEPTION 'an active member cannot hold an archived role'
+        USING ERRCODE = 'check_violation', CONSTRAINT = 'members_role_not_archived';
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -34,14 +40,20 @@ CREATE TRIGGER members_role_not_archived
 --> statement-breakpoint
 CREATE FUNCTION invitations_role_not_archived() RETURNS trigger
 LANGUAGE plpgsql AS $$
+DECLARE
+  role_archived_at timestamptz;
 BEGIN
-  IF NEW.status = 'pending' AND EXISTS (
-    SELECT 1 FROM roles r
+  IF NEW.status = 'pending' THEN
+    -- FOR SHARE: an archive of this role in flight (it holds the row FOR UPDATE) finishes
+    -- first and this check sees it; an archive that starts later waits for this transaction,
+    -- and roles_archive_unheld then sees this row.
+    SELECT r.archived_at INTO role_archived_at FROM roles r
     WHERE r.id = NEW.role_id AND r.organization_id = NEW.organization_id
-      AND r.archived_at IS NOT NULL
-  ) THEN
-    RAISE EXCEPTION 'a pending invitation cannot offer an archived role'
-      USING ERRCODE = 'check_violation', CONSTRAINT = 'invitations_role_not_archived';
+    FOR SHARE;
+    IF role_archived_at IS NOT NULL THEN
+      RAISE EXCEPTION 'a pending invitation cannot offer an archived role'
+        USING ERRCODE = 'check_violation', CONSTRAINT = 'invitations_role_not_archived';
+    END IF;
   END IF;
   RETURN NEW;
 END;

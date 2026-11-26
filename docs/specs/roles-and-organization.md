@@ -163,7 +163,7 @@ One side sheet (full screen on phones) for add and edit. Board: none; pattern *s
 | Archive or restore a company | settings `delete` + all-companies access | Last active company kept; restore checks the plan limit |
 | Create a role | settings `create` + all-companies access | Permission ceiling |
 | Edit a custom role | settings `edit` + all-companies access | Ceiling; not the role you hold; built-ins never |
-| Delete a custom role | settings `delete` + all-companies access | Nobody holds it, no open invitation uses it |
+| Delete a custom role | settings `delete` + all-companies access | Nobody holds it, no open invitation uses it; within the deleter's own permissions (ceiling) |
 | Give a role (invite, change role) | as 3b | **New:** the role must be within the granter's own permissions |
 | Preview this role | settings `view` (3a rule) | – |
 
@@ -217,6 +217,7 @@ One side sheet (full screen on phones) for add and edit. Board: none; pattern *s
 
 ### Permission ceiling (new server rule)
 - **Given** a member, **then** they can create or save a role only if every ticked action is one they have themselves, and can give a role (invite or change role) only if it is within their own permissions. Refused: "You can only give access you have yourself."
+- **Given** a custom role that can do things the member can't, **when** they try to delete it, **then** it's refused: "Finance lead can do things you can't. Ask Olumide Bankole (owner) to change it." (review fix, 26 Nov 2026)
 - **Given** a member whose role has fewer permissions than someone else's, **then** they can't change, reset or remove that person or withdraw that invitation; the row is read-only with "Kemi Adebayo can do things you can't. Ask Olumide Bankole (owner) to change it." This extends the 3b `manage-rules` (new reason `wider_permissions`). Owners and admins have every permission, so nothing changes for them today.
 
 ### Preview

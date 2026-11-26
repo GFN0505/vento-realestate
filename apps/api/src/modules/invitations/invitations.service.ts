@@ -16,6 +16,7 @@ import {
   type AuthSession,
   type AuthUser,
   actorOf,
+  lockViewer,
   type ServiceContext,
   setActiveOrganization,
   twoStepRequired,
@@ -186,20 +187,34 @@ export async function createInvitations(
 }> {
   const now = new Date()
   const created = await ctx.db.transaction(async (tx) => {
+    // Lock order (docs/ARCHITECTURE.md): the inviter as they are now, then the open invitations
+    // for these emails, then the roles being given.
+    const inviter = await lockViewer(tx, ctx)
+    const emails = input.items.map((i) => i.email)
+    const pending = await tx
+      .select({ id: invitations.id, email: invitations.email, expiresAt: invitations.expiresAt })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.organizationId, ctx.organizationId),
+          eq(invitations.status, 'pending'),
+          inArray(invitations.email, emails),
+        ),
+      )
+      .for('update')
     // Locked for share: a delete of one of these roles waits, or wins and this is role_unavailable.
     const roleRows = await lockAssignableRoles(
       tx,
       ctx.organizationId,
       input.items.map((i) => i.roleId),
     )
-    if (roleRows.some((r) => r.key === 'owner') && ctx.member.roleKey !== 'owner') {
+    if (roleRows.some((r) => r.key === 'owner') && inviter.member.roleKey !== 'owner') {
       throw forbidden('owner_only', 'Only owners can invite someone as an owner.')
     }
-    if (roleRows.some((r) => widerThan(viewerOf(ctx), r.permissions))) {
+    if (roleRows.some((r) => widerThan(viewerOf(inviter), r.permissions))) {
       throw forbidden('wider_permissions', GRANT_CEILING_MESSAGE)
     }
-    const limitEntities = await assertGrantableEntities(tx, ctx, input.entityIds)
-    const emails = input.items.map((i) => i.email)
+    const limitEntities = await assertGrantableEntities(tx, inviter, input.entityIds)
 
     const alreadyMembers = await tx
       .select({ email: users.email })
@@ -212,17 +227,6 @@ export async function createInvitations(
           inArray(users.email, emails),
         ),
       )
-    const pending = await tx
-      .select({ id: invitations.id, email: invitations.email, expiresAt: invitations.expiresAt })
-      .from(invitations)
-      .where(
-        and(
-          eq(invitations.organizationId, ctx.organizationId),
-          eq(invitations.status, 'pending'),
-          inArray(invitations.email, emails),
-        ),
-      )
-      .for('update')
     const memberEmails = new Set(alreadyMembers.map((m) => m.email))
     const live = pending.filter((p) => p.expiresAt > now && !memberEmails.has(p.email))
     if (memberEmails.size || live.length) {
@@ -233,7 +237,7 @@ export async function createInvitations(
       )
     }
     // Members plus live invitations count against the plan; expired ones don't.
-    await assertWithinLimit(tx, ctx, 'members', input.items.length)
+    await assertWithinLimit(tx, inviter, 'members', input.items.length)
     // Expired-but-pending rows would block the "one pending per email" index: mark them first.
     if (pending.length) {
       await tx
@@ -401,13 +405,15 @@ export async function resendInvitation(
 ): Promise<{ notice: string; emails: EmailMessage[]; sentAt: Date }> {
   const now = new Date()
   return ctx.db.transaction(async (tx) => {
+    const viewer = await lockViewer(tx, ctx)
     const current = await lockInvitationById(tx, ctx, id)
     // Accepted, declined or withdrawn since the list loaded: it's gone from Team, so "not found"
     // (the web says the list is up to date). The invitee-facing copy would name the caller.
     if (current.status !== 'pending' && current.status !== 'expired') throw notFound()
-    await assertMayManageInvitation(tx, ctx, current, 'resend')
-    // Resending re-issues the grant: its role must still exist (deleted while it sat expired).
+    // Resending re-issues the grant: lock its role first (a delete waits, or won and this is
+    // role_unavailable), then check the ceiling against the role as it now is.
     await lockAssignableRoles(tx, ctx.organizationId, [current.roleId])
+    await assertMayManageInvitation(tx, viewer, current, 'resend')
     const cutoff = new Date(now.getTime() - INVITATION_RESEND_INTERVAL_MS)
     if (current.lastSentAt > cutoff) {
       throw tooManyRequests(
@@ -510,10 +516,11 @@ export async function withdrawInvitation(
   id: string,
 ): Promise<{ notice: string }> {
   return ctx.db.transaction(async (tx) => {
+    const viewer = await lockViewer(tx, ctx)
     const current = await lockInvitationById(tx, ctx, id)
     // Answered or withdrawn since the list loaded: gone from Team, so "not found".
     if (current.status !== 'pending') throw notFound()
-    await assertMayManageInvitation(tx, ctx, current, 'withdraw')
+    await assertMayManageInvitation(tx, viewer, current, 'withdraw')
     await tx
       .update(invitations)
       .set({ status: 'withdrawn', respondedAt: new Date() })

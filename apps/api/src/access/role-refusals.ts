@@ -48,8 +48,8 @@ export const OWN_ROLE_MESSAGE = 'You have this role. Ask another owner or admin 
 
 /**
  * Why the viewer may not do `action` with this role, or null. First match wins, in the plan's
- * order: permission, all companies, built-in, own role, the role wider than the viewer (edit),
- * or the source wider than the viewer (duplicate). Holders (delete) and the new permissions
+ * order: permission, all companies, built-in, own role, the role wider than the viewer (edit and
+ * delete), or the source wider than the viewer (duplicate). Holders (delete) and the new permissions
  * (save) are checked by the service.
  */
 export function roleRefusal(
@@ -71,7 +71,8 @@ export function roleRefusal(
   }
   if (role.key !== null) return { reason: 'built_in_role', message: BUILT_IN_MESSAGE }
   if (role.id === viewer.roleId) return { reason: 'own_role', message: OWN_ROLE_MESSAGE }
-  if (action === 'edit' && widerThan(viewer, role.permissions)) {
+  // Deleting is a change to the role too: someone who couldn't hold it doesn't remove it.
+  if (widerThan(viewer, role.permissions)) {
     return {
       reason: 'wider_permissions',
       message: `${role.name} can do things you can't. ${askOwner(ask.ownerName)}`,

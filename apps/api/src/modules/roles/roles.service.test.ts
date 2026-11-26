@@ -371,6 +371,28 @@ describe('roles: deleting', () => {
       await expect(deleteRole(ctx, role.id)).rejects.toMatchObject({ code: 'NOT_FOUND' })
     }))
 
+  it("won't let an office manager delete a role that can do more than they can", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const office = await createOfficeManager(tx, org)
+      const lead = await createCustomRole(tx, org, {
+        name: 'Finance lead',
+        permissions: defaultPermissions(defaultRole('finance')),
+        requiresTwoStep: true,
+      })
+      const ctx = await contextFor(tx, office.user, org)
+      await expect(deleteRole(ctx, lead.id)).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        data: { reason: 'wider_permissions' },
+        message: "Finance lead can do things you can't. Ask Olumide Bankole (owner) to change it.",
+      })
+      const clerk = await createCustomRole(tx, org, {
+        name: 'Clerk',
+        permissions: { sales: ['view'] },
+      })
+      expect(await deleteRole(ctx, clerk.id)).toEqual({ notice: 'Clerk deleted' })
+    }))
+
   it('never deletes a built-in role', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)

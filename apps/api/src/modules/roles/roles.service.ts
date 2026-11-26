@@ -15,7 +15,7 @@ import {
 } from '@vento/shared'
 import { and, count, desc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm'
 import type { z } from 'zod'
-import { actorOf, type ServiceContext, toPermissionSet } from '@/access/context'
+import { actorOf, lockViewer, type ServiceContext, toPermissionSet } from '@/access/context'
 import {
   GRANT_CEILING_MESSAGE,
   type ManageViewer,
@@ -276,23 +276,25 @@ export async function createRole(
   return ctx.db.transaction(async (tx) => {
     // Serialises creates, so two can't both pass the 50-role guard.
     await lockOrganization(tx, ctx.organizationId)
-    const [source] = await loadRoles(tx, ctx.organizationId, [input.sourceRoleId])
+    // The creator as they are now (their own role can't change until this commits).
+    const live = await lockViewer(tx, ctx)
+    const [source] = await loadRoles(tx, live.organizationId, [input.sourceRoleId])
     if (!source) throw notFound()
-    await refuse(tx, ctx, source, 'duplicate')
-    if ((await liveCustomRoles(tx, ctx.organizationId)) >= MAX_CUSTOM_ROLES) {
+    await refuse(tx, live, source, 'duplicate')
+    if ((await liveCustomRoles(tx, live.organizationId)) >= MAX_CUSTOM_ROLES) {
       throw conflict(
         'role_limit',
         `You can have up to ${MAX_CUSTOM_ROLES} custom roles. Delete one you no longer use.`,
       )
     }
-    await assertNameFree(tx, ctx, input.name)
+    await assertNameFree(tx, live, input.name)
     const requiresTwoStep = source.requiresTwoStep || roleNeedsTwoStep(source.permissions)
     const [row] = await onNameRace(
       input.name,
       tx
         .insert(roles)
         .values({
-          organizationId: ctx.organizationId,
+          organizationId: live.organizationId,
           key: null,
           isSystem: false,
           name: input.name,
@@ -303,11 +305,11 @@ export async function createRole(
         .returning({ id: roles.id }),
     )
     if (!row) throw new Error('Role insert returned nothing')
-    await insertPermissions(tx, ctx.organizationId, row.id, source.permissions)
+    await insertPermissions(tx, live.organizationId, row.id, source.permissions)
     await recordAudit(tx, {
-      organizationId: ctx.organizationId,
+      organizationId: live.organizationId,
       action: 'role.created',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'role', id: row.id, label: input.name },
       after: {
         name: input.name,
@@ -316,7 +318,7 @@ export async function createRole(
         permissions: granted(source.permissions),
       },
     })
-    return { notice: `${input.name} created`, role: await getRole(ctx, row.id, tx) }
+    return { notice: `${input.name} created`, role: await getRole(live, row.id, tx) }
   })
 }
 
@@ -351,23 +353,26 @@ export async function updateRole(
   input: z.output<typeof updateRoleInput>,
 ): Promise<{ notice: string; role: Role }> {
   return ctx.db.transaction(async (tx) => {
-    const [current] = await loadRoles(tx, ctx.organizationId, [input.id], { lock: 'update' })
+    // Serialises role saves, so two editors locking each other's roles can't deadlock.
+    await lockOrganization(tx, ctx.organizationId)
+    const live = await lockViewer(tx, ctx)
+    const [current] = await loadRoles(tx, live.organizationId, [input.id], { lock: 'update' })
     if (!current) throw notFound()
-    await refuse(tx, ctx, current, 'edit')
+    await refuse(tx, live, current, 'edit')
     const next = {
       name: input.name ?? current.name,
       description: input.description ?? current.description,
       requiresTwoStep: input.requiresTwoStep ?? current.requiresTwoStep,
       permissions: normalisePermissions(input.permissions ?? current.permissions),
     }
-    if (widerThan(viewerOf(ctx), next.permissions)) {
+    if (widerThan(viewerOf(live), next.permissions)) {
       throw forbidden('wider_permissions', GRANT_CEILING_MESSAGE)
     }
     if (roleNeedsTwoStep(next.permissions) && !next.requiresTwoStep) {
       throw badRequest('role_needs_two_step', TWO_STEP_REQUIRED)
     }
     if (current.version !== input.version) {
-      const by = await lastChangedBy(tx, ctx, current.id)
+      const by = await lastChangedBy(tx, live, current.id)
       throw conflict(
         'role_changed',
         `${by} changed ${current.name} a moment ago. Reload to see the latest, then make your change again.`,
@@ -379,9 +384,9 @@ export async function updateRole(
       (k) => next[k] !== current[k],
     )
     if (changes.length === 0 && fields.length === 0) {
-      return { notice: `${current.name} saved`, role: await getRole(ctx, current.id, tx) }
+      return { notice: `${current.name} saved`, role: await getRole(live, current.id, tx) }
     }
-    if (next.name !== current.name) await assertNameFree(tx, ctx, next.name, current.id)
+    if (next.name !== current.name) await assertNameFree(tx, live, next.name, current.id)
     await onNameRace(
       next.name,
       tx
@@ -393,24 +398,24 @@ export async function updateRole(
           requiresTwoStep: next.requiresTwoStep,
           version: sql`${roles.version} + 1`,
         })
-        .where(and(eq(roles.organizationId, ctx.organizationId), eq(roles.id, current.id))),
+        .where(and(eq(roles.organizationId, live.organizationId), eq(roles.id, current.id))),
     )
     if (changes.length) {
       await tx
         .delete(rolePermissions)
         .where(
           and(
-            eq(rolePermissions.organizationId, ctx.organizationId),
+            eq(rolePermissions.organizationId, live.organizationId),
             eq(rolePermissions.roleId, current.id),
           ),
         )
-      await insertPermissions(tx, ctx.organizationId, current.id, next.permissions)
+      await insertPermissions(tx, live.organizationId, current.id, next.permissions)
     }
     const touched = changes.map((c) => c.module)
     await recordAudit(tx, {
-      organizationId: ctx.organizationId,
+      organizationId: live.organizationId,
       action: 'role.updated',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'role', id: current.id, label: next.name },
       before: {
         ...Object.fromEntries(fields.map((k) => [k, current[k]])),
@@ -426,7 +431,7 @@ export async function updateRole(
       },
       metadata: { version: current.version + 1, changes },
     })
-    return { notice: `${next.name} saved`, role: await getRole(ctx, current.id, tx) }
+    return { notice: `${next.name} saved`, role: await getRole(live, current.id, tx) }
   })
 }
 
@@ -460,14 +465,15 @@ function inUse(name: string, holders: Holders) {
 export async function deleteRole(ctx: ServiceContext, id: string): Promise<{ notice: string }> {
   return ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
-    const [role] = await loadRoles(tx, ctx.organizationId, [id], { lock: 'update' })
+    const live = await lockViewer(tx, ctx)
+    const [role] = await loadRoles(tx, live.organizationId, [id], { lock: 'update' })
     if (!role) throw notFound()
-    await refuse(tx, ctx, role, 'delete')
-    const holders = (await holderCounts(tx, ctx.organizationId, [id])).get(id)
+    await refuse(tx, live, role, 'delete')
+    const holders = (await holderCounts(tx, live.organizationId, [id])).get(id)
     if (holders && holders.members + holders.invited > 0) throw inUse(role.name, holders)
-    const kept = (await hasHistory(tx, ctx.organizationId, id)) ? 'archived' : 'erased'
+    const kept = (await hasHistory(tx, live.organizationId, id)) ? 'archived' : 'erased'
     try {
-      const where = and(eq(roles.organizationId, ctx.organizationId), eq(roles.id, id))
+      const where = and(eq(roles.organizationId, live.organizationId), eq(roles.id, id))
       if (kept === 'archived') await tx.update(roles).set({ archivedAt: new Date() }).where(where)
       else await tx.delete(roles).where(where)
     } catch (error) {
@@ -477,9 +483,9 @@ export async function deleteRole(ctx: ServiceContext, id: string): Promise<{ not
       throw error
     }
     await recordAudit(tx, {
-      organizationId: ctx.organizationId,
+      organizationId: live.organizationId,
       action: 'role.deleted',
-      actor: actorOf(ctx),
+      actor: actorOf(live),
       target: { type: 'role', id, label: role.name },
       before: { name: role.name, permissions: granted(role.permissions) },
       metadata: { kept },
@@ -489,9 +495,11 @@ export async function deleteRole(ctx: ServiceContext, id: string): Promise<{ not
 }
 
 /**
- * Locks the roles being given (`for share`, so a delete waits) and returns them. Foreign or
- * missing ids are NOT_FOUND; a role deleted meanwhile is `role_unavailable`. Lock order:
- * organization → member or invitation → role → plan row.
+ * Locks the roles being given (`for share`, so a delete waits) and returns them. A role that is
+ * missing, deleted (erased or archived) meanwhile, or another organization's is
+ * `role_unavailable`: one generic answer that tells the caller nothing about other
+ * organizations, and that a racing delete can't turn into NOT_FOUND. Lock order: see
+ * docs/ARCHITECTURE.md ("Lock order").
  */
 export async function lockAssignableRoles(
   tx: DbOrTx,
@@ -504,8 +512,9 @@ export async function lockAssignableRoles(
     .from(roles)
     .where(and(eq(roles.organizationId, organizationId), inArray(roles.id, unique)))
     .for('share')
-  if (rows.length !== unique.length) throw notFound()
-  if (rows.some((r) => r.archivedAt !== null)) throw roleUnavailable()
+  if (rows.length !== unique.length || rows.some((r) => r.archivedAt !== null)) {
+    throw roleUnavailable()
+  }
   return loadRoles(tx, organizationId, unique)
 }
 

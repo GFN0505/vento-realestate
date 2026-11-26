@@ -109,8 +109,13 @@ describe('organization isolation', () => {
         ],
         ['account.sessions.revoke', () => client.account.sessions.revoke({ id: theirSession.id })],
       ]
+      // A role id that isn't this organization's live role answers role_unavailable, the same as
+      // one deleted a moment ago: one generic answer that says nothing about other organizations.
       for (const [name, attempt] of attempts) {
-        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+        const expected = /\(their (custom )?role\)/.test(name)
+          ? { code: 'CONFLICT', data: { reason: 'role_unavailable' } }
+          : { code: 'NOT_FOUND' }
+        await expect(attempt(), name).rejects.toMatchObject(expected)
       }
 
       const [entity] = await tx.select().from(entities).where(eq(entities.id, theirEntity.id))
@@ -302,8 +307,13 @@ describe('organization isolation: roles and companies (brick 3c)', () => {
             }),
         ],
       ]
+      // A role id that isn't this organization's live role answers role_unavailable, the same as
+      // one deleted a moment ago: one generic answer that says nothing about other organizations.
       for (const [name, attempt] of attempts) {
-        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+        const expected = /\(their (custom )?role\)/.test(name)
+          ? { code: 'CONFLICT', data: { reason: 'role_unavailable' } }
+          : { code: 'NOT_FOUND' }
+        await expect(attempt(), name).rejects.toMatchObject(expected)
       }
       const [role] = await tx.select().from(roles).where(eq(roles.id, theirRole.id))
       expect(role).toMatchObject({ name: 'Their engineer', version: 1, archivedAt: null })
