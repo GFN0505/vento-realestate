@@ -16,6 +16,9 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Two-step sign-in** | A 6-digit authenticator-app code (TOTP) asked after the password, with 10 single-use backup codes. | Required for some roles. Repeated wrong codes lock sign-in for a period. |
 | **Sign-in lock** | A pause on signing in to one email address after repeated failures. | `locked → none` after 15 minutes. Caused by 10 wrong passwords within 15 minutes or 5 wrong two-step or backup codes in a row. Applies to unknown emails too, so a lock reveals nothing. |
 | **Session** | One signed-in device or browser. | Listed for its owner, who can end one or all others. Ends on removal from the organization or a password reset. |
+| **Active organization** | The organization a session is working in. | Belongs to the session, never to request input. A person in several organizations switches it from the shell; the last one used is the default at next sign-in. Each browser tab names the organization it is showing; the server refuses a request from a tab that's out of date. |
+| **Current entity** | The entity (or "All entities") chosen in the entity switcher. | A view filter for pages that use it, held in the page address; never grants access. Only entities within the member's access limits are offered. |
+| **Role preview** | An owner or admin viewing the navigation and home of another role. | Changes what is shown only; every request still runs with the previewer's own access. Ends when stopped or the tab is closed. |
 | **Security alert** | An email about a person's account security (lockout, password changed, two-step reset, backup code used). | Always sent; can't be muted. |
 | **Contact** | Any external person or company: buyer, lead, contractor, vendor, surveyor, valuer, JV partner, agent/broker, resident. | One `contacts` table with a roles array. Individuals and companies. |
 | **Buyer (subscriber)** | Contact who has subscribed to one or more units. | Can sign in to the Buyer Portal. May be diaspora (country of residence recorded). |
@@ -114,7 +117,21 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Site plan / layout** | The uploaded estate layout image or PDF with unit shapes placed on it. | Each unit has an optional polygon on the layout. |
 | **Realtor** | External agent or broker contact with portal access. | Leads they register are checked for duplicates; a duplicate can still be submitted and a person at the developer decides ownership. |
 | **Digest** | A scheduled summary message to a member. | Channel (WhatsApp, email), time, content by role. |
-| **Feature flag / add-on** | Whether a capability is on for an organization. | AI features are add-ons, off by default. |
+| **Feature** | A module or notable part of one that is released, and sold, as a unit (e.g. `sales`, `sales.commissions`, `ai.drafting`). | Keys live in one catalog in code. Security and compliance (two-step, passkeys, approvals, audit, KYC/AML, permits, UBO and SCUML records, data protection) are in every plan. Accounts, the shell, team and roles settings, approvals, audit and notifications have no flag at all. |
+| **Available** | A feature an organization can use: **released** to it **and** it's **entitled** to it, with its prerequisites available. | Checked on the server before permissions. An unavailable feature appears nowhere and its procedures answer "not found". See `docs/specs/feature-flags.md`. |
+| **Feature flag** | The release switch for one feature. | Has a **release stage**. Says whether a feature is ready, not whether it's paid for. |
+| **Release stage** | How far a flag has been released: `off → internal → pilot → on`. | `off` is a kill switch for everyone; `internal` = Vento's own organizations; `pilot` = also pilot organizations; `on` = everyone. |
+| **Release group** | An organization's place in releases: `standard`, `pilot` or `internal`. | New organizations are `standard`. `internal` organizations (Vento's demo and test ones) are also entitled to everything with no limits. |
+| **Release** | A recommended group of features (Release 1 is the MVP: sell, collect and build). | See `docs/release-plan.md`. A living recommendation, not a gate: the owner releases feature by feature with flags, and build order is separate from release order. |
+| **Releasable** | A feature that is built, tested, reviewed, has its help article, and has had the owner's hands-on review. | Only a releasable feature may move beyond `internal`. |
+| **Early access** | The tag on a feature an organization has before its stage is `on`. | Shown in navigation; disappears when released to everyone. |
+| **Plan** | A priced tier an organization is on (e.g. Starter, Growth, Enterprise). | Data, versioned: lists included features and **limits**. Changing a plan publishes a new version; organizations keep theirs until moved. One plan per organization. |
+| **Entitlement** | An organization's right to a feature or a limit value, from its plan, add-ons or an override. | A released feature without an entitlement is unavailable. |
+| **Limit** | A plan's cap: `projects`, `entities`, `members` (including pending invitations), `ai_budget`. | Counts active records only. Exceeding it refuses new creates; nothing existing is archived or deleted. |
+| **Add-on** | Something bought on top of a plan that includes more features or raises limits. | AI is an add-on (its features also need the owner to switch each one on in Settings → AI, and a budget). |
+| **Override** | A per-organization exception set by Vento, with a reason and optional expiry. | **Release override:** a feature on or off before or despite its stage. **Entitlement override:** grant or remove a feature, or set a limit, regardless of plan (trials, negotiated deals). Never beats the `off` kill switch. Expired overrides stop applying; data stays. |
+| **Trial** | Entitlement overrides that give an organization a higher plan's features and limits until a date. | Owner is told 7 days and 1 day before it ends. |
+| **Vento super-admin** | A Vento staff member who manages flags, plans, add-ons and overrides. | A platform role on the person's account, never an organization role. Two-step required. Every change is in the platform audit trail, and changes affecting one organization also in that organization's audit trail. |
 
 ## AI (optional add-on)
 | Term | Meaning | Notes |

@@ -1,15 +1,16 @@
-import { type PermissionAction, type PermissionModule, SYSTEM_ROLE_KEYS } from '@vento/shared'
-import { and, eq, inArray, ne } from 'drizzle-orm'
+import {
+  joinNames,
+  type PermissionAction,
+  type PermissionModule,
+  SYSTEM_ROLE_KEYS,
+} from '@vento/shared'
+import { and, eq } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
-import { members, rolePermissions, roles, users } from '@/db/schema'
+import { rolePermissions, roles } from '@/db/schema'
+import { accessContacts } from './access-contacts'
 
-/** "owners", "owners and admins", "owners, admins and finance staff". */
-export function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? ''
-  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
-}
-
-const order = (key: string | null) => {
+/** Built-in roles in system order (owner first); custom roles after them. */
+export const systemRoleOrder = (key: string | null): number => {
   const i = SYSTEM_ROLE_KEYS.indexOf(key as (typeof SYSTEM_ROLE_KEYS)[number])
   return i === -1 ? SYSTEM_ROLE_KEYS.length : i
 }
@@ -31,14 +32,15 @@ export async function whoCanGrant(
   },
 ): Promise<GrantAdvice> {
   const holders = await db
-    .selectDistinct({
-      id: roles.id,
-      key: roles.key,
-      name: roles.name,
-      pluralName: roles.pluralName,
-    })
+    .selectDistinct({ key: roles.key, pluralName: roles.pluralName })
     .from(roles)
-    .innerJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+    .innerJoin(
+      rolePermissions,
+      and(
+        eq(rolePermissions.roleId, roles.id),
+        eq(rolePermissions.organizationId, roles.organizationId),
+      ),
+    )
     .where(
       and(
         eq(roles.organizationId, input.organizationId),
@@ -46,32 +48,18 @@ export async function whoCanGrant(
         eq(rolePermissions.action, input.action),
       ),
     )
-  holders.sort((a, b) => order(a.key) - order(b.key))
-  const only = `Only ${joinNames(holders.map((h) => h.pluralName))} can ${input.doing}.`
   if (holders.length === 0) return { message: `You don't have access to ${input.doing}.` }
+  holders.sort((a, b) => systemRoleOrder(a.key) - systemRoleOrder(b.key))
+  const only = `Only ${joinNames(holders.map((h) => h.pluralName))} can ${input.doing}.`
 
-  const candidates = await db
-    .select({ name: users.name, roleId: members.roleId })
-    .from(members)
-    .innerJoin(users, eq(users.id, members.userId))
-    .where(
-      and(
-        eq(members.organizationId, input.organizationId),
-        eq(members.status, 'active'),
-        ne(members.userId, input.excludeUserId),
-        inArray(
-          members.roleId,
-          holders.map((h) => h.id),
-        ),
-      ),
-    )
-    .orderBy(members.joinedAt)
-  // Prefer owners: they can grant anything.
-  const ranked = candidates
-    .map((c) => ({ ...c, role: holders.find((h) => h.id === c.roleId) }))
-    .sort((a, b) => order(a.role?.key ?? null) - order(b.role?.key ?? null))
-  const person = ranked[0]
-  if (!person?.role) return { message: only }
-  const askRole = person.role.name.toLowerCase()
+  const [person] = await accessContacts(db, {
+    organizationId: input.organizationId,
+    module: input.module,
+    action: input.action,
+    excludeUserId: input.excludeUserId,
+    limit: 1,
+  })
+  if (!person) return { message: only }
+  const askRole = person.roleName.toLowerCase()
   return { message: `${only} Ask ${person.name} (${askRole}).`, askName: person.name, askRole }
 }

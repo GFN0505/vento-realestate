@@ -137,3 +137,17 @@ export const acceptInvitationAsNewUserInput = z.strictObject({
 export const acceptInvitationOutput = z.object({
   nextStep: z.union([nextStep, z.literal('sign_in')]),
 })
+
+export const whoCanChangeAccessInput = z.strictObject({ module: permissionModule })
+
+/**
+ * For the 403 page: "HR & payroll is for owners, admins, HR staff and finance staff. Ask Olumide
+ * Bankole (owner) to change your access." Names only, never emails.
+ */
+export const whoCanChangeAccessOutput = z.object({
+  /** Plural names of the roles that can view the module, built-in roles in system order first. */
+  roles: z.array(z.string()),
+  /** Up to two people who can change access (Settings edit), owners first, never the caller. */
+  contacts: z.array(z.object({ name: z.string(), roleName: z.string() })).max(2),
+})
+export type WhoCanChangeAccess = z.infer<typeof whoCanChangeAccessOutput>

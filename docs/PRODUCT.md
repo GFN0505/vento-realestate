@@ -26,6 +26,7 @@ Real estate **developers** in Nigeria, from growing firms (1–3 projects) to la
 | **Buyer / subscriber** (portal) | See payments, statement, allocation, construction progress, documents |
 
 ## The ten modules (all in v1)
+All ten are built for v1; the owner releases them to customers feature by feature, starting with an MVP ("sell, collect and build"), and each customer gets the ones their plan includes. See `docs/release-plan.md`.
 
 ### 1. Land & Title
 Land parcels from acquisition to perfected title: C of O, R of O, governor's consent, deed of assignment, excision gazette, survey plan. Document vault with versions, title stage tracker, encumbrance register (mortgage, caveat, court order) with alerts, surveyor assignments.

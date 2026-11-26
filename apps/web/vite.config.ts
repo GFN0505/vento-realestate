@@ -13,6 +13,7 @@ export default defineConfig({
   // under a developer's `pnpm dev` running at the same time.
   cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
   build: {
+    manifest: true,
     rollupOptions: {
       treeshake: {
         // @vento/shared only declares schemas and constants. Saying so lets a screen that needs

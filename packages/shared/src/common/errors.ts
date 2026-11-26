@@ -29,6 +29,11 @@ export const conflictReason = z.enum([
   'invitation_not_pending',
   'account_exists',
   'not_archivable',
+  /**
+   * The tab names a different organization than the session (decision 0013). The web never
+   * shows the message; it reloads into the session's organization with a notice.
+   */
+  'organization_changed',
 ])
 export type ConflictReason = z.infer<typeof conflictReason>
 
@@ -72,6 +77,12 @@ export const errorMap = {
     status: 429,
     message: 'Too many attempts. Wait a minute and try again.',
     data: z.object({ retryAfterSeconds: z.number().int().min(1) }),
+  },
+  /** Anything unexpected. `reference` is in the server log line too, so support can find it. */
+  INTERNAL_SERVER_ERROR: {
+    status: 500,
+    message: 'Something went wrong on our side',
+    data: z.object({ reference: z.string() }),
   },
 } as const
 

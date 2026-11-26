@@ -30,6 +30,7 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens in brick 3 |
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-05 | Find your way around the workspace | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -72,6 +73,8 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-AI-02 | Match a bank statement with AI | Finance officer | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-AI-03 | Ask Vento a question | Any member | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-AI-04 | Turn on AI and set a budget | Owner | [11-ai-add-on](11-ai-add-on.md) | draft |
+| J-ADM-01 | Release a feature, stage by stage | Vento super-admin | [12-vento-admin](12-vento-admin.md) | draft |
+| J-ADM-02 | Put an organization on a plan, start a trial, record a deal | Vento super-admin | [12-vento-admin](12-vento-admin.md) | draft |
 
 ## Assumptions to confirm
 Writing these journeys meant picking defaults the product docs don't settle. The approved designs settled some of them (now written into the journeys and `docs/design/DESIGN-NOTES.md`). Each is a setting or rule, not hard-coded.
@@ -98,3 +101,13 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Resolved maintenance requests auto-close after **7 days**.
 - Permit expiry alerts at **60, 30 and 7 days**.
 - The two ₦5m thresholds above are design defaults; the AML one must match current SCUML/NFIU rules.
+- (Brick 3a) The sidebar and mobile tabs are **derived from the role's view permissions**, with a fixed tab priority per role.
+- (Brick 3a) Modules not built yet show a **"Soon" tag and a Coming soon page** until each ships. *(Superseded by the approved feature-flags spec: "Soon" only in Vento's internal organizations; customers see only features released to them and in their plan.)*
+
+**Settled by the owner (26 Nov 2026, release plan and feature-flags spec)**
+- Features not available to an organization answer **"not found"** and appear nowhere; owners alone see **"Available on Growth"** at the point of need (⌘K, limit messages).
+- Early users see an **"Early access"** tag; changes take effect **within 30 seconds**; trial-ending emails to owners **7 days and 1 day** before.
+- Automatic reminders stay **off per organization until finance confirms imported balances**; imported subscriptions without KYC come in **active** with KYC "not collected".
+- Features are released **one by one when the owner chooses**, once releasable; there are no pilot thresholds.
+- (Brick 3a) Theme, sidebar state, last entity and recently opened pages are remembered **per device**, not per account.
+- (Brick 3a) **Preview as role** changes navigation only and lasts until stopped or the tab is closed.

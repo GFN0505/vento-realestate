@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 162 rows · 133 designed (18 of them partly) · 29 without a design.
+**Coverage:** 169 rows · 135 designed (18 of them partly) · 34 without a design.
 
 
 
@@ -19,15 +19,18 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
 | Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
-| Setup checklist on Home | [Onboarding](claude-design/Onboarding.dc.html) | todo |
-| App shell: sidebar, top bar, entity/project switcher, mobile bottom nav | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), [Main](claude-design/Main.dc.html) (bottom nav) | todo |
-| ⌘K command palette | [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | todo |
+| Setup checklist on Home (brick 3b) | [Onboarding](claude-design/Onboarding.dc.html) | todo |
+| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
+| ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
+| Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
+| Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | todo |
+| Trial ending: line on Home and email to owners (feature flags) | – | todo |
 | Notifications panel and notification preferences | [Notifications](claude-design/Notifications.dc.html), [NotificationPrefs](claude-design/NotificationPrefs.dc.html) | todo |
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
-| Keyboard shortcuts help (`?`) | – | todo |
-| My profile, password, two-factor, active sessions | [SecuritySettings](claude-design/SecuritySettings.dc.html) (security only; profile not designed) | todo |
-| 403 no access, 404 not found, 500 error, offline banner and page | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | todo |
+| Keyboard shortcuts help (`?`) (brick 3a) | – | pattern |
+| My security: two-step on/off, backup codes, active sessions, passkeys (brick 3d); my profile | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (security only; passkeys and profile not designed) | todo |
+| 403 no access, 404 not found, 500 error, offline banner and page (brick 3a; Request access in brick 4) | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | built (Request access in brick 4) |
 | Maintenance page | – | todo |
 | Session expired / signed out elsewhere | [SessionExpired](claude-design/SessionExpired.dc.html) | built |
 | Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | built (tokens, fonts, form components) |
@@ -35,8 +38,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 1. Home and analytics
 | Screen | Design | Status |
 |---|---|---|
-| Executive home | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) | todo |
-| Role homes: Land & legal, Project manager, Sales, Finance, HR, Facility | [HomeLand](claude-design/HomeLand.dc.html), [HomePM](claude-design/HomePM.dc.html), [HomeSales](claude-design/HomeSales.dc.html), [HomeFinance](claude-design/HomeFinance.dc.html), [HomeHR](claude-design/HomeHR.dc.html), [HomeFM](claude-design/HomeFM.dc.html) | todo |
+| Executive home | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) | built (shell Home: hero, KPI placeholders, workspace; data arrives per module) |
+| Role homes: Land & legal, Project manager, Sales, Finance, HR, Facility | [HomeLand](claude-design/HomeLand.dc.html), [HomePM](claude-design/HomePM.dc.html), [HomeSales](claude-design/HomeSales.dc.html), [HomeFinance](claude-design/HomeFinance.dc.html), [HomeHR](claude-design/HomeHR.dc.html), [HomeFM](claude-design/HomeFM.dc.html) | built (role KPI sets; queues arrive per module) |
 | Daily digest (WhatsApp and email) | [MorningDigest](claude-design/MorningDigest.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
 | Dashboards: collections, delinquency, project progress, cash by entity, budget variance | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (as home cards) | todo |
 | Project IRR / ROI calculator | – | todo |
@@ -186,9 +189,11 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 12. Settings and admin
 | Screen | Design | Status |
 |---|---|---|
-| Settings layout with left sub-navigation | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav) | todo |
-| Organization profile and branding (logo, colours on documents) | [SetOrg](claude-design/SetOrg.dc.html), [SetBranding](claude-design/SetBranding.dc.html) | todo |
-| Team members, invites, roles and permissions, role templates | [RolesSettings](claude-design/RolesSettings.dc.html), [SetPermissions](claude-design/SetPermissions.dc.html) | todo |
+| Settings layout with left sub-navigation (brick 3b) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | todo |
+| Organization profile and entities: add, edit, archive (brick 3c) | [SetOrg](claude-design/SetOrg.dc.html) | todo |
+| Branding: logo and colours on documents, emails and portals (proposed: with the first customer-facing document) | [SetBranding](claude-design/SetBranding.dc.html) | todo |
+| Team members and invitations: invite, change role and limits, resend, withdraw, remove, reset two-step (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) | todo |
+| Permissions: role × module matrix, copy and edit custom roles (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | todo |
 | Approval rules | [SetApprovalRules](claude-design/SetApprovalRules.dc.html) | todo |
 | Fee and sales defaults, grace periods | – | todo |
 | Numbering (receipts, invoices, documents) | – | todo |
@@ -197,12 +202,12 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Excel import wizard and import history | [ImportWizard](claude-design/ImportWizard.dc.html), [ImportMobile](claude-design/ImportMobile.dc.html) | todo |
 | Data export and NDPA requests (export / delete contact data) | [SetDataProtection](claude-design/SetDataProtection.dc.html) | todo |
 | Audit log (organization-wide search) | [AuditLog](claude-design/AuditLog.dc.html) | todo |
-| Billing and plan | – | todo |
+| Billing and plan (owner only: plan, limits with use, add-ons, trial end; uses the entitlement model in the feature-flags spec) | – | todo |
 
 ## 13. AI add-on
 | Screen | Design | Status |
 |---|---|---|
-| Settings → AI, usage meter, budget states | [AISettings](claude-design/AISettings.dc.html) | todo |
+| Settings → AI, usage meter, budget states (lists only AI features available to the organization; hidden if none) | [AISettings](claude-design/AISettings.dc.html) | todo |
 | Document reading review | [DocReader](claude-design/DocReader.dc.html) | todo |
 | AI payment matching | [PaymentMatching](claude-design/PaymentMatching.dc.html) | todo |
 | Ask Vento answers | [AskVento](claude-design/AskVento.dc.html) | todo |
@@ -231,7 +236,9 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 15. Super-admin (Vento staff only)
 | Screen | Design | Status |
 |---|---|---|
-| Organizations list and detail, plan and AI budget | [AdminOrgs](claude-design/AdminOrgs.dc.html), [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) | todo |
+| Organizations list and detail: release group, plan, add-ons, overrides and trials, AI budget (console in R2) | [AdminOrgs](claude-design/AdminOrgs.dc.html), [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) | todo |
 | AI usage and cost by organization and feature | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
-| Feature flags | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
+| Feature flags: stage per flag, who has it, plans that include it (console in R2) | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
+| Plans: contents, limits, versions (console in R2) | – | todo |
+| Flag and plan commands (`pnpm flags …`, `pnpm plans …`; text output, used until the console ships) | – | todo |
 | System health and failed jobs | [AdminJobs](claude-design/AdminJobs.dc.html) (failed jobs only) | todo |

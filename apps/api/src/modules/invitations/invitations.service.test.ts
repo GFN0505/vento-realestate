@@ -2,7 +2,7 @@ import { CURRENT_TERMS_VERSION, createInvitationsInput } from '@vento/shared'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
-import { invitations, members, users } from '@/db/schema'
+import { invitations, members, sessions, users } from '@/db/schema'
 import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
@@ -11,6 +11,7 @@ import {
   createInvitation,
   createMember,
   createOrganization,
+  createSession,
   createUser,
   TEST_PASSWORD,
 } from '@/test/factories'
@@ -215,6 +216,30 @@ describe('invitations', () => {
       expect(rows.map((r) => r.organizationId).sort()).toEqual([first.id, second.id].sort())
       const { client } = clientAs(tx, aisha.user, { activeOrganizationId: second.id })
       expect((await client.account.me()).organization?.name).toBe('Lekki Partners Ltd')
+    }))
+
+  it('moves an existing user into the new organization, for this session and the next sign-in', () =>
+    withRollback(async (tx) => {
+      const first = await createOrganization(tx)
+      const tunde = await createMember(tx, first, { role: 'viewer', name: 'Tunde Ola' })
+      const second = await createOrganization(tx, { name: 'Lekki Partners Ltd' })
+      await createEntity(tx, second)
+      const { token } = await createInvitation(tx, second, {
+        role: 'sales',
+        email: tunde.user.email,
+      })
+      const session = await createSession(tx, tunde.user, { activeOrganizationId: first.id })
+      const { client } = clientAs(tx, tunde.user, {
+        sessionId: session.id,
+        activeOrganizationId: first.id,
+      })
+
+      expect(await client.invitations.accept({ token })).toEqual({ nextStep: 'ready' })
+
+      const [row] = await tx.select().from(sessions).where(eq(sessions.id, session.id))
+      expect(row?.activeOrganizationId).toBe(second.id)
+      const [user] = await tx.select().from(users).where(eq(users.id, tunde.user.id))
+      expect(user?.lastActiveOrganizationId).toBe(second.id)
     }))
 
   it('refuses when signed in as a different email', () =>

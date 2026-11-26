@@ -11,6 +11,14 @@ export function conflict(reason: ConflictReason, message: string) {
   return new ORPCError('CONFLICT', { message, data: { reason } })
 }
 
+/** The tab names another organization than the session (decision 0013); the web reloads. */
+export function organizationChanged() {
+  return conflict(
+    'organization_changed',
+    'This tab is showing a different organization. Reloading…',
+  )
+}
+
 export function forbidden(
   reason: ForbiddenReason,
   message: string,

@@ -1,6 +1,7 @@
 import { publicRateLimit, requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
 import { sendAll } from '@/email/mailer'
+import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
 import { authed, member, os } from '@/orpc'
 import {
@@ -58,7 +59,7 @@ export const invitationsRouter = {
         // The account and membership are saved; don't report failure, send them to sign in.
         logger.error('Sign-in after accepting an invitation failed', {
           requestId: context.requestId,
-          error: error instanceof Error ? error.message : String(error),
+          ...errorSummary(error),
         })
         return { nextStep: 'sign_in' as const }
       }

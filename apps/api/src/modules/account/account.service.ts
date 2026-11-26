@@ -1,9 +1,19 @@
-import type { Me, NextStep, PaginationInput, SessionItem } from '@vento/shared'
+import type {
+  Me,
+  NextStep,
+  PaginationInput,
+  SessionItem,
+  SwitchOrganizationOutput,
+} from '@vento/shared'
 import { and, count, desc, eq, gt, ne } from 'drizzle-orm'
 import {
   type AuthSession,
   type AuthUser,
+  listActiveMemberships,
+  loadMembership,
+  type Membership,
   resolveMembership,
+  setActiveOrganization,
   twoStepRequired,
 } from '@/access/context'
 import { userIdForResetToken } from '@/auth/security-store'
@@ -23,20 +33,28 @@ async function hasEntity(db: DbOrTx, organizationId: string): Promise<boolean> {
   return Boolean(row)
 }
 
+async function nextStepFor(
+  db: DbOrTx,
+  user: AuthUser,
+  membership: Membership | null,
+): Promise<NextStep> {
+  if (!membership) return 'onboarding_organization'
+  // Only an owner can finish setting the organization up; anyone invited before the first
+  // entity exists goes straight on to two-step or the app.
+  if (membership.member.roleKey === 'owner' && !(await hasEntity(db, membership.organizationId))) {
+    return 'onboarding_entity'
+  }
+  if (twoStepRequired(user, membership.member) && !user.twoFactorEnabled) return 'two_step_setup'
+  return 'ready'
+}
+
 /** The single source of truth for the web's guards: who, where, and what to do next. */
 export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
-  const required = twoStepRequired(user, membership?.member ?? null)
-  let nextStep: NextStep = 'ready'
-  if (!membership) nextStep = 'onboarding_organization'
-  // Only an owner can finish setting the organization up; anyone invited before the first
-  // entity exists goes straight on to two-step or the app.
-  else if (
-    membership.member.roleKey === 'owner' &&
-    !(await hasEntity(db, membership.organizationId))
-  ) {
-    nextStep = 'onboarding_entity'
-  } else if (required && !user.twoFactorEnabled) nextStep = 'two_step_setup'
+  const [nextStep, organizations] = await Promise.all([
+    nextStepFor(db, user, membership),
+    listActiveMemberships(db, user.id),
+  ])
   return {
     user: {
       id: user.id,
@@ -48,6 +66,7 @@ export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): P
     organization: membership
       ? { id: membership.organizationId, name: membership.organizationName }
       : null,
+    organizations,
     member: membership
       ? {
           id: membership.member.id,
@@ -61,7 +80,32 @@ export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): P
         }
       : null,
     nextStep,
-    twoStepRequired: required,
+    twoStepRequired: twoStepRequired(user, membership?.member ?? null),
+  }
+}
+
+/**
+ * Makes one of the person's organizations active for this session and their next sign-in.
+ * Not audited: it changes where they're looking, not any data or access.
+ */
+export async function switchOrganization(
+  db: DbOrTx,
+  user: AuthUser,
+  session: AuthSession,
+  organizationId: string,
+): Promise<SwitchOrganizationOutput> {
+  const membership = await db.transaction(async (tx) => {
+    const found = await loadMembership(tx, user.id, organizationId)
+    // loadMembership falls back to another organization; only the one asked for counts.
+    if (!found || found.organizationId !== organizationId) throw notFound()
+    if (session.activeOrganizationId !== organizationId) {
+      await setActiveOrganization(tx, { userId: user.id, sessionId: session.id, organizationId })
+    }
+    return found
+  })
+  return {
+    organization: { id: membership.organizationId, name: membership.organizationName },
+    nextStep: await nextStepFor(db, user, membership),
   }
 }
 

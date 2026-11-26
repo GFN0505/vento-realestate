@@ -34,6 +34,14 @@ Designs are a starting point, not a contract. If real data, a domain rule, acces
 ## Excellence checklist (every screen, every form)
 The owner's standard is **the best experience imaginable**, everywhere in the app, not just sign-in. Before a screen is done, check each line; if Stripe, Linear, Mercury or Apple would do it better, do it their way.
 
+**Simple first (the owner calls this critical).** World-class here means effortless, never elaborate:
+- A new user finishes the screen's main task on the first try, without training or help text.
+- One obvious next step; everything else is quieter or behind "More options".
+- Plain words from the user's world; no system concepts on screen (flags, plans, entitlements, roles mechanics stay invisible unless the user must act on them).
+- When in doubt, remove. A feature that makes a screen harder to understand doesn't ship as is.
+- Sophistication lives under the hood (speed, memory of choices, smart defaults), not in extra controls.
+- **Simple flow, rich craft.** Simplicity is about the experience (no dead ends, no clutter, obvious next step), never about looking plain. Screens stay classy and creative: considered typography, depth, brand-colour detail, beautiful empty states.
+
 **Forms**
 - The right `type`, `inputMode`, `autoComplete` and `name` on every field, so phones show the right keyboard and browsers and password managers fill correctly. Email fields: no spell-check or autocorrect, no auto-capitals; typo help on common domains.
 - Cursor in the first field on desktop (pointer: fine) only; never pop the keyboard on phones.

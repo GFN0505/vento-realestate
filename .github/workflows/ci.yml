@@ -76,6 +76,10 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Home's first load (gzipped) must stay under 200 KB; prints each chunk's size.
+      - name: Bundle size
+        run: pnpm --filter @vento/web bundle:check
+
       - name: Install Playwright browser
         run: pnpm --filter @vento/web exec playwright install --with-deps chromium
 

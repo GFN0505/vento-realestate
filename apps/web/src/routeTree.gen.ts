@@ -12,13 +12,26 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as StatusRouteImport } from './routes/status'
-import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppShellRouteImport } from './routes/_app/_shell'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthVerifyEmailRouteImport } from './routes/_auth/verify-email'
+import { Route as AppShellIndexRouteImport } from './routes/_app/_shell/index'
+import { Route as AppShellSplatRouteImport } from './routes/_app/_shell/$'
+import { Route as AppShellComplianceRouteImport } from './routes/_app/_shell/compliance'
+import { Route as AppShellDocumentsRouteImport } from './routes/_app/_shell/documents'
+import { Route as AppShellEstatesRouteImport } from './routes/_app/_shell/estates'
+import { Route as AppShellFinanceRouteImport } from './routes/_app/_shell/finance'
+import { Route as AppShellHelpRouteImport } from './routes/_app/_shell/help'
+import { Route as AppShellHrRouteImport } from './routes/_app/_shell/hr'
+import { Route as AppShellLandRouteImport } from './routes/_app/_shell/land'
+import { Route as AppShellProjectsRouteImport } from './routes/_app/_shell/projects'
+import { Route as AppShellReportsRouteImport } from './routes/_app/_shell/reports'
+import { Route as AppShellSalesRouteImport } from './routes/_app/_shell/sales'
+import { Route as AppShellSettingsRouteImport } from './routes/_app/_shell/settings'
 import { Route as AppTwoStepSetupRouteImport } from './routes/_app/two-step.setup'
 import { Route as AuthAcceptInvitationTokenRouteImport } from './routes/_auth/accept-invitation.$token'
 
@@ -35,9 +48,8 @@ const StatusRoute = StatusRouteImport.update({
   path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppShellRoute = AppShellRouteImport.update({
+  id: '/_shell',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOnboardingRoute = AppOnboardingRouteImport.update({
@@ -70,6 +82,71 @@ const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppShellIndexRoute = AppShellIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellSplatRoute = AppShellSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellComplianceRoute = AppShellComplianceRouteImport.update({
+  id: '/compliance',
+  path: '/compliance',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellDocumentsRoute = AppShellDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellEstatesRoute = AppShellEstatesRouteImport.update({
+  id: '/estates',
+  path: '/estates',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellFinanceRoute = AppShellFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellHelpRoute = AppShellHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellHrRoute = AppShellHrRouteImport.update({
+  id: '/hr',
+  path: '/hr',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellLandRoute = AppShellLandRouteImport.update({
+  id: '/land',
+  path: '/land',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellProjectsRoute = AppShellProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellReportsRoute = AppShellReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellSalesRoute = AppShellSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellSettingsRoute = AppShellSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppShellRoute,
+} as any)
 const AppTwoStepSetupRoute = AppTwoStepSetupRouteImport.update({
   id: '/two-step/setup',
   path: '/two-step/setup',
@@ -83,7 +160,7 @@ const AuthAcceptInvitationTokenRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AppIndexRoute
+  '/': typeof AppShellIndexRoute
   '/status': typeof StatusRoute
   '/onboarding': typeof AppOnboardingRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
@@ -91,11 +168,23 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/verify-email': typeof AuthVerifyEmailRoute
+  '/$': typeof AppShellSplatRoute
+  '/compliance': typeof AppShellComplianceRoute
+  '/documents': typeof AppShellDocumentsRoute
+  '/estates': typeof AppShellEstatesRoute
+  '/finance': typeof AppShellFinanceRoute
+  '/help': typeof AppShellHelpRoute
+  '/hr': typeof AppShellHrRoute
+  '/land': typeof AppShellLandRoute
+  '/projects': typeof AppShellProjectsRoute
+  '/reports': typeof AppShellReportsRoute
+  '/sales': typeof AppShellSalesRoute
+  '/settings': typeof AppShellSettingsRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof AppIndexRoute
+  '/': typeof AppShellIndexRoute
   '/status': typeof StatusRoute
   '/onboarding': typeof AppOnboardingRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
@@ -103,6 +192,18 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/verify-email': typeof AuthVerifyEmailRoute
+  '/$': typeof AppShellSplatRoute
+  '/compliance': typeof AppShellComplianceRoute
+  '/documents': typeof AppShellDocumentsRoute
+  '/estates': typeof AppShellEstatesRoute
+  '/finance': typeof AppShellFinanceRoute
+  '/help': typeof AppShellHelpRoute
+  '/hr': typeof AppShellHrRoute
+  '/land': typeof AppShellLandRoute
+  '/projects': typeof AppShellProjectsRoute
+  '/reports': typeof AppShellReportsRoute
+  '/sales': typeof AppShellSalesRoute
+  '/settings': typeof AppShellSettingsRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
 }
@@ -111,15 +212,28 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
   '/status': typeof StatusRoute
+  '/_app/_shell': typeof AppShellRouteWithChildren
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_auth/verify-email': typeof AuthVerifyEmailRoute
-  '/_app/': typeof AppIndexRoute
+  '/_app/_shell/$': typeof AppShellSplatRoute
+  '/_app/_shell/compliance': typeof AppShellComplianceRoute
+  '/_app/_shell/documents': typeof AppShellDocumentsRoute
+  '/_app/_shell/estates': typeof AppShellEstatesRoute
+  '/_app/_shell/finance': typeof AppShellFinanceRoute
+  '/_app/_shell/help': typeof AppShellHelpRoute
+  '/_app/_shell/hr': typeof AppShellHrRoute
+  '/_app/_shell/land': typeof AppShellLandRoute
+  '/_app/_shell/projects': typeof AppShellProjectsRoute
+  '/_app/_shell/reports': typeof AppShellReportsRoute
+  '/_app/_shell/sales': typeof AppShellSalesRoute
+  '/_app/_shell/settings': typeof AppShellSettingsRoute
   '/_app/two-step/setup': typeof AppTwoStepSetupRoute
   '/_auth/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/_app/_shell/': typeof AppShellIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,6 +246,18 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/verify-email'
+    | '/$'
+    | '/compliance'
+    | '/documents'
+    | '/estates'
+    | '/finance'
+    | '/help'
+    | '/hr'
+    | '/land'
+    | '/projects'
+    | '/reports'
+    | '/sales'
+    | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -144,6 +270,18 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/verify-email'
+    | '/$'
+    | '/compliance'
+    | '/documents'
+    | '/estates'
+    | '/finance'
+    | '/help'
+    | '/hr'
+    | '/land'
+    | '/projects'
+    | '/reports'
+    | '/sales'
+    | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
   id:
@@ -151,15 +289,28 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_auth'
     | '/status'
+    | '/_app/_shell'
     | '/_app/onboarding'
     | '/_auth/forgot-password'
     | '/_auth/reset-password'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_auth/verify-email'
-    | '/_app/'
+    | '/_app/_shell/$'
+    | '/_app/_shell/compliance'
+    | '/_app/_shell/documents'
+    | '/_app/_shell/estates'
+    | '/_app/_shell/finance'
+    | '/_app/_shell/help'
+    | '/_app/_shell/hr'
+    | '/_app/_shell/land'
+    | '/_app/_shell/projects'
+    | '/_app/_shell/reports'
+    | '/_app/_shell/sales'
+    | '/_app/_shell/settings'
     | '/_app/two-step/setup'
     | '/_auth/accept-invitation/$token'
+    | '/_app/_shell/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -191,11 +342,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/': {
-      id: '/_app/'
-      path: '/'
+    '/_app/_shell': {
+      id: '/_app/_shell'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
+      preLoaderRoute: typeof AppShellRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/onboarding': {
@@ -240,6 +391,97 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyEmailRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/_shell/': {
+      id: '/_app/_shell/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppShellIndexRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/$': {
+      id: '/_app/_shell/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof AppShellSplatRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/compliance': {
+      id: '/_app/_shell/compliance'
+      path: '/compliance'
+      fullPath: '/compliance'
+      preLoaderRoute: typeof AppShellComplianceRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/documents': {
+      id: '/_app/_shell/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AppShellDocumentsRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/estates': {
+      id: '/_app/_shell/estates'
+      path: '/estates'
+      fullPath: '/estates'
+      preLoaderRoute: typeof AppShellEstatesRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/finance': {
+      id: '/_app/_shell/finance'
+      path: '/finance'
+      fullPath: '/finance'
+      preLoaderRoute: typeof AppShellFinanceRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/help': {
+      id: '/_app/_shell/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof AppShellHelpRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/hr': {
+      id: '/_app/_shell/hr'
+      path: '/hr'
+      fullPath: '/hr'
+      preLoaderRoute: typeof AppShellHrRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/land': {
+      id: '/_app/_shell/land'
+      path: '/land'
+      fullPath: '/land'
+      preLoaderRoute: typeof AppShellLandRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/projects': {
+      id: '/_app/_shell/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AppShellProjectsRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/reports': {
+      id: '/_app/_shell/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppShellReportsRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/sales': {
+      id: '/_app/_shell/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof AppShellSalesRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/settings': {
+      id: '/_app/_shell/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppShellSettingsRouteImport
+      parentRoute: typeof AppShellRoute
+    }
     '/_app/two-step/setup': {
       id: '/_app/two-step/setup'
       path: '/two-step/setup'
@@ -257,15 +499,51 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppShellRouteChildren {
+  AppShellSplatRoute: typeof AppShellSplatRoute
+  AppShellComplianceRoute: typeof AppShellComplianceRoute
+  AppShellDocumentsRoute: typeof AppShellDocumentsRoute
+  AppShellEstatesRoute: typeof AppShellEstatesRoute
+  AppShellFinanceRoute: typeof AppShellFinanceRoute
+  AppShellHelpRoute: typeof AppShellHelpRoute
+  AppShellHrRoute: typeof AppShellHrRoute
+  AppShellLandRoute: typeof AppShellLandRoute
+  AppShellProjectsRoute: typeof AppShellProjectsRoute
+  AppShellReportsRoute: typeof AppShellReportsRoute
+  AppShellSalesRoute: typeof AppShellSalesRoute
+  AppShellSettingsRoute: typeof AppShellSettingsRoute
+  AppShellIndexRoute: typeof AppShellIndexRoute
+}
+
+const AppShellRouteChildren: AppShellRouteChildren = {
+  AppShellSplatRoute: AppShellSplatRoute,
+  AppShellComplianceRoute: AppShellComplianceRoute,
+  AppShellDocumentsRoute: AppShellDocumentsRoute,
+  AppShellEstatesRoute: AppShellEstatesRoute,
+  AppShellFinanceRoute: AppShellFinanceRoute,
+  AppShellHelpRoute: AppShellHelpRoute,
+  AppShellHrRoute: AppShellHrRoute,
+  AppShellLandRoute: AppShellLandRoute,
+  AppShellProjectsRoute: AppShellProjectsRoute,
+  AppShellReportsRoute: AppShellReportsRoute,
+  AppShellSalesRoute: AppShellSalesRoute,
+  AppShellSettingsRoute: AppShellSettingsRoute,
+  AppShellIndexRoute: AppShellIndexRoute,
+}
+
+const AppShellRouteWithChildren = AppShellRoute._addFileChildren(
+  AppShellRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppShellRoute: typeof AppShellRouteWithChildren
   AppOnboardingRoute: typeof AppOnboardingRoute
-  AppIndexRoute: typeof AppIndexRoute
   AppTwoStepSetupRoute: typeof AppTwoStepSetupRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppShellRoute: AppShellRouteWithChildren,
   AppOnboardingRoute: AppOnboardingRoute,
-  AppIndexRoute: AppIndexRoute,
   AppTwoStepSetupRoute: AppTwoStepSetupRoute,
 }
 

@@ -1,4 +1,9 @@
-import { invitationsContract, membersContract, rolesContract } from './access/contract'
+import {
+  accessContract,
+  invitationsContract,
+  membersContract,
+  rolesContract,
+} from './access/contract'
 import { accountContract } from './account/contract'
 import { healthContract } from './health/contract'
 import { entitiesContract, onboardingContract, organizationContract } from './organization/contract'
@@ -13,5 +18,6 @@ export const contract = {
   roles: rolesContract,
   members: membersContract,
   invitations: invitationsContract,
+  access: accessContract,
 }
 export type Contract = typeof contract

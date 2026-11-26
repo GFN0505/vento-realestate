@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createInvitationFixture, createMemberFixture } from '../support/fixtures'
-import { signInWithTotp } from '../support/sign-in'
+import { expectOnOrganization, signInWithTotp } from '../support/sign-in'
 import { completeTwoStepSetup } from '../support/two-step'
 
 // J-ONB-02 step 4: the invitee's side.
@@ -26,10 +26,11 @@ test('a new person accepts a Finance invitation, sets up two-step and lands sign
 
   await completeTwoStepSetup(page, password)
 
-  await expect(page.getByRole('heading', { name: 'Welcome, Chidi' })).toBeVisible()
   await expect(
-    page.getByText(`You're signed in to ${invite.organizationName} as Finance.`),
+    page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Chidi$/ }),
   ).toBeVisible()
+  await expectOnOrganization(page, invite.organizationName)
+  await expect(page.getByText('Cash, all entities')).toBeVisible()
 })
 
 test('an invitation link that does not exist says so instead of showing a form', async ({

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { createMemberFixture } from '../support/fixtures'
 import { newestEmail } from '../support/mailbox'
-import { enterPassword } from '../support/sign-in'
+import { enterPassword, HOME_GREETING } from '../support/sign-in'
 import { totpCode } from '../support/totp'
 
 /** The path and query of the first link in the newest reset email, so it opens on the e2e web server. */
@@ -36,7 +36,7 @@ test('forgot password: the emailed link sets a new password, then sign-in needs 
   await enterPassword(page, member.email, newPassword)
   await expect(page.getByRole('heading', { name: 'Two-step check' })).toBeVisible()
   await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
-  await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible()
+  await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
 })
 
 test('forgot password: the same reply is shown for an email with no account', async ({ page }) => {

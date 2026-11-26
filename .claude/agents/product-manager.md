@@ -32,6 +32,7 @@ Read `docs/PRODUCT.md` and `docs/DOMAIN.md` first. You may write only documentat
 - **Open questions** — for the user to decide.
 
 ## Principles
+- **Effortless and intuitive above all** (the owner calls this critical). A feature that makes Vento harder to understand doesn't ship as specced; find the simpler version. World-class means easy, never complicated.
 - Fewer, better features. Every option and setting is a cost; prefer a great default.
 - Design for the busiest real user on a phone with a weak connection.
 - If you can't state the problem in one sentence, the feature isn't ready.

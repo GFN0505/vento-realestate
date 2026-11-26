@@ -49,6 +49,17 @@
 
   --selected: #ececff;
   --selected-foreground: #3f40b8;
+  /* Highlighted menu and ⌘K row (board t.sel). Muted text on it keeps 4.6:1. */
+  --highlight: #f5f5ff;
+  /* Page decoration on light surfaces (Coming soon, Home cards): a faint grid and a brand glow. */
+  --surface-grid-line: rgb(18 26 63 / 0.05);
+  --surface-glow: rgb(118 119 251 / 0.16);
+  /* A card lifting on hover. */
+  --lift-shadow: rgb(18 26 63 / 0.22);
+  /* Module icon tiles: the logo's violet into its cyan, faintly. */
+  --tile-from: rgb(108 99 245 / 0.14);
+  --tile-to: rgb(76 201 240 / 0.14);
+  --tile-icon: #4f46e5;
   --selected-border: #7677fb;
 
   --sidebar: #121a3f;
@@ -56,6 +67,19 @@
   --sidebar-muted-foreground: #a9aedc;
   --sidebar-faint-foreground: #8a90c4;
   --sidebar-border: #3a4280;
+  /* The organization avatar: brand violet at 22% on navy, its initials in light violet. */
+  --sidebar-accent: rgb(118 119 251 / 0.22);
+  --sidebar-accent-foreground: #c7c8ff;
+  /* Rows: a soft white pill when active (white text 14:1), fainter on hover. */
+  --sidebar-active: rgb(255 255 255 / 0.09);
+  --sidebar-hover: rgb(255 255 255 / 0.05);
+  /* The active row's icon carries the brand (7.2:1 on navy). */
+  --sidebar-active-icon: #a5a6fb;
+  --sidebar-active-foreground: #ffffff;
+  /* Light: the navy meets the page on its own. Dark: same shade as the page, so a hairline. */
+  --sidebar-edge: transparent;
+  /* Active bottom tab (board ExecutiveHomeMobile): 7:1 on white. */
+  --nav-active: #4546c9;
   /* The sign-in brand panel is a shade deeper than the sidebar in dark mode. */
   --auth-panel: #121a3f;
   /* Brand panel atmosphere: the logo's violet and cyan as faint light, and a hairline grid. */
@@ -138,9 +162,23 @@
 
   --selected: #262b63;
   --selected-foreground: #c7c8ff;
+  --highlight: #1e2350;
+  --surface-grid-line: rgb(255 255 255 / 0.04);
+  --surface-glow: rgb(138 139 252 / 0.18);
+  --lift-shadow: rgb(0 0 0 / 0.5);
+  --tile-from: rgb(108 99 245 / 0.22);
+  --tile-to: rgb(76 201 240 / 0.16);
+  --tile-icon: #a5a6fb;
   --selected-border: #8a8bfc;
 
+  /*
+   * DESIGN-NOTES keeps the dark sidebar at the page shade (#0B0E1F); the dark board draws it a
+   * touch deeper (#080B1A). Both pass AA for every sidebar text pair (5.5 to 14.5:1), so the
+   * notes value stands and a hairline marks the edge instead.
+   */
   --sidebar: #0b0e1f;
+  --sidebar-edge: #262b4a;
+  --nav-active: #a5a6fb;
   --auth-panel: #080b1a;
   /* The deeper dark panel needs a touch less light to stay calm. */
   --auth-glow-violet: rgb(108 99 245 / 0.18);
@@ -204,6 +242,12 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-selected: var(--selected);
+  --color-highlight: var(--highlight);
+  --color-surface-glow: var(--surface-glow);
+  --shadow-lift: 0 12px 28px -12px var(--lift-shadow);
+  --color-tile-from: var(--tile-from);
+  --color-tile-to: var(--tile-to);
+  --color-tile-icon: var(--tile-icon);
   --color-selected-foreground: var(--selected-foreground);
   --color-selected-border: var(--selected-border);
   --color-sidebar: var(--sidebar);
@@ -211,6 +255,14 @@
   --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
   --color-sidebar-faint-foreground: var(--sidebar-faint-foreground);
   --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-icon: var(--sidebar-active-icon);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-sidebar-edge: var(--sidebar-edge);
+  --color-nav-active: var(--nav-active);
   --color-auth-panel: var(--auth-panel);
   --color-auth-hairline: var(--auth-hairline);
   --color-auth-panel-muted: var(--auth-panel-muted);
@@ -242,6 +294,32 @@
   --color-status-slate-border: var(--status-slate-border);
 }
 
+/*
+ * App shell geometry. The script in index.html sets data-sidebar="collapsed" before first paint,
+ * so the sidebar and the content beside it start at their final width (no layout shift).
+ */
+:root {
+  /*
+   * The open width is the person's choice: dragged between 220 and 320px, 256 by default
+   * (owner's decision). The script in index.html sets --sidebar-open-width before first paint.
+   */
+  --sidebar-open-width: 256px;
+  --sidebar-width: var(--sidebar-open-width);
+  --topbar-height: 60px;
+}
+:root[data-sidebar="collapsed"] {
+  --sidebar-width: 64px;
+}
+/* While dragging the sidebar edge: follow the pointer exactly, and don't select text. */
+:root[data-sidebar-resizing] {
+  cursor: col-resize;
+  user-select: none;
+}
+:root[data-sidebar-resizing] * {
+  /* biome-ignore lint/complexity/noImportantStyles: a drag must not lag behind width transitions */
+  transition: none !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -254,6 +332,10 @@
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
+  }
+  /* Page titles take focus after navigation so screen readers announce them; no ring for that. */
+  h1[tabindex="-1"]:focus {
+    outline: none;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -419,4 +501,40 @@
     linear-gradient(to bottom, var(--auth-grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(70% 60% at 40% 45%, black, transparent 80%);
+}
+
+/* The first tab stop on every signed-in page; visible only when focused. */
+@utility skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  &:focus-visible {
+    transform: none;
+  }
+}
+
+/* Room for the phone's home indicator under the bottom tabs and sheets. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* A hairline grid that fades towards the edges, for light and dark surfaces (Coming soon). */
+@utility surface-grid {
+  background-image:
+    linear-gradient(to right, var(--surface-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--surface-grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(60% 70% at 50% 35%, black, transparent 75%);
+}
+
+/* A soft brand glow behind a focal element. */
+@utility surface-glow {
+  background-image: radial-gradient(closest-side, var(--surface-glow), transparent);
+}
+
+/* The module icon tile: the logo's violet into its cyan. */
+@utility tile-gradient {
+  background-image: linear-gradient(135deg, var(--tile-from), var(--tile-to));
 }

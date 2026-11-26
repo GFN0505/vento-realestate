@@ -7,6 +7,10 @@
  *   tsx src/test/e2e-fixtures.ts invitation [status]    Finance invitation (pending|expired|withdrawn)
  *   tsx src/test/e2e-fixtures.ts reset-by-admin         member whose two-step an admin just reset
  *   tsx src/test/e2e-fixtures.ts age-session <email>    makes that person's sessions 40 minutes idle
+ *   tsx src/test/e2e-fixtures.ts team                   organization, three entities, one member per role
+ *   tsx src/test/e2e-fixtures.ts multi-org              Tunde in two organizations, plus one whose second role needs two-step
+ *   tsx src/test/e2e-fixtures.ts set-role <email> <role>  changes that person's role in their current organization
+ *   tsx src/test/e2e-fixtures.ts remove-member <email>  removes that person from their current organization (ends those sessions)
  *
  * Prints one JSON line. Emails are unique per run, so specs never share or collide with seed data.
  */
@@ -143,8 +147,202 @@ async function ageSession(email: string | undefined) {
   return { aged: aged.length }
 }
 
+type Db = typeof import('@/db/client')['db']
+type SystemRoleKey = import('@vento/shared').SystemRoleKey
+
+const TEAM: { role: SystemRoleKey; name: string }[] = [
+  { role: 'owner', name: 'Olumide Bankole' },
+  { role: 'admin', name: 'Ngozi Adeyemi' },
+  { role: 'land_legal', name: 'Chidi Okafor' },
+  { role: 'project_manager', name: 'Emeka Obi' },
+  { role: 'sales', name: 'Grace Umeh' },
+  { role: 'finance', name: 'Aisha Bello' },
+  { role: 'hr', name: 'Funke Adebayo' },
+  { role: 'facility', name: 'Kunle Balogun' },
+  { role: 'viewer', name: 'Yusuf Ibrahim' },
+]
+
+/** A user who can sign in with TEST_PASSWORD. */
+async function passwordUser(db: Db, name: string, emailPrefix: string) {
+  const { createUser, TEST_PASSWORD } = await import('./factories')
+  const { uniqueEmail } = await import('./db')
+  return createUser(db, { name, email: uniqueEmail(emailPrefix), password: TEST_PASSWORD })
+}
+
+/** Signs in through Better Auth and turns two-step on; returns the authenticator secret. */
+async function turnOnTwoStep(email: string): Promise<string> {
+  const { testApp, browser } = await import('./auth-client')
+  const { setUpTwoStep, signIn } = await import('./flows')
+  const b = browser(testApp().app)
+  const res = await signIn(b, email)
+  if (res.status !== 200) throw new Error(`sign-in failed for ${email}`)
+  const { totpURI } = await setUpTwoStep(b)
+  return new URL(totpURI).searchParams.get('secret') ?? ''
+}
+
+/** Makes `organizationId` where the person lands at their next sign-in. */
+async function defaultOrganization(db: Db, userId: string, organizationId: string) {
+  const { users } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  await db
+    .update(users)
+    .set({ lastActiveOrganizationId: organizationId })
+    .where(eq(users.id, userId))
+}
+
+/**
+ * "Vento Homes" with a holding company and two SPVs, and one member per built-in role.
+ * Kunle (facility) is limited to Parkview. Roles that need two-step have it on, with the secret.
+ */
+async function createTeam() {
+  const { db } = await import('@/db/client')
+  const { DEFAULT_ROLES } = await import('@vento/shared')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.owner')
+  const org = await createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  const holding = await createEntity(db, org, {
+    name: `Vento Homes ${suffix} Ltd`,
+    type: 'holding',
+  })
+  const parkview = await createEntity(db, org, { name: 'Parkview Residences SPV Ltd' })
+  const lekki = await createEntity(db, org, { name: 'Lekki Gardens SPV Ltd' })
+
+  const members: Record<string, { email: string; name: string; totpSecret?: string }> = {}
+  for (const { role, name } of TEAM) {
+    const user =
+      role === 'owner' ? owner : await passwordUser(db, name, `e2e.${role.replace('_', '.')}`)
+    if (role !== 'owner') {
+      await addMember(db, org, {
+        role,
+        user,
+        ...(role === 'facility' && { entityIds: [parkview.id] }),
+      })
+    }
+    const needsTwoStep = DEFAULT_ROLES.find((r) => r.key === role)?.requiresTwoStep
+    const totpSecret = needsTwoStep ? await turnOnTwoStep(user.email) : undefined
+    members[role] = { email: user.email, name, ...(totpSecret && { totpSecret }) }
+  }
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: TEST_PASSWORD,
+    entities: {
+      holding: { id: holding.id, name: holding.name },
+      parkview: { id: parkview.id, name: parkview.name },
+      lekki: { id: lekki.id, name: lekki.name },
+    },
+    members,
+  }
+}
+
+/**
+ * Tunde: finance in A (two-step on) and owner in B; lands in A. Zainab: viewer in A and finance
+ * in B, without two-step, so switching to B sends her to two-step setup.
+ */
+async function createMultiOrg() {
+  const { db } = await import('@/db/client')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+
+  const suffix = Date.now().toString(36)
+  const a = await createOrganization(db, { name: `Vento Homes ${suffix}` })
+  await createEntity(db, a, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const b = await createOrganization(db, { name: `Lekki Partners ${suffix}` })
+  await createEntity(db, b, { name: `Lekki Partners ${suffix} Ltd`, type: 'holding' })
+
+  const tunde = await passwordUser(db, 'Tunde Ola', 'e2e.tunde')
+  await addMember(db, a, { role: 'finance', user: tunde })
+  await addMember(db, b, { role: 'owner', user: tunde })
+  const totpSecret = await turnOnTwoStep(tunde.email)
+  await defaultOrganization(db, tunde.id, a.id)
+
+  const zainab = await passwordUser(db, 'Zainab Musa', 'e2e.zainab')
+  await addMember(db, a, { role: 'viewer', user: zainab })
+  await addMember(db, b, { role: 'finance', user: zainab })
+  await defaultOrganization(db, zainab.id, a.id)
+
+  return {
+    password: TEST_PASSWORD,
+    organizations: { a: { id: a.id, name: a.name }, b: { id: b.id, name: b.name } },
+    tunde: { email: tunde.email, name: tunde.name, totpSecret },
+    pendingTwoStep: { email: zainab.email, name: zainab.name },
+  }
+}
+
+/** The person's current membership and an owner of the same organization to act for them. */
+async function membershipAndActor(email: string | undefined) {
+  if (!email) throw new Error('needs an email')
+  const { db } = await import('@/db/client')
+  const { loadMembership } = await import('@/access/context')
+  const { members, roles, users } = await import('@/db/schema')
+  const { and, eq, ne } = await import('drizzle-orm')
+  const { contextFor } = await import('./factories')
+
+  const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()))
+  if (!user) throw new Error(`no user ${email}`)
+  const membership = await loadMembership(db, user.id, user.lastActiveOrganizationId)
+  if (!membership) throw new Error(`${email} has no organization`)
+  const [owner] = await db
+    .select({ user: users })
+    .from(members)
+    .innerJoin(users, eq(users.id, members.userId))
+    .innerJoin(roles, eq(roles.id, members.roleId))
+    .where(
+      and(
+        eq(members.organizationId, membership.organizationId),
+        eq(members.status, 'active'),
+        eq(roles.key, 'owner'),
+        ne(members.userId, user.id),
+      ),
+    )
+    .limit(1)
+  if (!owner) throw new Error('no other owner to act')
+  const ctx = await contextFor(db, owner.user, { id: membership.organizationId })
+  return { db, membership, ctx }
+}
+
+/** Changes the role the way an owner would (audited), keeping the entity limits. */
+async function setRole(email: string | undefined, role: string | undefined) {
+  const { systemRoleKey } = await import('@vento/shared')
+  const key = systemRoleKey.parse(role)
+  const { db, membership, ctx } = await membershipAndActor(email)
+  const { roles } = await import('@/db/schema')
+  const { and, eq } = await import('drizzle-orm')
+  const { updateMemberAccess } = await import('@/modules/members/members.service')
+  const [target] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(and(eq(roles.organizationId, membership.organizationId), eq(roles.key, key)))
+  if (!target) throw new Error(`no role ${key}`)
+  await updateMemberAccess(ctx, {
+    memberId: membership.member.id,
+    roleId: target.id,
+    entityIds: membership.member.entityIds,
+  })
+  return { email, role: key, organizationName: membership.organizationName }
+}
+
+/** Removes the person the way an owner would: their sessions in that organization end. */
+async function removeMemberFixture(email: string | undefined) {
+  const { membership, ctx } = await membershipAndActor(email)
+  const { removeMember } = await import('@/modules/members/members.service')
+  await removeMember(ctx, membership.member.id)
+  return { email, organizationName: membership.organizationName }
+}
+
 async function main() {
-  const [name, arg] = process.argv.slice(2)
+  const [name, arg, arg2] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
     member: createMember,
     unverified: createUnverified,
@@ -152,6 +350,10 @@ async function main() {
     invitation: () => createInvitationFixture(arg),
     'reset-by-admin': createResetByAdmin,
     'age-session': () => ageSession(arg),
+    team: createTeam,
+    'multi-org': createMultiOrg,
+    'set-role': () => setRole(arg, arg2),
+    'remove-member': () => removeMemberFixture(arg),
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)
