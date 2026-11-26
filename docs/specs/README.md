@@ -11,5 +11,6 @@ A spec links to the journeys it adds or changes (`docs/journeys/`), the screens 
 | [Feature flags and plan entitlements](feature-flags.md) | Platform | J-ADM-01, J-ADM-02, J-ONB-05, J-AI-04 | shipped (PR #4) |
 | [Team (brick 3b)](team.md) | Platform | J-ONB-02, J-ONB-06, J-ONB-01 | shipped (PR #5) |
 | [Roles and organization (brick 3c)](roles-and-organization.md) | Platform | J-ONB-07, J-ONB-08, J-ONB-01, J-ONB-05 | shipped (PR #7) |
+| [My security and passkeys (brick 3d)](my-security.md) | Platform | J-ONB-04, J-ONB-09, J-ONB-10, J-ONB-06 | draft |
 
 Status: `draft` · `approved` (owner agreed, ready to plan) · `in build` · `shipped` · `dropped`
