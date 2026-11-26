@@ -157,7 +157,7 @@ function TurnOffForm({ onClose, onBusy }: { onClose: () => void; onBusy: (b: boo
                 setCode('')
                 setErrors({ ...errors, code: undefined })
               }}
-              className="rounded-sm text-link text-xs outline-hidden hover:text-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:-my-3.5 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+              className="rounded-sm text-link text-xs outline-hidden hover:text-link-hover hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:-my-3.5 max-md:inline-flex max-md:min-h-11 max-md:items-center"
             >
               {backup ? 'Use your authenticator app' : 'Use a backup code'}
             </button>

@@ -17,6 +17,11 @@ type Props<T extends PasswordValues> = {
   onPasswordChange?: () => void
   /** Lets password managers save the new password against this account. */
   username?: string
+  /**
+   * Show the rules from the start, unticked (a dialog: nothing jumps when typing begins), at the
+   * roomier 13px size.
+   */
+  alwaysShowRules?: boolean
 }
 
 export const PASSWORDS_DONT_MATCH = "Passwords don't match"
@@ -35,6 +40,7 @@ export function NewPasswordFields<T extends PasswordValues>({
   serverIssues,
   onPasswordChange,
   username,
+  alwaysShowRules = false,
 }: Props<T>) {
   // React Hook Form can't resolve field paths on a generic form; T always has both fields.
   const form = anyForm as unknown as UseFormReturn<PasswordValues>
@@ -47,7 +53,7 @@ export function NewPasswordFields<T extends PasswordValues>({
   // One toggle shows or hides both fields, so they can compare what they typed.
   const [visible, setVisible] = useState(false)
   const toggle = { visible, onVisibleChange: setVisible, toggleNoun: 'passwords' as const }
-  const showRules = typed || !!errors.password || serverRefused
+  const showRules = alwaysShowRules || typed || !!errors.password || serverRefused
   const rulesId = `${ids.password}-rules`
   const recheckConfirm = () => {
     if (form.getFieldState('confirm').error) void form.trigger('confirm')
@@ -78,7 +84,7 @@ export function NewPasswordFields<T extends PasswordValues>({
         )}
         {showRules && (
           // Grows downwards from zero height, so nothing above it moves.
-          <div className="grid motion-safe:animate-reveal-down">
+          <div className={alwaysShowRules ? 'grid' : 'grid motion-safe:animate-reveal-down'}>
             <div className="min-h-0 overflow-hidden">
               <PasswordRules
                 id={rulesId}
@@ -86,6 +92,7 @@ export function NewPasswordFields<T extends PasswordValues>({
                 serverIssues={serverIssues}
                 showReuseRule={showReuseRule}
                 showUnmetAsFailed={!!errors.password}
+                size={alwaysShowRules ? 'roomy' : 'default'}
               />
             </div>
           </div>

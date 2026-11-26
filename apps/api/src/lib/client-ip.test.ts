@@ -24,8 +24,30 @@ describe('maskIp', () => {
     expect(maskIp('102.89.34.17')).toBe('102.89.34.x')
   })
 
-  it('keeps the /48 prefix of IPv6', () => {
-    expect(maskIp('2c0f:f5c0:abcd:1234::1')).toBe('2c0f:f5c0:abcd::/48')
+  it('keeps the first two groups of IPv6', () => {
+    expect(maskIp('2c0f:f5c0:abcd:1234::1')).toBe('2c0f:f5c0:••••')
+    expect(maskIp('2A02:8109:1:2:3:4:5:6')).toBe('2a02:8109:••••')
+  })
+
+  it('drops loopback, private and link-local addresses', () => {
+    for (const ip of [
+      '::1',
+      '::',
+      '127.0.0.1',
+      '10.1.2.3',
+      '172.20.0.5',
+      '192.168.1.9',
+      '169.254.0.1',
+      '100.64.0.1',
+      'fd12:3456::1',
+      'fe80::1',
+    ]) {
+      expect(maskIp(ip)).toBeNull()
+    }
+  })
+
+  it('never shows an all-zero IPv6 prefix', () => {
+    expect(maskIp('0:0:0:0:0:0:0:1')).toBeNull()
   })
 
   it('returns null for missing or invalid input', () => {

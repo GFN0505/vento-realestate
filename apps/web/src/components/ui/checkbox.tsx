@@ -9,7 +9,7 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
       data-slot="checkbox"
       className={cn(
         'peer size-[18px] shrink-0 rounded-[5px] border-[1.5px] border-control-border bg-card outline-hidden transition-colors',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         'data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
         'disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive',
         className,

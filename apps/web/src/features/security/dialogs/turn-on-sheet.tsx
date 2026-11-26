@@ -136,7 +136,7 @@ function Flow({ cleared, onStage, onClose, email, required }: FlowProps & { clea
               twoStepSetupUi.close()
               void actions.signOut()
             }}
-            className="rounded-sm font-semibold text-link outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:inline-flex max-md:min-h-11 max-md:items-center"
+            className="rounded-sm font-semibold text-link outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:inline-flex max-md:min-h-11 max-md:items-center"
           >
             Sign out
           </button>

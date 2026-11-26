@@ -80,14 +80,14 @@ export function NameField({ name }: { name: string }) {
             type="button"
             onClick={start}
             aria-label={`${name}. Edit your name`}
-            className="group -mx-2 inline-flex min-h-10 max-w-full items-center gap-2 rounded-md px-2 text-left outline-hidden transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+            className="group -mx-2 inline-flex min-h-10 max-w-full items-center gap-2 rounded-md px-2 text-left outline-hidden transition-colors hover:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
           >
             <span className="truncate font-heading font-semibold text-lg tracking-[-0.01em]">
               {name}
             </span>
             <PencilIcon
               aria-hidden
-              className="size-3.5 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:opacity-60"
             />
           </button>
         </TooltipTrigger>

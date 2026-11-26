@@ -170,7 +170,7 @@ export function EntityScopeLine({
       <button
         type="button"
         onClick={onAllEntities}
-        className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+        className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
       >
         Show all companies
       </button>

@@ -19,7 +19,7 @@ export type RoleActions = {
 }
 
 const trigger =
-  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground max-md:size-11'
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground max-md:size-11'
 
 /**
  * Delete for a custom role nobody holds. Held: shown disabled with who to move first, and a link

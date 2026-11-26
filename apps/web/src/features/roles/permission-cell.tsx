@@ -67,7 +67,7 @@ export function PermissionCell({
             aria-label={name}
             aria-describedby={CEILING_REASON_ID}
             data-cell={cellId(module, action)}
-            className="inline-flex size-5 cursor-not-allowed items-center justify-center rounded-[5px] border border-dashed border-control-border bg-muted text-muted-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex size-5 cursor-not-allowed items-center justify-center rounded-[5px] border border-dashed border-control-border bg-muted text-muted-foreground outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <LockIcon aria-hidden className="size-2.5" strokeWidth={2.5} />
           </span>

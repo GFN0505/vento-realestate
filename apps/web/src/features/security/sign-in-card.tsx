@@ -20,6 +20,7 @@ export function SignInCard({ data }: { data: SecurityOverview }) {
     <SecuritySection title="Sign-in">
       <SecurityRow
         icon={KeyRoundIcon}
+        inlineAction
         label="Password"
         action={
           <Button
@@ -38,6 +39,7 @@ export function SignInCard({ data }: { data: SecurityOverview }) {
 
       <SecurityRow
         icon={SmartphoneIcon}
+        inlineAction
         tone={twoStep.enabled ? 'emerald' : 'neutral'}
         label="Two-step sign-in"
         badge={
@@ -74,6 +76,7 @@ export function SignInCard({ data }: { data: SecurityOverview }) {
       {codes && (
         <SecurityRow
           icon={ListOrderedIcon}
+          inlineAction
           tone={codes.low ? 'amber' : 'neutral'}
           label="Backup codes"
           action={

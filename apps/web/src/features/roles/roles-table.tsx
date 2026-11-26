@@ -90,7 +90,7 @@ function RoleRow({
             <Link
               to="/settings/roles/$roleId"
               params={{ roleId: role.id }}
-              className="truncate rounded-sm font-semibold outline-hidden after:absolute after:inset-0 hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="truncate rounded-sm font-semibold outline-hidden after:absolute after:inset-0 hover:underline hover:underline-offset-4 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {role.name}
             </Link>
@@ -105,7 +105,7 @@ function RoleRow({
         <Link
           to="/settings/team"
           search={{ role: role.id }}
-          className="relative z-1 rounded-sm text-foreground underline decoration-border underline-offset-4 outline-hidden hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          className="relative z-1 rounded-sm text-foreground underline decoration-border underline-offset-4 outline-hidden hover:decoration-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
         >
           {peopleLine(role)}
         </Link>
@@ -117,7 +117,7 @@ function RoleRow({
               <span
                 // biome-ignore lint/a11y/noNoninteractiveTabindex: the tooltip says why.
                 tabIndex={0}
-                className="relative z-1 rounded-sm text-foreground underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-2 focus-visible:outline-ring"
+                className="relative z-1 rounded-sm text-foreground underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
               >
                 Required
               </span>
@@ -186,7 +186,7 @@ function RoleCardList({
             <Link
               to="/settings/roles/$roleId"
               params={{ roleId: role.id }}
-              className="flex min-h-[72px] items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex min-h-[72px] items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-center gap-2">

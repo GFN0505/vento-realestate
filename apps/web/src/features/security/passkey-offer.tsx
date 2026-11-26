@@ -65,16 +65,24 @@ export function PasskeyOffer() {
         <DialogBody className="items-center gap-4 py-6 text-center max-md:flex-1 max-md:justify-center">
           <span
             aria-hidden
-            className="flex size-14 items-center justify-center rounded-2xl bg-selected text-selected-foreground ring-8 ring-highlight"
+            className="flex size-14 items-center justify-center rounded-2xl bg-selected text-selected-foreground ring-8 ring-highlight dark:ring-0"
           >
             <FingerprintIcon className="size-7" strokeWidth={1.6} />
           </span>
           <p className="max-w-xs text-[13.5px] text-muted-foreground leading-relaxed">
             Use Face ID or your fingerprint instead of a password and code on this device.
           </p>
+          <p className="text-muted-foreground text-xs">
+            Only add a passkey on a device that's yours.
+          </p>
         </DialogBody>
         <DialogFooter className={dialogFooterClass}>
-          <Button variant="ghost" disabled={passkeys.pending} onClick={answer}>
+          <Button
+            variant="ghost"
+            disabled={passkeys.pending}
+            onClick={answer}
+            className="font-medium text-muted-foreground hover:text-foreground"
+          >
             Not now
           </Button>
           <Button

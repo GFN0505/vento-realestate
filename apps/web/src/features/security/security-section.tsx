@@ -26,7 +26,10 @@ export function SecuritySection({
     <section
       id={id}
       aria-labelledby={titleId}
-      className={cn('scroll-mt-24 overflow-hidden rounded-[12px] border bg-card', className)}
+      className={cn(
+        'scroll-mt-24 overflow-hidden rounded-[12px] border border-card-border bg-card',
+        className,
+      )}
     >
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-5 pt-4 pb-3.5 sm:px-6">
         <div className="min-w-0">

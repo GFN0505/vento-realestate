@@ -122,7 +122,7 @@ function ApproveHeader() {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-sm font-semibold uppercase tracking-[0.04em] underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-2 focus-visible:outline-ring"
+          className="inline-flex items-center gap-1 rounded-sm font-semibold uppercase tracking-[0.04em] underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
         >
           Approve
           <span className="sr-only">: {APPROVE_TOOLTIP}</span>
@@ -140,7 +140,7 @@ function SettingsCovers() {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="mt-0.5 inline-flex items-center gap-1 rounded-sm text-link text-xs outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+          className="mt-0.5 inline-flex items-center gap-1 rounded-sm text-link text-xs outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
         >
           <InfoIcon aria-hidden className="size-3" />
           What this covers

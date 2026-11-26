@@ -68,7 +68,7 @@ export function CompaniesTable({ rows, onOpen, menu }: Props) {
                     type="button"
                     data-company-row={company.id}
                     onClick={() => onOpen(company)}
-                    className="truncate rounded-sm text-left font-semibold outline-hidden hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="truncate rounded-sm text-left font-semibold outline-hidden hover:underline hover:underline-offset-4 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     title={company.name}
                   >
                     {company.name}

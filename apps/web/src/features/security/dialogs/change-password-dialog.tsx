@@ -134,6 +134,7 @@ function ChangePasswordForm({
           form={form}
           label="New password"
           showReuseRule
+          alwaysShowRules
           serverIssues={issues}
           onPasswordChange={() => ruleFailed && setServerError(null)}
         />

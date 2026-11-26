@@ -29,7 +29,7 @@ export function SettingsMobileList({ sections }: { sections: readonly SettingsSe
           >
             <Link
               to={section.to}
-              className="flex min-h-14 items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex min-h-14 items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="font-semibold text-sm">{section.label}</span>

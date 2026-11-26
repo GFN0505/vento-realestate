@@ -50,10 +50,10 @@ export function PasskeysCard({ data, adding, onAdd, addRef }: Props) {
       action={items.length > 0 && add(false)}
     >
       {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 px-5 py-8 text-center sm:px-6">
+        <div className="flex flex-col items-center gap-3 px-5 py-8 text-center max-sm:gap-4 sm:px-6">
           <span
             aria-hidden
-            className="relative flex size-14 items-center justify-center rounded-2xl bg-selected text-selected-foreground ring-8 ring-highlight"
+            className="relative flex size-14 items-center justify-center rounded-2xl bg-selected text-selected-foreground ring-8 ring-highlight dark:ring-0"
           >
             <FingerprintIcon className="size-7" strokeWidth={1.6} />
           </span>

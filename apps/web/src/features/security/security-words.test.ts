@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   backupCodesWords,
+  displayIp,
   lastActiveWords,
   orderSessions,
   passkeyUseWords,
+  signedInWords,
   thisDeviceKind,
   whereWords,
 } from './security-words'
@@ -32,6 +34,17 @@ describe('My security words', () => {
     )
     expect(whereWords({ place: null, ipMasked: '102.89.34.x' })).toBe('IP 102.89.34.x')
     expect(whereWords({ place: null, ipMasked: null })).toBeNull()
+  })
+
+  it('shows IPv6 by its first two groups and never an all-zero address', () => {
+    expect(displayIp('2a02:8109:••••')).toBe('2a02:8109:••••')
+    expect(displayIp('2a02:8109:abcd::/48')).toBe('2a02:8109:••••')
+    expect(displayIp('0:0:0::/48')).toBeNull()
+    expect(whereWords({ place: null, ipMasked: '0:0:0::/48' })).toBeNull()
+  })
+
+  it('says when a session signed in, in Lagos time', () => {
+    expect(signedInWords('2026-11-26T13:20:00Z')).toBe('Signed in 26 Nov, 14:20')
   })
 
   it('lists this device first, then the most recently active', () => {

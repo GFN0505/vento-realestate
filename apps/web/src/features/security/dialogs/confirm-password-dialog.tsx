@@ -1,13 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import type { SecurityOverview } from '@vento/shared'
-import { LoaderCircleIcon } from 'lucide-react'
 import { type FormEvent, useId, useState } from 'react'
 import { FormAlert } from '@/components/auth/form-alert'
 import { PasswordInput } from '@/components/auth/password-input'
 import { Button } from '@/components/ui/button'
 import { DialogBody, DialogFooter } from '@/components/ui/dialog'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
+import { PendingLabel } from '@/components/ui/pending-label'
 import { securityQuery } from '@/features/settings/security-queries'
 import { apiErrorMessage, errorReason, isHandledElsewhere } from '@/lib/api-errors'
 import { client } from '@/lib/orpc'
@@ -114,9 +114,13 @@ function ConfirmForm({ onBusy }: { onBusy: (busy: boolean) => void }) {
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
-          {pending && <LoaderCircleIcon aria-hidden className="animate-spin" />}
-          Continue
+        <Button
+          type="submit"
+          disabled={pending}
+          aria-busy={pending || undefined}
+          className="relative"
+        >
+          <PendingLabel pending={pending}>Continue</PendingLabel>
         </Button>
       </DialogFooter>
     </form>

@@ -3,6 +3,7 @@ import { CodeInput } from '@/components/auth/code-input'
 import { PasswordInput } from '@/components/auth/password-input'
 import { Button } from '@/components/ui/button'
 import { FieldError, FieldLabel } from '@/components/ui/field'
+import { PendingLabel } from '@/components/ui/pending-label'
 import { hasFinePointer } from '@/lib/pointer'
 import { SetupStep, SetupSteps } from './setup-steps'
 import { formatTotpSecret, type useTwoStepSetup } from './use-two-step-setup'
@@ -64,8 +65,13 @@ function PasswordStep({ setup }: { setup: Setup }) {
             autoFocus={hasFinePointer()}
           />
         </div>
-        <Button type="submit" disabled={setup.pending} className="h-12 md:h-10">
-          {setup.pending ? 'Checking…' : 'Continue'}
+        <Button
+          type="submit"
+          disabled={setup.pending}
+          aria-busy={setup.pending || undefined}
+          className="relative h-12 md:h-10"
+        >
+          <PendingLabel pending={setup.pending}>Continue</PendingLabel>
         </Button>
       </div>
       <FieldError id={`${id}-error`} role="alert">
@@ -123,9 +129,10 @@ function VerifyStep({ setup }: { setup: Setup }) {
         type="submit"
         size="lg"
         disabled={setup.pending || setup.locked}
-        className="sm:self-start"
+        aria-busy={setup.pending || undefined}
+        className="relative sm:self-start"
       >
-        {setup.pending ? 'Checking…' : 'Verify and turn on'}
+        <PendingLabel pending={setup.pending}>Verify and turn on</PendingLabel>
       </Button>
     </form>
   )

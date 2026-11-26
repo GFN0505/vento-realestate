@@ -24,7 +24,7 @@ export function SecurityCard() {
   const query = useQuery(organizationSecurityQuery())
   if (query.data) return <LoadedSecurityCard security={query.data} />
   return (
-    <section aria-label="Security" className="rounded-[12px] border bg-card">
+    <section aria-label="Security" className="rounded-[12px] border border-card-border bg-card">
       <header className="border-b px-5 py-4 sm:px-6">
         <h2 className="font-heading font-semibold text-[15px] tracking-[-0.01em]">Security</h2>
       </header>
@@ -89,7 +89,10 @@ function LoadedSecurityCard({ security }: { security: OrganizationSecurity }) {
   )
 
   return (
-    <section aria-labelledby={ids.label} className="rounded-[12px] border bg-card">
+    <section
+      aria-labelledby={ids.label}
+      className="rounded-[12px] border border-card-border bg-card"
+    >
       <header className="border-b px-5 py-4 sm:px-6">
         <h2 className="font-heading font-semibold text-[15px] tracking-[-0.01em]">Security</h2>
       </header>

@@ -26,6 +26,8 @@ type Props = {
   /** After a submit, rules still unmet turn rose instead of staying grey. */
   showUnmetAsFailed?: boolean
   id?: string
+  /** `roomy`: 13px rules and 16px ticks, for a dialog where the list is always shown. */
+  size?: 'default' | 'roomy'
 }
 
 /** Live checklist under a password field (DSAdditions → Password rules), two columns from md. */
@@ -35,7 +37,9 @@ export function PasswordRules({
   showReuseRule = false,
   showUnmetAsFailed = false,
   id,
+  size = 'default',
 }: Props) {
+  const roomy = size === 'roomy'
   const checks = checkPasswordLocally(password)
   const unmet: RuleState = showUnmetAsFailed ? 'failed' : 'pending'
   const rules: { label: string; state: RuleState }[] = PASSWORD_RULE_KEYS.map((key) => ({
@@ -50,7 +54,13 @@ export function PasswordRules({
   }
 
   return (
-    <ul id={id} className="grid gap-x-4 gap-y-1 text-xs md:grid-cols-2">
+    <ul
+      id={id}
+      className={cn(
+        'grid gap-x-4 md:grid-cols-2',
+        roomy ? 'gap-y-1.5 text-[13px]' : 'gap-y-1 text-xs',
+      )}
+    >
       {rules.map((rule) => (
         <li
           key={rule.label}
@@ -58,11 +68,11 @@ export function PasswordRules({
           className={cn(
             'flex items-center gap-1.5',
             rule.state === 'met' && 'text-status-emerald-fg',
-            rule.state === 'pending' && 'text-muted-foreground',
+            rule.state === 'pending' && (roomy ? 'text-foreground/70' : 'text-muted-foreground'),
             rule.state === 'failed' && 'text-destructive',
           )}
         >
-          <RuleIcon state={rule.state} />
+          <RuleIcon state={rule.state} roomy={roomy} />
           <span className="sr-only">{STATUS_TEXT[rule.state]}</span>
           {rule.label}
         </li>
@@ -77,8 +87,9 @@ const STATUS_TEXT: Record<RuleState, string> = {
   failed: 'Not met:',
 }
 
-function RuleIcon({ state }: { state: RuleState }) {
-  if (state === 'met') return <CheckIcon className="size-3.5" strokeWidth={2.5} aria-hidden />
-  if (state === 'failed') return <XIcon className="size-3.5" strokeWidth={2.5} aria-hidden />
-  return <CircleIcon className="size-3" strokeWidth={2} aria-hidden />
+function RuleIcon({ state, roomy }: { state: RuleState; roomy: boolean }) {
+  const tick = roomy ? 'size-4' : 'size-3.5'
+  if (state === 'met') return <CheckIcon className={tick} strokeWidth={2.5} aria-hidden />
+  if (state === 'failed') return <XIcon className={tick} strokeWidth={2.5} aria-hidden />
+  return <CircleIcon className={roomy ? 'size-3.5' : 'size-3'} strokeWidth={2} aria-hidden />
 }

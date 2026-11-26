@@ -33,7 +33,7 @@ export function TwoStepField({ checked, locked, onChange, requiredForEveryone = 
               Required for everyone in {requiredForEveryone}. Change this on{' '}
               <Link
                 to="/settings/organization"
-                className="rounded-sm font-medium text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                className="rounded-sm font-medium text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
               >
                 Organization
               </Link>

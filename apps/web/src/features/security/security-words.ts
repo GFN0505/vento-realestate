@@ -48,10 +48,41 @@ export function deviceWords(session: Pick<SessionItem, 'browser' | 'device'>): s
   return `${session.browser} on ${session.device}`
 }
 
+/**
+ * The stored address as shown: IPv4 as stored ("102.89.34.x"), IPv6 as its first two groups
+ * ("2a02:8109:••••"). Older sessions stored IPv6 as "a:b:c::/48"; an all-zero one (loopback)
+ * is left out, never shown as "0:0:0".
+ */
+export function displayIp(masked: string | null): string | null {
+  if (!masked) return null
+  const legacy = /^([0-9a-f]+):([0-9a-f]+):[0-9a-f]+::\/48$/i.exec(masked)
+  if (!legacy) return masked
+  const [, a = '0', b = '0'] = legacy
+  return /^0+$/.test(a) ? null : `${a}:${b}:••••`
+}
+
 /** "Lekki, Lagos · IP 102.89.34.x"; either part left out when unknown. */
 export function whereWords(session: Pick<SessionItem, 'place' | 'ipMasked'>): string | null {
-  const parts = [session.place, session.ipMasked && `IP ${session.ipMasked}`].filter(Boolean)
+  const ip = displayIp(session.ipMasked)
+  const parts = [session.place, ip && `IP ${ip}`].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : null
+}
+
+const signedInFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Africa/Lagos',
+})
+
+/** "Signed in 26 Nov, 14:20" (Lagos time): tells apart two sessions on the same browser. */
+export function signedInWords(createdAt: string): string {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = Object.fromEntries(signedInFormat.formatToParts(date).map((p) => [p.type, p.value]))
+  return `Signed in ${parts.day} ${parts.month}, ${parts.hour}:${parts.minute}`
 }
 
 /** This device first, then the most recently active. */

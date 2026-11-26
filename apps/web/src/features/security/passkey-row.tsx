@@ -25,7 +25,7 @@ import { SecurityRow } from './security-section'
 import { passkeyUseWords } from './security-words'
 
 const menuTrigger =
-  'inline-flex size-9 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground max-sm:size-11'
+  'inline-flex size-9 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground max-sm:size-11'
 
 /** One passkey: its name (renamed in place), when it was added and last used, and ⋯. */
 export function PasskeyRow({ passkey }: { passkey: PasskeyItem }) {
