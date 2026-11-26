@@ -1,6 +1,6 @@
 # Feature flags and plan entitlements
 
-- **Status:** approved (26 Nov 2026); see [Owner's decisions](#owners-decisions-26-nov-2026)
+- **Status:** approved (26 Nov 2026), built on branch `brick/03-feature-flags`, waiting for the owner's review; see [Owner's decisions](#owners-decisions-26-nov-2026)
 - **Module:** Platform
 - **Journeys:** J-ADM-01 and J-ADM-02 (new), J-ONB-05 (step 2 and watch-for changed), J-AI-04 (an add-on appears only once it's available to the organization)
 - **Screens:** see [Screens this spec touches](#screens-this-spec-touches)

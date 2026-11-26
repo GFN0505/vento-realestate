@@ -83,3 +83,45 @@ export const setRole = (email: string, role: string) =>
 
 /** Removes the person from their current organization, ending their sessions there. */
 export const removeMember = (email: string) => runFixture<{ email: string }>('remove-member', email)
+
+export type StarterOrgFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  owner: { email: string; name: string; totpSecret: string }
+  sales: { email: string; name: string }
+}
+
+/** A standard organization on Starter: an owner (two-step on) and a sales member, one entity. */
+export const createStarterOrgFixture = () => runFixture<StarterOrgFixture>('starter-org')
+
+/** Publishes the starting plans in the e2e database if they are missing. */
+export const publishPlans = () => runFixture<{ published: unknown }>('plans')
+
+/**
+ * The API serves flags from a snapshot it reloads every second under e2e (see playwright.config).
+ * A fixture that changes flags or plans waits one reload so the next request sees the change;
+ * waiting is synchronous here because fixtures are.
+ */
+const SNAPSHOT_RELOAD_MS = 1_800
+function afterSnapshotReload<T>(result: T): T {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, SNAPSHOT_RELOAD_MS)
+  return result
+}
+
+export const setReleaseOverride = (orgId: string, flag: string, value: 'on' | 'off' | 'clear') =>
+  afterSnapshotReload(runFixture('org-override', orgId, 'release', flag, value))
+
+/** Releases several flags at once (one reload wait): a feature and what it needs. */
+export const releaseFlags = (orgId: string, flags: readonly string[]) => {
+  return afterSnapshotReload(runFixture('org-release', orgId, flags.join(',')))
+}
+
+export const setFeatureOverride = (orgId: string, flag: string, value: 'on' | 'off' | 'clear') =>
+  afterSnapshotReload(runFixture('org-override', orgId, 'feature', flag, value))
+
+export const setReleaseGroup = (orgId: string, group: 'standard' | 'pilot' | 'internal') =>
+  afterSnapshotReload(runFixture('org-group', orgId, group))
+
+export const startTrial = (orgId: string, plan: string, days: number) =>
+  afterSnapshotReload(runFixture('org-trial', orgId, plan, String(days)))

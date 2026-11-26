@@ -24,10 +24,14 @@ const apiEnv = {
   WEB_ORIGIN: webOrigin,
   AUTH_RATE_LIMIT: 'off',
   EMAIL_TRANSPORT: 'dev',
+  // Availability is read from a snapshot the API reloads on a timer; the default is 10 seconds.
+  // One second (the lowest allowed) keeps override specs quick without changing the code path.
+  FEATURE_SNAPSHOT_REFRESH_SECONDS: '1',
 }
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/support/global-setup.ts',
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,

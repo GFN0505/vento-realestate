@@ -17,6 +17,7 @@
  *   tsx src/test/e2e-fixtures.ts org-override <orgId> <release|feature> <flag> <on|off|clear>
  *   tsx src/test/e2e-fixtures.ts org-override <orgId> limit <limit> <n|unlimited|clear>
  *   tsx src/test/e2e-fixtures.ts org-trial <orgId> <plan> <days>
+ *   tsx src/test/e2e-fixtures.ts org-release <orgId> <flag,flag,...>   release overrides on, in one go
  *
  * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
  * every organization was before feature flags. Fixtures only change per-organization data, never
@@ -156,6 +157,13 @@ async function orgOverride(args: (string | undefined)[]) {
     throw new Error('kind must be release, feature or limit')
   }
   return { organizationId: organization.id, kind, key, value }
+}
+
+/** Releases several flags to one organization in one process: a feature and what it needs. */
+async function orgRelease(id: string | undefined, flags: string | undefined) {
+  const keys = (flags ?? '').split(',').filter(Boolean)
+  for (const key of keys) await orgOverride([id, 'release', key, 'on'])
+  return { organizationId: id, released: keys }
 }
 
 async function orgTrial(
@@ -501,6 +509,7 @@ async function main() {
     'org-group': () => orgGroup(arg, arg2),
     'org-override': () => orgOverride([arg, arg2, arg3, arg4]),
     'org-trial': () => orgTrial(arg, arg2, arg3),
+    'org-release': () => orgRelease(arg, arg2),
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

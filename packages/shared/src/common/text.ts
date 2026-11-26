@@ -6,6 +6,8 @@ export function joinNames(names: readonly string[]): string {
 
 // C0 and C1 controls, and the invisible direction marks and overrides that can make a name
 // display differently from what it is ("Trojan Source"-style spoofing).
+// Matching control characters is the point of this pattern: it finds hidden characters to refuse.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional, see above
 const HIDDEN_CHARACTERS = /[\u0000-\u001F\u007F-\u009F\u200E\u200F\u202A-\u202E\u2066-\u2069]/
 
 /** True when text holds control or direction-override characters. */
