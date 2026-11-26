@@ -20,9 +20,9 @@ export type UserMenuVariant = {
 
 export function userTriggerClass({ variant, collapsed }: UserMenuVariant) {
   return variant === 'topbar'
-    ? 'flex size-10 items-center justify-center rounded-full outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+    ? 'flex size-10 items-center justify-center rounded-full outline-hidden transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
     : cn(
-        'flex h-12 w-full items-center gap-2.5 rounded-lg px-2 text-left outline-none transition-colors hover:bg-sidebar-hover focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 data-[state=open]:bg-sidebar-hover',
+        'flex h-12 w-full items-center gap-2.5 rounded-lg px-2 text-left outline-hidden transition-colors hover:bg-sidebar-hover focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0 data-[state=open]:bg-sidebar-hover',
         collapsed && 'justify-center px-0',
       )
 }

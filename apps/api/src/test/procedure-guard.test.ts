@@ -7,7 +7,14 @@ import { PUBLIC_PROCEDURES, router } from '@/router'
 import { testApp } from './auth-client'
 import { countingDb } from './counting-db'
 import { withRollback } from './db'
-import { createMember, createOrganization, setStage, type TestUser } from './factories'
+import {
+  createCustomRole,
+  createEntity,
+  createMember,
+  createOrganization,
+  setStage,
+  type TestUser,
+} from './factories'
 import { probeClient, probeRouter } from './feature-probe'
 import { clientAs, testContext } from './router-client'
 import { throwingDb } from './throwing-db'
@@ -87,6 +94,38 @@ describe('organization guard walk', () => {
       data: { reason: 'organization_changed' },
     })
   })
+})
+
+describe('all-companies guard (brick 3c)', () => {
+  // Organization-wide changes: a member limited to some companies is refused before any write.
+  const orgWide: [string, (ids: { role: string; entity: string }) => unknown][] = [
+    ['organization.update', () => ({ name: 'Mine Ltd' })],
+    ['entities.create', () => ({ name: 'New SPV Ltd', type: 'spv' })],
+    ['entities.archivePreview', (ids) => ({ id: ids.entity })],
+    ['entities.archive', (ids) => ({ id: ids.entity })],
+    ['entities.restore', (ids) => ({ id: ids.entity })],
+    ['roles.create', (ids) => ({ name: 'Copy', sourceRoleId: ids.role })],
+    ['roles.update', (ids) => ({ id: ids.role, version: 1, name: 'Renamed' })],
+    ['roles.delete', (ids) => ({ id: ids.role })],
+    ['checklist.answerSingleCompany', () => ({ singleCompany: true })],
+  ]
+
+  it.each(orgWide)('%s refuses a limited admin without writing', (path, input) =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const parkview = await createEntity(tx, org)
+      const role = await createCustomRole(tx, org, { permissions: { projects: ['view'] } })
+      const { user } = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+      const { db, calls } = countingDb(tx)
+      const { client } = clientAs(db, user, { activeOrganizationId: org.id })
+      await expect(
+        procedureAt(client, path)(input({ role: role.id, entity: parkview.id })),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN', data: { reason: 'all_entities_required' } })
+      expect(
+        calls.filter((c) => ['insert', 'update', 'delete', 'transaction'].includes(c)),
+      ).toEqual([])
+    }),
+  )
 })
 
 type ProcedureNode = { '~orpc': { meta: ProcedureMeta } }

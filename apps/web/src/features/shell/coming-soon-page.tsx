@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeftIcon, CheckIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { NAV_COPY } from '@/features/shell/nav-copy'
 import { MODULE_HIGHLIGHTS } from './module-highlights'
 import { type NavKey, navItem } from './nav'
 import { usePageTitle } from './use-page-title'
@@ -46,7 +47,7 @@ export function ComingSoonPage({ navKey }: { navKey: NavKey }) {
         {item.label}
       </h1>
       <p className="mt-3 max-w-lg text-pretty text-[15px] text-muted-foreground leading-relaxed">
-        {item.comingSoon}
+        {NAV_COPY[item.key].comingSoon}
       </p>
 
       {highlights.length > 0 && (

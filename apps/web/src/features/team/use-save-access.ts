@@ -3,6 +3,7 @@ import { type QueryKey, useMutation, useQueryClient } from '@tanstack/react-quer
 import type { ListTeamOutput, RoleRef, TeamMemberRow } from '@vento/shared'
 import { toast } from 'sonner'
 import { entitiesQuery } from '@/features/entity/use-current-entity'
+import { rolesQuery } from '@/features/preview/use-effective-permissions'
 import { apiErrorMessage } from '@/lib/api-errors'
 import { errorReason } from '@/lib/error-data'
 import { client } from '@/lib/orpc'
@@ -37,6 +38,10 @@ export function useSaveAccess(listKey: QueryKey, actions: TeamActions, onSaved: 
       }
       if (errorReason(error) === 'entity_unavailable') {
         void queryClient.invalidateQueries({ queryKey: entitiesQuery().queryKey })
+      }
+      // A custom role deleted meanwhile: the server's message asks to choose another.
+      if (errorReason(error) === 'role_unavailable') {
+        void queryClient.invalidateQueries({ queryKey: rolesQuery().queryKey })
       }
     },
   })

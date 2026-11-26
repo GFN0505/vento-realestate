@@ -6,7 +6,7 @@ import { TalkToVentoButton } from './talk-to-vento-button'
 
 const ABOUT: Record<LimitKey, string> = {
   projects: 'more projects',
-  entities: 'more entities',
+  entities: 'more companies',
   members: 'more people',
   ai_budget: 'a bigger AI budget',
 }
@@ -18,7 +18,7 @@ function planLimitKey(error: unknown): LimitKey | null {
 }
 
 /**
- * Inline where a create was refused for the plan's limit (Settings → Entities and Team in 3b).
+ * Inline where a create was refused for the plan's limit (Settings → Companies and Team).
  * The server writes the sentence for the caller's role: owners read what's included and get
  * **Talk to Vento**; everyone else reads who to ask, never a plan name or price. Renders nothing
  * for any other error, so a form can pass its last error straight in.

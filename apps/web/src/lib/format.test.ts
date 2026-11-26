@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysUntilInLagos, formatDate } from './format'
+import { daysUntilInLagos, financialYearSpan, formatDate } from './format'
 
 describe('formatDate', () => {
   it('writes a calendar date the Nigerian way', () => {
@@ -14,5 +14,13 @@ describe('daysUntilInLagos', () => {
     expect(daysUntilInLagos('2026-12-26', now)).toBe(0)
     expect(daysUntilInLagos('2027-01-02', now)).toBe(7)
     expect(daysUntilInLagos('2026-12-25', now)).toBe(-1)
+  })
+})
+
+describe('financialYearSpan', () => {
+  it('names the first and last month of the year', () => {
+    expect(financialYearSpan(1)).toBe('January – December')
+    expect(financialYearSpan(4)).toBe('April – March')
+    expect(financialYearSpan(12)).toBe('December – November')
   })
 })

@@ -7,22 +7,47 @@ import {
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
 import { uniqueEmail, withRollback } from './db'
-import { createEntity, createInvitation, createMember, createOrganization } from './factories'
+import {
+  archiveEntityRow,
+  createCustomRole,
+  createEntity,
+  createInvitation,
+  createMember,
+  createOrganization,
+} from './factories'
 import { clientAs } from './router-client'
 
 type Client = ReturnType<typeof clientAs>['client']
 type Case = {
   name: string
   action: PermissionAction | 'member'
+  /** Organization-wide: needs access to every company too (brick 3c). */
+  allEntities?: boolean
   call: (c: Client) => Promise<unknown>
 }
 
+/** Who calls: a built-in role, an admin limited to Parkview, or a Settings: View-only role. */
+type Actor = SystemRoleKey | 'parkview_admin' | 'settings_view_only'
+
 /** Builds an organization with something to act on for every Settings procedure. */
-async function world(tx: DbOrTx, role: SystemRoleKey) {
+async function world(tx: DbOrTx, who: Actor) {
   const org = await createOrganization(tx)
   const parkview = await createEntity(tx, org)
   const lekki = await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
-  const actor = role === 'owner' ? { user: org.owner } : await createMember(tx, org, { role })
+  const old = await archiveEntityRow(tx, await createEntity(tx, org, { name: 'Ikoyi Crest Ltd' }))
+  const siteEngineer = await createCustomRole(tx, org, { permissions: { projects: ['view'] } })
+  const auditor = await createCustomRole(tx, org, {
+    name: 'Auditor',
+    permissions: { land: ['view'], settings: ['view'] },
+  })
+  const actor =
+    who === 'owner'
+      ? { user: org.owner }
+      : who === 'parkview_admin'
+        ? await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+        : who === 'settings_view_only'
+          ? await createMember(tx, org, { role: 'viewer', roleId: auditor.id })
+          : await createMember(tx, org, { role: who })
   const [a, b, c] = [
     await createMember(tx, org, { role: 'sales' }),
     await createMember(tx, org, { role: 'sales' }),
@@ -38,11 +63,13 @@ async function world(tx: DbOrTx, role: SystemRoleKey) {
     {
       name: 'organization.update',
       action: 'edit',
+      allEntities: true,
       call: (x) => x.organization.update({ name: 'Vento Homes Ltd' }),
     },
     {
       name: 'entities.create',
       action: 'create',
+      allEntities: true,
       call: (x) => x.entities.create({ name: 'New SPV Ltd', type: 'spv' }),
     },
     {
@@ -53,14 +80,47 @@ async function world(tx: DbOrTx, role: SystemRoleKey) {
     {
       name: 'entities.archivePreview',
       action: 'delete',
+      allEntities: true,
       call: (x) => x.entities.archivePreview({ id: lekki.id }),
     },
     {
       name: 'entities.archive',
       action: 'delete',
+      allEntities: true,
       call: (x) => x.entities.archive({ id: lekki.id }),
     },
+    {
+      name: 'entities.restore',
+      action: 'delete',
+      allEntities: true,
+      call: (x) => x.entities.restore({ id: old.id }),
+    },
     { name: 'roles.list', action: 'view', call: (x) => x.roles.list() },
+    { name: 'roles.get', action: 'view', call: (x) => x.roles.get({ id: siteEngineer.id }) },
+    {
+      name: 'roles.create',
+      action: 'create',
+      allEntities: true,
+      call: (x) => x.roles.create({ name: 'New role', sourceRoleId: viewer }),
+    },
+    {
+      name: 'roles.update',
+      action: 'edit',
+      allEntities: true,
+      call: (x) => x.roles.update({ id: siteEngineer.id, version: 1, description: 'On site' }),
+    },
+    {
+      name: 'roles.delete',
+      action: 'delete',
+      allEntities: true,
+      call: (x) => x.roles.delete({ id: siteEngineer.id }),
+    },
+    {
+      name: 'checklist.answerSingleCompany',
+      action: 'create',
+      allEntities: true,
+      call: (x) => x.checklist.answerSingleCompany({ singleCompany: true }),
+    },
     { name: 'team.list', action: 'view', call: (x) => x.team.list({}) },
     { name: 'checklist.get', action: 'create', call: (x) => x.checklist.get() },
     { name: 'checklist.hide', action: 'create', call: (x) => x.checklist.hide() },
@@ -105,12 +165,20 @@ async function world(tx: DbOrTx, role: SystemRoleKey) {
 }
 
 async function outcome(call: () => Promise<unknown>): Promise<'allowed' | 'denied'> {
+  const result = await reasonOf(call)
+  if (result === 'allowed' || result === 'permission')
+    return result === 'allowed' ? result : 'denied'
+  throw new Error(`Unexpected refusal: ${result}`)
+}
+
+/** 'allowed', or the FORBIDDEN reason; anything else is a broken test world. */
+async function reasonOf(call: () => Promise<unknown>): Promise<string> {
   try {
     await call()
     return 'allowed'
   } catch (error) {
     const e = error as { code?: string; data?: { reason?: string } }
-    if (e.code === 'FORBIDDEN' && e.data?.reason === 'permission') return 'denied'
+    if (e.code === 'FORBIDDEN' && e.data?.reason) return e.data.reason
     throw error
   }
 }
@@ -131,6 +199,30 @@ describe('permissions matrix: the default role table is the expected result', ()
       }
     }),
   )
+
+  it('refuses an admin limited to Parkview exactly the organization-wide changes', () =>
+    withRollback(async (tx) => {
+      const { client, cases } = await world(tx, 'parkview_admin')
+      for (const c of cases) {
+        const reason = await reasonOf(() => c.call(client))
+        expect({
+          procedure: c.name,
+          allEntitiesRefused: reason === 'all_entities_required',
+        }).toEqual({ procedure: c.name, allEntitiesRefused: Boolean(c.allEntities) })
+      }
+    }))
+
+  it('lets a Settings: View-only role read everything and change nothing', () =>
+    withRollback(async (tx) => {
+      const { client, cases } = await world(tx, 'settings_view_only')
+      for (const c of cases) {
+        const expected = c.action === 'member' || c.action === 'view' ? 'allowed' : 'denied'
+        expect({ procedure: c.name, result: await outcome(() => c.call(client)) }).toEqual({
+          procedure: c.name,
+          result: expected,
+        })
+      }
+    }))
 
   it('names the roles and a person who can grant it', () =>
     withRollback(async (tx) => {

@@ -28,4 +28,11 @@ describe('command filter', () => {
   it('shows everything when nothing is typed', () => {
     expect(commandScore('Theme: Dark', '  ')).toBeGreaterThan(0)
   })
+
+  it('ranks a label that starts with what was typed first', () => {
+    expect(commandScore('Go to Roles & permissions', 'rol')).toBe(1)
+    expect(commandScore('Go to Roles & permissions', 'rol')).toBeGreaterThan(
+      commandScore('Sales role', 'rol'),
+    )
+  })
 })

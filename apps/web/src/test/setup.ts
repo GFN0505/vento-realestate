@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
 // jsdom has no layout. input-otp probes for password-manager badges with elementFromPoint.
@@ -11,6 +11,10 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 }
+
+// CI runners are about 4x slower than a laptop: a form's submit → refusal → message chain can
+// take over the 1 s default there, so findBy/waitFor wait longer before failing.
+configure({ asyncUtilTimeout: 5000 })
 
 afterEach(() => {
   cleanup()

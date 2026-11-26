@@ -11,11 +11,13 @@ export const LIMIT_WORDS: Record<
     things: 'projects',
     action: 'Archive a project',
   },
+  // Entities are companies on screen (decision 0018). The action keeps its comma: "Archive
+  // one, or talk to Vento about Growth."
   entities: {
-    one: 'active entity',
-    many: 'active entities',
-    things: 'entities',
-    action: 'Archive an entity',
+    one: 'active company',
+    many: 'active companies',
+    things: 'companies',
+    action: 'Archive one,',
   },
   members: { one: 'person', many: 'people', things: 'people', action: 'Remove someone' },
   ai_budget: { one: 'AI budget', many: 'AI budget', things: 'AI spend', action: '' },

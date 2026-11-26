@@ -34,6 +34,13 @@ describe('shortcuts', () => {
     expect(match(press('i', { target: field('input') }))).toBeNull()
   })
 
+  it('gives n to the page it was pressed on: Add company or New role', () => {
+    const match = createShortcutMatcher()
+    expect(match(press('n'), '/settings/companies')).toBe('companies-add')
+    expect(match(press('n'), '/settings/roles')).toBe('roles-new')
+    expect(match(press('n'), '/settings/team')).toBeNull()
+  })
+
   it('maps ? and [ outside fields', () => {
     const match = createShortcutMatcher()
     expect(match(press('?'))).toBe('help')

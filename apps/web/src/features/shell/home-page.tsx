@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { StatCard } from '@/components/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { canSeeChecklist } from '@/features/checklist/checklist-queries'
@@ -10,7 +11,13 @@ import { HomeHero } from './home-hero'
 import { homeKpis, kpiNote } from './home-kpis'
 import { navItemForModule, workspaceModules } from './nav'
 import { usePageTitle } from './use-page-title'
+
 import { WorkspaceGrid } from './workspace-grid'
+
+// Rare (every company of theirs archived): its code loads only then.
+const NoCompanyCard = lazy(() =>
+  import('./no-company-card').then((m) => ({ default: m.NoCompanyCard })),
+)
 
 /**
  * Home (boards ExecutiveHome and the role homes): a hero greeting on the brand's navy, the setup
@@ -31,7 +38,7 @@ export function HomePage() {
     entity.status === 'pending' && !entity.locked ? (
       <Skeleton className="inline-block h-3.5 w-24 bg-auth-hairline align-middle" />
     ) : (
-      (entity.entity?.name ?? 'All entities')
+      (entity.entity?.name ?? (entity.noCompany ? 'No company' : 'All companies'))
     )
 
   return (
@@ -46,8 +53,13 @@ export function HomePage() {
         }
       />
       <TrialLine />
+      {entity.noCompany && (
+        <Suspense fallback={null}>
+          <NoCompanyCard />
+        </Suspense>
+      )}
       {canSeeChecklist(access) && <HomeChecklist />}
-      {kpis.length > 0 && (
+      {kpis.length > 0 && !entity.noCompany && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {kpis.map((kpi) => (
@@ -57,7 +69,7 @@ export function HomePage() {
           {note && <p className="text-muted-foreground text-xs">{note}</p>}
         </section>
       )}
-      <WorkspaceGrid modules={modules} access={access} />
+      {!entity.noCompany && <WorkspaceGrid modules={modules} access={access} />}
     </div>
   )
 }

@@ -63,6 +63,34 @@ describe('SetupChecklist', () => {
   })
 })
 
+describe('Add your other companies (SPVs)', () => {
+  const open = checklist({
+    items: [
+      { key: 'organization', done: true, detail: 'Lekki Partners Ltd' },
+      { key: 'first_entity', done: true, detail: 'Parkview Residences SPV Ltd' },
+      { key: 'other_companies', done: false, detail: null },
+    ],
+  })
+
+  it('offers Add company, which opens the plan message for an owner at the limit', async () => {
+    const plan = vi.spyOn(shellUi, 'open').mockImplementation(() => undefined)
+    renderChecklist(open)
+
+    expect(
+      screen.getByText('Most estates sit in their own company. Add each SPV you run.'),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
+
+    expect(plan).toHaveBeenCalledWith('companyPlan')
+  })
+
+  it('offers We only have one company', () => {
+    renderChecklist(open)
+
+    expect(screen.getByRole('button', { name: 'We only have one company' })).toBeInTheDocument()
+  })
+})
+
 describe('canSeeChecklist', () => {
   const access = (key: 'owner' | 'admin' | 'sales') => ({
     permissions: defaultPermissions(defaultRole(key)),

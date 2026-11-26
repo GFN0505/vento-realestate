@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 const STEPS = [
   { label: 'Organization', hint: 'Name, state, financial year' },
-  { label: 'First entity', hint: 'Type, RC number, TIN' },
+  { label: 'First company', hint: 'Type, RC number, TIN' },
 ] as const
 
 /** "Step 1 of 2 · about 2 min left" */

@@ -75,7 +75,7 @@ export async function createFirstEntity(
       .from(entities)
       .where(eq(entities.organizationId, ctx.organizationId))
     if ((row?.n ?? 0) > 0) {
-      throw conflict('already_onboarded', `${ctx.organizationName} already has its first entity.`)
+      throw conflict('already_onboarded', `${ctx.organizationName} already has its first company.`)
     }
     return insertEntity(tx, ctx, input)
   })

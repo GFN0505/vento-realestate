@@ -4,6 +4,11 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 
 ## [Unreleased]
 ### Added
+- Companies: add, edit, archive and restore your companies (SPVs) with their RC number, TIN and VAT status, from Settings, the Company menu at the top or the setup checklist. A duplicate RC number is refused; archived companies can be restored within your plan.
+- Roles & permissions: see exactly what each role can do, and make your own role (for example Site engineer) by duplicating one and ticking what it needs. Nobody can give more access than they have themselves; changes reach people on their next click, with Undo.
+- Organization details: name, head office state and financial year.
+### Changed
+- "Entity" is now "Company" everywhere you read it.
 - Team: one list of everyone in your organization and everyone you've invited, with roles you can change in place (and undo), access limited to some companies, two-step status and last activity. Invite up to 20 people at once by pasting a list; mistakes, duplicates and people already on the team are marked, and the rest still go. Reset a colleague's two-step when they lose their phone, make someone an owner, remove a leaver (history kept) and invite them again later. The list follows the company you pick at the top. Owners see how many places their plan has left.
 - Setup checklist on Home for owners and admins: each step ticks itself from what you've done; hide it any time and bring it back from ⌘K.
 - Settings, starting with Team, for owners and admins.

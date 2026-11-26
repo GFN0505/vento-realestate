@@ -38,5 +38,14 @@ Stream `platform_audit_events` (and ideally `audit_events`) to an external, appe
 3. `node dist/platform/cli/main.mjs superadmin grant <email> --bootstrap --reason "…"` (the person needs two-step on).
 4. Leave every flag at `internal` until the owner releases it.
 
+## Deploy notes per migration
+Checks to run against production **before** the release step, for migrations that add a constraint existing rows must already meet.
+
+- **`0007_roles_and_organization`** adds `roles_system_key_consistent` (a built-in role has a key and `is_system`; a custom role has neither). Every row written by Vento so far satisfies it, but confirm first; the query must return no rows:
+  ```sql
+  select id, organization_id, key, is_system from roles where (key is null) <> (not is_system);
+  ```
+  If it returns rows, stop and fix them (a built-in with no key, or a custom role marked system) before migrating; otherwise the migration fails on that check and nothing in it is applied.
+
 ## Environment variables
 Every variable is in `.env.example`. Production also needs `SUPPORT_EMAIL` (the API refuses to start without it).

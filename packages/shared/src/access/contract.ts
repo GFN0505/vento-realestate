@@ -7,18 +7,33 @@ import {
   acceptInvitationAsNewUserInput,
   acceptInvitationOutput,
   createInvitationsInput,
+  createRoleInput,
   invitationPreview,
   invitationTokenInput,
   memberIdInput,
   role,
   updateMemberAccessInput,
+  updateRoleInput,
   whoCanChangeAccessInput,
   whoCanChangeAccessOutput,
 } from './schema'
 
+const byId = z.strictObject({ id })
+
 export const rolesContract = {
-  /** At most a few dozen roles, still in the shared list shape. */
+  /**
+   * Every live role in one page (at most 59), built-ins in the default order, then custom A–Z.
+   * Each says what the viewer may do with it.
+   */
   list: platform.output(paginated(role)),
+  /** Archived (deleted) roles are NOT_FOUND. */
+  get: platform.input(byId).output(role),
+  /** A custom role copying the source's permissions and two-step value. */
+  create: platform.input(createRoleInput).output(notice.extend({ role })),
+  /** `role.version` is the new version, for Undo. */
+  update: platform.input(updateRoleInput).output(notice.extend({ role })),
+  /** Erased, or archived when history refers to it. Refused while anyone holds it. */
+  delete: platform.input(byId).output(notice),
 }
 
 // Listing people is team.list (one list with invitations, names limited to the viewer's access).

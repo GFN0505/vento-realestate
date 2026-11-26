@@ -4,7 +4,7 @@ import { entities } from '@/db/schema'
 import { conflict, forbidden, notFound } from '@/lib/errors'
 import type { ServiceContext } from './context'
 
-const ENTITY_UNAVAILABLE = 'One of the entities you chose is no longer available. Choose again.'
+const ENTITY_UNAVAILABLE = 'One of the companies you chose is no longer available. Choose again.'
 
 /**
  * Entities a granter may put in a limit (member update or invitation). They must be this
@@ -22,7 +22,7 @@ export async function assertGrantableEntities(
     if (entityIds === null) {
       throw forbidden(
         'entity_limit',
-        'You can only give access to the entities you can see. Choose them instead of all entities.',
+        'You can only give access to the companies you can see. Choose them instead of all companies.',
       )
     }
     if (entityIds.some((id) => !granterLimit.includes(id))) throw notFound()

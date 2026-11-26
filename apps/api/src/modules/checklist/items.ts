@@ -10,6 +10,10 @@ export type ChecklistFacts = {
   hasEntity: boolean
   /** The oldest active entity within the viewer's own limit, if any: never a name they can't see. */
   firstEntityName: string | null
+  /** Entities of any status (an archived company still counts as set up). */
+  entityCount: number
+  /** Someone answered "We only have one company". */
+  singleCompanyConfirmed: boolean
   viewerTwoStepOn: boolean
   /** Active members other than the viewer, and the earliest one's name. */
   otherMembers: number
@@ -18,10 +22,15 @@ export type ChecklistFacts = {
   invitedPeople: number
 }
 
+/** Who is looking, for items only some viewers can act on. */
+export type ChecklistViewer = { allEntities: boolean }
+
 export type ChecklistEntry = {
   key: ChecklistItemKey
   /** The feature the item belongs to: shown only while it's available. null = platform. */
   feature: FeatureKey | null
+  /** Shown only to these viewers; every viewer when absent. */
+  visibleTo?(viewer: ChecklistViewer): boolean
   check(facts: ChecklistFacts): { done: boolean; detail: string | null }
 }
 
@@ -38,6 +47,19 @@ export const CHECKLIST_ITEMS: readonly ChecklistEntry[] = [
     key: 'first_entity',
     feature: null,
     check: (f) => ({ done: f.hasEntity, detail: f.hasEntity ? f.firstEntityName : null }),
+  },
+  {
+    // Adding companies needs access to every company, so only those viewers see it.
+    key: 'other_companies',
+    feature: null,
+    visibleTo: (v) => v.allEntities,
+    check: (f) => {
+      if (f.entityCount >= 2) return { done: true, detail: `${f.entityCount} companies` }
+      if (f.singleCompanyConfirmed) {
+        return { done: true, detail: f.firstEntityName ? `Just ${f.firstEntityName}` : null }
+      }
+      return { done: false, detail: null }
+    },
   },
   {
     key: 'two_step',
@@ -61,13 +83,15 @@ export const CHECKLIST_ITEMS: readonly ChecklistEntry[] = [
   },
 ]
 
-/** The items this organization has the features for, evaluated. */
+/** The items this organization has the features for and this viewer may see, evaluated. */
 export function evaluateChecklist(
   registry: readonly ChecklistEntry[],
   has: (feature: FeatureKey) => boolean,
   facts: ChecklistFacts,
+  viewer: ChecklistViewer,
 ): ChecklistItem[] {
   return registry
     .filter((item) => item.feature === null || has(item.feature))
+    .filter((item) => item.visibleTo?.(viewer) ?? true)
     .map((item) => ({ key: item.key, ...item.check(facts) }))
 }

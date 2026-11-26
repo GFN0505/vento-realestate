@@ -5,7 +5,7 @@ import { formatDate, initials } from '@/lib/format'
 /** Board AcceptInvite, top half: who invited you, to what, and what the role can do. */
 export function InvitationSummary({ preview }: { preview: InvitationPreview }) {
   const access =
-    preview.entities === 'all' ? 'All entities' : preview.entities.join(', ') || 'No entities yet'
+    preview.entities === 'all' ? 'All companies' : preview.entities.join(', ') || 'No companies yet'
   const rows = [
     ['Access', access],
     ['Can approve', preview.canApprove.length ? preview.canApprove.join(', ') : 'Nothing'],

@@ -74,7 +74,7 @@ describe('pnpm plans', () => {
       ])
       expect(code).toBe(0)
       expect(io.output).toContain(
-        "Lekki Partners Ltd has 3 active entities; Starter includes 2. Nothing is archived, but they can't add entities.",
+        "Lekki Partners Ltd has 3 active companies; Starter includes 2. Nothing is archived, but they can't add companies.",
       )
       const starter = await findPlanVersion(tx, 'starter')
       const [row] = await tx

@@ -1,10 +1,11 @@
 import { type QueryClient, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import type { FeatureKey, Me, PermissionSet, Role, SystemRoleKey } from '@vento/shared'
+import { useEffect } from 'react'
 import { meQuery } from '@/features/account/api'
 import type { NavAccess } from '@/features/shell/nav'
 import { orpc } from '@/lib/orpc'
 import { can, intersectPermissions } from '@/lib/permissions'
-import { getPreview, type PreviewRole, usePreview } from './preview-role'
+import { clearPreview, getPreview, type PreviewRole, usePreview } from './preview-role'
 
 export type EffectiveAccess = NavAccess & {
   /** What navigation shows: the previewed role's view, never wider than the member's own. */
@@ -97,5 +98,11 @@ export function useEffectiveAccess(): EffectiveAccess {
   const me = useMe()
   const preview = usePreview(me.organization?.id)
   const roles = useQuery({ ...rolesQuery(), enabled: preview !== null && canPreview(me) })
+  // A previewed custom role that was deleted ends the preview (the banner would name nothing).
+  const vanished =
+    preview !== null && roles.isSuccess && !roles.data.items.some((r) => r.id === preview.roleId)
+  useEffect(() => {
+    if (vanished) clearPreview()
+  }, [vanished])
   return effectiveAccess(me, roles.data?.items, preview)
 }

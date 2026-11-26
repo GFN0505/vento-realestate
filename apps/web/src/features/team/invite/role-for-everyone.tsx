@@ -1,14 +1,9 @@
 import type { Role } from '@vento/shared'
 import { type Ref, useId } from 'react'
 import { FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { RoleOptions } from '@/features/roles/start-from-select'
 import { approveNote, twoStepNote } from '../role-notes'
 
 type Props = {
@@ -60,11 +55,7 @@ export function RoleField({
           <SelectValue placeholder="Choose a role" />
         </SelectTrigger>
         <SelectContent className="max-w-[min(420px,calc(100vw-2rem))]">
-          {roles.map((role) => (
-            <SelectItem key={role.id} value={role.id} description={role.description}>
-              {role.name}
-            </SelectItem>
-          ))}
+          <RoleOptions roles={roles} />
         </SelectContent>
       </Select>
       <FieldError id={`${id}-error`}>{error}</FieldError>

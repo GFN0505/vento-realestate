@@ -38,10 +38,10 @@ export function AccessLine({ value, onChange, entities, limits, error }: Props) 
   const chosen = choices.filter((e) => value.ids.includes(e.id))
   const label =
     value.mode === 'all'
-      ? 'All entities'
+      ? 'All companies'
       : chosen.length === 1
         ? (chosen[0]?.name ?? '')
-        : `${chosen.length} entities`
+        : `${chosen.length} companies`
   return (
     <p className="flex min-w-0 items-center gap-1.5 text-[13px]">
       <span className="text-muted-foreground">Access:</span>
@@ -56,8 +56,8 @@ export function AccessLine({ value, onChange, entities, limits, error }: Props) 
           <button
             type="button"
             onClick={() => setOpen(true)}
-            aria-label={`Change entity access, now ${label}`}
-            className="rounded-sm font-semibold text-link underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+            aria-label={`Change company access, now ${label}`}
+            className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
           >
             Change
           </button>

@@ -7,10 +7,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { rolesQuery, useEffectiveAccess } from '@/features/preview/use-effective-permissions'
-import { grantableRoles } from './role-notes'
+import { grantableRoles, splitRoles } from './role-notes'
 import { useTeamActionsContext } from './use-team-actions'
 
 /**
@@ -22,12 +23,13 @@ export function RoleMenu({ row }: { row: TeamMemberRow }) {
   const access = useEffectiveAccess()
   const roles = useQuery(rolesQuery())
   const options = grantableRoles(roles.data?.items ?? [], access.roleKey === 'owner')
+  const { builtIn, custom } = splitRoles(options)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Role for ${row.name}: ${row.role.name}. Change role`}
-        className="group/role -ml-2 inline-flex h-8 max-w-full items-center gap-1 rounded-md px-2 text-left text-[13px] outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted"
+        className="group/role -ml-2 inline-flex h-8 max-w-full items-center gap-1 rounded-md px-2 text-left text-[13px] outline-hidden transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted"
       >
         <span className="truncate">{row.role.name}</span>
         <ChevronDownIcon
@@ -47,11 +49,22 @@ export function RoleMenu({ row }: { row: TeamMemberRow }) {
             if (role) actions.changeRole(row, { id: role.id, key: role.key, name: role.name })
           }}
         >
-          {options.map((role) => (
+          {builtIn.map((role) => (
             <DropdownMenuRadioItem key={role.id} value={role.id}>
               {role.name}
             </DropdownMenuRadioItem>
           ))}
+          {custom.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Custom roles</DropdownMenuLabel>
+              {custom.map((role) => (
+                <DropdownMenuRadioItem key={role.id} value={role.id}>
+                  {role.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </>
+          )}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,5 +1,11 @@
-import type { SystemRoleKey } from '@vento/shared'
-import { DEFAULT_ROLES } from '@vento/shared'
+import type { PermissionSet, SystemRoleKey } from '@vento/shared'
+import {
+  customRolePluralName,
+  DEFAULT_ROLES,
+  defaultPermissions,
+  normalisePermissions,
+  PERMISSION_MODULES,
+} from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
 import { eq } from 'drizzle-orm'
 import { loadMembership, type ServiceContext } from '@/access/context'
@@ -19,6 +25,8 @@ import {
   organizations,
   passwordHistories,
   platformAdmins,
+  rolePermissions,
+  roles,
   sessions,
   users,
 } from '@/db/schema'
@@ -135,12 +143,14 @@ export async function createEntity(
 
 const twoStepRoles = new Set(DEFAULT_ROLES.filter((r) => r.requiresTwoStep).map((r) => r.key))
 
-/** A member with a built-in role. Roles that require two-step get it switched on. */
+/** A member with a built-in role, or a custom one by id. Roles that require two-step get it on. */
 export async function createMember(
   db: DbOrTx,
   org: TestOrg,
   options: {
     role: SystemRoleKey
+    /** A custom role's id; `role` then only names the person and their two-step. */
+    roleId?: string
     entityIds?: string[]
     user?: TestUser
     name?: string
@@ -160,7 +170,7 @@ export async function createMember(
     .values({
       organizationId: org.id,
       userId: user.id,
-      roleId: org.roleIds.get(options.role) ?? '',
+      roleId: options.roleId ?? org.roleIds.get(options.role) ?? '',
       lastActiveAt: options.lastActiveAt === undefined ? new Date() : options.lastActiveAt,
     })
     .returning()
@@ -182,6 +192,8 @@ export async function createInvitation(
   org: TestOrg,
   options: {
     role: SystemRoleKey
+    /** A custom role's id instead of the built-in one. */
+    roleId?: string
     email?: string
     status?: (typeof invitations.$inferInsert)['status']
     expiresAt?: Date
@@ -198,7 +210,7 @@ export async function createInvitation(
     .values({
       organizationId: org.id,
       email: options.email ?? uniqueEmail('invitee'),
-      roleId: org.roleIds.get(options.role) ?? '',
+      roleId: options.roleId ?? org.roleIds.get(options.role) ?? '',
       invitedByUserId: (options.invitedBy ?? org.owner).id,
       status: options.status ?? 'pending',
       tokenHash,
@@ -323,4 +335,83 @@ export async function createSuperAdmin(
   })
   await db.insert(platformAdmins).values({ userId: user.id, reason: 'test' })
   return user
+}
+
+/**
+ * A custom role, straight into the tables (the roles service is what's under test elsewhere).
+ * Permissions are normalised (any action adds view).
+ */
+export async function createCustomRole(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id'>,
+  options: {
+    name?: string
+    permissions: Partial<PermissionSet>
+    requiresTwoStep?: boolean
+    archivedAt?: Date
+  },
+) {
+  const name = options.name ?? 'Site engineer'
+  const [role] = await db
+    .insert(roles)
+    .values({
+      organizationId: org.id,
+      key: null,
+      isSystem: false,
+      name,
+      pluralName: customRolePluralName(name),
+      description: 'Based on Project manager',
+      requiresTwoStep: options.requiresTwoStep ?? false,
+      archivedAt: options.archivedAt ?? null,
+    })
+    .returning()
+  if (!role) throw new Error('role insert failed')
+  const set = normalisePermissions(options.permissions)
+  const rows = PERMISSION_MODULES.flatMap((module) =>
+    set[module].map((action) => ({ organizationId: org.id, roleId: role.id, module, action })),
+  )
+  if (rows.length) await db.insert(rolePermissions).values(rows)
+  return role
+}
+
+/** Archives an entity the way the service does, by someone. */
+export async function archiveEntityRow(
+  db: DbOrTx,
+  entity: { id: string },
+  by: Pick<TestUser, 'id'> | null = null,
+) {
+  const [row] = await db
+    .update(entities)
+    .set({ status: 'archived', archivedAt: new Date(), archivedByUserId: by?.id ?? null })
+    .where(eq(entities.id, entity.id))
+    .returning()
+  if (!row) throw new Error('entity archive failed')
+  return row
+}
+
+/**
+ * The ceiling's standard case: a custom "Office manager" with Settings create, edit and delete
+ * plus everything Sales has, and no Finance or HR (two-step on, as the role requires it).
+ */
+export async function createOfficeManager(db: DbOrTx, org: TestOrg, user?: TestUser) {
+  const permissions = defaultPermissionsFor('sales')
+  permissions.settings = ['view', 'create', 'edit', 'delete']
+  const role = await createCustomRole(db, org, {
+    name: 'Office manager',
+    permissions,
+    requiresTwoStep: true,
+  })
+  const holder = await createMember(db, org, {
+    role: 'admin',
+    roleId: role.id,
+    name: 'Ngozi Eze',
+    ...(user && { user }),
+  })
+  return { role, ...holder }
+}
+
+function defaultPermissionsFor(key: SystemRoleKey): PermissionSet {
+  const role = DEFAULT_ROLES.find((r) => r.key === key)
+  if (!role) throw new Error(`Unknown role ${key}`)
+  return defaultPermissions(role)
 }

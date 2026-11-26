@@ -81,3 +81,37 @@ export async function updateOrganization(
     return toOrganization(row)
   })
 }
+
+/**
+ * The setup checklist's "We only have one company" (true), or its Undo (false). A recorded fact
+ * about the organization (who and when), audited like any other change to it. A no-op when it
+ * already reads that way.
+ */
+export async function answerSingleCompany(
+  ctx: ServiceContext,
+  singleCompany: boolean,
+): Promise<{ notice: string }> {
+  return ctx.db.transaction(async (tx) => {
+    const current = await lockOrganization(tx, ctx.organizationId)
+    const was = current.singleCompanyConfirmedAt !== null
+    const notice = singleCompany ? 'Noted: you have one company' : 'Answer undone'
+    if (was === singleCompany) return { notice }
+    await tx
+      .update(organizations)
+      .set(
+        singleCompany
+          ? { singleCompanyConfirmedAt: new Date(), singleCompanyConfirmedByUserId: ctx.user.id }
+          : { singleCompanyConfirmedAt: null, singleCompanyConfirmedByUserId: null },
+      )
+      .where(eq(organizations.id, ctx.organizationId))
+    await recordAudit(tx, {
+      organizationId: ctx.organizationId,
+      action: 'organization.updated',
+      actor: actorOf(ctx),
+      target: { type: 'organization', id: current.id, label: current.name },
+      before: { singleCompanyConfirmed: was },
+      after: { singleCompanyConfirmed: singleCompany },
+    })
+    return { notice }
+  })
+}

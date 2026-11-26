@@ -5,6 +5,7 @@ import { createContext, useContext, useState } from 'react'
 import { toast } from 'sonner'
 import { meQuery } from '@/features/account/api'
 import { checklistQuery } from '@/features/checklist/checklist-queries'
+import { rolesQuery } from '@/features/preview/use-effective-permissions'
 import { toastApiError } from '@/lib/api-errors'
 import { errorReason } from '@/lib/error-data'
 import { client } from '@/lib/orpc'
@@ -44,6 +45,10 @@ export function useTeamActions(listKey: QueryKey) {
       toast(`${who} The list is up to date.`)
       refresh(true)
       return
+    }
+    // A custom role was deleted meanwhile: the server says so; the menus drop it.
+    if (errorReason(error) === 'role_unavailable') {
+      void queryClient.invalidateQueries({ queryKey: rolesQuery().queryKey })
     }
     toastApiError(error)
   }

@@ -32,8 +32,8 @@ test('a new owner signs up, sets up the organization and entity, and ends up sig
   await page.getByRole('button', { name: 'Continue' }).click()
 
   // Step 2: RC and TIN stay empty, which must not block.
-  await expect(page.getByRole('heading', { name: 'First entity' })).toBeVisible()
-  await expect(page.getByLabel('Entity name')).toHaveValue(company)
+  await expect(page.getByRole('heading', { name: 'First company' })).toBeVisible()
+  await expect(page.getByLabel('Company name')).toHaveValue(company)
   await page.getByRole('button', { name: 'Finish setup' }).click()
 
   const secret = await completeTwoStepSetup(page, password)
@@ -141,8 +141,8 @@ test('leaving after step 1 and signing in again resumes at step 2', async ({ pag
   await page.goto('/sign-in')
   await enterPassword(page, person.email, person.password)
 
-  await expect(page.getByRole('heading', { name: 'First entity' })).toBeVisible()
-  await expect(page.getByLabel('Entity name')).toHaveValue(person.organizationName)
+  await expect(page.getByRole('heading', { name: 'First company' })).toBeVisible()
+  await expect(page.getByLabel('Company name')).toHaveValue(person.organizationName)
 })
 
 test('an RC or TIN in the wrong format warns but does not stop Finish setup', async ({ page }) => {

@@ -21,6 +21,10 @@
  *   tsx src/test/e2e-fixtures.ts org-override <orgId> limit <limit> <n|unlimited|clear>
  *   tsx src/test/e2e-fixtures.ts org-trial <orgId> <plan> <days>
  *   tsx src/test/e2e-fixtures.ts org-release <orgId> <flag,flag,...>   release overrides on, in one go
+ *   tsx src/test/e2e-fixtures.ts companies [starter]    holding, Parkview, Lekki (two people only there), archived Ikoyi Crest; owner, Parkview-only admin, sales
+ *   tsx src/test/e2e-fixtures.ts custom-role [name]     a custom role from Project manager held by one member, plus a viewer to give it to
+ *   tsx src/test/e2e-fixtures.ts role-editor            an "Office manager" custom role (Settings, Sales; no Finance) with its holder, an admin and a sales member
+ *   tsx src/test/e2e-fixtures.ts no-company             a member limited only to an archived company
  *
  * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
  * every organization was before feature flags. Fixtures only change per-organization data, never
@@ -636,6 +640,154 @@ async function createTeamInvitation(
   return { id: invitation.id, email: address, state }
 }
 
+/** The archived SPV every 3c fixture uses: RC clash, Restore, "Archived … by …". */
+const IKOYI = { name: 'Ikoyi Crest SPV Ltd', rcNumber: 'RC 1832276' }
+
+/**
+ * Settings → Companies (J-ONB-07). Lekki Gardens is the only company Kunle and Ope can see, so
+ * archiving it asks first. `starter`: on Starter at 2 of 2 active companies, with an
+ * all-companies admin, for the plan message and the admin's server refusal.
+ */
+async function createCompanies(mode: string | undefined) {
+  const { db } = await import('@/db/client')
+  const f = await import('./factories')
+  const starter = mode === 'starter'
+  if (starter) await publishPlans()
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.companies.owner')
+  const org = await f.createOrganization(db, {
+    name: `Vento Homes ${suffix}`,
+    owner,
+    ...(starter && { planKey: 'starter' }),
+  })
+  const holding = await f.createEntity(db, org, {
+    name: `Vento Homes ${suffix} Ltd`,
+    type: 'holding',
+  })
+  const parkview = await f.createEntity(db, org, {
+    name: 'Parkview Residences SPV Ltd',
+    rcNumber: 'RC 1789234',
+  })
+  const lekki = starter
+    ? null
+    : await f.createEntity(db, org, { name: 'Lekki Gardens SPV Ltd', rcNumber: 'RC 1904417' })
+  const ikoyi = await f.archiveEntityRow(db, await f.createEntity(db, org, IKOYI), owner)
+
+  const people: Record<string, { email: string; name: string; totpSecret?: string }> = {
+    owner: { email: owner.email, name: owner.name, totpSecret: await turnOnTwoStep(owner.email) },
+  }
+  const add = async (
+    key: string,
+    name: string,
+    role: 'admin' | 'sales' | 'project_manager' | 'facility',
+    entityIds?: string[],
+  ) => {
+    const user = await passwordUser(db, name, `e2e.companies.${key.toLowerCase()}`)
+    await f.createMember(db, org, { role, user, ...(entityIds && { entityIds }) })
+    const totpSecret = role === 'admin' ? await turnOnTwoStep(user.email) : undefined
+    people[key] = { email: user.email, name, ...(totpSecret && { totpSecret }) }
+  }
+  if (starter) await add('admin', 'Ngozi Adeyemi', 'admin')
+  else {
+    await add('parkviewAdmin', 'Funmi Akande', 'admin', [parkview.id])
+    if (lekki) {
+      await add('kunle', 'Kunle Ojo', 'project_manager', [lekki.id])
+      await add('ope', 'Ope Martins', 'facility', [lekki.id])
+    }
+  }
+  await add('sales', 'Grace Umeh', 'sales')
+  const ref = (e: { id: string; name: string } | null) => e && { id: e.id, name: e.name }
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: f.TEST_PASSWORD,
+    entities: {
+      holding: ref(holding),
+      parkview: { ...ref(parkview), rcNumber: 'RC 1789234' },
+      ...(lekki && { lekki: { ...ref(lekki), rcNumber: 'RC 1904417' } }),
+      ikoyi: { ...ref(ikoyi), rcNumber: IKOYI.rcNumber },
+    },
+    members: people,
+  }
+}
+
+/** A custom role made from Project manager, held by Bayo; Chidi (viewer) is there to be given it. */
+async function createCustomRoleFixture(name: string | undefined) {
+  const { db } = await import('@/db/client')
+  const { defaultPermissions, defaultRole } = await import('@vento/shared')
+  const f = await import('./factories')
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.roles.owner')
+  const org = await f.createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  await f.createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const role = await f.createCustomRole(db, org, {
+    name: name ?? 'Site supervisor',
+    permissions: defaultPermissions(defaultRole('project_manager')),
+  })
+  const bayo = await passwordUser(db, 'Bayo Ogunleye', 'e2e.roles.holder')
+  await f.createMember(db, org, { role: 'viewer', roleId: role.id, user: bayo })
+  const chidi = await passwordUser(db, 'Chidi Okafor', 'e2e.roles.chidi')
+  await f.createMember(db, org, { role: 'viewer', user: chidi })
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: f.TEST_PASSWORD,
+    role: { id: role.id, name: role.name },
+    owner: { email: owner.email, name: owner.name, totpSecret: await turnOnTwoStep(owner.email) },
+    holder: { email: bayo.email, name: bayo.name },
+    viewer: { email: chidi.email, name: chidi.name },
+  }
+}
+
+/**
+ * The permission ceiling: Ngozi holds "Office manager" (Settings create, edit and delete, and
+ * Sales; no Finance or HR; two-step on). Kemi is an admin (wider), Grace is sales (within).
+ */
+async function createRoleEditor() {
+  const { db } = await import('@/db/client')
+  const f = await import('./factories')
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.editor.owner')
+  const org = await f.createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  await f.createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const ngozi = await passwordUser(db, 'Ngozi Eze', 'e2e.editor.office')
+  const editor = await f.createOfficeManager(db, org, ngozi)
+  const kemi = await passwordUser(db, 'Kemi Adebayo', 'e2e.editor.admin')
+  await f.createMember(db, org, { role: 'admin', user: kemi })
+  const grace = await passwordUser(db, 'Grace Umeh', 'e2e.editor.sales')
+  await f.createMember(db, org, { role: 'sales', user: grace })
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: f.TEST_PASSWORD,
+    role: { id: editor.role.id, name: editor.role.name },
+    editor: { email: ngozi.email, name: ngozi.name, totpSecret: await turnOnTwoStep(ngozi.email) },
+    admin: { email: kemi.email, name: kemi.name, totpSecret: await turnOnTwoStep(kemi.email) },
+    sales: { email: grace.email, name: grace.name },
+  }
+}
+
+/** Kunle can see only Ikoyi Crest, which is archived: "No company" and the Home card. */
+async function createNoCompany() {
+  const { db } = await import('@/db/client')
+  const f = await import('./factories')
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.nocompany.owner')
+  const org = await f.createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  await f.createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const ikoyi = await f.archiveEntityRow(db, await f.createEntity(db, org, IKOYI), owner)
+  const kunle = await passwordUser(db, 'Kunle Ojo', 'e2e.nocompany.member')
+  await f.createMember(db, org, { role: 'project_manager', user: kunle, entityIds: [ikoyi.id] })
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: f.TEST_PASSWORD,
+    archived: { id: ikoyi.id, name: ikoyi.name },
+    owner: { email: owner.email, name: owner.name },
+    member: { email: kunle.email, name: kunle.name },
+  }
+}
+
 async function main() {
   const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
@@ -658,6 +810,10 @@ async function main() {
     'org-override': () => orgOverride([arg, arg2, arg3, arg4]),
     'org-trial': () => orgTrial(arg, arg2, arg3),
     'org-release': () => orgRelease(arg, arg2),
+    companies: () => createCompanies(arg),
+    'custom-role': () => createCustomRoleFixture(arg),
+    'role-editor': createRoleEditor,
+    'no-company': createNoCompany,
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

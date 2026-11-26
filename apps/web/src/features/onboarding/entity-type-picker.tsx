@@ -19,7 +19,7 @@ export function EntityTypePicker({
     <RadioGroupPrimitive.Root
       value={value}
       onValueChange={(next) => onChange(next === 'holding' ? 'holding' : 'spv')}
-      aria-label="Entity type"
+      aria-label="Company type"
       className="grid grid-cols-2 gap-2.5"
     >
       {OPTIONS.map((option) => (
@@ -27,13 +27,15 @@ export function EntityTypePicker({
           key={option.value}
           value={option.value}
           className={cn(
-            'rounded-lg border-[1.5px] bg-card p-3.5 text-left outline-none transition-colors',
+            'group rounded-lg border-[1.5px] bg-card p-3.5 text-left outline-hidden transition-colors',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
             'data-[state=checked]:border-selected-border data-[state=checked]:bg-selected',
           )}
         >
           <div className="font-semibold text-sm">{option.label}</div>
-          <div className="mt-0.5 text-muted-foreground text-xs">{option.hint}</div>
+          <div className="mt-0.5 text-muted-foreground text-xs group-data-[state=checked]:text-selected-foreground">
+            {option.hint}
+          </div>
         </RadioGroupPrimitive.Item>
       ))}
     </RadioGroupPrimitive.Root>

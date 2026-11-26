@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/server'
 import type { PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
   emptyPermissionSet,
@@ -97,8 +98,9 @@ export function toPermissionSet(pairs: readonly string[]): PermissionSet {
 /**
  * The person's active membership, in one query: the session's organization when they're
  * still a member there, otherwise their most recent one. Not cached, so a role or limit
- * change applies on the next request. The organization's release group and plan version come
- * along (left join, so an organization created by older code reads as standard with no plan).
+ * change applies on the next request; any cache of permissions added later must key on
+ * roles.version. The organization's release group and plan version come along (left join, so
+ * an organization created by older code reads as standard with no plan).
  */
 export async function loadMembership(
   db: DbOrTx,
@@ -110,6 +112,8 @@ export async function loadMembership(
       r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
       (select array_agg(rp.module || '.' || rp.action) from role_permissions rp
         where rp.role_id = r.id) as permissions,
+      -- Every limit row, archived entities included: a member limited only to archived
+      -- companies must read as that list ("No company"), never as null (all companies).
       (select array_agg(l.entity_id) from member_entity_limits l
         where l.member_id = m.id) as entity_ids,
       m.last_active_at, op.release_group, op.plan_version_id
@@ -235,4 +239,58 @@ export async function touchMemberActivity(
         or(isNull(members.lastActiveAt), lt(members.lastActiveAt, cutoff)),
       ),
     )
+}
+
+type ViewerRow = {
+  role_id: string
+  role_key: string | null
+  role_name: string
+  requires_two_step: boolean
+  permissions: string[] | null
+  entity_ids: string[] | null
+}
+
+/**
+ * The signed-in member as they are now, read inside a write transaction with their member and
+ * role rows locked `for share`: a change to their own role or access made after the request
+ * began either lands first and is seen here, or waits until this write commits. Rules that
+ * decide what the viewer may do (the ceiling, manage rules, grants) must use this, not the
+ * membership read at the start of the request. Removed meanwhile: refused like any other member
+ * without access. Lock order: right after the organization row (docs/ARCHITECTURE.md).
+ */
+export async function lockViewer<T extends Pick<ServiceContext, 'organizationId' | 'member'>>(
+  tx: DbOrTx,
+  ctx: T,
+): Promise<T> {
+  const result = await tx.execute<ViewerRow>(sql`
+    select r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
+      (select array_agg(rp.module || '.' || rp.action) from role_permissions rp
+        where rp.role_id = r.id) as permissions,
+      (select array_agg(l.entity_id) from member_entity_limits l
+        where l.member_id = m.id) as entity_ids
+    from members m
+    join roles r on r.id = m.role_id and r.organization_id = m.organization_id
+    where m.id = ${ctx.member.id} and m.organization_id = ${ctx.organizationId}
+      and m.status = 'active'
+    for share of m, r
+  `)
+  const row = result.rows[0]
+  if (!row) {
+    throw new ORPCError('FORBIDDEN', {
+      message: 'Your access has changed. Reload the page to continue.',
+      data: { reason: 'access_changed' as const },
+    })
+  }
+  return {
+    ...ctx,
+    member: {
+      ...ctx.member,
+      roleId: row.role_id,
+      roleKey: row.role_key as SystemRoleKey | null,
+      roleName: row.role_name,
+      permissions: toPermissionSet(row.permissions ?? []),
+      entityIds: row.entity_ids,
+      requiresTwoStep: row.requires_two_step,
+    },
+  }
 }

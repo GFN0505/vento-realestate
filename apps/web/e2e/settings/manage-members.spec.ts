@@ -97,10 +97,10 @@ test.describe('role and access', () => {
     const save = sheet.getByRole('button', { name: 'Save changes' })
     await expect(save).toBeDisabled()
 
-    await sheet.getByRole('radio', { name: 'Only some entities' }).check()
+    await sheet.getByRole('radio', { name: 'Only some companies' }).check()
     await expect(save).toBeEnabled()
     await save.click()
-    await expect(sheet.getByText('Choose at least one entity, or allow all')).toBeVisible()
+    await expect(sheet.getByText('Choose at least one company, or allow all')).toBeVisible()
 
     await sheet.getByRole('checkbox', { name: team.entities.parkview.name }).check()
     await save.click()
@@ -234,7 +234,7 @@ test.describe('withdraw undo and the entity filter', () => {
     // Kunle works in Parkview only.
     await expect(personRow(page, 'Kunle Balogun')).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Show all entities' }).click()
+    await page.getByRole('button', { name: 'Show all companies' }).click()
     await expect(personRow(page, 'Kunle Balogun')).toBeVisible()
   })
 
@@ -248,9 +248,9 @@ test.describe('withdraw undo and the entity filter', () => {
     await page.getByRole('button', { name: 'Invite people' }).first().click()
     const sheet = page.getByRole('dialog', { name: 'Invite people' })
     await expect(sheet.getByText(team.entities.parkview.name, { exact: true })).toBeVisible()
-    await sheet.getByRole('button', { name: /^Change entity access/ }).click()
+    await sheet.getByRole('button', { name: /^Change company access/ }).click()
 
-    await expect(sheet.getByRole('radio', { name: 'Only some entities' })).toBeChecked()
+    await expect(sheet.getByRole('radio', { name: 'Only some companies' })).toBeChecked()
     await expect(sheet.getByRole('checkbox', { name: team.entities.parkview.name })).toBeChecked()
     await expect(sheet.getByRole('checkbox', { name: team.entities.lekki.name })).not.toBeChecked()
   })
@@ -404,7 +404,7 @@ test.describe('what each viewer may change', () => {
     await tayo.getByRole('button', { name: 'Tayo Adeleke', exact: true }).click()
     await expect(
       page.getByText(
-        "Tayo Adeleke has access to entities you can't see. Ask Olumide Bankole (owner) to change it.",
+        "Tayo Adeleke has access to companies you can't see. Ask Olumide Bankole (owner) to change it.",
       ),
     ).toBeVisible()
   })
@@ -420,7 +420,7 @@ test.describe('what each viewer may change', () => {
     const sheet = page.getByRole('dialog', { name: 'Invite people' })
 
     await expect(sheet.getByText(team.entities.parkview.name, { exact: true })).toBeVisible()
-    await expect(sheet.getByText('All entities')).toHaveCount(0)
+    await expect(sheet.getByText('All companies')).toHaveCount(0)
     await expect(sheet.getByText(team.entities.lekki.name)).toHaveCount(0)
   })
 })

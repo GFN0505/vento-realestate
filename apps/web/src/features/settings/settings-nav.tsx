@@ -20,7 +20,7 @@ export function SettingsNav({ sections }: { sections: readonly SettingsSection[]
           to={section.to}
           preload="intent"
           activeOptions={{ includeSearch: false }}
-          className="rounded-lg px-3 py-2 font-medium text-[13px] text-foreground outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring data-[status=active]:bg-selected data-[status=active]:font-semibold data-[status=active]:text-selected-foreground"
+          className="rounded-lg px-3 py-2 font-medium text-[13px] text-foreground outline-hidden transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring data-[status=active]:bg-selected data-[status=active]:font-semibold data-[status=active]:text-selected-foreground"
         >
           {section.label}
         </Link>

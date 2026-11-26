@@ -1,15 +1,17 @@
-import type {
-  EntityAccess,
-  EntityRef,
-  InvitationDelivery,
-  ListTeamOutput,
-  listTeamInput,
-  SystemRoleKey,
-  TeamInvitationRow,
-  TeamMemberRow,
-  TeamRemovedRow,
-  TeamRow,
-  TwoStepState,
+import {
+  type EntityAccess,
+  type EntityRef,
+  emptyPermissionSet,
+  type InvitationDelivery,
+  type ListTeamOutput,
+  type listTeamInput,
+  type PermissionSet,
+  type SystemRoleKey,
+  type TeamInvitationRow,
+  type TeamMemberRow,
+  type TeamRemovedRow,
+  type TeamRow,
+  type TwoStepState,
 } from '@vento/shared'
 import { type SQL, sql } from 'drizzle-orm'
 import type { z } from 'zod'
@@ -18,15 +20,17 @@ import {
   invitationRowRights,
   type ManageViewer,
   memberRowRights,
+  needsOwnerName,
   viewerOf,
-  withinGranterAccess,
 } from '@/access/manage-rules'
 import { firstOwner } from '@/access/who-can-grant'
 import { INVITATION_QUEUED_STALE_MS } from '@/auth/policy'
 import type { DbOrTx } from '@/db/client'
 import { rawTimestamp } from '@/db/raw'
 import { runQueries } from '@/db/run-queries'
+import { likePattern } from '@/lib/like'
 import { pageOffset, toPage } from '@/lib/paginate'
+import { loadRoles } from '@/modules/roles/roles.service'
 
 type RawRow = {
   kind: 'member' | 'invitation' | 'removed'
@@ -60,11 +64,6 @@ type Filters = {
   entityId?: string
   /** The entity is outside the viewer's own limits: nothing matches. */
   none?: boolean
-}
-
-/** `%` and `_` typed in the search box are literal characters, not wildcards. */
-export function likePattern(q: string): string {
-  return `%${q.replace(/[\\%_]/g, '\\$&')}%`
 }
 
 const idList = (ids: readonly string[]) =>
@@ -346,6 +345,7 @@ function memberRow(
   viewer: ManageViewer,
   r: RawRow,
   limits: EntityRef[] | undefined,
+  permissions: PermissionSet,
   ownerName: string | null,
 ): TeamMemberRow {
   const twoStep = twoStepOf({
@@ -358,7 +358,7 @@ function memberRow(
   const name = r.name ?? r.email
   const rights = memberRowRights(
     viewer,
-    { userId, name, roleKey: r.role_key, entityIds: idsOf(limits), twoStep },
+    { userId, name, roleKey: r.role_key, permissions, entityIds: idsOf(limits), twoStep },
     ownerName,
   )
   return {
@@ -381,6 +381,7 @@ function invitationRow(
   viewer: ManageViewer,
   r: RawRow,
   limits: EntityRef[] | undefined,
+  permissions: PermissionSet,
   ownerName: string | null,
   now: Date,
 ): TeamInvitationRow {
@@ -400,7 +401,7 @@ function invitationRow(
     deliveryChangedAt: iso(r.delivery_changed_at),
     ...invitationRowRights(
       viewer,
-      { email: r.email, roleKey: r.role_key, entityIds: idsOf(limits) },
+      { email: r.email, roleKey: r.role_key, permissions, entityIds: idsOf(limits) },
       ownerName,
     ),
   }
@@ -419,21 +420,33 @@ function removedRow(r: RawRow): TeamRemovedRow {
   }
 }
 
-/** Turns raw rows into list rows: one limits query, plus the owner's name only when needed. */
+/**
+ * Turns raw rows into list rows: one limits query, one query for the page's roles' permissions
+ * (the ceiling), plus the owner's name only when needed.
+ */
 async function hydrate(ctx: ServiceContext, rows: readonly RawRow[]): Promise<TeamRow[]> {
   const viewer = viewerOf(ctx)
   const limits = await limitsFor(ctx.db, ctx.organizationId, rows)
-  // "Ask Olumide Bankole (owner)" only appears for rows wider than the viewer's own access.
-  const needsOwner = rows.some(
-    (r) => r.kind !== 'removed' && !withinGranterAccess(viewer.entityIds, idsOf(limits.get(r.id))),
+  const live = rows.filter((r) => r.kind !== 'removed')
+  const roleIds = [...new Set(live.map((r) => r.role_id))]
+  const roles = await loadRoles(ctx.db, ctx.organizationId, roleIds, { includeArchived: true })
+  const permissionsOf = new Map(roles.map((role) => [role.id, role.permissions]))
+  const permissions = (r: RawRow) => permissionsOf.get(r.role_id) ?? emptyPermissionSet()
+  // "Ask Olumide Bankole (owner)" only appears for rows wider than the viewer.
+  const needsOwner = live.some((r) =>
+    needsOwnerName(viewer, { entityIds: idsOf(limits.get(r.id)), permissions: permissions(r) }),
   )
   const ownerName = needsOwner
     ? ((await firstOwner(ctx.db, ctx.organizationId, ctx.user.id))?.name ?? null)
     : null
   const now = new Date()
   return rows.map((r) => {
-    if (r.kind === 'member') return memberRow(viewer, r, limits.get(r.id), ownerName)
-    if (r.kind === 'invitation') return invitationRow(viewer, r, limits.get(r.id), ownerName, now)
+    if (r.kind === 'member') {
+      return memberRow(viewer, r, limits.get(r.id), permissions(r), ownerName)
+    }
+    if (r.kind === 'invitation') {
+      return invitationRow(viewer, r, limits.get(r.id), permissions(r), ownerName, now)
+    }
     return removedRow(r)
   })
 }
