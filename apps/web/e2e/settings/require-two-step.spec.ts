@@ -140,25 +140,23 @@ test('when the 7 days run out the setup cannot be dismissed, and Sign out stays'
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
 })
 
-// APP GAP (reported): the spec says the setup screen keeps Sign out, but /two-step/setup draws
-// none (only the sheet does). Remove test.fail when the page gets it.
-test.fail(
-  'after the 7 days a reload goes to the setup page, which keeps Sign out',
-  async ({ page, browser }) => {
-    const team = createSecurityTeamFixture()
-    const yusuf = team.members.viewer
-    await signInWithPassword(page, { email: yusuf.email, password: team.password })
-    const ownerContext = await browser.newContext()
-    await requireEveryone(await ownerContext.newPage(), team)
-    await ownerContext.close()
-    expireGrace(yusuf.email)
+test('after the 7 days a reload goes to the setup page, which keeps Sign out', async ({
+  page,
+  browser,
+}) => {
+  const team = createSecurityTeamFixture()
+  const yusuf = team.members.viewer
+  await signInWithPassword(page, { email: yusuf.email, password: team.password })
+  const ownerContext = await browser.newContext()
+  await requireEveryone(await ownerContext.newPage(), team)
+  await ownerContext.close()
+  expireGrace(yusuf.email)
 
-    await page.reload()
+  await page.reload()
 
-    await expect(page).toHaveURL(/\/two-step\/setup/)
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 2_000 })
-  },
-)
+  await expect(page).toHaveURL(/\/two-step\/setup/)
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 2_000 })
+})
 
 test('a member signing in after the switch is turned on sets up two-step before anything else', async ({
   page,

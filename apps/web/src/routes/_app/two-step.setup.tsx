@@ -23,6 +23,13 @@ function TwoStepSetupPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  // The setup screen keeps a way out (spec): someone on a shared PC, or not ready, signs out.
+  async function leave() {
+    const { signOut } = await import('@/features/account/sign-out')
+    await signOut(queryClient)
+    void navigate({ to: '/sign-in', replace: true })
+  }
+
   async function finish() {
     toast.success('Two-step is on')
     await queryClient.invalidateQueries({ queryKey: orpc.account.me.key() })
@@ -56,6 +63,9 @@ function TwoStepSetupPage() {
             : 'Add a code from an authenticator app to each sign-in.'}
       </AuthHeader>
       <TwoStepSetupSteps setup={setup} />
+      <Button variant="ghost" className="mx-auto mt-2 min-h-11" onClick={() => void leave()}>
+        Sign out
+      </Button>
     </AuthLayout>
   )
 }
