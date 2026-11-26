@@ -65,6 +65,8 @@ type RowProps = {
   children?: ReactNode
   /** The one action on the right (under the text on phones). */
   action?: ReactNode
+  /** A short action (Sign out, ⋯) stays on the right on phones too, keeping lists compact. */
+  inlineAction?: boolean
   className?: string
 }
 
@@ -79,12 +81,14 @@ export function SecurityRow({
   badge,
   children,
   action,
+  inlineAction = false,
   className,
 }: RowProps) {
   return (
     <div
       className={cn(
         'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3.5 gap-y-3 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6',
+        inlineAction && action && 'grid-cols-[auto_minmax(0,1fr)_auto]',
         className,
       )}
     >
@@ -107,7 +111,12 @@ export function SecurityRow({
         )}
       </div>
       {action && (
-        <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:justify-end">
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-2 sm:col-start-3 sm:justify-end',
+            inlineAction ? 'col-start-3 row-start-1' : 'col-start-2',
+          )}
+        >
           {action}
         </div>
       )}

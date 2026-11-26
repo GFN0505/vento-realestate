@@ -85,6 +85,7 @@ function SessionRow({ session }: { session: SessionItem }) {
       icon={deviceIcon(session.device)}
       tone={session.isCurrent ? 'brand' : 'neutral'}
       label={name}
+      inlineAction
       badge={session.isCurrent && <StatusBadge tone="emerald">This device</StatusBadge>}
       action={
         !session.isCurrent && (
@@ -104,7 +105,13 @@ function SessionRow({ session }: { session: SessionItem }) {
     >
       <p className="tabular-nums">
         {where && <span>{where} · </span>}
-        <span className={session.isCurrent ? 'font-medium text-status-emerald-fg' : undefined}>
+        <span
+          className={
+            session.isCurrent
+              ? 'whitespace-nowrap font-medium text-status-emerald-fg'
+              : 'whitespace-nowrap'
+          }
+        >
           {session.isCurrent ? 'Active now' : lastActiveWords(session.lastActiveAt)}
         </span>
       </p>

@@ -24,7 +24,7 @@ test('a member with two-step signs in, is refused a wrong code, then gets in wit
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(member.email)
   await page.getByLabel('Password', { exact: true }).fill(member.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'Two-step check' })).toBeVisible()
   const right = totpCode(member.totpSecret)
@@ -50,7 +50,7 @@ test('a wrong password gets the same message as an unknown email', async ({ page
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(member.email)
   await page.getByLabel('Password', { exact: true }).fill('Not-the-password-1')
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(reply).toBeVisible()
   const forWrongPassword = await reply.textContent()
 
@@ -60,7 +60,7 @@ test('a wrong password gets the same message as an unknown email', async ({ page
       `nobody.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}@test.vento.ng`,
     )
   await page.getByLabel('Password', { exact: true }).fill('Not-the-password-1')
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 
   await expect(reply).toHaveText(forWrongPassword ?? '')
 })
@@ -70,7 +70,7 @@ test('signing out returns to sign-in and protects the home page', async ({ page 
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(member.email)
   await page.getByLabel('Password', { exact: true }).fill(member.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
   await expect(
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Olumide$/ }),
@@ -88,7 +88,7 @@ test('five wrong two-step codes lock sign-in and show how long to wait', async (
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(member.email)
   await page.getByLabel('Password', { exact: true }).fill(member.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Two-step check' })).toBeVisible()
   const right = totpCode(member.totpSecret)
   const wrong = right === '000000' ? '111111' : '000000'

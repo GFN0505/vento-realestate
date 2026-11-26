@@ -119,6 +119,7 @@ function LoadedSecurityCard({ security }: { security: OrganizationSecurity }) {
             id={`${ids.label}-switch`}
             checked={security.required}
             disabled={!canChange || save.isPending}
+            aria-labelledby={ids.label}
             aria-describedby={ids.hint}
             onCheckedChange={(next) => {
               if (!connection.isOnline()) return void toast.error(OFFLINE_SAVE_ERROR)

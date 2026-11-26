@@ -34,6 +34,7 @@ export function PasskeyRow({ passkey }: { passkey: PasskeyItem }) {
     <SecurityRow
       icon={FingerprintIcon}
       tone="brand"
+      inlineAction
       label={renaming ? <RenameField passkey={passkey} /> : passkey.name}
       action={
         !renaming && (
