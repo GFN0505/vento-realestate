@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { splitRoles } from '@/features/team/role-notes'
 
 type Props = {
   id: string
@@ -21,8 +22,7 @@ type Props = {
 
 /** Built-in roles, then custom ones under a quiet label (server order: built-ins, then A–Z). */
 export function RoleOptions({ roles }: { roles: readonly Role[] }) {
-  const builtIn = roles.filter((r) => r.isSystem)
-  const custom = roles.filter((r) => !r.isSystem)
+  const { builtIn, custom } = splitRoles(roles)
   return (
     <>
       <SelectGroup>

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import type { Role } from '@vento/shared'
+import { ROLE_NAME_MAX, type Role } from '@vento/shared'
 import { ChevronLeftIcon, CopyIcon, EyeIcon, ShieldCheckIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ type Props = {
   role: Role
   /** The editable name and description; null for a read-only role. */
   draft: RoleDraftApi | null
+  /** Why the name can't be saved ("Enter a name for the role", "A role called … already exists."). */
+  nameError: string | null
   onDuplicate: (() => void) | null
   onPreview: (() => void) | null
   menu: ReactNode
@@ -24,7 +26,7 @@ const inPlace =
  * The role's name and what it's for (editable in place on custom roles), who holds it, and
  * Duplicate role · Preview this role · ⋯ (boards SetPermissions, PermissionsMobile).
  */
-export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props) {
+export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, menu }: Props) {
   const dirty = draft?.dirty ?? false
   return (
     <header className="flex flex-col gap-3">
@@ -47,10 +49,11 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
                   aria-label="Role name"
                   name="role-name"
                   value={draft.draft.name}
-                  maxLength={60}
+                  maxLength={ROLE_NAME_MAX}
                   autoComplete="off"
                   spellCheck={false}
-                  aria-invalid={draft.name.length < 2 || undefined}
+                  aria-invalid={nameError ? true : undefined}
+                  aria-describedby={nameError ? 'role-name-error' : undefined}
                   onChange={(event) => draft.setName(event.target.value)}
                   // Sized to the name (plus room to type), so the Custom tag sits beside it.
                   style={{
@@ -76,6 +79,11 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
               </span>
             )}
           </div>
+          {nameError && (
+            <p id="role-name-error" role="alert" className="text-[13px] text-destructive">
+              {nameError}
+            </p>
+          )}
           {draft ? (
             <input
               aria-label="What this role is for"
@@ -108,12 +116,17 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {onDuplicate && (
-            <Button variant="outline" onClick={onDuplicate} className="max-md:h-11 max-md:flex-1">
+            <SaveFirstButton onClick={onDuplicate} dirty={dirty} reason="duplicate">
               <CopyIcon aria-hidden />
               Duplicate role
-            </Button>
+            </SaveFirstButton>
           )}
-          {onPreview && <PreviewButton onPreview={onPreview} dirty={dirty} />}
+          {onPreview && (
+            <SaveFirstButton onClick={onPreview} dirty={dirty} reason="preview">
+              <EyeIcon aria-hidden />
+              Preview this role
+            </SaveFirstButton>
+          )}
           {menu}
         </div>
       </div>
@@ -121,25 +134,43 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
   )
 }
 
-function PreviewButton({ onPreview, dirty }: { onPreview: () => void; dirty: boolean }) {
-  // Unsaved ticks can't be previewed. aria-disabled keeps the button focusable for its reason.
+const SAVE_FIRST = {
+  preview: 'Save your changes to preview them.',
+  duplicate: 'Save or discard your changes first.',
+} as const
+
+/**
+ * Preview and Duplicate wait for unsaved ticks: aria-disabled keeps the button focusable so its
+ * reason can be read.
+ */
+function SaveFirstButton({
+  onClick,
+  dirty,
+  reason,
+  children,
+}: {
+  onClick: () => void
+  dirty: boolean
+  reason: keyof typeof SAVE_FIRST
+  children: ReactNode
+}) {
+  const id = `${reason}-reason`
   const button = (
     <Button
       variant="outline"
-      onClick={() => !dirty && onPreview()}
+      onClick={() => !dirty && onClick()}
       aria-disabled={dirty || undefined}
-      aria-describedby={dirty ? 'preview-reason' : undefined}
+      aria-describedby={dirty ? id : undefined}
       className="aria-disabled:cursor-not-allowed aria-disabled:opacity-60 max-md:h-11 max-md:flex-1"
     >
-      <EyeIcon aria-hidden />
-      Preview this role
+      {children}
     </Button>
   )
   if (!dirty) return button
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent id="preview-reason">Save your changes to preview them.</TooltipContent>
+      <TooltipContent id={id}>{SAVE_FIRST[reason]}</TooltipContent>
     </Tooltip>
   )
 }

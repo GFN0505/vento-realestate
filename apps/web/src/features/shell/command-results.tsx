@@ -33,6 +33,7 @@ import {
   useMe,
 } from '@/features/preview/use-effective-permissions'
 import { type SettingsKey, type SettingsPath, visibleSections } from '@/features/settings/sections'
+import { NAV_COPY } from '@/features/shell/nav-copy'
 import { can } from '@/lib/permissions'
 import { setTheme, useTheme } from '@/lib/theme'
 import { canView, type NavPath, navItemForModule, navTag, visibleNav } from './nav'
@@ -149,7 +150,7 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
           <CommandItem
             key={item.key}
             value={`go:${item.key}`}
-            keywords={[`Go to ${item.label}`, ...item.keywords]}
+            keywords={[`Go to ${item.label}`, ...NAV_COPY[item.key].keywords]}
             onSelect={() => navigate(item.to)}
           >
             <item.icon aria-hidden />

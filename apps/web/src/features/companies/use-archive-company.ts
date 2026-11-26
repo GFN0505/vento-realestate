@@ -57,15 +57,18 @@ export function useArchiveCompany() {
     return false
   }
 
-  async function restore(company: Entity, afterUndo = false) {
-    if (!online()) return
+  /** True once the company is active again (the sheet closes only then). */
+  async function restore(company: Entity, afterUndo = false): Promise<boolean> {
+    if (!online()) return false
     setPendingId(company.id)
     try {
       await client.entities.restore({ id: company.id })
       refresh()
       if (!afterUndo) toast.success(`${company.name} restored`)
+      return true
     } catch (error) {
       fail(error)
+      return false
     } finally {
       setPendingId(null)
     }

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
-import { validateNewRoleSearch } from '@/features/roles/role-queries'
 import { RolesPage } from '@/features/roles/roles-page'
+import { validateNewRoleSearch } from '@/features/settings/role-queries'
 
 export const Route = createFileRoute('/_app/_shell/settings/roles/')({
   validateSearch: validateNewRoleSearch,

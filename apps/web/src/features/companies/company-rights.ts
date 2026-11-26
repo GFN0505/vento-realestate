@@ -1,4 +1,4 @@
-import type { Me, PermissionSet } from '@vento/shared'
+import { ENTITY_TYPE_LABELS, type EntityType, type Me, type PermissionSet } from '@vento/shared'
 import { orgWideRefusal } from '@/features/settings/org-wide-access'
 import { can } from '@/lib/permissions'
 
@@ -27,6 +27,6 @@ export function companyRights(me: Me, permissions: PermissionSet | null): Compan
 export const NOT_ADDED = 'Not added'
 
 /** "Holding company" or "Project company (SPV)". */
-export function companyTypeLabel(type: 'holding' | 'spv'): string {
-  return type === 'holding' ? 'Holding company' : 'Project company (SPV)'
+export function companyTypeLabel(type: EntityType): string {
+  return ENTITY_TYPE_LABELS[type]
 }

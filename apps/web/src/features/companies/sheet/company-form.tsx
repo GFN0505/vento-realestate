@@ -1,23 +1,26 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { type Entity, entityInput } from '@vento/shared'
-import { ArchiveRestoreIcon, CircleAlertIcon } from 'lucide-react'
+import { ArchiveRestoreIcon } from 'lucide-react'
 import { useId } from 'react'
-import { Controller, type Resolver, type UseFormReturn, useForm } from 'react-hook-form'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Controller, useForm } from 'react-hook-form'
+import { SaveErrorAlert } from '@/components/access-changed-alert'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { PlanLimitMessage } from '@/features/plan/plan-limit-message'
-import { apiErrorMessage, isHandledElsewhere } from '@/lib/api-errors'
 import { isPlanLimit } from '@/lib/error-data'
-import { CompanyFields, type CompanyFieldValues } from './company-fields'
+import {
+  CompanyFields,
+  type CompanyFieldValues,
+  type CompanyForm as CompanyFormApi,
+  type CompanyValues,
+} from './company-fields'
 import type { useSaveCompany } from './use-save-company'
 
 export const COMPANY_FORM_ID = 'company-form'
 
 export function useCompanyForm(company: Entity | null) {
-  return useForm<CompanyFieldValues>({
-    // The schema turns blank RC and TIN into null; the form keeps strings for the inputs.
-    resolver: zodResolver(entityInput) as unknown as Resolver<CompanyFieldValues>,
+  return useForm<CompanyFieldValues, unknown, CompanyValues>({
+    resolver: zodResolver(entityInput),
     mode: 'onTouched',
     defaultValues: company
       ? {
@@ -33,9 +36,9 @@ export function useCompanyForm(company: Entity | null) {
 }
 
 type Props = {
-  form: UseFormReturn<CompanyFieldValues>
+  form: CompanyFormApi
   save: ReturnType<typeof useSaveCompany>
-  onSubmit: (values: CompanyFieldValues) => void
+  onSubmit: (values: CompanyValues) => void
   autoFocusName: boolean
   /** May restore an archived company that already has the RC number. */
   canRestore: boolean
@@ -94,12 +97,6 @@ export function CompanyForm({ form, save, onSubmit, autoFocusName, canRestore }:
 
 /** Above the buttons: the plan's limit (fields stay), or why a save didn't go through. */
 export function CompanySaveError({ error }: { error: unknown }) {
-  if (!error || isHandledElsewhere(error)) return null
   if (isPlanLimit(error)) return <PlanLimitMessage error={error} />
-  return (
-    <Alert variant="destructive" aria-live="polite">
-      <CircleAlertIcon aria-hidden />
-      <AlertDescription>{apiErrorMessage(error)}</AlertDescription>
-    </Alert>
-  )
+  return <SaveErrorAlert error={error} />
 }

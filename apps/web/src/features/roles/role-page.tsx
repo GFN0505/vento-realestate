@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { PERMISSION_MODULES, type Role } from '@vento/shared'
+import { PERMISSION_MODULES, type Role, roleName } from '@vento/shared'
 import { CloudOffIcon, SearchXIcon } from 'lucide-react'
-import { useState } from 'react'
+import { type RefObject, useRef, useState } from 'react'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,8 +11,10 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { UnsavedChangesDialog } from '@/components/unsaved-changes-dialog'
 import { useMe } from '@/features/preview/use-effective-permissions'
 import { ReadOnlyNote } from '@/features/settings/read-only-note'
+import { roleQuery } from '@/features/settings/role-queries'
 import { usePageTitle } from '@/features/shell/use-page-title'
-import { isNotFound } from '@/lib/error-data'
+import { errorReason, isNotFound } from '@/lib/error-data'
+import { reloadPage } from '@/lib/reload'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { useSaveShortcut, useUnsavedGuard } from '@/lib/use-unsaved-guard'
 import { DeleteRoleConfirm } from './delete-role-confirm'
@@ -20,12 +23,11 @@ import { PermissionsGrid } from './permissions-grid'
 import { PermissionsMobileList } from './permissions-mobile-list'
 import { RolePageMenu } from './role-actions'
 import { RoleHeader } from './role-header'
-import { roleQuery } from './role-queries'
 import { RoleSaveBar } from './role-save-bar'
 import { TwoStepField } from './two-step-field'
 import { useRoleRights } from './use-role-actions'
 import { updateFrom, useRoleDraft } from './use-role-draft'
-import { useSaveRole } from './use-save-role'
+import { useRoleUndo, useSaveRole } from './use-save-role'
 
 const route = getRouteApi('/_app/_shell/settings/roles/$roleId')
 
@@ -36,13 +38,22 @@ export function RolePage() {
   const navigate = route.useNavigate()
   const query = useQuery(roleQuery(roleId))
   const role = query.data
+  const rights = useRoleRights()
+  // Undo outlives the editor (keyed by version); it asks first if there are unsaved ticks.
+  const dirtyRef = useRef(false)
+  const undo = useRoleUndo(dirtyRef)
   usePageTitle(role?.name ?? 'Role', { module: 'settings', recent: role !== undefined })
 
   return (
     <TooltipProvider>
       {role ? (
         // A save, an Undo or a Reload brings a new version: the editor starts again from it.
-        <RoleEditor key={`${role.id}:${role.version}`} role={role} />
+        <RoleEditor
+          key={`${role.id}:${role.version}`}
+          role={role}
+          undo={undo}
+          dirtyRef={dirtyRef}
+        />
       ) : query.isError && isNotFound(query.error) ? (
         <EmptyState
           icon={SearchXIcon}
@@ -76,29 +87,60 @@ export function RolePage() {
         <RoleSkeleton />
       )}
       <NewRoleDialog
-        open={search.new === true}
+        open={search.new === true && rights.create}
         from={search.from ?? roleId}
         onClose={() => void navigate({ search: {}, replace: true })}
       />
+      <ConfirmDialog
+        open={undo.asking !== null}
+        onOpenChange={(open) => !open && undo.cancel()}
+        title={`Undo the save to ${undo.asking?.saved.name ?? 'this role'}?`}
+        confirmLabel="Undo save"
+        cancelLabel="Keep editing"
+        onConfirm={undo.confirm}
+      >
+        Your unsaved changes on this page will be lost.
+      </ConfirmDialog>
     </TooltipProvider>
   )
 }
 
-function RoleEditor({ role }: { role: Role }) {
+type EditorProps = {
+  role: Role
+  undo: ReturnType<typeof useRoleUndo>
+  dirtyRef: RefObject<boolean>
+}
+
+function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
   const me = useMe()
   const rights = useRoleRights()
   const phone = useMediaQuery(PHONE_QUERY)
   const navigate = route.useNavigate()
   const editable = rights.canEdit(role)
   const draft = useRoleDraft(role)
-  const save = useSaveRole()
+  const save = useSaveRole(undo.offer)
   const [deleting, setDeleting] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
   const dirty = editable && draft.dirty
+  dirtyRef.current = dirty
   const guard = useUnsavedGuard(dirty)
   const submit = () => {
     if (!dirty || draft.empty || save.pending) return
+    const name = roleName.safeParse(draft.draft.name)
+    if (!name.success) {
+      setNameError(name.error.issues[0]?.message ?? 'Enter a name for the role')
+      document.querySelector<HTMLInputElement>('input[name="role-name"]')?.focus()
+      return
+    }
+    setNameError(null)
     void save.save(role, updateFrom(role, draft.draft))
   }
+  // A clash with another role's name belongs on the name.
+  const shownNameError =
+    nameError ??
+    (errorReason(save.error) === 'role_name_taken' && save.error instanceof Error
+      ? save.error.message
+      : null)
   useSaveShortcut(dirty, submit)
 
   const grid = {
@@ -115,11 +157,12 @@ function RoleEditor({ role }: { role: Role }) {
       <RoleHeader
         role={role}
         draft={editable ? draft : null}
+        nameError={shownNameError}
         onDuplicate={
           rights.canDuplicate(role) ? () => void navigate({ search: { new: true } }) : null
         }
         onPreview={rights.preview && (() => rights.preview?.(role))}
-        menu={<RolePageMenu role={role} onDelete={() => setDeleting(true)} />}
+        menu={<RolePageMenu role={role} disabled={dirty} onDelete={() => setDeleting(true)} />}
       />
       {role.readOnly && <ReadOnlyNote>{role.readOnly.message}</ReadOnlyNote>}
       {phone ? <PermissionsMobileList {...grid} /> : <PermissionsGrid {...grid} />}
@@ -141,9 +184,7 @@ function RoleEditor({ role }: { role: Role }) {
             save.clearError()
           }}
           onSave={submit}
-          onReload={() =>
-            save.accessChanged ? window.location.reload() : void save.reload(role.id)
-          }
+          onReload={() => (save.accessChanged ? reloadPage() : void save.reload(role.id))}
         />
       )}
       <UnsavedChangesDialog guard={guard} title={`Discard changes to ${role.name}?`} />

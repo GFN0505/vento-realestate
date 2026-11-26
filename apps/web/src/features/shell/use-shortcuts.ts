@@ -18,6 +18,11 @@ export function useShortcuts() {
           '[role="dialog"][data-state="open"],[role="menu"][data-state="open"]',
         ) !== null
       if (id !== 'palette' && overlayOpen) return
+      // A form sheet keeps what was typed: ⌘K over it would close it (one overlay at a time).
+      if (id === 'palette' && (shellUi.isOpen('company') || shellUi.isOpen('invite'))) {
+        event.preventDefault()
+        return
+      }
       const page = SHORTCUTS.find((s) => s.id === id)?.page
       if (page) {
         if (window.location.pathname !== page.path) return

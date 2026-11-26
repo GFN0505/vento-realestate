@@ -59,12 +59,8 @@ export type NavItem = {
   to: NavPath
   icon: LucideIcon
   group: NavGroup
-  /** The Coming soon page's one line (spec UI copy). */
-  comingSoon?: string
   /** A few words for Home's workspace grid. */
   summary?: string
-  /** Extra words ⌘K matches on. */
-  keywords: readonly string[]
 }
 
 export const NAV: readonly NavItem[] = [
@@ -77,7 +73,6 @@ export const NAV: readonly NavItem[] = [
     to: '/',
     icon: House,
     group: 'main',
-    keywords: ['dashboard', 'start'],
   },
   {
     key: 'land',
@@ -89,9 +84,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Parcels, titles and encumbrances',
     icon: MapPin,
     group: 'main',
-    keywords: ['parcels', 'plots', 'c of o', 'consent', 'survey', 'encumbrances'],
-    comingSoon:
-      "Track parcels from purchase to perfected title: survey plans, C of O, governor's consent and encumbrances.",
   },
   {
     key: 'projects',
@@ -103,8 +95,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Phases, budgets and the site diary',
     icon: Building2,
     group: 'main',
-    keywords: ['construction', 'phases', 'site', 'diary', 'boq', 'contractors', 'purchase orders'],
-    comingSoon: 'Run phases, budgets, BoQs, contractors, purchase orders and the site diary.',
   },
   {
     key: 'estates',
@@ -116,8 +106,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Service charge and maintenance',
     icon: Building,
     group: 'main',
-    keywords: ['facility', 'service charge', 'maintenance', 'residents'],
-    comingSoon: 'Manage handed-over estates: service charge, utilities and maintenance.',
   },
   {
     key: 'sales',
@@ -129,8 +117,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Leads, units and subscriptions',
     icon: Tag,
     group: 'main',
-    keywords: ['leads', 'buyers', 'units', 'subscriptions', 'payment plans', 'commissions', 'crm'],
-    comingSoon: 'Sell off-plan: leads, units, subscriptions, payment plans and commissions.',
   },
   {
     key: 'finance',
@@ -142,8 +128,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Receipts, ledgers and tax',
     icon: Wallet,
     group: 'main',
-    keywords: ['receipts', 'ledger', 'fx', 'tax', 'vat', 'wht', 'banks'],
-    comingSoon: 'Receipts, ledgers per company, FX, construction finance and tax.',
   },
   {
     key: 'hr',
@@ -155,8 +139,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Staff and payroll',
     icon: Users,
     group: 'main',
-    keywords: ['staff', 'payroll', 'paye', 'pension', 'nhf', 'leave'],
-    comingSoon: 'Staff, site workers and payroll with PAYE, pension and NHF.',
   },
   {
     key: 'compliance',
@@ -168,8 +150,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Permits, buyer KYC and AML',
     icon: ShieldCheck,
     group: 'main',
-    keywords: ['permits', 'kyc', 'aml', 'ubo', 'scuml'],
-    comingSoon: 'Permits, buyer KYC, AML reviews and the UBO register.',
   },
   {
     key: 'documents',
@@ -181,8 +161,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Contracts and letters',
     icon: FileText,
     group: 'main',
-    keywords: ['contracts', 'letters', 'templates', 'e-signature', 'offer', 'allocation'],
-    comingSoon: 'Contracts and letters from templates, with approvals and e-signature.',
   },
   {
     key: 'reports',
@@ -194,8 +172,6 @@ export const NAV: readonly NavItem[] = [
     summary: 'Dashboards and board packs',
     icon: ChartColumn,
     group: 'main',
-    keywords: ['analytics', 'dashboards', 'board pack', 'returns'],
-    comingSoon: 'Dashboards, project returns and board packs.',
   },
   {
     // Owners and admins by default (settings view); opens its first section (Team in 3b).
@@ -207,17 +183,6 @@ export const NAV: readonly NavItem[] = [
     to: '/settings',
     icon: Settings,
     group: 'footer',
-    keywords: [
-      'team',
-      'members',
-      'roles',
-      'permissions',
-      'companies',
-      'entities',
-      'organization',
-      'security',
-    ],
-    comingSoon: 'Your team, roles and permissions, companies and your own security.',
   },
   {
     // Hidden until the help centre exists.
@@ -229,8 +194,6 @@ export const NAV: readonly NavItem[] = [
     to: '/help',
     icon: LifeBuoy,
     group: 'footer',
-    keywords: ['support', 'guides', 'how to', 'help centre'],
-    comingSoon: 'Short guides for each task, written for your role. They arrive with each module.',
   },
 ]
 

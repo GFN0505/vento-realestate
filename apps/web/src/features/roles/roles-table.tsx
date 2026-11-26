@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { Role } from '@vento/shared'
 import { ChevronRightIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { splitRoles } from '@/features/team/role-notes'
 import { peopleLine } from './role-people'
 
 const th =
@@ -12,8 +13,7 @@ type Props = { roles: readonly Role[]; menu: (role: Role) => ReactNode }
 
 /** Built-in roles in the default order, then custom roles A–Z under a quiet divider. */
 export function RolesTable({ roles, menu }: Props) {
-  const builtIn = roles.filter((r) => r.isSystem)
-  const custom = roles.filter((r) => !r.isSystem)
+  const { builtIn, custom } = splitRoles(roles)
   return (
     <div className="@container overflow-hidden rounded-[12px] border bg-card">
       <table className="w-full table-fixed text-[13px]">
@@ -114,8 +114,7 @@ export function CustomTag() {
 
 /** Phones: one card per role (name, description, "3 people · Two-step required"). */
 export function RolesCards({ roles }: { roles: readonly Role[] }) {
-  const builtIn = roles.filter((r) => r.isSystem)
-  const custom = roles.filter((r) => !r.isSystem)
+  const { builtIn, custom } = splitRoles(roles)
   return (
     <div className="flex flex-col gap-4">
       <RoleCardList label="Built-in roles" roles={builtIn} />

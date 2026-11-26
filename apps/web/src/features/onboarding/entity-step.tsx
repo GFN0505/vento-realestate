@@ -3,11 +3,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { entityInput } from '@vento/shared'
 import { useId } from 'react'
-import { Controller, type Resolver, useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { FormAlert } from '@/components/auth/form-alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CompanyFields, type CompanyFieldValues } from '@/features/companies/sheet/company-fields'
+import {
+  CompanyFields,
+  type CompanyFieldValues,
+  type CompanyValues,
+} from '@/features/companies/sheet/company-fields'
 import { apiErrorMessage, errorReason } from '@/lib/api-errors'
 import { orpc } from '@/lib/orpc'
 import { OnboardingActions, StepHeader } from './onboarding-layout'
@@ -17,9 +21,8 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
   const vatId = useId()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const form = useForm<CompanyFieldValues>({
-    // The schema turns blank RC and TIN into null; the form keeps strings for the inputs.
-    resolver: zodResolver(entityInput) as unknown as Resolver<CompanyFieldValues>,
+  const form = useForm<CompanyFieldValues, unknown, CompanyValues>({
+    resolver: zodResolver(entityInput),
     defaultValues: {
       name: organizationName,
       type: 'spv',
@@ -45,7 +48,7 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
 
   return (
     <form
-      onSubmit={form.handleSubmit((values) => create.mutate(entityInput.parse(values)))}
+      onSubmit={form.handleSubmit((values) => create.mutate(values))}
       noValidate
       className="contents"
     >

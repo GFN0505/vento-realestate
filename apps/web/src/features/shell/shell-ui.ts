@@ -60,6 +60,9 @@ export const shellUi = {
   companyTarget(): CompanyTarget {
     return companyTarget
   },
+  isOpen(overlay: Overlay): boolean {
+    return state[overlay]
+  },
   close(overlay: Overlay) {
     set({ [overlay]: false })
   },

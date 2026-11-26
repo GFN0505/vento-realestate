@@ -75,12 +75,25 @@ export function RoleRowMenu({ role, actions }: { role: Role; actions: RoleAction
   )
 }
 
-/** ⋯ on a role page: only the delete (or who to move first). */
-export function RolePageMenu({ role, onDelete }: { role: Role; onDelete: () => void }) {
+/** ⋯ on a role page: only the delete (or who to move first). Waits while there are unsaved ticks. */
+export function RolePageMenu({
+  role,
+  disabled,
+  onDelete,
+}: {
+  role: Role
+  disabled: boolean
+  onDelete: () => void
+}) {
   if (role.isSystem || !(role.can.delete || (role.can.edit && holders(role) > 0))) return null
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label={`More actions for ${role.name}`} className={trigger}>
+      <DropdownMenuTrigger
+        aria-label={`More actions for ${role.name}`}
+        disabled={disabled}
+        title={disabled ? 'Save or discard your changes first.' : undefined}
+        className={`${trigger} disabled:cursor-not-allowed disabled:opacity-60`}
+      >
         <EllipsisIcon aria-hidden className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-56">

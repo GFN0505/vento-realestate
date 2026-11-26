@@ -112,7 +112,7 @@ describe('members', () => {
       await expect(removeMember(secondCtx, org.ownerMemberId)).rejects.toMatchObject({
         code: 'FORBIDDEN',
         message: 'Your access has changed. Reload the page to continue.',
-        data: { reason: 'permission' },
+        data: { reason: 'access_changed' },
       })
     }))
 
@@ -128,7 +128,7 @@ describe('members', () => {
           roleId: org.roleIds.get('viewer') ?? '',
           entityIds: null,
         }),
-      ).rejects.toMatchObject({ data: { reason: 'permission' } })
+      ).rejects.toMatchObject({ data: { reason: 'access_changed' } })
     }))
 
   it('backs up the last-owner rule in the database itself', () =>
@@ -387,7 +387,7 @@ describe('two owners removing each other at the same moment', () => {
     expect(refused?.status === 'rejected' && refused.reason).toMatchObject({
       code: 'FORBIDDEN',
       message: 'Your access has changed. Reload the page to continue.',
-      data: { reason: 'permission' },
+      data: { reason: 'access_changed' },
     })
     const owners = await db
       .select()

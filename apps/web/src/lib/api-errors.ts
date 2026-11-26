@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { connection } from '@/lib/connection'
 import { GENERIC_ERROR, NETWORK_ERROR } from '@/lib/error-copy'
 import { errorReason, isOrganizationChanged } from '@/lib/error-data'
+import { reloadPage } from '@/lib/reload'
 
 export { errorReason, errorReference, isOrganizationChanged } from '@/lib/error-data'
 
@@ -20,7 +21,7 @@ export function toastApiError(error: unknown) {
     // Calm, not an error: their role changed under them; a reload shows what they may do now.
     toast(apiErrorMessage(error), {
       duration: Number.POSITIVE_INFINITY,
-      action: { label: 'Reload', onClick: () => window.location.reload() },
+      action: { label: 'Reload', onClick: reloadPage },
     })
     return
   }
@@ -32,8 +33,7 @@ export function isAccessChanged(error: unknown): boolean {
   return (
     error instanceof ORPCError &&
     error.code === 'FORBIDDEN' &&
-    errorReason(error) === 'permission' &&
-    /reload the page/i.test(error.message)
+    errorReason(error) === 'access_changed'
   )
 }
 

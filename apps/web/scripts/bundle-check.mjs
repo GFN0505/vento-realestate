@@ -1,5 +1,6 @@
-// Fails when the signed-in Home's first load is heavier than the budget (gzipped JS + CSS).
-// Run after `vite build` (it reads dist/.vite/manifest.json).
+// Fails when the signed-in Home's first load is heavier than the budget (gzipped JS + CSS), or
+// when code that belongs to a later screen reaches it. `pnpm bundle:check` builds with hidden
+// sourcemaps into node_modules/.bundle-check first; pass another build folder as the argument.
 //
 // First load for Home = the entry plus the route chunks Home needs (`_app`, `_shell`, the index
 // page) and everything those import statically. Lazy pieces (the ⌘K palette, menus, the More
@@ -11,7 +12,9 @@ import { gzipSync } from 'node:zlib'
 
 const out = (text) => process.stdout.write(`${text}\n`)
 const BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB) || 200
-const dist = join(import.meta.dirname, '..', 'dist')
+const dist = process.argv[2]
+  ? join(process.cwd(), process.argv[2])
+  : join(import.meta.dirname, '..', 'dist')
 const manifest = JSON.parse(readFileSync(join(dist, '.vite', 'manifest.json'), 'utf8'))
 
 const HOME_ROUTES = [
@@ -62,16 +65,32 @@ if (total > BUDGET_KB * 1000) {
   process.exit(1)
 }
 
-// The permission rules and the roles screens must never reach the first load (plan 3c §7): a
-// shell or Home import of them would pull them in. `permissionsBeyond` marks role-rules.ts.
-const leaked = rows.filter(
-  (row) =>
-    row.file.endsWith('.js') &&
-    readFileSync(join(dist, row.file), 'utf8').includes('permissionsBeyond'),
-)
-if (leaked.length > 0) {
+// Code that must never reach Home's first load (plan 3c §7): the shared role rules, the roles
+// screens and the Company sheet. A static import from the shell or Home would pull them in.
+// Read from each first-load chunk's sourcemap, so a rename or minification can't hide it.
+const FORBIDDEN = ['access/role-rules.ts', 'features/roles/', 'features/companies/sheet/']
+const leaks = []
+for (const row of rows) {
+  if (!row.file.endsWith('.js')) continue
+  let map
+  try {
+    map = JSON.parse(readFileSync(join(dist, `${row.file}.map`), 'utf8'))
+  } catch {
+    // The bundler's tiny runtime helper has no sources of ours, and no map.
+    if (row.file.includes('rolldown-runtime')) continue
+    process.stderr.write(
+      `bundle-check: no sourcemap for ${row.file}. Build with --sourcemap (pnpm bundle:check does).\n`,
+    )
+    process.exit(2)
+  }
+  for (const source of map.sources ?? []) {
+    const hit = FORBIDDEN.find((part) => source.includes(part))
+    if (hit) leaks.push(`${row.file}: ${source.slice(source.indexOf(hit))}`)
+  }
+}
+if (leaks.length > 0) {
   process.stderr.write(
-    `\nbundle-check: the role rules reached Home's first load (${leaked.map((r) => r.file).join(', ')}).\n`,
+    `\nbundle-check: later-screen code reached Home's first load:\n  ${leaks.join('\n  ')}\n`,
   )
   process.exit(1)
 }

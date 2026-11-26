@@ -3,29 +3,23 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   MONTHS,
   NIGERIAN_STATES,
-  type NigerianState,
   type Organization,
   stateLabel,
   updateOrganizationInput,
 } from '@vento/shared'
-import { CircleAlertIcon } from 'lucide-react'
 import { type ReactNode, useId } from 'react'
-import { type Resolver, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { SaveErrorAlert } from '@/components/access-changed-alert'
 import { NativeSelect } from '@/components/native-select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { apiErrorMessage, isHandledElsewhere } from '@/lib/api-errors'
 import { financialYearSpan } from '@/lib/format'
 import { orpc } from '@/lib/orpc'
 import { organizationQuery } from './organization-queries'
 
-export type OrganizationValues = {
-  name: string
-  headOfficeState: NigerianState
-  financialYearStartMonth: number
-}
+/** The shared update schema's values; every field is filled from the organization. */
+export type OrganizationValues = ReturnType<typeof updateOrganizationInput.parse>
 
 export const ORGANIZATION_FORM_ID = 'organization-form'
 
@@ -39,7 +33,7 @@ const valuesOf = (org: Organization): OrganizationValues => ({
 export function useOrganizationForm(org: Organization) {
   const queryClient = useQueryClient()
   const form = useForm<OrganizationValues>({
-    resolver: zodResolver(updateOrganizationInput) as unknown as Resolver<OrganizationValues>,
+    resolver: zodResolver(updateOrganizationInput),
     defaultValues: valuesOf(org),
     mode: 'onTouched',
   })
@@ -84,12 +78,7 @@ export function OrganizationForm({ org, editable, form, save, submit }: Props) {
       onSubmit={(event) => void submit(event)}
       className="flex flex-col gap-5"
     >
-      {save.isError && !isHandledElsewhere(save.error) && (
-        <Alert variant="destructive" aria-live="polite">
-          <CircleAlertIcon aria-hidden />
-          <AlertDescription>{apiErrorMessage(save.error)}</AlertDescription>
-        </Alert>
-      )}
+      <SaveErrorAlert error={save.error} />
       <fieldset disabled={!editable} className="contents">
         <Section
           title="Organization"

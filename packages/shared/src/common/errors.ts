@@ -29,6 +29,8 @@ export const forbiddenReason = z.enum([
   'built_in_role',
   /** Nobody edits or deletes the role they hold. */
   'own_role',
+  /** The caller's own membership or role changed during the request: reload to continue. */
+  'access_changed',
 ])
 export type ForbiddenReason = z.infer<typeof forbiddenReason>
 

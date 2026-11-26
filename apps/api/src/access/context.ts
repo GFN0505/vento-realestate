@@ -278,7 +278,7 @@ export async function lockViewer<T extends Pick<ServiceContext, 'organizationId'
   if (!row) {
     throw new ORPCError('FORBIDDEN', {
       message: 'Your access has changed. Reload the page to continue.',
-      data: { reason: 'permission' as const },
+      data: { reason: 'access_changed' as const },
     })
   }
   return {

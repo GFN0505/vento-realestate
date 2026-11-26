@@ -12,12 +12,12 @@ import { homeKpis, kpiNote } from './home-kpis'
 import { navItemForModule, workspaceModules } from './nav'
 import { usePageTitle } from './use-page-title'
 
+import { WorkspaceGrid } from './workspace-grid'
+
 // Rare (every company of theirs archived): its code loads only then.
 const NoCompanyCard = lazy(() =>
   import('./no-company-card').then((m) => ({ default: m.NoCompanyCard })),
 )
-
-import { WorkspaceGrid } from './workspace-grid'
 
 /**
  * Home (boards ExecutiveHome and the role homes): a hero greeting on the brand's navy, the setup

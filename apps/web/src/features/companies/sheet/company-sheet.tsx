@@ -197,7 +197,7 @@ function ReadOnlyCompany({
             <Button
               disabled={archive.pendingId !== null}
               aria-busy={archive.pendingId !== null || undefined}
-              onClick={() => void archive.restore(company).then(onClose)}
+              onClick={() => void archive.restore(company).then((done) => done && onClose())}
               className="max-md:h-11 max-md:flex-1"
             >
               {archive.pendingId ? (

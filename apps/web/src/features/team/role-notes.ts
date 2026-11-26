@@ -28,3 +28,8 @@ export function grantableRoles<T extends Pick<Role, 'key' | 'can'>>(
 ) {
   return roles.filter((role) => role.can.assign && (viewerIsOwner || role.key !== 'owner'))
 }
+
+/** Built-in roles (in the server's order), then custom ones (A–Z): how every role list groups. */
+export function splitRoles<T extends Pick<Role, 'isSystem'>>(roles: readonly T[]) {
+  return { builtIn: roles.filter((r) => r.isSystem), custom: roles.filter((r) => !r.isSystem) }
+}

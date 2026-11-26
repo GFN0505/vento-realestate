@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { rolesQuery, useEffectiveAccess } from '@/features/preview/use-effective-permissions'
-import { grantableRoles } from './role-notes'
+import { grantableRoles, splitRoles } from './role-notes'
 import { useTeamActionsContext } from './use-team-actions'
 
 /**
@@ -23,6 +23,7 @@ export function RoleMenu({ row }: { row: TeamMemberRow }) {
   const access = useEffectiveAccess()
   const roles = useQuery(rolesQuery())
   const options = grantableRoles(roles.data?.items ?? [], access.roleKey === 'owner')
+  const { builtIn, custom } = splitRoles(options)
 
   return (
     <DropdownMenu>
@@ -48,26 +49,22 @@ export function RoleMenu({ row }: { row: TeamMemberRow }) {
             if (role) actions.changeRole(row, { id: role.id, key: role.key, name: role.name })
           }}
         >
-          {options
-            .filter((role) => role.isSystem)
-            .map((role) => (
-              <DropdownMenuRadioItem key={role.id} value={role.id}>
-                {role.name}
-              </DropdownMenuRadioItem>
-            ))}
-          {options.some((role) => !role.isSystem) && (
+          {builtIn.map((role) => (
+            <DropdownMenuRadioItem key={role.id} value={role.id}>
+              {role.name}
+            </DropdownMenuRadioItem>
+          ))}
+          {custom.length > 0 && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Custom roles</DropdownMenuLabel>
+              {custom.map((role) => (
+                <DropdownMenuRadioItem key={role.id} value={role.id}>
+                  {role.name}
+                </DropdownMenuRadioItem>
+              ))}
             </>
           )}
-          {options
-            .filter((role) => !role.isSystem)
-            .map((role) => (
-              <DropdownMenuRadioItem key={role.id} value={role.id}>
-                {role.name}
-              </DropdownMenuRadioItem>
-            ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

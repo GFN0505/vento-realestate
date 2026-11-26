@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import type { Entity } from '@vento/shared'
 import { useEffect, useRef } from 'react'
-import { toast } from 'sonner'
 import { useMe } from '@/features/preview/use-effective-permissions'
+import { notify } from '@/lib/notify'
 import { orpc } from '@/lib/orpc'
 import {
   ENTITY_NOT_AVAILABLE,
@@ -82,7 +82,7 @@ export function useEntitySync() {
     if (limits?.length === 1) return
     if (requested) {
       if (resolveEntity(requested, options, limits).invalid) {
-        if (reported.current !== requested) toast(ENTITY_NOT_AVAILABLE)
+        if (reported.current !== requested) notify((toast) => toast(ENTITY_NOT_AVAILABLE))
         reported.current = requested
         rememberEntity(organizationId, null)
         void navigate({

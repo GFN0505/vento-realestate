@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { toast } from 'sonner'
 import { meQuery } from '@/features/account/api'
 import type { NavItem } from '@/features/shell/nav'
 import { onNotFound } from '@/lib/availability-events'
+import { notify } from '@/lib/notify'
 
 /** After any NOT_FOUND, refetch `me`: if a feature was switched off, navigation catches up. */
 export function useNotFoundRefetch() {
@@ -38,7 +38,7 @@ export function useFeatureLoss(lost: NavItem | null) {
   useEffect(() => {
     if (!key || !label) return
     // The id keeps it to one toast however many times the effect runs.
-    toast(featureLostMessage(label), { id: `feature-lost:${key}` })
+    notify((toast) => toast(featureLostMessage(label), { id: `feature-lost:${key}` }))
     void navigate({ to: '/', replace: true })
   }, [key, label, navigate])
 }

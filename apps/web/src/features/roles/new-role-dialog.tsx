@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { createRoleInput, ROLE_NAME_MAX, type Role } from '@vento/shared'
-import { CircleAlertIcon, LoaderCircleIcon } from 'lucide-react'
+import { LoaderCircleIcon } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { SaveErrorAlert } from '@/components/access-changed-alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,16 +19,11 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
-import {
-  apiErrorMessage,
-  errorReason,
-  isHandledElsewhere,
-  OFFLINE_SAVE_ERROR,
-} from '@/lib/api-errors'
+import { roleQuery } from '@/features/settings/role-queries'
+import { errorReason, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { client } from '@/lib/orpc'
 import { hasFinePointer } from '@/lib/pointer'
-import { roleQuery } from './role-queries'
 import { StartFromSelect } from './start-from-select'
 
 type Props = {
@@ -65,6 +60,26 @@ export function NewRoleDialog({ open, from, onClose }: Props) {
             preset={preset}
             onClose={onClose}
           />
+        ) : roles.isError ? (
+          <DialogBody>
+            <p role="alert" className="text-[13px] text-muted-foreground">
+              Roles couldn't load. Check your connection and try again.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => void roles.refetch()}
+              disabled={roles.isFetching}
+              className="w-fit max-sm:h-11"
+            >
+              Try again
+            </Button>
+          </DialogBody>
+        ) : roles.isSuccess ? (
+          <DialogBody>
+            <p className="text-[13px] text-muted-foreground">
+              There's no role you can start from. A new role copies one within your own access.
+            </p>
+          </DialogBody>
         ) : (
           <DialogBody aria-hidden>
             <Skeleton className="h-10 w-full" />
@@ -165,12 +180,7 @@ function NewRoleForm({
           <FieldLabel htmlFor={ids.from}>Start from</FieldLabel>
           <StartFromSelect id={ids.from} roles={sources} value={sourceId} onChange={pickSource} />
         </Field>
-        {error && !isHandledElsewhere(error) ? (
-          <Alert variant="destructive" aria-live="polite">
-            <CircleAlertIcon aria-hidden />
-            <AlertDescription>{apiErrorMessage(error)}</AlertDescription>
-          </Alert>
-        ) : null}
+        <SaveErrorAlert error={error} />
       </DialogBody>
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={onClose} className="max-sm:h-11">

@@ -1,5 +1,6 @@
 import { useBlocker } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
+import { isReloading } from './reload'
 
 export type UnsavedGuard = {
   /** True while a navigation waits for the person to choose. */
@@ -18,7 +19,7 @@ export type UnsavedGuard = {
 export function useUnsavedGuard(dirty: boolean): UnsavedGuard {
   const blocker = useBlocker({
     shouldBlockFn: ({ current, next }) => dirty && current.pathname !== next.pathname,
-    enableBeforeUnload: () => dirty,
+    enableBeforeUnload: () => dirty && !isReloading(),
     withResolver: true,
   })
   return {
