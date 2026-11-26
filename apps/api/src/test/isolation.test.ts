@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { entities, invitations, members, sessions, users } from '@/db/schema'
+import { recordDelivery } from '@/modules/invitations/delivery'
 import { withRollback } from './db'
 import {
   addAddOnRow,
@@ -135,9 +136,59 @@ describe('organization isolation', () => {
       await createInvitation(tx, theirs, { role: 'viewer' })
       const { client } = clientAs(tx, mine.owner)
       expect((await client.entities.list({})).items.map((e) => e.name)).toEqual(['Mine Ltd'])
-      expect((await client.members.list({})).total).toBe(1)
-      expect((await client.invitations.list({})).total).toBe(0)
+      const team = await client.team.list({})
+      expect(team.total).toBe(1)
+      expect(team.counts).toEqual({ members: 1, invited: 0, removed: 0 })
+      expect((await client.team.list({ show: 'invited' })).total).toBe(0)
       expect((await client.roles.list()).total).toBe(9)
+    }))
+
+  it('lists no team rows for a role from another organization, and never their people', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      await createMember(tx, theirs, { role: 'sales', name: 'Their Sales Person' })
+      await createInvitation(tx, theirs, { role: 'sales' })
+      const { client } = clientAs(tx, mine.owner)
+      const foreignRole = await client.team.list({ roleId: theirs.roleIds.get('sales') ?? '' })
+      expect(foreignRole.items).toEqual([])
+      const all = await client.team.list({})
+      expect(all.items.map((r) => r.id)).toEqual([mine.ownerMemberId])
+      expect(JSON.stringify(all)).not.toContain('Their Sales Person')
+    }))
+
+  it("ticks the checklist only from this organization's people and entities", () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      await createEntity(tx, theirs)
+      await createMember(tx, theirs, { role: 'sales' })
+      await createInvitation(tx, theirs, { role: 'sales' })
+      const { client } = clientAs(tx, mine.owner)
+      const { items } = await client.checklist.get()
+      expect(items.filter((i) => !i.done).map((i) => i.key)).toEqual([
+        'first_entity',
+        'invite_team',
+      ])
+    }))
+
+  it("records no delivery on another organization's invitation", () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      const { invitation } = await createInvitation(tx, theirs, {
+        role: 'sales',
+        delivery: 'queued',
+      })
+      const recorded = await recordDelivery(tx, {
+        organizationId: mine.id,
+        invitationId: invitation.id,
+        sentAt: invitation.lastSentAt,
+        result: { status: 'failed', kind: 'rejected' },
+      })
+      expect(recorded).toBeNull()
+      const [row] = await tx.select().from(invitations).where(eq(invitations.id, invitation.id))
+      expect(row?.delivery).toBe('queued')
     }))
 
   it('refuses to switch to another organization and leaves the session where it was', () =>

@@ -14,6 +14,7 @@ import {
   type Membership,
   resolveMembership,
   setActiveOrganization,
+  touchMemberActivity,
   twoStepRequired,
 } from '@/access/context'
 import { userIdForResetToken } from '@/auth/security-store'
@@ -89,6 +90,8 @@ export async function getMe(
     () => listActiveMemberships(db, user.id),
     () => featuresAndPlan(db, membership, store),
   ])
+  // Only someone through every gate (onboarding, two-step) is using the organization.
+  if (membership && nextStep === 'ready') await touchMemberActivity(db, membership.member)
   return {
     user: {
       id: user.id,

@@ -103,7 +103,13 @@ export async function createOrganization(
     }))
   const [member] = await db
     .insert(members)
-    .values({ organizationId: org.id, userId: owner.id, roleId: roleIds.get('owner') ?? '' })
+    .values({
+      organizationId: org.id,
+      userId: owner.id,
+      roleId: roleIds.get('owner') ?? '',
+      // Active now, so the hourly activity write doesn't show up in query counts.
+      lastActiveAt: new Date(),
+    })
     .returning()
   if (!member) throw new Error('member insert failed')
   return { id: org.id, name: org.name, roleIds, owner, ownerMemberId: member.id }
@@ -133,7 +139,14 @@ const twoStepRoles = new Set(DEFAULT_ROLES.filter((r) => r.requiresTwoStep).map(
 export async function createMember(
   db: DbOrTx,
   org: TestOrg,
-  options: { role: SystemRoleKey; entityIds?: string[]; user?: TestUser; name?: string },
+  options: {
+    role: SystemRoleKey
+    entityIds?: string[]
+    user?: TestUser
+    name?: string
+    /** Defaults to now; null for someone who never came back after joining. */
+    lastActiveAt?: Date | null
+  },
 ) {
   const user =
     options.user ??
@@ -148,6 +161,7 @@ export async function createMember(
       organizationId: org.id,
       userId: user.id,
       roleId: org.roleIds.get(options.role) ?? '',
+      lastActiveAt: options.lastActiveAt === undefined ? new Date() : options.lastActiveAt,
     })
     .returning()
   if (!member) throw new Error('member insert failed')
@@ -172,6 +186,10 @@ export async function createInvitation(
     status?: (typeof invitations.$inferInsert)['status']
     expiresAt?: Date
     entityIds?: string[]
+    /** Defaults to 5 minutes ago, so a resend isn't caught by the once-a-minute rule. */
+    lastSentAt?: Date
+    delivery?: (typeof invitations.$inferInsert)['delivery']
+    invitedBy?: TestUser
   },
 ) {
   const { token, tokenHash } = newInvitationToken()
@@ -181,10 +199,12 @@ export async function createInvitation(
       organizationId: org.id,
       email: options.email ?? uniqueEmail('invitee'),
       roleId: org.roleIds.get(options.role) ?? '',
-      invitedByUserId: org.owner.id,
+      invitedByUserId: (options.invitedBy ?? org.owner).id,
       status: options.status ?? 'pending',
       tokenHash,
       expiresAt: options.expiresAt ?? new Date(Date.now() + 7 * 24 * 3600_000),
+      lastSentAt: options.lastSentAt ?? new Date(Date.now() - 5 * 60_000),
+      delivery: options.delivery ?? 'sent',
     })
     .returning()
   if (!invitation) throw new Error('invitation insert failed')

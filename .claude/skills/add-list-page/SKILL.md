@@ -29,6 +29,7 @@ export const Route = createFileRoute('/_app/subscriptions/')({
 ```
 - All table state (page, size, search, sort, filters) lives in the URL. Use `Route.useSearch()` / `navigate({ search })`. No `useState` copies.
 - Debounce the search input (300 ms) before updating the URL, and reset `page` to 1 when filters change.
+- **Location filter (decision 0014):** a list whose data belongs to a location follows the top-bar entity switcher. Pass `entity` from the URL as `entityId` (the server intersects it with the viewer's limits). With one entity picked, show a quiet line above the table ("… in {Entity}") with a "Show all entities" link, and make the empty state fit. Only organization-wide pages (company profile, plan, roles) hide the switcher.
 
 ## Page layout (match every other list page)
 ```

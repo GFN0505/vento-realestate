@@ -2,16 +2,13 @@ import { z } from 'zod'
 import { notice } from '../account/schema'
 import { platform } from '../common/errors'
 import { id, paginated } from '../common/schemas'
+import { teamInvitationRow, teamMemberRow } from '../team/schema'
 import {
   acceptInvitationAsNewUserInput,
   acceptInvitationOutput,
   createInvitationsInput,
-  invitation,
   invitationPreview,
   invitationTokenInput,
-  listInvitationsInput,
-  listMembersInput,
-  member,
   memberIdInput,
   role,
   updateMemberAccessInput,
@@ -24,16 +21,22 @@ export const rolesContract = {
   list: platform.output(paginated(role)),
 }
 
+// Listing people is team.list (one list with invitations, names limited to the viewer's access).
 export const membersContract = {
-  list: platform.input(listMembersInput).output(paginated(member)),
-  updateAccess: platform.input(updateMemberAccessInput).output(notice.extend({ member })),
+  /** The updated row, so the web replaces it in place. Undo calls this again with the old values. */
+  updateAccess: platform
+    .input(updateMemberAccessInput)
+    .output(notice.extend({ row: teamMemberRow })),
   remove: platform.input(memberIdInput).output(notice),
   resetTwoStep: platform.input(memberIdInput).output(notice),
 }
 
 export const invitationsContract = {
-  list: platform.input(listInvitationsInput).output(paginated(invitation)),
-  create: platform.input(createInvitationsInput).output(notice.extend({ sent: z.number().int() })),
+  /** All or nothing. Every clashing email comes back in the CONFLICT data. */
+  create: platform
+    .input(createInvitationsInput)
+    .output(notice.extend({ sent: z.number().int(), invitations: z.array(teamInvitationRow) })),
+  /** Once a minute per invitation (TOO_MANY_REQUESTS). Owner invitations: owners only. */
   resend: platform.input(z.strictObject({ id })).output(notice),
   withdraw: platform.input(z.strictObject({ id })).output(notice),
   /** Public: what the invitation offers, for the Accept invitation screen. */

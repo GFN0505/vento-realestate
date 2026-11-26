@@ -2,6 +2,7 @@ import { oc } from '@orpc/contract'
 import { z } from 'zod'
 import { PASSWORD_ERROR_CODES } from '../auth/error-codes'
 import { type FeatureKey, LIMIT_KEYS } from '../features/catalog'
+import { id } from './schemas'
 
 /** Why a request has no signed-in person. `session_expired` opens the "Session expired" dialog. */
 export const unauthorizedReason = z.enum(['signed_out', 'session_expired'])
@@ -32,6 +33,8 @@ export const conflictReason = z.enum([
   'invitation_not_pending',
   'account_exists',
   'not_archivable',
+  /** An archived entity of this organization was chosen for access; choose again. */
+  'entity_unavailable',
   /**
    * The tab names a different organization than the session (decision 0013). The web never
    * shows the message; it reloads into the session's organization with a notice.
@@ -77,7 +80,15 @@ export const errorMap = {
   CONFLICT: {
     status: 409,
     message: 'That conflicts with something that already exists',
-    data: z.object({ reason: conflictReason }),
+    data: z.object({
+      reason: conflictReason,
+      /**
+       * `already_member` / `already_invited` on invitations.create: every clashing email, so the
+       * invite sheet marks each row at once. `already_member` wins when both kinds clash.
+       */
+      alreadyMembers: z.array(z.string()).optional(),
+      alreadyInvited: z.array(z.object({ email: z.string(), id })).optional(),
+    }),
   },
   TOO_MANY_REQUESTS: {
     status: 429,
@@ -94,6 +105,9 @@ export const errorMap = {
 
 /** The data of a FORBIDDEN error, e.g. `{ reason: 'plan_limit', limit: 'entities', included: 2 }`. */
 export type ForbiddenData = z.infer<(typeof errorMap)['FORBIDDEN']['data']>
+
+/** The data of a CONFLICT error, e.g. `{ reason: 'already_invited', alreadyInvited: [...] }`. */
+export type ConflictData = z.infer<(typeof errorMap)['CONFLICT']['data']>
 
 /**
  * Procedure metadata (decision 0016). `feature` is the catalog key the procedure belongs to, or

@@ -29,5 +29,10 @@ declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     /** The module a route belongs to: the shell re-checks view access against it live. */
     module?: PermissionModule
+    /**
+     * Organization-wide pages (e.g. an organization or plan settings section): the top bar hides
+     * the entity switcher there, because the page doesn't follow it.
+     */
+    orgWide?: boolean
   }
 }

@@ -61,7 +61,10 @@ async function world(tx: DbOrTx, role: SystemRoleKey) {
       call: (x) => x.entities.archive({ id: lekki.id }),
     },
     { name: 'roles.list', action: 'view', call: (x) => x.roles.list() },
-    { name: 'members.list', action: 'view', call: (x) => x.members.list({}) },
+    { name: 'team.list', action: 'view', call: (x) => x.team.list({}) },
+    { name: 'checklist.get', action: 'create', call: (x) => x.checklist.get() },
+    { name: 'checklist.hide', action: 'create', call: (x) => x.checklist.hide() },
+    { name: 'checklist.show', action: 'create', call: (x) => x.checklist.show() },
     {
       name: 'members.updateAccess',
       action: 'edit',
@@ -78,7 +81,6 @@ async function world(tx: DbOrTx, role: SystemRoleKey) {
       action: 'edit',
       call: (x) => x.members.resetTwoStep({ memberId: c.member.id }),
     },
-    { name: 'invitations.list', action: 'view', call: (x) => x.invitations.list({}) },
     {
       name: 'invitations.create',
       action: 'create',

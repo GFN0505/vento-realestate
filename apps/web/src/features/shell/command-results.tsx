@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useRouter } from '@tanstack/react-router'
 import {
   Building2Icon,
@@ -7,15 +8,22 @@ import {
   KeyboardIcon,
   LaptopMinimalIcon,
   LayersIcon,
+  ListChecksIcon,
   LogOutIcon,
+  UserPlusIcon,
+  UsersIcon,
 } from 'lucide-react'
 import { PreviewRoles } from '@/components/shell/preview-roles'
 import { THEME_OPTIONS } from '@/components/shell/theme-icons'
 import { CommandGroup, CommandHint, CommandItem } from '@/components/ui/command'
+import { checklistQuery } from '@/features/checklist/checklist-queries'
+import { showChecklist } from '@/features/checklist/checklist-visibility'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
 import { useSwitchOrganization } from '@/features/organization/switch-organization'
 import { UpgradeHintRows } from '@/features/plan/upgrade-hint-rows'
 import { canPreview, useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
+import { type SettingsPath, visibleSections } from '@/features/settings/sections'
+import { can } from '@/lib/permissions'
 import { setTheme, useTheme } from '@/lib/theme'
 import { canView, type NavPath, navItemForModule, navTag, visibleNav } from './nav'
 import { readRecentPages } from './recent-pages'
@@ -27,7 +35,7 @@ type Props = {
   search: string
   onPreviewPage: () => void
   close: () => void
-  navigate: (to: NavPath) => void
+  navigate: (to: NavPath | SettingsPath) => void
 }
 
 /**
@@ -45,6 +53,11 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
   const pathname = useLocation({ select: (l) => l.pathname })
   const actions = useShellActions()
   const switchOrganization = useSwitchOrganization()
+  const queryClient = useQueryClient()
+  // Settings create: owners and admins by default; never while previewing a role without it.
+  const canInvite = can(access.permissions, 'settings', 'create')
+  const checklist = useQuery({ ...checklistQuery(), enabled: canInvite })
+  const checklistHidden = canInvite && checklist.data?.hidden === true
   const run = (fn: () => void) => () => {
     close()
     fn()
@@ -122,8 +135,42 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             {navTag(access, item) === 'early_access' && <CommandHint>Early access</CommandHint>}
           </CommandItem>
         ))}
+        {visibleSections(access).map((section) => (
+          <CommandItem
+            key={section.key}
+            value={`go:settings:${section.key}`}
+            keywords={[`Go to ${section.label}`, 'settings', ...section.keywords]}
+            onSelect={() => navigate(section.to)}
+          >
+            <UsersIcon aria-hidden />
+            Go to {section.label}
+            <CommandHint>Settings</CommandHint>
+          </CommandItem>
+        ))}
       </CommandGroup>
       <CommandGroup heading="Actions">
+        {canInvite && (
+          <CommandItem
+            value="invite"
+            keywords={['Invite people', 'invite team members add user colleague staff']}
+            onSelect={() => shellUi.openInvite()}
+          >
+            <UserPlusIcon aria-hidden />
+            Invite people
+          </CommandItem>
+        )}
+        {checklistHidden && (
+          <CommandItem
+            value="checklist:show"
+            keywords={['Show setup checklist', 'finish setting up onboarding']}
+            onSelect={run(() => {
+              void showChecklist(queryClient).then(() => router.navigate({ to: '/' }))
+            })}
+          >
+            <ListChecksIcon aria-hidden />
+            Show setup checklist
+          </CommandItem>
+        )}
         {!entity.locked && entity.status === 'success' && (
           <>
             {entity.entity && (

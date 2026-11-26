@@ -98,6 +98,14 @@ export const members = pgTable(
     status: memberStatus().notNull().default('active'),
     joinedAt: timestamptz().defaultNow().notNull(),
     removedAt: timestamptz(),
+    /** Who removed them (null while active, and for removals before this was kept). */
+    removedByUserId: uuid().references(() => users.id, { onDelete: 'restrict' }),
+    /** Written at most hourly from the request path (MEMBER_ACTIVITY_WRITE_INTERVAL_MS). */
+    lastActiveAt: timestamptz(),
+    /** Setup checklist on Home, per person per organization ("every device"). */
+    checklistHiddenAt: timestamptz(),
+    /** First seen all done; the card goes the next Lagos day. Cleared when an item reopens. */
+    checklistCompletedAt: timestamptz(),
     ...timestamps,
   },
   (t) => [
@@ -116,6 +124,11 @@ export const members = pgTable(
     check(
       'members_removed_consistent',
       sql`(${t.status} = 'removed') = (${t.removedAt} is not null)`,
+    ),
+    index('members_removed_by_idx').on(t.removedByUserId),
+    check(
+      'members_removed_by_only_removed',
+      sql`${t.removedByUserId} is null or ${t.status} = 'removed'`,
     ),
   ],
 )
@@ -153,6 +166,18 @@ export const invitationStatus = pgEnum('invitation_status', [
   'withdrawn',
 ])
 
+/**
+ * Whether the email arrived, apart from the invitation's status: queued at insert or resend,
+ * then what the mailer (or, in PR B, Postmark's bounce webhook) reports. Never audited.
+ */
+export const invitationDelivery = pgEnum('invitation_delivery', [
+  'queued',
+  'sent',
+  'failed',
+  'bounced',
+  'complained',
+])
+
 export const invitations = pgTable(
   'invitations',
   {
@@ -172,6 +197,10 @@ export const invitations = pgTable(
     lastSentAt: timestamptz().defaultNow().notNull(),
     respondedAt: timestamptz(),
     acceptedUserId: uuid().references(() => users.id, { onDelete: 'set null' }),
+    delivery: invitationDelivery().notNull().default('queued'),
+    deliveryChangedAt: timestamptz(),
+    /** The provider's id for the latest send; a bounce for an older send must not match. */
+    deliveryMessageId: text(),
     ...timestamps,
   },
   (t) => [

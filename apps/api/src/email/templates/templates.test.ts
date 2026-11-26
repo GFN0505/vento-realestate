@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { invitationEmail } from './invitation'
-import { backupCodeUsedAlert, signInLockedAlert, twoStepResetAlert } from './security-alert'
+import {
+  backupCodeUsedAlert,
+  newOwnerAlert,
+  signInLockedAlert,
+  twoStepResetAlert,
+} from './security-alert'
 import { trialEndingEmail } from './trial-ending'
 import { verifyEmail } from './verify-email'
 
@@ -94,5 +99,23 @@ describe('email templates', () => {
       'Questions about your plan? Contact Vento: mailto:support@vento.ng',
     )
     expect(email.html).not.toContain('Talk to Vento')
+  })
+
+  it('tells every owner who was made an owner, by whom and when', () => {
+    const email = newOwnerAlert({
+      byName: 'Olumide Bankole',
+      newOwnerName: 'Aisha Bello',
+      organizationName: 'Vento Homes Ltd',
+      at: '10:30',
+      on: '26 Nov 2026',
+      teamUrl: 'http://localhost/settings/team',
+    })
+    expect(email.subject).toBe('Vento: Aisha Bello is now an owner of Vento Homes Ltd')
+    expect(email.text).toContain(
+      'Olumide Bankole made Aisha Bello an owner of Vento Homes Ltd at 10:30 on 26 Nov 2026. Owners can do everything, including changing who has access.',
+    )
+    expect(email.text).toContain(
+      "If this wasn't expected, sign in and check Team: http://localhost/settings/team",
+    )
   })
 })

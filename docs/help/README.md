@@ -32,5 +32,7 @@ docs/help/
 | [Sign in with two-step](getting-started/sign-in-and-two-step.md) | J-ONB-04 | written |
 | [Join your team](getting-started/join-your-team.md) | J-ONB-02 | written |
 | [Find your way around](getting-started/find-your-way-around.md) | J-ONB-05 | written |
+| [Invite your team](getting-started/invite-your-team.md) | J-ONB-02 | written |
+| [Manage your team](getting-started/manage-your-team.md) | J-ONB-06 | written |
 
 Status: `todo` · `written` · `published`

@@ -198,10 +198,10 @@ export const NAV: readonly NavItem[] = [
     comingSoon: 'Dashboards, project returns and board packs.',
   },
   {
-    // Hidden until Team settings (3b) give it something real to open.
+    // Owners and admins by default (settings view); opens its first section (Team in 3b).
     key: 'settings',
     flag: null,
-    built: false,
+    built: true,
     module: 'settings',
     label: 'Settings',
     to: '/settings',

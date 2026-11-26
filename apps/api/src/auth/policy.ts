@@ -17,6 +17,13 @@ export const PERSISTENT_THRESHOLD_MS = 25 * HOUR
 export const LAST_ACTIVE_WRITE_INTERVAL_MS = MINUTE
 
 export const INVITATION_TTL_MS = 7 * DAY
+/** One resend per invitation per minute (spec, owner's decision 12). Enforced in the update. */
+export const INVITATION_RESEND_INTERVAL_MS = MINUTE
+/** A queued invitation email this old never went out (the process died after commit). */
+export const INVITATION_QUEUED_STALE_MS = 10 * MINUTE
+
+/** members.last_active_at is written at most this often per member (shown by day). */
+export const MEMBER_ACTIVITY_WRITE_INTERVAL_MS = HOUR
 
 export const PASSWORD_LOCK_THRESHOLD = 10
 export const PASSWORD_LOCK_WINDOW_MS = 15 * MINUTE

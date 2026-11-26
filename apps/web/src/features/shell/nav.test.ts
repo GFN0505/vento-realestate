@@ -106,8 +106,22 @@ describe('mobile tabs', () => {
 })
 
 describe('sidebar footer', () => {
-  it('hides Settings and Help until they have somewhere real to go', () => {
-    for (const key of SYSTEM_ROLE_KEYS) expect(footerNav(perms(key))).toEqual([])
+  it('shows Settings to owners and admins only, and Help to nobody until it exists', () => {
+    for (const key of SYSTEM_ROLE_KEYS) {
+      const expected = key === 'owner' || key === 'admin' ? ['Settings'] : []
+      expect(labels(footerNav(perms(key)))).toEqual(expected)
+    }
+  })
+
+  it('hides Settings while previewing a role that cannot view it', () => {
+    const preview = navAccess(rolePerms('sales'))
+    expect(labels(footerNav(preview))).toEqual([])
+    expect(labels(moreItems(preview, 'sales'))).not.toContain('Settings')
+  })
+
+  it('reaches Settings from More on phones, never from the tabs', () => {
+    expect(labels(mobileTabs(perms('owner'), 'owner'))).not.toContain('Settings')
+    expect(labels(moreItems(perms('owner'), 'owner'))).toContain('Settings')
   })
 
   it('keeps the workspace grid to modules, without Home or the footer', () => {
@@ -143,17 +157,16 @@ describe('availability', () => {
     expect(isAvailable(access, navItem('sales'))).toBe(false)
   })
 
-  it('shows only Home to an organization with nothing available', () => {
-    expect(labels(visibleNav(navAccess(owner, { features: [] })))).toEqual(['Home'])
+  it('shows only Home and core Settings to an organization with nothing available', () => {
+    expect(labels(visibleNav(navAccess(owner, { features: [] })))).toEqual(['Home', 'Settings'])
   })
 
   it('shows unbuilt modules only to internal organizations', () => {
-    expect(labels(visibleNav(navAccess(owner, { internal: false })))).toEqual(['Home'])
+    expect(labels(visibleNav(navAccess(owner, { internal: false })))).toEqual(['Home', 'Settings'])
     expect(canView(navAccess(owner, { internal: false }), built(navItem('sales')))).toBe(true)
   })
 
   it('keeps unbuilt core entries hidden, even in internal organizations', () => {
-    expect(isAvailable(navAccess(owner), navItem('settings'))).toBe(false)
     expect(isAvailable(navAccess(owner), navItem('help'))).toBe(false)
   })
 

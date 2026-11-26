@@ -1,5 +1,6 @@
 import { accessRouter } from '@/modules/access/access.router'
 import { accountRouter } from '@/modules/account/account.router'
+import { checklistRouter } from '@/modules/checklist/checklist.router'
 import { entitiesRouter } from '@/modules/entities/entities.router'
 import { healthRouter } from '@/modules/health/health.router'
 import { invitationsRouter } from '@/modules/invitations/invitations.router'
@@ -7,6 +8,7 @@ import { membersRouter } from '@/modules/members/members.router'
 import { onboardingRouter } from '@/modules/onboarding/onboarding.router'
 import { organizationRouter } from '@/modules/organization/organization.router'
 import { rolesRouter } from '@/modules/roles/roles.router'
+import { teamRouter } from '@/modules/team/team.router'
 import { os } from '@/orpc'
 
 export const router = os.router({
@@ -19,6 +21,8 @@ export const router = os.router({
   members: membersRouter,
   invitations: invitationsRouter,
   access: accessRouter,
+  team: teamRouter,
+  checklist: checklistRouter,
 })
 export type Router = typeof router
 

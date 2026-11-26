@@ -27,10 +27,11 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 |---|---|---|---|---|
 | J-ALL-00 | Golden thread: land to estate | Everyone | [00-golden-thread](00-golden-thread.md) | draft |
 | J-ONB-01 | Set up a new organization | MD / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (steps 1–2) |
-| J-ONB-02 | Invite the team and set roles | Admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens in brick 3 |
+| J-ONB-02 | Invite the team and set roles | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens and delivery in brick 3b (draft) |
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-05 | Find your way around the workspace | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-06 | Change someone's access, reset their two-step, remove a leaver | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -111,3 +112,11 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Features are released **one by one when the owner chooses**, once releasable; there are no pilot thresholds.
 - (Brick 3a) Theme, sidebar state, last entity and recently opened pages are remembered **per device**, not per account.
 - (Brick 3a) **Preview as role** changes navigation only and lasts until stopped or the tab is closed.
+
+**Still need the owner's yes (brick 3b, [team](../specs/team.md) open questions)**
+- Members and open invitations in **one list** with *Invited* and *Removed* chips; the settings sub-navigation is **hidden while there's only one section**.
+- Role changes **save at once with Undo**; only "make owner" confirms (and **emails every owner**); removal and two-step reset always confirm.
+- An admin **limited to some entities can't change, reset or remove** someone with wider access, and sees only the entity names within their own limit.
+- Invitations can be **resent once a minute**; **last active** is shown by day to owners and admins.
+- The setup checklist is **hidden per person**, back from ⌘K, and stays hidden once hidden.
+- Email: Postmark sends from **`no-reply@mail.{Vento's domain}`**, invitations as "{Organization} via Vento" with the inviter as Reply-To; **staging emails only allowed addresses**; only **invitations** are marked when an email bounces.

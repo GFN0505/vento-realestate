@@ -1,4 +1,5 @@
-import { EyeIcon, KeyboardIcon, LogOutIcon } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { EyeIcon, KeyboardIcon, LogOutIcon, SettingsIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
 import { Kbd } from '@/components/ui/kbd'
 import { type LazyMenuProps, useAutoFocus } from '@/components/ui/lazy-menu'
 import { canPreview, useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
+import { canView, navItem } from '@/features/shell/nav'
 import { shellUi } from '@/features/shell/shell-ui'
 import { useShellActions } from '@/features/shell/use-shell-actions'
 import { setTheme, type Theme, useTheme } from '@/lib/theme'
@@ -102,6 +104,14 @@ export function UserMenuPanel({
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+        )}
+        {canView(access, navItem('settings')) && (
+          <DropdownMenuItem asChild>
+            <Link to="/settings" preload="intent">
+              <SettingsIcon aria-hidden />
+              Settings
+            </Link>
+          </DropdownMenuItem>
         )}
         <DropdownMenuItem onSelect={() => shellUi.open('shortcuts')}>
           <KeyboardIcon aria-hidden />

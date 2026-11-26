@@ -34,6 +34,8 @@ import { Route as AppShellSalesRouteImport } from './routes/_app/_shell/sales'
 import { Route as AppShellSettingsRouteImport } from './routes/_app/_shell/settings'
 import { Route as AppTwoStepSetupRouteImport } from './routes/_app/two-step.setup'
 import { Route as AuthAcceptInvitationTokenRouteImport } from './routes/_auth/accept-invitation.$token'
+import { Route as AppShellSettingsIndexRouteImport } from './routes/_app/_shell/settings/index'
+import { Route as AppShellSettingsTeamRouteImport } from './routes/_app/_shell/settings/team'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -158,6 +160,16 @@ const AuthAcceptInvitationTokenRoute =
     path: '/accept-invitation/$token',
     getParentRoute: () => AuthRoute,
   } as any)
+const AppShellSettingsIndexRoute = AppShellSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppShellSettingsRoute,
+} as any)
+const AppShellSettingsTeamRoute = AppShellSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppShellSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppShellIndexRoute
@@ -179,9 +191,11 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AppShellProjectsRoute
   '/reports': typeof AppShellReportsRoute
   '/sales': typeof AppShellSalesRoute
-  '/settings': typeof AppShellSettingsRoute
+  '/settings': typeof AppShellSettingsRouteWithChildren
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/settings/team': typeof AppShellSettingsTeamRoute
+  '/settings/': typeof AppShellSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppShellIndexRoute
@@ -203,9 +217,10 @@ export interface FileRoutesByTo {
   '/projects': typeof AppShellProjectsRoute
   '/reports': typeof AppShellReportsRoute
   '/sales': typeof AppShellSalesRoute
-  '/settings': typeof AppShellSettingsRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/settings/team': typeof AppShellSettingsTeamRoute
+  '/settings': typeof AppShellSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -230,10 +245,12 @@ export interface FileRoutesById {
   '/_app/_shell/projects': typeof AppShellProjectsRoute
   '/_app/_shell/reports': typeof AppShellReportsRoute
   '/_app/_shell/sales': typeof AppShellSalesRoute
-  '/_app/_shell/settings': typeof AppShellSettingsRoute
+  '/_app/_shell/settings': typeof AppShellSettingsRouteWithChildren
   '/_app/two-step/setup': typeof AppTwoStepSetupRoute
   '/_auth/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
   '/_app/_shell/': typeof AppShellIndexRoute
+  '/_app/_shell/settings/team': typeof AppShellSettingsTeamRoute
+  '/_app/_shell/settings/': typeof AppShellSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -260,6 +277,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
+    | '/settings/team'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -281,9 +300,10 @@ export interface FileRouteTypes {
     | '/projects'
     | '/reports'
     | '/sales'
-    | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
+    | '/settings/team'
+    | '/settings'
   id:
     | '__root__'
     | '/_app'
@@ -311,6 +331,8 @@ export interface FileRouteTypes {
     | '/_app/two-step/setup'
     | '/_auth/accept-invitation/$token'
     | '/_app/_shell/'
+    | '/_app/_shell/settings/team'
+    | '/_app/_shell/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -496,8 +518,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAcceptInvitationTokenRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/_shell/settings/': {
+      id: '/_app/_shell/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppShellSettingsIndexRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
+    '/_app/_shell/settings/team': {
+      id: '/_app/_shell/settings/team'
+      path: '/team'
+      fullPath: '/settings/team'
+      preLoaderRoute: typeof AppShellSettingsTeamRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
   }
 }
+
+interface AppShellSettingsRouteChildren {
+  AppShellSettingsTeamRoute: typeof AppShellSettingsTeamRoute
+  AppShellSettingsIndexRoute: typeof AppShellSettingsIndexRoute
+}
+
+const AppShellSettingsRouteChildren: AppShellSettingsRouteChildren = {
+  AppShellSettingsTeamRoute: AppShellSettingsTeamRoute,
+  AppShellSettingsIndexRoute: AppShellSettingsIndexRoute,
+}
+
+const AppShellSettingsRouteWithChildren =
+  AppShellSettingsRoute._addFileChildren(AppShellSettingsRouteChildren)
 
 interface AppShellRouteChildren {
   AppShellSplatRoute: typeof AppShellSplatRoute
@@ -511,7 +560,7 @@ interface AppShellRouteChildren {
   AppShellProjectsRoute: typeof AppShellProjectsRoute
   AppShellReportsRoute: typeof AppShellReportsRoute
   AppShellSalesRoute: typeof AppShellSalesRoute
-  AppShellSettingsRoute: typeof AppShellSettingsRoute
+  AppShellSettingsRoute: typeof AppShellSettingsRouteWithChildren
   AppShellIndexRoute: typeof AppShellIndexRoute
 }
 
@@ -527,7 +576,7 @@ const AppShellRouteChildren: AppShellRouteChildren = {
   AppShellProjectsRoute: AppShellProjectsRoute,
   AppShellReportsRoute: AppShellReportsRoute,
   AppShellSalesRoute: AppShellSalesRoute,
-  AppShellSettingsRoute: AppShellSettingsRoute,
+  AppShellSettingsRoute: AppShellSettingsRouteWithChildren,
   AppShellIndexRoute: AppShellIndexRoute,
 }
 

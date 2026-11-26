@@ -31,3 +31,22 @@ export function daysUntilInLagos(isoDate: string, now: Date = new Date()): numbe
   const today = Date.parse(`${lagosDay.format(now)}T00:00:00Z`)
   return Math.round((Date.parse(`${isoDate}T00:00:00Z`) - today) / 86_400_000)
 }
+
+/** Whole Lagos calendar days from an instant to now: 0 = today, 1 = yesterday. */
+export function daysAgoInLagos(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return 0
+  return -daysUntilInLagos(lagosDay.format(then), now)
+}
+
+const dayMonthFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'Africa/Lagos',
+})
+
+/** An instant → "3 Dec" (Lagos), for near dates where the year goes without saying. */
+export function formatDayMonth(iso: string): string {
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? iso : dayMonthFormat.format(date)
+}

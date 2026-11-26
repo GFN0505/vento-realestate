@@ -1,5 +1,6 @@
 export { Decimal, MONEY_LIMIT, toMoneyString } from './decimal'
 export type {
+  ConflictData,
   ConflictReason,
   ForbiddenData,
   ForbiddenReason,

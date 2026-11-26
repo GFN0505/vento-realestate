@@ -1,8 +1,10 @@
 import {
+  DEFAULT_ROLES,
   defaultPermissions,
   defaultRole,
   type Me,
   type MePlan,
+  type Role,
   type SystemRoleKey,
 } from '@vento/shared'
 
@@ -47,4 +49,19 @@ export function testMe(roleKey: SystemRoleKey, overrides: Partial<Me> = {}): Me 
     twoStepRequired: false,
     ...overrides,
   }
+}
+
+/** The built-in roles as `roles.list` returns them; Finance can approve finance. */
+export function testRoles(): Role[] {
+  return DEFAULT_ROLES.map((r) => ({
+    id: `role-${r.key}`,
+    key: r.key,
+    name: r.name,
+    pluralName: r.pluralName,
+    description: r.description,
+    isSystem: true,
+    requiresTwoStep: r.requiresTwoStep,
+    permissions: defaultPermissions(r),
+    canApprove: r.key === 'finance' ? ['finance'] : [],
+  }))
 }

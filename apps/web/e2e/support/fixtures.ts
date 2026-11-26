@@ -125,3 +125,43 @@ export const setReleaseGroup = (orgId: string, group: 'standard' | 'pilot' | 'in
 
 export const startTrial = (orgId: string, plan: string, days: number) =>
   afterSnapshotReload(runFixture('org-trial', orgId, plan, String(days)))
+
+export type ScopedTeamFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  entities: Record<'parkview' | 'lekki', { id: string; name: string }>
+  members: Record<'owner' | 'limitedAdmin' | 'facility' | 'both' | 'sales' | 'finance', TeamMember>
+}
+
+/** An owner, an admin limited to Parkview, and members with narrower and wider entity access. */
+export const createScopedTeamFixture = () => runFixture<ScopedTeamFixture>('team-scoped')
+
+export type StarterTeamFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  limit: number
+  owner: Required<TeamMember>
+  admin: Required<TeamMember>
+  sales: TeamMember
+}
+
+/** A Starter organization (owner, admin, sales) with `places` people places left. */
+export const createStarterTeamFixture = (places = 2) =>
+  afterSnapshotReload(runFixture<StarterTeamFixture>('starter-team', String(places)))
+
+export type TeamInvitationState = 'pending' | 'expired' | 'failed' | 'bounced' | 'complained'
+
+/** An open Sales invitation in the organization, in the given state; `email` defaults to unique. */
+export const createTeamInvitation = (
+  organizationId: string,
+  state: TeamInvitationState,
+  email?: string,
+) =>
+  runFixture<{ id: string; email: string }>(
+    'team-invitation',
+    organizationId,
+    state,
+    ...(email ? [email] : []),
+  )

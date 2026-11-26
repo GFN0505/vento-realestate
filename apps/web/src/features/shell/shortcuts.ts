@@ -4,7 +4,13 @@
  * gating it on the role's view permission.
  */
 
-export type ShortcutId = 'palette' | 'help' | 'sidebar' | 'home'
+export type ShortcutId = 'palette' | 'help' | 'sidebar' | 'home' | 'team-invite' | 'team-search'
+
+/**
+ * Shortcuts that belong to one page are announced with this window event (detail: the id); the
+ * page decides what it means, with its own permissions (the Team page: `i` and `/`).
+ */
+export const PAGE_SHORTCUT_EVENT = 'vento:page-shortcut'
 
 type Trigger =
   | { kind: 'mod'; key: string }
@@ -21,6 +27,8 @@ export type Shortcut = {
   allowInFields: boolean
   /** Only on screens with a sidebar to collapse. */
   desktopOnly?: boolean
+  /** Only on this page; the `?` dialog lists it under the page's name. */
+  page?: { path: string; name: string }
 }
 
 export const SHORTCUTS: readonly Shortcut[] = [
@@ -52,6 +60,22 @@ export const SHORTCUTS: readonly Shortcut[] = [
     keys: ['G', 'then', 'H'],
     trigger: { kind: 'sequence', keys: ['g', 'h'] },
     allowInFields: false,
+  },
+  {
+    id: 'team-invite',
+    label: 'Invite people',
+    keys: ['I'],
+    trigger: { kind: 'key', key: 'i' },
+    allowInFields: false,
+    page: { path: '/settings/team', name: 'Team' },
+  },
+  {
+    id: 'team-search',
+    label: 'Search the team',
+    keys: ['/'],
+    trigger: { kind: 'key', key: '/' },
+    allowInFields: false,
+    page: { path: '/settings/team', name: 'Team' },
   },
 ]
 

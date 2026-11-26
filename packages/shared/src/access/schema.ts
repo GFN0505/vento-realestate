@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { nextStep, roleRef } from '../account/schema'
+import { nextStep } from '../account/schema'
 import { newPassword, termsVersion } from '../auth/password-schema'
-import { id, isoDate, paginationInput } from '../common/schemas'
+import { id, isoDate } from '../common/schemas'
 import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 import { systemRoleKey } from './default-roles'
 import { permissionModule, permissionSet } from './permissions'
@@ -32,27 +32,12 @@ export const role = z.object({
 })
 export type Role = z.infer<typeof role>
 
-const entityRef = z.object({ id, name: z.string() })
+/** An entity named in someone's access. */
+export const entityRef = z.object({ id, name: z.string() })
+export type EntityRef = z.infer<typeof entityRef>
 
 export const memberStatus = z.enum(['active', 'removed'])
 export type MemberStatus = z.infer<typeof memberStatus>
-
-export const member = z.object({
-  id,
-  userId: id,
-  name: z.string(),
-  email: z.string(),
-  role: roleRef,
-  /** null = all entities. */
-  entities: z.array(entityRef).nullable(),
-  twoFactorEnabled: z.boolean(),
-  status: memberStatus,
-  joinedAt: z.iso.datetime(),
-  removedAt: z.iso.datetime().nullable(),
-})
-export type Member = z.infer<typeof member>
-
-export const listMembersInput = paginationInput.extend({ status: memberStatus.optional() }).strict()
 
 /** Entity limits: null = all entities, otherwise at least one. */
 export const entityLimit = z
@@ -70,25 +55,6 @@ export const memberIdInput = z.strictObject({ memberId: id })
 
 export const invitationStatus = z.enum(['pending', 'accepted', 'declined', 'expired', 'withdrawn'])
 export type InvitationStatus = z.infer<typeof invitationStatus>
-
-export const invitation = z.object({
-  id,
-  email: z.string(),
-  role: roleRef,
-  entities: z.array(entityRef).nullable(),
-  /** Effective status: a pending invitation past its expiry reads as `expired`. */
-  status: invitationStatus,
-  invitedByName: z.string(),
-  expiresAt: z.iso.datetime(),
-  lastSentAt: z.iso.datetime(),
-  respondedAt: z.iso.datetime().nullable(),
-  createdAt: z.iso.datetime(),
-})
-export type Invitation = z.infer<typeof invitation>
-
-export const listInvitationsInput = paginationInput
-  .extend({ status: invitationStatus.optional() })
-  .strict()
 
 export const MAX_INVITATIONS_PER_BATCH = 20
 

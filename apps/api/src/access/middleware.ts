@@ -11,6 +11,7 @@ import {
   type AuthUser,
   loadMembership,
   type MemberContext,
+  touchMemberActivity,
   twoStepRequired,
   writeBackActiveOrganization,
 } from './context'
@@ -107,6 +108,8 @@ export function memberMiddleware(enforceTwoStep: boolean) {
     const feature = (procedure['~orpc'].meta as ProcedureMeta).feature
     // Unavailable reads exactly like a missing record: to this organization it doesn't exist.
     if (feature && !features.has(feature)) throw notFound()
+    // After the tab guard, two-step and feature gate: only requests that go ahead count.
+    await touchMemberActivity(context.db, membership.member)
     return next({
       context: {
         organizationId: membership.organizationId,

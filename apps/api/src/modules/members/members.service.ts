@@ -1,12 +1,11 @@
-import type {
-  listMembersInput,
-  Member,
-  SystemRoleKey,
-  updateMemberAccessInput,
-} from '@vento/shared'
-import { and, asc, count, eq, inArray, isNull, ne, or, type SQL } from 'drizzle-orm'
+import type { TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
+import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, type ServiceContext } from '@/access/context'
+import { assertGrantableEntities } from '@/access/grants'
+import { type MemberAction, memberRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
+import { newOwnerAlerts } from '@/access/new-owner-alerts'
+import { firstOwner } from '@/access/who-can-grant'
 import type { DbOrTx } from '@/db/client'
 import {
   entities,
@@ -20,89 +19,11 @@ import {
 import type { EmailMessage } from '@/email/mailer'
 import { twoStepResetAlert } from '@/email/templates/security-alert'
 import { conflict, forbidden, notFound } from '@/lib/errors'
-import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAccountEvent, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
+import { memberRowById } from '@/modules/team/team.service'
 
 const isOwnerKey = (key: string | null) => key === 'owner'
-
-export async function listMembers(ctx: ServiceContext, input: z.output<typeof listMembersInput>) {
-  return queryMembers(
-    ctx,
-    input,
-    and(
-      eq(members.organizationId, ctx.organizationId),
-      input.status ? eq(members.status, input.status) : undefined,
-    ),
-  )
-}
-
-async function queryMembers(
-  ctx: ServiceContext,
-  input: z.output<typeof listMembersInput>,
-  where: SQL | undefined,
-) {
-  const { limit, offset } = pageOffset(input)
-  const [rows, [total]] = await Promise.all([
-    ctx.db
-      .select({
-        id: members.id,
-        userId: members.userId,
-        name: users.name,
-        email: users.email,
-        twoFactorEnabled: users.twoFactorEnabled,
-        status: members.status,
-        joinedAt: members.joinedAt,
-        removedAt: members.removedAt,
-        roleId: roles.id,
-        roleKey: roles.key,
-        roleName: roles.name,
-      })
-      .from(members)
-      .innerJoin(users, eq(users.id, members.userId))
-      .innerJoin(
-        roles,
-        and(eq(roles.id, members.roleId), eq(roles.organizationId, members.organizationId)),
-      )
-      .where(where)
-      .orderBy(asc(users.name), asc(members.id))
-      .limit(limit)
-      .offset(offset),
-    ctx.db.select({ n: count() }).from(members).where(where),
-  ])
-  const limits = rows.length
-    ? await ctx.db
-        .select({ memberId: memberEntityLimits.memberId, id: entities.id, name: entities.name })
-        .from(memberEntityLimits)
-        .innerJoin(entities, eq(entities.id, memberEntityLimits.entityId))
-        .where(
-          and(
-            eq(memberEntityLimits.organizationId, ctx.organizationId),
-            inArray(
-              memberEntityLimits.memberId,
-              rows.map((r) => r.id),
-            ),
-          ),
-        )
-        .orderBy(asc(entities.name))
-    : []
-  const items: Member[] = rows.map((r) => {
-    const own = limits.filter((l) => l.memberId === r.id).map(({ id, name }) => ({ id, name }))
-    return {
-      id: r.id,
-      userId: r.userId,
-      name: r.name,
-      email: r.email,
-      role: { id: r.roleId, key: r.roleKey as SystemRoleKey | null, name: r.roleName },
-      entities: own.length ? own : null,
-      twoFactorEnabled: r.twoFactorEnabled,
-      status: r.status,
-      joinedAt: r.joinedAt.toISOString(),
-      removedAt: r.removedAt?.toISOString() ?? null,
-    }
-  })
-  return toPage(items, input, total?.n ?? 0)
-}
 
 type Target = {
   id: string
@@ -112,6 +33,8 @@ type Target = {
   roleId: string
   roleKey: string | null
   roleName: string
+  /** Current entity limits, by name; empty = all entities. */
+  limits: { id: string; name: string }[]
 }
 
 /** An active member of this organization, locked for the change. Anything else is not found. */
@@ -141,15 +64,32 @@ async function lockTarget(tx: DbOrTx, ctx: ServiceContext, memberId: string): Pr
     )
     .for('update', { of: members })
   if (!row) throw notFound()
-  return row
+  return { ...row, limits: await currentLimits(tx, ctx, row.id) }
 }
 
-function assertNotSelf(ctx: ServiceContext, target: Target, message: string) {
-  if (target.userId === ctx.user.id) throw forbidden('own_access', message)
-}
-
-function assertOwnerRules(ctx: ServiceContext, involvesOwner: boolean, message: string) {
-  if (involvesOwner && !isOwnerKey(ctx.member.roleKey)) throw forbidden('owner_only', message)
+/**
+ * Throws the manage rules' refusal (own access, owner only, wider access), if any. The owner's
+ * name for "Ask … (owner)" is looked up only when the target's access is wider than the viewer's.
+ */
+async function assertMayManage(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  target: Target,
+  action: MemberAction,
+  newRoleKey?: string | null,
+): Promise<void> {
+  const viewer = viewerOf(ctx)
+  const subject = {
+    userId: target.userId,
+    name: target.name,
+    roleKey: target.roleKey,
+    entityIds: target.limits.length ? target.limits.map((e) => e.id) : null,
+  }
+  const ownerName = needsOwnerName(viewer, subject)
+    ? ((await firstOwner(tx, ctx.organizationId, ctx.user.id))?.name ?? null)
+    : null
+  const refusal = memberRefusal(viewer, subject, action, { newRoleKey, ownerName })
+  if (refusal) throw forbidden(refusal.reason, refusal.message)
 }
 
 async function otherActiveOwners(tx: DbOrTx, ctx: ServiceContext, exceptMemberId: string) {
@@ -188,63 +128,25 @@ async function currentLimits(tx: DbOrTx, ctx: ServiceContext, memberId: string) 
     .orderBy(asc(entities.name))
 }
 
-/**
- * Entities a granter may put in a limit (member update or invitation). They must be this
- * organization's, and a granter limited to some entities can only grant within them: they
- * can't give "all entities", and an entity outside their limit is not found, as everywhere.
- */
-export async function assertGrantableEntities(
-  tx: DbOrTx,
-  ctx: Pick<ServiceContext, 'organizationId' | 'member'>,
-  entityIds: string[] | null,
-) {
-  const granterLimit = ctx.member.entityIds
-  if (granterLimit !== null) {
-    if (entityIds === null) {
-      throw forbidden(
-        'entity_limit',
-        'You can only give access to the entities you can see. Choose them instead of all entities.',
-      )
-    }
-    if (entityIds.some((id) => !granterLimit.includes(id))) throw notFound()
-  }
-  if (!entityIds) return []
-  const unique = [...new Set(entityIds)]
-  const rows = await tx
-    .select({ id: entities.id, name: entities.name })
-    .from(entities)
-    .where(and(eq(entities.organizationId, ctx.organizationId), inArray(entities.id, unique)))
-  if (rows.length !== unique.length) throw notFound()
-  return rows
-}
-
 export async function updateMemberAccess(
   ctx: ServiceContext,
   input: z.output<typeof updateMemberAccessInput>,
-): Promise<{ notice: string; member: Member }> {
+): Promise<{ notice: string; row: TeamMemberRow; emails: EmailMessage[] }> {
   const result = await ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
     const target = await lockTarget(tx, ctx, input.memberId)
-    assertNotSelf(ctx, target, "You can't change your own access. Ask another owner or admin.")
     const [role] = await tx
       .select({ id: roles.id, key: roles.key, name: roles.name })
       .from(roles)
       .where(and(eq(roles.organizationId, ctx.organizationId), eq(roles.id, input.roleId)))
     if (!role) throw notFound()
-    assertOwnerRules(
-      ctx,
-      isOwnerKey(target.roleKey) || isOwnerKey(role.key),
-      isOwnerKey(role.key)
-        ? 'Only owners can make someone an owner.'
-        : "Only owners can change an owner's access.",
-    )
+    await assertMayManage(tx, ctx, target, 'change', role.key)
     if (isOwnerKey(target.roleKey) && !isOwnerKey(role.key)) {
       if ((await otherActiveOwners(tx, ctx, target.id)) < 1) {
         throw conflict('last_owner', lastOwnerMessage(ctx))
       }
     }
     const newLimits = await assertGrantableEntities(tx, ctx, input.entityIds)
-    const before = await currentLimits(tx, ctx, target.id)
 
     await tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id))
     await tx.delete(memberEntityLimits).where(eq(memberEntityLimits.memberId, target.id))
@@ -264,27 +166,31 @@ export async function updateMemberAccess(
       target: { type: 'member', id: target.id, label: target.name },
       before: {
         role: target.roleName,
-        entities: before.length ? before.map((e) => e.name) : 'all',
+        entities: target.limits.length ? target.limits.map((e) => e.name) : 'all',
       },
       after: {
         role: role.name,
         entities: newLimits.length ? newLimits.map((e) => e.name).sort() : 'all',
       },
     })
+    const emails =
+      isOwnerKey(role.key) && !isOwnerKey(target.roleKey)
+        ? await newOwnerAlerts(tx, {
+            organizationId: ctx.organizationId,
+            organizationName: ctx.organizationName,
+            byName: ctx.user.name,
+            newOwnerName: target.name,
+          })
+        : []
     const notice =
       role.id === target.roleId
         ? `Access updated for ${target.name}`
         : `${target.name} is now ${role.name}`
-    return { notice, memberId: target.id }
+    return { notice, memberId: target.id, emails }
   })
-  const { items } = await queryMembers(
-    ctx,
-    { page: 1, pageSize: 1 },
-    and(eq(members.organizationId, ctx.organizationId), eq(members.id, result.memberId)),
-  )
-  const [member] = items
-  if (!member) throw notFound()
-  return { notice: result.notice, member }
+  const row = await memberRowById(ctx, result.memberId)
+  if (!row) throw notFound()
+  return { notice: result.notice, row, emails: result.emails }
 }
 
 export async function removeMember(
@@ -294,14 +200,13 @@ export async function removeMember(
   return ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
     const target = await lockTarget(tx, ctx, memberId)
-    assertNotSelf(ctx, target, "You can't change your own access. Ask another owner or admin.")
-    assertOwnerRules(ctx, isOwnerKey(target.roleKey), 'Only owners can remove an owner.')
+    await assertMayManage(tx, ctx, target, 'remove')
     if (isOwnerKey(target.roleKey) && (await otherActiveOwners(tx, ctx, target.id)) < 1) {
       throw conflict('last_owner', lastOwnerMessage(ctx))
     }
     await tx
       .update(members)
-      .set({ status: 'removed', removedAt: new Date() })
+      .set({ status: 'removed', removedAt: new Date(), removedByUserId: ctx.user.id })
       .where(eq(members.id, target.id))
     // Their sessions in this organization end at once; sessions in their other organizations stay.
     const ended = await tx
@@ -336,10 +241,6 @@ export async function removeMember(
 }
 
 /**
- * For a lost phone and lost backup codes. Two-step is per person, so this affects every
- * organization they belong to; it's recorded in each and they get a security alert.
- */
-/**
  * For a lost phone and lost backup codes. Two-step is per person, so this reaches every
  * organization they belong to. A reset alone must never open the account to whoever asked
  * for it (an admin elsewhere, or someone who knows the password): every session ends and
@@ -352,8 +253,7 @@ export async function resetMemberTwoStep(
 ): Promise<{ notice: string; emails: EmailMessage[]; resetPasswordFor: string }> {
   return ctx.db.transaction(async (tx) => {
     const target = await lockTarget(tx, ctx, memberId)
-    assertNotSelf(ctx, target, "You can't reset your own two-step. Ask another owner or admin.")
-    assertOwnerRules(ctx, isOwnerKey(target.roleKey), "Only owners can reset an owner's two-step.")
+    await assertMayManage(tx, ctx, target, 'reset')
     await tx.delete(twoFactors).where(eq(twoFactors.userId, target.userId))
     await tx
       .update(users)
