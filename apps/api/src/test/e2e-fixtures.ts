@@ -34,6 +34,7 @@
  *   tsx src/test/e2e-fixtures.ts super-admin <member|no-org|revoked|two-step-reset>  a Vento super-admin (owner of an internal organization unless no-org)
  *   tsx src/test/e2e-fixtures.ts age-console <email> <idle|max>  closes that person's console window (16 minutes idle, or opened 8 hours ago)
  *   tsx src/test/e2e-fixtures.ts age-second-factor <email>  makes that person's last code or passkey 10 minutes old (the console asks again)
+ *   tsx src/test/e2e-fixtures.ts age-passkeys <email>  makes that person's passkeys 20 minutes old (added before the aged proof, so they may open the console)
  *   tsx src/test/e2e-fixtures.ts flag-stage <flag> <off|internal|pilot|on>  sets a global release stage (releases.spec.ts only, to restore its own keys)
  *   tsx src/test/e2e-fixtures.ts platform-activity <email>  a break-glass row by that super-admin in Vento's activity (channel command)
  *
@@ -1019,6 +1020,19 @@ async function ageSecondFactor(email: string | undefined) {
   return { email, sessions: aged.length }
 }
 
+/** Passkeys added 20 minutes ago: older than an aged proof, so Use passkey may open the console. */
+async function agePasskeys(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { passkeys } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(passkeys)
+    .set({ createdAt: sql`now() - interval '20 minutes'` })
+    .where(eq(passkeys.userId, user.id))
+    .returning({ id: passkeys.id })
+  return { email, passkeys: aged.length }
+}
+
 /**
  * A global release stage. Only releases.spec.ts may use it, on the keys it owns, to put them back
  * (fixtures otherwise never change global stages, so specs can run in parallel).
@@ -1090,6 +1104,7 @@ async function main() {
     'super-admin': () => createSuperAdminFixture(arg),
     'age-console': () => ageConsole(arg, arg2),
     'age-second-factor': () => ageSecondFactor(arg),
+    'age-passkeys': () => agePasskeys(arg),
     'flag-stage': () => flagStage(arg, arg2),
     'platform-activity': () => platformActivity(arg),
   }

@@ -10,6 +10,7 @@ import {
 } from '../support/console'
 import {
   ageConsole,
+  agePasskeys,
   ageSecondFactor,
   createMemberFixture,
   createStarterOrgFixture,
@@ -261,10 +262,9 @@ test.describe('a passkey', () => {
     await expect(page.getByRole('heading', ORGANIZATIONS)).toHaveCount(0)
   })
 
-  // NOT COVERABLE YET: a passkey only counts once a code was used after it was added, and the
-  // age-second-factor fixture backdates that code to before the passkey existed, so Use passkey is
-  // always refused. Needs an api fixture that also backdates the passkey (reported).
-  test.fixme('opens the console through Use passkey once a code has been used since it was added', async ({
+  // A passkey only counts once a code was used after it was added; age-passkeys backdates it to
+  // before the aged code, as if it had been added long ago.
+  test('opens the console through Use passkey once a code has been used since it was added', async ({
     page,
   }) => {
     const admin = createSuperAdminFixture('member')
@@ -272,6 +272,7 @@ test.describe('a passkey', () => {
     await addPasskey(page)
     await openWithCode(page, admin)
     closeWindowAndProof(admin.email)
+    agePasskeys(admin.email)
 
     await page.goto('/console')
     await page.getByRole('button', { name: 'Use passkey' }).click()

@@ -290,6 +290,10 @@ export const ageConsole = (email: string, how: 'idle' | 'max' = 'idle') =>
 export const ageSecondFactor = (email: string) =>
   runFixture<{ sessions: number }>('age-second-factor', email)
 
+/** The person's passkeys were added 20 minutes ago, before an aged proof: they may open the console. */
+export const agePasskeys = (email: string) =>
+  runFixture<{ passkeys: number }>('age-passkeys', email)
+
 /** releases.spec.ts only: sets (or restores) a global release stage on a key it owns. */
 export const flagStage = (key: string, stage: 'off' | 'internal' | 'pilot' | 'on') =>
   afterSnapshotReload(runFixture<{ key: string; stage: string }>('flag-stage', key, stage))
