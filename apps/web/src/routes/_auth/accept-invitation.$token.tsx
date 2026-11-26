@@ -12,6 +12,7 @@ import { InvitationClosed } from '@/features/invitations/invitation-closed'
 import { InvitationSummary } from '@/features/invitations/invitation-summary'
 import { toastApiError } from '@/lib/api-errors'
 import { orpc } from '@/lib/orpc'
+import { forgetTabOrganization } from '@/lib/tab-organization'
 
 export const Route = createFileRoute('/_auth/accept-invitation/$token')({
   loader: async ({ context, params }) => {
@@ -50,7 +51,10 @@ function AcceptInvitationPage() {
   )
 
   function accepted() {
+    // Accepting moves an existing user into the new organization (decision 10). Forget what
+    // this tab was showing so the guard binds it afresh from `me`, with no "switched" notice.
     // The app's guard sends them to two-step setup first when the role needs it.
+    forgetTabOrganization()
     resetForNewSession(queryClient)
     void navigate({ to: '/', replace: true })
   }

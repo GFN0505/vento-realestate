@@ -1,15 +1,15 @@
-import { type PermissionAction, type PermissionModule, SYSTEM_ROLE_KEYS } from '@vento/shared'
+import {
+  joinNames,
+  type PermissionAction,
+  type PermissionModule,
+  SYSTEM_ROLE_KEYS,
+} from '@vento/shared'
 import { and, eq, inArray, ne } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { members, rolePermissions, roles, users } from '@/db/schema'
 
-/** "owners", "owners and admins", "owners, admins and finance staff". */
-export function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? ''
-  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
-}
-
-const order = (key: string | null) => {
+/** Built-in roles in system order (owner first); custom roles after them. */
+export const systemRoleOrder = (key: string | null): number => {
   const i = SYSTEM_ROLE_KEYS.indexOf(key as (typeof SYSTEM_ROLE_KEYS)[number])
   return i === -1 ? SYSTEM_ROLE_KEYS.length : i
 }
@@ -46,7 +46,7 @@ export async function whoCanGrant(
         eq(rolePermissions.action, input.action),
       ),
     )
-  holders.sort((a, b) => order(a.key) - order(b.key))
+  holders.sort((a, b) => systemRoleOrder(a.key) - systemRoleOrder(b.key))
   const only = `Only ${joinNames(holders.map((h) => h.pluralName))} can ${input.doing}.`
   if (holders.length === 0) return { message: `You don't have access to ${input.doing}.` }
 
@@ -69,7 +69,7 @@ export async function whoCanGrant(
   // Prefer owners: they can grant anything.
   const ranked = candidates
     .map((c) => ({ ...c, role: holders.find((h) => h.id === c.roleId) }))
-    .sort((a, b) => order(a.role?.key ?? null) - order(b.role?.key ?? null))
+    .sort((a, b) => systemRoleOrder(a.role?.key ?? null) - systemRoleOrder(b.role?.key ?? null))
   const person = ranked[0]
   if (!person?.role) return { message: only }
   const askRole = person.role.name.toLowerCase()

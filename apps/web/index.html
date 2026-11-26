@@ -2,22 +2,27 @@
 <html lang="en-NG">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Vento Real Estate: the operating system for Nigerian real estate developers." />
     <meta name="color-scheme" content="light" />
     <title>Vento Real Estate</title>
     <script>
-      // Set the theme before first paint. Light is the default (owner's choice); a stored
-      // choice of 'dark' or 'system' (the toggle arrives in brick 3) overrides it.
+      // Before first paint: the theme (light by default; 'dark' or 'system' when chosen in the
+      // user menu) and the collapsed sidebar, so nothing flashes or shifts. The keys and values
+      // must match src/lib/theme.ts (a unit test reads this script).
       ;(() => {
         try {
+          const root = document.documentElement
           const stored = localStorage.getItem('vento-theme')
           const dark =
             stored === 'dark' ||
             (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
           if (dark) {
-            document.documentElement.classList.add('dark')
-            document.documentElement.style.colorScheme = 'dark'
+            root.classList.add('dark')
+            root.style.colorScheme = 'dark'
+          }
+          if (localStorage.getItem('vento-sidebar') === 'collapsed') {
+            root.dataset.sidebar = 'collapsed'
           }
         } catch (_) {}
       })()

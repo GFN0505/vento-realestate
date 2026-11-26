@@ -1,6 +1,7 @@
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
-import { NotFound, RouteError } from '@/components/route-error'
+import { LazyStandaloneNotFound } from '@/components/errors/lazy-pages'
+import { ShellRouteError } from '@/components/errors/shell-route-error'
 import { Toaster } from '@/components/ui/sonner'
 import { useSessionExpired } from '@/lib/session-expired'
 import type { RouterContext } from '@/router'
@@ -12,8 +13,9 @@ const SessionExpiredDialog = lazy(() =>
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
-  errorComponent: RouteError,
-  notFoundComponent: NotFound,
+  // Outside the shell (signed out, or the shell itself couldn't load): standalone pages.
+  errorComponent: ShellRouteError,
+  notFoundComponent: LazyStandaloneNotFound,
 })
 
 function RootLayout() {

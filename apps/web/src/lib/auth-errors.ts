@@ -36,9 +36,9 @@ export function formatLockTime(iso: string | undefined): string | null {
   return Number.isNaN(date.getTime()) ? null : timeInLagos.format(date)
 }
 
-export const NETWORK_ERROR =
-  "Couldn't reach Vento. Check your connection and try again. What you typed is still here."
-export const GENERIC_ERROR = 'Something went wrong on our side. Try again in a moment.'
+import { GENERIC_ERROR, NETWORK_ERROR } from '@/lib/error-copy'
+
+export { GENERIC_ERROR, NETWORK_ERROR }
 
 export const COPY = {
   wrongPassword: AUTH_ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD,

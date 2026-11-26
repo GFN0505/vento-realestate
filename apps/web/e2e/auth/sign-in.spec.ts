@@ -6,7 +6,7 @@ import {
   createUnverifiedFixture,
 } from '../support/fixtures'
 import { newestEmail } from '../support/mailbox'
-import { enterPassword, signInWithTotp } from '../support/sign-in'
+import { enterPassword, HOME_GREETING, runCommand, signInWithTotp } from '../support/sign-in'
 import { totpCode } from '../support/totp'
 
 // J-ONB-04: password, then the two-step check, then signed in; then sign out everywhere.
@@ -31,10 +31,11 @@ test('a member with two-step signs in, is refused a wrong code, then gets in wit
 
   await page.getByLabel('6-digit code').fill(right)
 
-  await expect(page.getByRole('heading', { name: 'Welcome, Olumide' })).toBeVisible()
   await expect(
-    page.getByText(`You're signed in to ${member.organizationName} as Owner.`),
+    page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Olumide$/ }),
   ).toBeVisible()
+  await expect(page.getByRole('main').getByText(member.organizationName)).toBeVisible()
+  await expect(page.getByText(/matter to you as Owner/)).toBeVisible()
 })
 
 test('a wrong password gets the same message as an unknown email', async ({ page }) => {
@@ -59,16 +60,18 @@ test('a wrong password gets the same message as an unknown email', async ({ page
   await expect(reply).toHaveText(forWrongPassword ?? '')
 })
 
-test('signing out everywhere returns to sign-in and protects the home page', async ({ page }) => {
+test('signing out returns to sign-in and protects the home page', async ({ page }) => {
   const member = createMemberFixture()
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(member.email)
   await page.getByLabel('Password', { exact: true }).fill(member.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
-  await expect(page.getByRole('heading', { name: 'Welcome, Olumide' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Olumide$/ }),
+  ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Sign out everywhere' }).click()
+  await runCommand(page, 'Sign out')
 
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await page.goto('/')
@@ -122,8 +125,8 @@ test('a backup code signs in once and is refused the second time', async ({ page
   }
 
   await signInWithBackupCode()
-  await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible()
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
+  await runCommand(page, 'Sign out')
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
 
   await signInWithBackupCode()
@@ -153,12 +156,12 @@ test('an expired session shows the sign-in-again dialog and keeps the page', asy
   await signInWithTotp(page, member)
   ageSessions(member.email)
 
-  await page.getByRole('button', { name: 'Sign out everywhere' }).click()
+  await runCommand(page, 'Sign out everywhere else')
 
   await expect(page.getByRole('heading', { name: 'Your session has ended' })).toBeVisible()
   await page.getByLabel(`Password for ${member.email}`).fill(member.password)
   await page.getByRole('button', { name: 'Sign in again' }).click()
   await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
   await expect(page.getByRole('heading', { name: 'Your session has ended' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible()
+  await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
 })

@@ -25,6 +25,10 @@ const ctx = contextFor(user, org)
 ```
 Factories take overrides and fill realistic defaults. Never depend on rows created by another test.
 
+`clientAs(tx, user, { activeOrganizationId, expectedOrganizationId, sessionId })` calls procedures through every middleware. `expectedOrganizationId` sends the tab-guard header (decision 0013); pass a real `createSession` id when the test checks what gets written to the session. To prove a path reads nothing, pass `throwingDb()` from `src/test/throwing-db.ts` instead of `tx`.
+
+E2E data comes from `apps/api/src/test/e2e-fixtures.ts` commands (`member`, `team`, `multi-org`, `set-role <email> <role>`, `remove-member <email>`, …), each printing one JSON line.
+
 ## Required tests for every resource
 ```ts
 it('creates a subscription for an available unit', …)

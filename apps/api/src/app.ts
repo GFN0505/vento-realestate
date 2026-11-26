@@ -2,7 +2,7 @@ import { getConnInfo } from '@hono/node-server/conninfo'
 import { ORPCError, onError } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/fetch'
 import { ResponseHeadersPlugin } from '@orpc/server/plugins'
-import { AUTH_BASE_PATH } from '@vento/shared'
+import { AUTH_BASE_PATH, errorReference } from '@vento/shared'
 import { type Context, Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { compress } from 'hono/compress'
@@ -14,6 +14,7 @@ import type { Db } from '@/db/client'
 import { createMailer, type Mailer } from '@/email/mailer'
 import { env } from '@/env'
 import { CLIENT_IP_HEADER, maskIp, resolveClientIp, userAgentLabel } from '@/lib/client-ip'
+import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
 import { createRateLimiter, type RateLimiter } from '@/lib/rate-limit'
 import { requestScope, runWithRequestScope } from '@/lib/request-scope'
@@ -53,21 +54,45 @@ export function createApp(deps: AppDeps): Hono {
 
   const rpc = new RPCHandler(router, {
     plugins: [new ResponseHeadersPlugin()],
+    // Inside the procedure call, so the converted error is checked against the shared error map.
+    clientInterceptors: [
+      async ({ next }) => {
+        try {
+          return await next()
+        } catch (error) {
+          // Expected errors (validation, not found, forbidden) are answers, not incidents.
+          if (error instanceof ORPCError && error.status < 500) throw error
+          const { requestId } = requestScope()
+          const reference = errorReference(requestId, new Date())
+          logger.error('Unhandled procedure error', {
+            requestId,
+            reference,
+            ...errorSummary(error),
+          })
+          throw new ORPCError('INTERNAL_SERVER_ERROR', {
+            status: 500,
+            message: 'Something went wrong on our side',
+            data: { reference },
+          })
+        }
+      },
+    ],
     interceptors: [
       onError((error) => {
-        // Expected errors (validation, not found, forbidden) are answers, not incidents.
-        if (error instanceof ORPCError && error.status < 500) return
-        logger.error('Unhandled procedure error', {
+        // Failures outside a procedure call (rare); procedure failures were logged above.
+        if (error instanceof ORPCError && (error.status < 500 || error.data?.reference)) return
+        logger.error('Unhandled RPC error', {
           requestId: requestScope().requestId,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
+          ...errorSummary(error),
         })
       }),
     ],
   })
 
   const app = new Hono()
-  app.use(requestId())
+  // Always our own id: a client-chosen one could collide with, or impersonate, another request's
+  // error reference.
+  app.use(requestId({ headerName: '' }))
   app.use(secureHeaders())
   app.use(compress())
 
@@ -75,6 +100,7 @@ export function createApp(deps: AppDeps): Hono {
   app.use('*', async (c, next) => {
     const ip = resolveClientIp(c.req.raw.headers, socketAddress(c), env.TRUSTED_IP_HEADER)
     const userAgent = c.req.header('user-agent') ?? null
+    c.header('X-Request-Id', c.get('requestId'))
     const scope = {
       requestId: c.get('requestId'),
       ip,

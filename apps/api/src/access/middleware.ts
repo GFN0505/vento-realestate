@@ -1,16 +1,17 @@
 import { os as baseOs, ORPCError } from '@orpc/server'
 import type { PermissionAction, PermissionModule } from '@vento/shared'
-import { hasPermission } from '@vento/shared'
+import { hasPermission, ORGANIZATION_HEADER } from '@vento/shared'
 import { applySessionPolicy, toPolicySession } from '@/auth/session-policy'
 import type { BaseContext } from '@/context'
-import { forbidden } from '@/lib/errors'
+import { forbidden, organizationChanged } from '@/lib/errors'
 import { requestScope } from '@/lib/request-scope'
 import {
   type AuthSession,
   type AuthUser,
+  loadMembership,
   type MemberContext,
-  resolveMembership,
   twoStepRequired,
+  writeBackActiveOrganization,
 } from './context'
 import { whoCanGrant } from './who-can-grant'
 
@@ -63,10 +64,26 @@ export const authedMiddleware = baseOs
 
 type AuthedContext = BaseContext & { user: AuthUser; session: AuthSession }
 
-/** Resolves the organization from the session and loads the member's role and limits. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Resolves the organization from the session and loads the member's role and limits.
+ *
+ * Tab guard (decision 0013): when the request names the organization its tab is showing, any
+ * mismatch is refused before the membership is read and before the session is written back.
+ * The header can only make a request fail; the organization always comes from the session.
+ */
 export function memberMiddleware(enforceTwoStep: boolean) {
   return baseOs.$context<AuthedContext>().middleware(async ({ context, next }) => {
-    const membership = await resolveMembership(context.db, context.user, context.session)
+    const expected = context.headers.get(ORGANIZATION_HEADER)
+    const active = context.session.activeOrganizationId
+    if (expected && (!UUID.test(expected) || (active && expected !== active))) {
+      throw organizationChanged()
+    }
+    const membership = await loadMembership(context.db, context.user.id, active)
+    // The session's organization is gone (removed elsewhere) and we fell back to another one.
+    if (expected && membership?.organizationId !== expected) throw organizationChanged()
+    await writeBackActiveOrganization(context.db, context.user, context.session, membership)
     if (!membership) {
       throw forbidden('permission', 'Set up your organization first.')
     }

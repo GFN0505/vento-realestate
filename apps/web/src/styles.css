@@ -49,6 +49,8 @@
 
   --selected: #ececff;
   --selected-foreground: #3f40b8;
+  /* Highlighted menu and ⌘K row (board t.sel). Muted text on it keeps 4.6:1. */
+  --highlight: #f5f5ff;
   --selected-border: #7677fb;
 
   --sidebar: #121a3f;
@@ -56,6 +58,14 @@
   --sidebar-muted-foreground: #a9aedc;
   --sidebar-faint-foreground: #8a90c4;
   --sidebar-border: #3a4280;
+  /* Board ExecutiveHome: the active entry is brand violet at 22% on navy (white text 12.5:1). */
+  --sidebar-accent: rgb(118 119 251 / 0.22);
+  --sidebar-hover: rgb(255 255 255 / 0.06);
+  --sidebar-active-foreground: #ffffff;
+  /* Light: the navy meets the page on its own. Dark: same shade as the page, so a hairline. */
+  --sidebar-edge: transparent;
+  /* Active bottom tab (board ExecutiveHomeMobile): 7:1 on white. */
+  --nav-active: #4546c9;
   /* The sign-in brand panel is a shade deeper than the sidebar in dark mode. */
   --auth-panel: #121a3f;
   /* Brand panel atmosphere: the logo's violet and cyan as faint light, and a hairline grid. */
@@ -138,9 +148,17 @@
 
   --selected: #262b63;
   --selected-foreground: #c7c8ff;
+  --highlight: #1e2350;
   --selected-border: #8a8bfc;
 
+  /*
+   * DESIGN-NOTES keeps the dark sidebar at the page shade (#0B0E1F); the dark board draws it a
+   * touch deeper (#080B1A). Both pass AA for every sidebar text pair (5.5 to 14.5:1), so the
+   * notes value stands and a hairline marks the edge instead.
+   */
   --sidebar: #0b0e1f;
+  --sidebar-edge: #262b4a;
+  --nav-active: #a5a6fb;
   --auth-panel: #080b1a;
   /* The deeper dark panel needs a touch less light to stay calm. */
   --auth-glow-violet: rgb(108 99 245 / 0.18);
@@ -204,6 +222,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-selected: var(--selected);
+  --color-highlight: var(--highlight);
   --color-selected-foreground: var(--selected-foreground);
   --color-selected-border: var(--selected-border);
   --color-sidebar: var(--sidebar);
@@ -211,6 +230,11 @@
   --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
   --color-sidebar-faint-foreground: var(--sidebar-faint-foreground);
   --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-sidebar-edge: var(--sidebar-edge);
+  --color-nav-active: var(--nav-active);
   --color-auth-panel: var(--auth-panel);
   --color-auth-hairline: var(--auth-hairline);
   --color-auth-panel-muted: var(--auth-panel-muted);
@@ -242,6 +266,18 @@
   --color-status-slate-border: var(--status-slate-border);
 }
 
+/*
+ * App shell geometry. The script in index.html sets data-sidebar="collapsed" before first paint,
+ * so the sidebar and the content beside it start at their final width (no layout shift).
+ */
+:root {
+  --sidebar-width: 232px;
+  --topbar-height: 60px;
+}
+:root[data-sidebar="collapsed"] {
+  --sidebar-width: 68px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -254,6 +290,10 @@
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
+  }
+  /* Page titles take focus after navigation so screen readers announce them; no ring for that. */
+  h1[tabindex="-1"]:focus {
+    outline: none;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -419,4 +459,21 @@
     linear-gradient(to bottom, var(--auth-grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(70% 60% at 40% 45%, black, transparent 80%);
+}
+
+/* The first tab stop on every signed-in page; visible only when focused. */
+@utility skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  &:focus-visible {
+    transform: none;
+  }
+}
+
+/* Room for the phone's home indicator under the bottom tabs and sheets. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
 }

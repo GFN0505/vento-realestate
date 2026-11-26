@@ -3,9 +3,17 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { NextStep } from '@vento/shared'
 import { orpc } from '@/lib/orpc'
 
-/** Who is signed in and where they go next. Guards and pages share this one query. */
+/**
+ * Who is signed in and where they go next. Guards and pages share this one query. Coming back
+ * to the tab always rechecks it, so a changed role, a removal or an organization switched in
+ * another tab shows up without waiting for a request.
+ */
 export function meQuery() {
-  return orpc.account.me.queryOptions({ staleTime: 60_000, retry: false })
+  return orpc.account.me.queryOptions({
+    staleTime: 30_000,
+    refetchOnWindowFocus: 'always',
+    retry: false,
+  })
 }
 
 export function isUnauthorized(error: unknown): boolean {

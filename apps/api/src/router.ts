@@ -1,3 +1,4 @@
+import { accessRouter } from '@/modules/access/access.router'
 import { accountRouter } from '@/modules/account/account.router'
 import { entitiesRouter } from '@/modules/entities/entities.router'
 import { healthRouter } from '@/modules/health/health.router'
@@ -17,6 +18,7 @@ export const router = os.router({
   roles: rolesRouter,
   members: membersRouter,
   invitations: invitationsRouter,
+  access: accessRouter,
 })
 export type Router = typeof router
 

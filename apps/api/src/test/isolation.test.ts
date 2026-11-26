@@ -8,6 +8,7 @@ import {
   createMember,
   createOrganization,
   createSession,
+  createUser,
 } from './factories'
 import { clientAs } from './router-client'
 
@@ -134,6 +135,42 @@ describe('organization isolation', () => {
       expect((await client.members.list({})).total).toBe(1)
       expect((await client.invitations.list({})).total).toBe(0)
       expect((await client.roles.list()).total).toBe(9)
+    }))
+
+  it('refuses to switch to another organization and leaves the session where it was', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      const session = await createSession(tx, mine.owner, { activeOrganizationId: mine.id })
+      const { client } = clientAs(tx, mine.owner, {
+        sessionId: session.id,
+        activeOrganizationId: mine.id,
+      })
+      await expect(
+        client.account.switchOrganization({ organizationId: theirs.id }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      const [row] = await tx.select().from(sessions).where(eq(sessions.id, session.id))
+      expect(row?.activeOrganizationId).toBe(mine.id)
+      expect(
+        (await tx.select().from(users).where(eq(users.id, mine.owner.id)))[0]
+          ?.lastActiveOrganizationId,
+      ).toBeNull()
+    }))
+
+  it('names only people from this organization as access contacts', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const grace = await createMember(tx, mine, { role: 'sales', name: 'Grace Umeh' })
+      const theirOwner = await createUser(tx, { name: 'Their Owner', twoFactorEnabled: true })
+      const theirs = await createOrganization(tx, {
+        name: 'Other Developer Ltd',
+        owner: theirOwner,
+      })
+      await createMember(tx, theirs, { role: 'admin', name: 'Their Admin' })
+      const { client } = clientAs(tx, grace.user, { activeOrganizationId: mine.id })
+      const result = await client.access.whoCanChangeAccess({ module: 'settings' })
+      expect(result.contacts).toEqual([{ name: 'Olumide Bankole', roleName: 'Owner' }])
+      expect(JSON.stringify(result)).not.toMatch(/Their (Owner|Admin)/)
     }))
 
   it('never reads the organization from input', () =>

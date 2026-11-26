@@ -15,6 +15,8 @@ import {
   memberIdInput,
   role,
   updateMemberAccessInput,
+  whoCanChangeAccessInput,
+  whoCanChangeAccessOutput,
 } from './schema'
 
 export const rolesContract = {
@@ -42,4 +44,9 @@ export const invitationsContract = {
   acceptAsNewUser: base.input(acceptInvitationAsNewUserInput).output(acceptInvitationOutput),
   /** Public. */
   decline: base.input(invitationTokenInput).output(notice),
+}
+
+export const accessContract = {
+  /** Any member: who can open a module and who to ask, for the 403 page. */
+  whoCanChangeAccess: base.input(whoCanChangeAccessInput).output(whoCanChangeAccessOutput),
 }

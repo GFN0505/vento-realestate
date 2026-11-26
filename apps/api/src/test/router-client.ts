@@ -1,4 +1,5 @@
 import { createRouterClient } from '@orpc/server'
+import { ORGANIZATION_HEADER } from '@vento/shared'
 import type { Auth } from '@/auth/auth'
 import type { BaseContext } from '@/context'
 import type { DbOrTx } from '@/db/client'
@@ -18,6 +19,8 @@ export function clientAs(
   options: {
     sessionId?: string
     activeOrganizationId?: string | null
+    /** The organization the caller's tab is showing, sent as the tab-guard header. */
+    expectedOrganizationId?: string
     /** Extra Better Auth server calls a procedure makes (requestPasswordReset, signInEmail). */
     authApi?: Record<string, (...args: never[]) => unknown>
   } = {},
@@ -46,7 +49,11 @@ export function clientAs(
   const context: BaseContext = {
     db,
     requestId: 'test',
-    headers: new Headers(),
+    headers: new Headers(
+      options.expectedOrganizationId === undefined
+        ? {}
+        : { [ORGANIZATION_HEADER]: options.expectedOrganizationId },
+    ),
     auth,
     mailer,
     rateLimiter: createRateLimiter(false),

@@ -39,8 +39,11 @@ test('a new owner signs up, sets up the organization and entity, and ends up sig
   const secret = await completeTwoStepSetup(page, password)
   expect(secret).toMatch(/^[A-Z2-7]{16,}$/)
 
-  await expect(page.getByRole('heading', { name: 'Welcome, Amaka' })).toBeVisible()
-  await expect(page.getByText(`You're signed in to ${company} as Owner.`)).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Amaka$/ }),
+  ).toBeVisible()
+  await expect(page.getByRole('main').getByText(company)).toBeVisible()
+  await expect(page.getByText(/matter to you as Owner/)).toBeVisible()
 })
 
 test('a wrong verification code shows what to do and keeps the person on the page', async ({

@@ -16,5 +16,14 @@ export async function signInWithTotp(
   await enterPassword(page, member.email, member.password)
   await expect(page.getByRole('heading', { name: 'Two-step check' })).toBeVisible()
   await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
-  await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible()
+  await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
+}
+
+/** Home's heading: "Good morning, Olumide" (afternoon, evening). */
+export const HOME_GREETING = /^Good (morning|afternoon|evening), /
+
+/** Runs a ⌘K command by name (the search bar on desktop, the search icon on phones). */
+export async function runCommand(page: Page, name: string) {
+  await page.getByRole('button', { name: /Search or run a command/ }).click()
+  await page.getByRole('option', { name, exact: true }).click()
 }

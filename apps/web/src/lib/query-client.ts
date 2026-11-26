@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client'
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
+import { connection } from '@/lib/connection'
 import { orpc } from '@/lib/orpc'
 import { sessionExpired } from '@/lib/session-expired'
 
@@ -26,11 +27,22 @@ export function createQueryClient() {
       queries: {
         // Data stays fresh for 30s, so moving between screens doesn't refetch everything.
         staleTime: 30_000,
-        // Weak networks: retry reads with backoff, but never a refused sign-in or permission.
+        // Offline requests fail fast into the designed offline states instead of pausing.
+        networkMode: 'always',
+        // Weak networks: retry reads with backoff, but never a refused sign-in or permission,
+        // and never while offline (the offline page retries when the connection returns).
         retry: (count, error) =>
-          count < 2 && !(error instanceof ORPCError && error.status >= 400 && error.status < 500),
+          connection.isOnline() &&
+          count < 2 &&
+          !(error instanceof ORPCError && error.status >= 400 && error.status < 500),
       },
+      mutations: { networkMode: 'always' },
     },
+  })
+
+  // Back online: reload whatever failed while we were away.
+  connection.onReconnect(() => {
+    void client.refetchQueries({ type: 'active', predicate: (q) => q.state.status === 'error' })
   })
   return client
 }

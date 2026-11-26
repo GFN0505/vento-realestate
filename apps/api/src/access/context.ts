@@ -5,9 +5,9 @@ import {
   type PermissionAction,
   type PermissionModule,
 } from '@vento/shared'
-import { eq, sql } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
-import { sessions, users } from '@/db/schema'
+import { members, organizations, roles, sessions, users } from '@/db/schema'
 
 /** The signed-in person, from Better Auth's user row. */
 export type AuthUser = {
@@ -140,6 +140,24 @@ export async function setActiveOrganization(
     .where(eq(users.id, input.userId))
 }
 
+/**
+ * Points the session at the membership actually loaded, when the session's organization was
+ * gone (removed, or never set) and loadMembership fell back to another one.
+ */
+export async function writeBackActiveOrganization(
+  db: DbOrTx,
+  user: Pick<AuthUser, 'id'>,
+  session: Pick<AuthSession, 'id' | 'activeOrganizationId'>,
+  membership: Pick<Membership, 'organizationId'> | null,
+): Promise<void> {
+  if (!membership || membership.organizationId === session.activeOrganizationId) return
+  await setActiveOrganization(db, {
+    userId: user.id,
+    sessionId: session.id,
+    organizationId: membership.organizationId,
+  })
+}
+
 /** Membership for this session, writing back the fallback choice when it changed. */
 export async function resolveMembership(
   db: DbOrTx,
@@ -147,14 +165,25 @@ export async function resolveMembership(
   session: Pick<AuthSession, 'id' | 'activeOrganizationId'>,
 ): Promise<Membership | null> {
   const membership = await loadMembership(db, user.id, session.activeOrganizationId)
-  if (membership && membership.organizationId !== session.activeOrganizationId) {
-    await setActiveOrganization(db, {
-      userId: user.id,
-      sessionId: session.id,
-      organizationId: membership.organizationId,
-    })
-  }
+  await writeBackActiveOrganization(db, user, session, membership)
   return membership
+}
+
+/** Every organization the person is an active member of, with their role there, by name. */
+export async function listActiveMemberships(
+  db: DbOrTx,
+  userId: string,
+): Promise<{ id: string; name: string; roleName: string }[]> {
+  return db
+    .select({ id: organizations.id, name: organizations.name, roleName: roles.name })
+    .from(members)
+    .innerJoin(organizations, eq(organizations.id, members.organizationId))
+    .innerJoin(
+      roles,
+      and(eq(roles.id, members.roleId), eq(roles.organizationId, members.organizationId)),
+    )
+    .where(and(eq(members.userId, userId), eq(members.status, 'active')))
+    .orderBy(asc(organizations.name), asc(organizations.id))
 }
 
 /** Two-step is required by the role, or because an owner or admin reset it. */
