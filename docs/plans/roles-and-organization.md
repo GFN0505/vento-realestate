@@ -1,6 +1,6 @@
 # Plan: Roles and organization (brick 3c)
 
-- **Status:** draft for the owner's review (26 Nov 2026). Build after brick 3b merges (or stacked on it).
+- **Status:** approved (owner, 26 Nov 2026, all 10 plan questions as recommended). Built stacked on brick 3b.
 - **Spec:** [docs/specs/roles-and-organization.md](../specs/roles-and-organization.md) (approved, all 14 recommendations, 26 Nov 2026)
 - **Journeys:** J-ONB-07 and J-ONB-08 (new), J-ONB-01 step 7, J-ONB-05 step 3, and copy changes in J-ONB-02 and J-ONB-06
 - **Branch:** `brick/03c-roles-org`, cut from `brick/03b-team`. **One pull request.**
@@ -817,7 +817,7 @@ checklistContract.answerSingleCompany = platform
   - A rogue admin can make a wide custom role and give it.
   - This is no worse than giving Admin today (spec question 5). Brick 4's approval rule closes it.
 
-## 14. Plan questions (recommendations in bold)
+## 14. Plan questions (owner approved all recommendations, 26 Nov 2026)
 1. **Editing a role that can do more than you.** The spec says a saved role must stay within the editor's permissions, but not what the page shows when the role is already wider (for example an "Office manager" with Settings edit opening "Finance lead"). **Recommended: read-only, with "Finance lead can do things you can't. Ask Olumide Bankole (owner) to change it."**, matching the Team rule. The alternative is editable with the extra cells locked, but then a save must keep actions the editor can't see change, which is confusing.
 2. **Roles beyond your permissions in role menus (Team, invite).** **Recommended: hidden**, like Owner for non-owners today. The roles list still shows every role. The alternative is listed but disabled with a reason, which is noisier and offers something you can't do.
 3. **Ceiling on resend.** The spec lists change, reset, remove and withdraw. Resending re-issues a grant. **Recommended: yes, resend is refused for an invitation whose role is wider than yours** (`wider_permissions`).
