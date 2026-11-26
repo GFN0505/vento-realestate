@@ -32,6 +32,8 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-05 | Find your way around the workspace | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-06 | Change someone's access, reset their two-step, remove a leaver | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-07 | Set up the organization and its companies | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-08 | Make a role that fits the job | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -120,3 +122,14 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Invitations can be **resent once a minute**; **last active** is shown by day to owners and admins.
 - The setup checklist is **hidden per person**, back from ⌘K, and stays hidden once hidden.
 - Email: Postmark sends from **`no-reply@mail.{Vento's domain}`**, invitations as "{Organization} via Vento" with the inviter as Reply-To; **staging emails only allowed addresses**; only **invitations** are marked when an email bounces.
+
+**Still need the owner's yes (brick 3c, [roles-and-organization](../specs/roles-and-organization.md) open questions)**
+- Entities are called **companies** on every screen ("Company: All companies", *Settings → Companies*, "Company access"); code and DOMAIN keep "entity".
+- Only people with **access to every company** edit the organization profile, add, archive or restore companies, and make, edit or delete roles.
+- Nobody can make, edit or give a role **beyond their own permissions**, or edit the role they hold.
+- A custom role's **two-step is locked on** when it can change settings or do more than view in Finance or HR.
+- Roles are edited as **a tick per action**; saving applies at once with **Undo**; a custom role can be deleted only when **nobody holds it**; at most **50 custom roles**.
+- Archiving a company runs at once with **Undo** (a confirm when people would lose all access); archived companies can be **restored** within the plan limit and are read-only meanwhile.
+- An owner at the company limit gets the **plan message instead of the form**.
+- The checklist item "Add your other companies (SPVs)" can be closed with **We only have one company**.
+- Organization profile is **name, head office state and financial year** only.
