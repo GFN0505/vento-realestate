@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback } from 'react'
 import { SecurityPage } from '@/features/security/security-page'
-import { securityQuery, sessionsQuery } from '@/features/security/security-queries'
+import { securityQuery, sessionsQuery } from '@/features/settings/security-queries'
 import { validateSecuritySearch } from '@/features/settings/security-search'
 
 export const Route = createFileRoute('/_app/_shell/settings/security')({

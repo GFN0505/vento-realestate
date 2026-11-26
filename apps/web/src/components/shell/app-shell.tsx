@@ -2,6 +2,7 @@ import { useMatches } from '@tanstack/react-router'
 import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react'
 import { InShellContext } from '@/components/errors/error-state'
 import { LazyForbiddenPage } from '@/components/errors/lazy-pages'
+import { passkeyOfferPending } from '@/features/auth/passkey-offer-flag'
 import { useFeatureLoss, useNotFoundRefetch } from '@/features/availability/use-availability-sync'
 import { useEntitySync } from '@/features/entity/use-current-entity'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
@@ -22,10 +23,15 @@ import { OfflineBanner } from './offline-banner'
 import { PreviewBanner } from './preview-banner'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
+import { TwoStepBanner, TwoStepSetupHost } from './two-step-banner'
 
 const CommandPalette = lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })))
 const InviteSheet = lazy(() => loadInvite().then((m) => ({ default: m.InviteSheet })))
 const CompanyOverlays = lazy(() => loadCompanySheet().then((m) => ({ default: m.CompanyOverlays })))
+// After a password sign-in only; its code (and the passkey library) never loads otherwise.
+const PasskeyOffer = lazy(() =>
+  import('@/features/security/passkey-offer').then((m) => ({ default: m.PasskeyOffer })),
+)
 const ShortcutsDialog = lazy(() =>
   import('@/features/shell/shortcuts-dialog').then((m) => ({ default: m.ShortcutsDialog })),
 )
@@ -53,6 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-dvh flex-col transition-[padding] duration-200 ease-out motion-reduce:transition-none lg:pl-(--sidebar-width)">
         <div className="sticky top-0 z-30">
           <PreviewBanner />
+          <TwoStepBanner />
           <TopBar />
         </div>
         <main
@@ -66,6 +73,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <MobileTabs />
       <ShellOverlays />
+      <TwoStepSetupHost />
+      <PasskeyOfferHost />
     </InShellContext.Provider>
   )
 }
@@ -129,6 +138,17 @@ function ShellOverlays() {
       {used.shortcuts && <ShortcutsDialog />}
       {used.invite && <InviteSheet />}
       {used.company && <CompanyOverlays />}
+    </Suspense>
+  )
+}
+
+/** "Sign in faster next time", considered once after a password sign-in (3d). */
+function PasskeyOfferHost() {
+  const [pending] = useState(passkeyOfferPending)
+  if (!pending) return null
+  return (
+    <Suspense fallback={null}>
+      <PasskeyOffer />
     </Suspense>
   )
 }

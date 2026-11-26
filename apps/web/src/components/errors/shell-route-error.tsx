@@ -6,6 +6,7 @@ import { routeModule } from '@/features/shell/route-module'
 import { chunkFailureAction, lastChunkReloadAt, reloadForNewVersion } from '@/lib/chunk-errors'
 import { connection } from '@/lib/connection'
 import { errorReference } from '@/lib/error-data'
+import { twoStepSetupUi } from '@/lib/two-step-setup-ui'
 import { useInShell } from './error-state'
 import { LazyForbiddenPage, LazyNotFoundPage, LazyServerErrorPage } from './lazy-pages'
 import { OfflinePage } from './offline-page'
@@ -33,7 +34,10 @@ export function ShellRouteError({ error, reset }: ErrorComponentProps) {
   }, [reset, router])
 
   useEffect(() => {
-    if (kind === 'two_step') {
+    if (kind === 'two_step' && inShell) {
+      // The setup opens over the page (3d); finishing it reloads this route's data.
+      twoStepSetupUi.open('required')
+    } else if (kind === 'two_step') {
       // Fresh `me` first, so the guard sees the new step and sends them to two-step setup.
       void queryClient
         .refetchQueries({ queryKey: meQuery().queryKey })
@@ -43,7 +47,7 @@ export function ShellRouteError({ error, reset }: ErrorComponentProps) {
     if (kind === 'toast') {
       void import('@/lib/api-errors').then((m) => m.toastApiError(error))
     }
-  }, [kind, staleAction, error, queryClient, router])
+  }, [kind, inShell, staleAction, error, queryClient, router])
 
   switch (kind) {
     case 'forbidden':

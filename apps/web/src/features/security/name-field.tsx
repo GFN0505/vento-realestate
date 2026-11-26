@@ -5,11 +5,11 @@ import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { meQuery } from '@/features/account/api'
+import { securityQuery } from '@/features/settings/security-queries'
 import { apiErrorMessage, isHandledElsewhere, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { client } from '@/lib/orpc'
 import { cn } from '@/lib/utils'
-import { securityQuery } from './security-queries'
 
 /**
  * Your name, edited in place (spec "You"): click it, type, Enter or leaving the field saves, Esc

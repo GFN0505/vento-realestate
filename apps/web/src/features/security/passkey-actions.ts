@@ -2,12 +2,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { AUTH_ERROR_MESSAGES, AUTH_ERROR_CODES as C, type SecurityOverview } from '@vento/shared'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { securityQuery } from '@/features/settings/security-queries'
 import { OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { NETWORK_ERROR } from '@/lib/error-copy'
 import { sessionExpired } from '@/lib/session-expired'
 import { securityUi } from './security-dialogs'
-import { securityQuery } from './security-queries'
 import { useReauth } from './use-reauth'
 
 type Failure = { code?: string | undefined; status: number; message?: string | undefined }

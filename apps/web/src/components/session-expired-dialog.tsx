@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import type { Me } from '@vento/shared'
+import { FingerprintIcon, LoaderCircleIcon } from 'lucide-react'
 import { type FormEvent, useId, useState } from 'react'
 import { FormAlert } from '@/components/auth/form-alert'
 import { PasswordInput } from '@/components/auth/password-input'
@@ -19,6 +20,7 @@ import { AuthFailureText } from '@/features/auth/auth-failure-text'
 import { TwoStepCheck } from '@/features/auth/two-step-check'
 import { useAuthFailure } from '@/features/auth/use-auth-failure'
 import { formatCountdown } from '@/features/auth/use-countdown'
+import { usePasskeySignIn } from '@/features/auth/use-passkey-sign-in'
 import { signInWithPassword } from '@/features/auth/use-sign-in'
 import { orpc } from '@/lib/orpc'
 import { sessionExpired, useSessionExpired } from '@/lib/session-expired'
@@ -50,6 +52,22 @@ function ExpiredDialog({ email }: { email: string }) {
     sessionExpired.close()
     // Refetch what failed; the page and its form state stay as they were.
     void queryClient.invalidateQueries()
+  }
+
+  const passkey = usePasskeySignIn({
+    autoFill: false,
+    keepSignedIn: () => false,
+    onSignedIn: () => void afterPasskey(),
+  })
+
+  // A passkey can belong to someone else on a shared computer: then this page isn't theirs.
+  async function afterPasskey() {
+    const before = queryClient.getQueryData<Me>(orpc.account.me.queryKey())?.user.id
+    const now = await queryClient.fetchQuery(orpc.account.me.queryOptions()).catch(() => null)
+    if (now && now.user.id === before) return done()
+    sessionExpired.close()
+    queryClient.removeQueries()
+    void navigate({ to: '/', replace: true })
   }
 
   async function submit(event: FormEvent) {
@@ -97,12 +115,12 @@ function ExpiredDialog({ email }: { email: string }) {
         {stage === 'password' ? (
           <form method="post" onSubmit={submit} noValidate>
             <DialogBody>
-              {(failure || error) && (
+              {(failure || error || passkey.message) && (
                 <FormAlert variant="error">
                   {failure ? (
                     <AuthFailureText failure={failure} secondsLeft={secondsLeft} />
                   ) : (
-                    error
+                    (error ?? passkey.message)
                   )}
                 </FormAlert>
               )}
@@ -120,6 +138,35 @@ function ExpiredDialog({ email }: { email: string }) {
                   autoFocus
                 />
               </Field>
+              {passkey.available && (
+                <div className="flex flex-col gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full max-md:h-11"
+                    disabled={passkey.pending}
+                    aria-busy={passkey.pending || undefined}
+                    onClick={() => {
+                      setError(null)
+                      setFailure(null)
+                      void passkey.start()
+                    }}
+                  >
+                    {passkey.pending ? (
+                      <LoaderCircleIcon aria-hidden className="animate-spin" />
+                    ) : (
+                      <FingerprintIcon aria-hidden />
+                    )}
+                    Sign in with a passkey
+                  </Button>
+                  <p
+                    aria-live="polite"
+                    className="text-center text-muted-foreground text-xs empty:hidden"
+                  >
+                    {passkey.note}
+                  </p>
+                </div>
+              )}
               <FormAlert variant="info" title="Your work is safe.">
                 Anything you typed on this page is still here.
               </FormAlert>

@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { sessionsQuery } from '@/features/settings/security-queries'
 import { OFFLINE_SAVE_ERROR, toastApiError } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { orpc } from '@/lib/orpc'
 import { type SecurityDialog, securityUi } from '../security-dialogs'
-import { sessionsQuery } from '../security-queries'
 import { devicesWords } from '../security-words'
 
 type Props = { dialog: Extract<SecurityDialog, { name: 'sign-out-others' }> | null }

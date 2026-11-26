@@ -4,10 +4,10 @@ import { LaptopIcon, LoaderCircleIcon, SmartphoneIcon, TabletIcon } from 'lucide
 import { toast } from 'sonner'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import { sessionsQuery } from '@/features/settings/security-queries'
 import { toastApiError } from '@/lib/api-errors'
 import { orpc } from '@/lib/orpc'
 import { securityUi } from './security-dialogs'
-import { sessionsQuery } from './security-queries'
 import { SecurityRow, SecuritySection } from './security-section'
 import {
   devicesWords,

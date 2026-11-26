@@ -15,12 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { securityQuery } from '@/features/settings/security-queries'
 import { apiErrorMessage, isHandledElsewhere, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { isNotFound } from '@/lib/error-data'
 import { client } from '@/lib/orpc'
 import { securityUi, useSecurityUi } from './security-dialogs'
-import { securityQuery } from './security-queries'
 import { SecurityRow } from './security-section'
 import { passkeyUseWords } from './security-words'
 

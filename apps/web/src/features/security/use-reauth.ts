@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import type { SecurityOverview } from '@vento/shared'
+import { securityQuery } from '@/features/settings/security-queries'
 import { securityUi } from './security-dialogs'
-import { securityQuery } from './security-queries'
 
 // A window that closes in the next few seconds would expire mid-action; ask now instead.
 const MARGIN_MS = 10_000

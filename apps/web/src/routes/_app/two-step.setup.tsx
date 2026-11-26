@@ -49,9 +49,11 @@ function TwoStepSetupPage() {
   return (
     <AuthLayout wide>
       <AuthHeader title="Set up two-step sign-in">
-        {me.twoStepRequired
-          ? `Your role needs a code from an authenticator app each time you sign in. It takes about a minute.`
-          : 'Add a code from an authenticator app to each sign-in.'}
+        {me.twoStepRequiredBy?.reason === 'organization'
+          ? `${me.twoStepRequiredBy.organizationName} requires a code from an authenticator app each time you sign in. It takes about a minute.`
+          : me.twoStepRequired
+            ? 'Your role needs a code from an authenticator app each time you sign in. It takes about a minute.'
+            : 'Add a code from an authenticator app to each sign-in.'}
       </AuthHeader>
       <TwoStepSetupSteps setup={setup} />
     </AuthLayout>

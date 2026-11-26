@@ -1,8 +1,10 @@
 import { ORPCError } from '@orpc/client'
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { connection } from '@/lib/connection'
+import { errorReason } from '@/lib/error-data'
 import { orpc } from '@/lib/orpc'
 import { sessionExpired } from '@/lib/session-expired'
+import { twoStepSetupUi } from '@/lib/two-step-setup-ui'
 
 function isUnauthorized(error: unknown) {
   return error instanceof ORPCError && error.code === 'UNAUTHORIZED'
@@ -12,6 +14,15 @@ export function createQueryClient() {
   // Someone who was signed in on this page gets the "Session expired" dialog over it, so what
   // they typed stays. Someone who never was (first load) is sent to sign-in by the guard.
   function onError(error: unknown) {
+    // The organization's 7 days ran out mid-work: set up over the page, nothing typed is lost.
+    if (
+      error instanceof ORPCError &&
+      error.code === 'FORBIDDEN' &&
+      errorReason(error) === 'two_step_setup_required'
+    ) {
+      twoStepSetupUi.open('required')
+      return
+    }
     if (!isUnauthorized(error)) return
     const wasSignedIn = client
       .getQueryCache()

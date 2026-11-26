@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { rolesQuery } from '@/features/preview/use-effective-permissions'
+import { rolesQuery, useMe } from '@/features/preview/use-effective-permissions'
 import { PAGE_SHORTCUT_EVENT } from '@/features/shell/shortcuts'
 import { usePageTitle } from '@/features/shell/use-page-title'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
@@ -26,10 +26,13 @@ export function RolesPage() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
   const roles = useQuery(rolesQuery())
+  const me = useMe()
   const rights = useRoleRights()
   const phone = useMediaQuery(PHONE_QUERY)
   const [deleting, setDeleting] = useState<Role | null>(null)
   const items = roles.data?.items
+  // "Require two-step for everyone" is on: every role reads Required (3d).
+  const everyone = roles.data?.requiredForEveryone ? (me.organization?.name ?? '') : null
   const hasCustom = items?.some((r) => !r.isSystem) ?? false
   const newRole = (from?: string) => void navigate({ search: { new: true, from } })
   useNewRoleShortcut(rights.create, () => newRole())
@@ -61,10 +64,11 @@ export function RolesPage() {
       ) : !items ? (
         <RolesSkeleton phone={phone} />
       ) : phone ? (
-        <RolesCards roles={items} />
+        <RolesCards roles={items} requiredForEveryone={everyone} />
       ) : (
         <RolesTable
           roles={items}
+          requiredForEveryone={everyone}
           menu={(role) => (
             <RoleRowMenu
               role={role}

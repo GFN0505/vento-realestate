@@ -134,7 +134,8 @@ export function TwoStepCheck({ email, onSignedIn, onRestart, onBack, compact = f
           </>
         )}
         <br />
-        Lost your phone and your codes? Ask an owner or admin to reset two-step.
+        Lost your phone? Use a passkey on another device or a backup code, or ask an owner or admin
+        to reset two-step.
       </AuthFootnote>
     </form>
   )
