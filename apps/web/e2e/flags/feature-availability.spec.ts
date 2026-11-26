@@ -106,7 +106,11 @@ async function expectNoModulesAnywhere(page: Page, mobile: boolean, owner = fals
     await page.keyboard.press('Escape')
   }
   await openPalette(page)
-  await expect(page.getByRole('option', { name: /^Go to (?!Home|Settings|Team)/ })).toHaveCount(0)
+  await expect(
+    page.getByRole('option', {
+      name: /^Go to (?!Home|Settings|Team|Organization|Companies|Roles)/,
+    }),
+  ).toHaveCount(0)
   await page.getByPlaceholder('Type a page or action').fill('parcels')
   await expect(page.getByText('No pages or actions match "parcels".')).toBeVisible()
   await closePalette(page)
