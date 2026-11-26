@@ -252,6 +252,26 @@ export type ApprovalPlugin<P> = {
 - **web:** the shell and settings files in §7, and `features/roles/*` and `features/team/*` as listed.
 - **docs:** listed in §12.
 
+### Overlap with the admin console (`feat/admin-console`)
+Brick 4 works only on the organization audit (`audit_events`) and the approvals engine. It doesn't touch platform audit: `platform/platform-audit.ts`, `platform_audit_events`, the platform tables and the console router are all left alone. Expected touch points in shared areas:
+
+| Area | Brick 4 touches | Kind of change |
+|---|---|---|
+| `apps/api/src/modules/audit/` | `audit.service.ts` (no change in behaviour; it may export the `row()` shape); new `audit-read.service.ts`, `audit.router.ts`, `csv.ts` | Additive |
+| `apps/api/src/access/` | `middleware.ts` (adds `requireOwner()`) | Additive, one new export |
+| `apps/api/src/router.ts` | Mounts `approvals`, `approvalRules`, `audit` in the customer router | Three lines |
+| `apps/api/src/db/schema/index.ts` | Exports `approvals.ts` | One line |
+| `apps/api/drizzle/` | Two new migrations, generated after the rebase | New files |
+| `apps/api/src/platform/cli/main.ts` | Registers the `approvals expire` command | One line |
+| `apps/api/src/db/seed.ts`, `test/isolation.test.ts`, `test/permissions-matrix.test.ts`, `test/factories.ts` | Seed data and new tables in the tests | Additive |
+| `packages/shared/src/contract.ts` | Adds `approvals`, `approvalRules`, `audit` | Three lines |
+| `packages/shared/src/audit/actions.ts` | Appends ten `AUDIT_ACTIONS` | Append only |
+| `packages/shared/src/audit/` | New `labels.ts`, `contract.ts`, `schema.ts` | New files |
+| `packages/shared/src/access/role-rules.ts` | `roleNeedsTwoStep` includes `approve` | Behaviour change |
+| `packages/shared/src/account/schema.ts` | `me` gains `approvalsWaiting`, `canSeeApprovals` | Additive |
+
+If the console adds organization-side audit actions (for example "Vento viewed your data" for read-only support access), `labels.ts` needs a label for each one. The labels test will flag any that are missing after the rebase.
+
 ## 9. Tests
 - **Shared unit tests:**
   - `match.test.ts`: company beats all; highest threshold wins; equal to the threshold isn't "over"; foreign amount uses `ngnAmount`; "any" fallback; no rule.
