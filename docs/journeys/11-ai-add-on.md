@@ -4,11 +4,11 @@ Every journey here has a manual twin elsewhere. With AI off, the screens look th
 
 ## J-AI-04 · Turn on AI and set a budget
 **Who / how often:** Owner, once, then occasionally.
-**Starts from:** *Settings → AI*.
+**Starts from:** *Settings → AI*. It appears only when the organization has the AI add-on and at least one AI feature is released to it ([feature-flags](../specs/feature-flags.md)).
 
 **Steps**
-1. Each AI feature with what it does, an example and an estimated monthly cost for this organization's volume. Toggle the ones wanted.
-2. Set the monthly budget; alerts at 50/80/100% go to the owner.
+1. Each AI feature available to the organization, with what it does, an example and an estimated monthly cost for this organization's volume. Toggle the ones wanted. Features not yet released to the organization aren't listed.
+2. Set the monthly budget, up to the add-on's `ai_budget` limit; alerts at 50/80/100% go to the owner. Raising the limit itself means talking to Vento until the billing screen ships.
 3. Usage meter shows spend by feature this month.
 
 **Watch for:** budget reached → features pause with "AI budget reached for November. You can keep working as normal, or raise the budget." Manual paths keep working.
