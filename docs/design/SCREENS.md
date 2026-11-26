@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 169 rows · 135 designed (18 of them partly) · 34 without a design.
+**Coverage:** 171 rows · 135 designed (18 of them partly) · 36 without a design.
 
 
 
@@ -19,7 +19,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
 | Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
-| Setup checklist on Home (brick 3b) | [Onboarding](claude-design/Onboarding.dc.html) | todo |
+| Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K) | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | todo |
 | App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
 | ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
@@ -189,10 +189,12 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 12. Settings and admin
 | Screen | Design | Status |
 |---|---|---|
-| Settings layout with left sub-navigation (brick 3b) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | todo |
+| Settings layout with left sub-navigation (brick 3b: only built sections the member can view; no sub-navigation while there's one section; Settings in the sidebar footer, user menu and More) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | todo |
 | Organization profile and entities: add, edit, archive (brick 3c) | [SetOrg](claude-design/SetOrg.dc.html) | todo |
 | Branding: logo and colours on documents, emails and portals (proposed: with the first customer-facing document) | [SetBranding](claude-design/SetBranding.dc.html) | todo |
-| Team members and invitations: invite, change role and limits, resend, withdraw, remove, reset two-step (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) | todo |
+| Team: one list of members and open invitations (role in place, entity access, two-step, last active, invitation and delivery state), search, role filter, Invited and Removed chips, owner's plan usage line, confirms for remove, reset two-step and make owner (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | todo |
+| Invite people sheet: up to 20 emails, role for everyone or per row, entity access, row problems, plan places (brick 3b; also opens from the Home checklist and ⌘K) | – | todo |
+| Member and invitation sheets: facts, change role and entity access, reset two-step, remove; resend, withdraw (brick 3b) | – | todo |
 | Permissions: role × module matrix, copy and edit custom roles (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | todo |
 | Approval rules | [SetApprovalRules](claude-design/SetApprovalRules.dc.html) | todo |
 | Fee and sales defaults, grace periods | – | todo |
@@ -229,7 +231,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Purchase order PDF | [DocPO](claude-design/DocPO.dc.html) | todo |
 | WHT credit note | [WHTCreditNote](claude-design/WHTCreditNote.dc.html) | todo |
 | Emails: invite, verify, reset, receipt, reminder, approval request, digest | [EmailInvite](claude-design/EmailInvite.dc.html), [EmailVerify](claude-design/EmailVerify.dc.html), [EmailReset](claude-design/EmailReset.dc.html), [EmailReceipt](claude-design/EmailReceipt.dc.html), [EmailReminder](claude-design/EmailReminder.dc.html), [EmailApproval](claude-design/EmailApproval.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
-| Email: security alert (sign-in locked, password changed, two-step reset, backup code used) | – | pattern, needs-design |
+| Email: security alert (sign-in locked, password changed, two-step reset, backup code used; brick 3b adds "someone is now an owner") | – | pattern, needs-design |
 | WhatsApp templates: reminder, overdue, receipt, construction update | [WAReminder](claude-design/WAReminder.dc.html), [WAOverdue](claude-design/WAOverdue.dc.html), [WAReceipt](claude-design/WAReceipt.dc.html), [WAConstruction](claude-design/WAConstruction.dc.html) | todo |
 | SMS templates | – | todo |
 

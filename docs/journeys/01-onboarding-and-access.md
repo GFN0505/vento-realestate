@@ -13,7 +13,7 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md) (steps 1–4 and th
 4. *Onboarding, step 2 (first entity):* entity name (pre-filled), type (holding company or SPV), RC number, TIN, VAT registered? RC and TIN can be left for later → **Finish setup**.
 5. *Set up two-step:* the owner scans the QR code, enters a code and saves 10 backup codes.
 6. *Onboarding, step 3 (first project and units):* project name, location, type, then "Add units now" (bulk create) or "Import from Excel" or "Skip". *(Projects and Sales bricks.)*
-7. Lands on *Home* inside the *App shell* (brick 3a replaces the temporary signed-in page). From brick 3b, Home also shows the *Setup checklist* for owners and admins: organization, first entity and two-step already ticked, then invite team; add bank account, set approval rules, connect Paystack and import buyers appear as those features ship.
+7. Lands on *Home* inside the *App shell* (brick 3a replaces the temporary signed-in page). From brick 3b ([team](../specs/team.md)), Home also shows the *Setup checklist* to owners and admins: "Create your organization", "Add your first entity" and "Turn on two-step sign-in" ticked from the data, then "Invite your team" with **Invite people** (opens the *Invite people sheet* over Home). Other steps (other entities, approval rules, bank account, Paystack, import, first project, BoQ, reminders) appear only once their feature is available. **Hide checklist** hides it for this person; ⌘K "Show setup checklist" brings it back.
 
 **Behind the scenes:** step 1 creates the organization and the person as its owner in one transaction; step 2 creates the entity. Each step saves, so the user can leave and resume. Audit events written for each. Later bricks add the entity's default chart of accounts, default approval rules and current statutory rules.
 **Done when:** the organization and first entity exist, the owner has two-step on and sees the signed-in page (later: their project on Home with checklist step 1 done).
@@ -21,21 +21,41 @@ Spec: [accounts-and-access](../specs/accounts-and-access.md) (steps 1–4 and th
 **Target:** under 3 minutes and 4 clicks to a saved organization and entity; ≤ 5 minutes to first project. **Test:** `e2e/onboarding/new-organization.spec.ts` **Status:** built (steps 1–2; step 3 with Projects)
 
 ## J-ONB-02 · Invite the team and set roles
-**Who / how often:** Admin, at setup then occasionally.
-**Starts from:** Setup checklist, or *Settings → Team members*.
+**Who / how often:** Owner or admin, at setup then occasionally.
+**Starts from:** *Setup checklist* on Home ("Invite your team" → **Invite people**), *Settings → Team*, or ⌘K "Invite".
 
-Spec: [accounts-and-access](../specs/accounts-and-access.md). Brick 2a builds the invitee's side (step 4) and the API for steps 1–3; the *Team members* screen comes in brick 3b (see "Later slices" in [app-shell](../specs/app-shell.md)).
+Spec: [team](../specs/team.md) (brick 3b, the screens and email delivery) on [accounts-and-access](../specs/accounts-and-access.md) (brick 2a, the invitee's side and the API).
 
 **Steps**
-1. *Team members* → "Invite people". Paste up to 20 emails and pick a role for each (owner, admin, land & legal, project manager, sales, finance, HR, facility, viewer; owner-made roles such as "Site engineer" from brick 3). Only owners can invite owners.
-2. Optionally limit access to entities ("Kunle: Parkview Residences SPV Ltd only"). Project limits arrive with the Projects brick.
-3. "Send invites". Invitees get the invite email (WhatsApp once a provider is chosen).
-4. Invitee: *Invitation email* → *Accept invitation* (shows organization, who invited them, role, entities, what the role can approve, whether two-step is required) → name, password and confirm password, or sign in if they already use Vento → *Set up two-step* (required for owner, admin and finance) → lands on *Home* in the app shell with their role's sidebar (brick 3a; the role's numbers and queue fill in as modules ship).
+1. *Team* → **Invite people** (1 click), or **Invite people** on the checklist (the same sheet opens over Home).
+2. *Invite people sheet:* paste or type up to 20 emails (lists copied from Excel, Gmail or Outlook work; duplicates merge; typos get "Did you mean…?"). Pick **Role** for everyone (2 clicks: open, choose); any row can take another role from its own menu. Roles show one line each; **Owner** is offered to owners only. A role that requires two-step or can approve says so under the menu.
+3. *Entity access:* "All entities" by default, or "Only some entities" with a tick list ("Kunle: Parkview Residences SPV Ltd only"). An admin limited to some entities sees only theirs, and never "All entities". It applies to the whole batch. Project limits arrive with the Projects brick.
+4. **Send 5 invitations** (1 click). Toast "Invitations sent to 5 people". They appear at the top of *Team* as "Invited · expires 3 Dec".
+5. Invitee: *Invitation email* (from "Vento Homes Ltd via Vento", Reply-To the inviter) → *Accept invitation* (organization, who invited them, role, entities, what the role can approve, whether two-step is required) → name, password and confirm password, or sign in if they already use Vento → *Set up two-step* where the role requires it → lands on *Home* with their role's sidebar. On *Team* their row becomes a member with "Two-step on" and "Last active today".
+6. Later, on an invitation's ⋯ menu: **Resend** (new link, fresh 7 days) or **Withdraw** (2 clicks).
 
-**Behind the scenes:** invitations expire after 7 days; resending replaces the link and restarts the 7 days; invitations, role and limit changes, and removals are audit events; permissions are enforced server-side on every request; a role change takes effect on the member's next request.
-**Done when:** the member appears as `active` with their role and limits.
-**Watch for:** invite to someone already in another organization (allowed; they join with their existing account and switch organizations); email already a member (refused); opened while signed in as someone else ("This invitation is for…"); expired or withdrawn invite (ask for a new one); nobody can change their own access; removing or demoting the last owner (blocked); a removed member's sessions end at once and their history stays.
-**Target:** 3 clicks per batch; invitee active with two-step in under 3 minutes. **Test:** `e2e/auth/accept-invitation.spec.ts` (2a, seeded invitation), `e2e/settings/invite-members.spec.ts` (brick 3) **Status:** built for accepting (2a); sending invitations from the screen comes in brick 3
+**Behind the scenes:** one transaction creates the batch (all or nothing); each invitation is an audit event; emails go after commit through Postmark in staging and production (console in development; staging only to allowed addresses), with tracking off. A failed send or a bounce marks the invitation "Email not delivered". Members plus open invitations count against the plan's people limit, checked inside the transaction. Permissions are checked on the server for every action.
+**Done when:** the invitee appears as an active member with their role, entity access and two-step on.
+**Watch for:** some emails already members or already invited (nothing sent; every such row is marked, with **Resend instead** for invited ones); your own email ("That's you"); more than 20 pasted (20 kept, the rest left in the box); an owner with fewer places left than rows (plan message with **Talk to Vento**, Send disabled); an admin hitting the limit (server refusal, "Ask Olumide Bankole (owner)", rows kept); two admins taking the last place at once (one succeeds); an entity archived while the sheet is open; resending within a minute (refused); invite to someone already in another organization (allowed; they join with their existing account); opened while signed in as someone else ("This invitation is for…"); expired, withdrawn or bounced invitations; a removed member invited again (from *Removed* → **Invite again**); organization switched in another tab (refused, typing kept); session expired with the sheet open (typing kept); 375 px with the keyboard open (Send stays visible).
+**Target:** 3 clicks and under 60 seconds for a batch of 5; invitee active with two-step in under 3 minutes; invitation delivered within 1 minute. **Test:** `e2e/auth/accept-invitation.spec.ts` (2a), `e2e/settings/invite-members.spec.ts` (3b), `e2e/home/setup-checklist.spec.ts` (3b) **Status:** built for accepting (2a); screens and delivery in brick 3b (draft)
+
+## J-ONB-06 · Change someone's access, reset their two-step, remove a leaver
+**Who / how often:** Owner or admin; role and access changes monthly, a lost phone or a leaver a few times a year.
+**Starts from:** *Settings → Team*, a colleague's message ("I lost my phone"), or HR telling the admin someone has left.
+
+Spec: [team](../specs/team.md) (brick 3b) on [accounts-and-access](../specs/accounts-and-access.md) (2a rules).
+
+**Steps**
+1. *Team* → search "aisha" (the search and filters stay in the address).
+2. **Change role:** the role menu on Aisha's row → **Finance** (2 clicks). Saved at once; toast "Aisha Bello is now Finance · Undo". Making someone an **Owner** asks to confirm first and emails every owner.
+3. **Change entity access:** click the row → *Member sheet* → "Only some entities" → tick **Parkview Residences SPV Ltd** → **Save changes** (4 clicks). Toast "Access updated for Kunle Ojo".
+4. **Reset two-step** (lost phone and backup codes): ⋯ → **Reset two-step** → confirm (3 clicks). The badge becomes "Reset, waiting for new password"; they get a security alert and a link to set a new password, then set up two-step again at sign-in (J-ONB-04).
+5. **Remove a leaver:** ⋯ → **Remove from Vento Homes Ltd** → **Remove Grace Umeh** (3 clicks). Toast "Grace Umeh removed. History kept." The row moves to the *Removed* chip with **Invite again**.
+
+**Behind the scenes:** each change is one transaction and an audit event (`member.access_changed`, `two_step.reset`, `member.removed`, `session.revoked_by_removal`); an Undo is a second audited change. A change applies on the member's next request; removal ends their sessions in this organization at once; a two-step reset ends all their sessions everywhere. The removed member's place frees up on the plan.
+**Done when:** the row shows the new role, access or two-step state, or the person is under *Removed*.
+**Watch for:** your own row (read-only: "This is you…"); an admin and an owner's row (read-only: "Only owners can change an owner's access."); an admin limited to Parkview and a member with wider access (read-only, names outside their limit hidden); two owners removing each other at once (the second refused: "Vento Homes Ltd needs at least one owner…"); the member already removed by someone else ("Grace Umeh is no longer a member. The list is up to date."); Reset two-step offered only when two-step is on; role menus don't change while offline; preview as a role without settings (Team disappears); phone at 375 px (cards, actions in the sheet).
+**Target:** role change in 2 clicks, removal or reset in 3; under 10 seconds each. **Test:** `e2e/settings/manage-members.spec.ts` **Status:** draft
 
 ## J-ONB-03 · Import existing buyers and payments from Excel
 **Who / how often:** Finance or admin, at go-live and when migrating a project.
