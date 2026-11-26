@@ -19,12 +19,15 @@ export const releaseGroup = z.enum(RELEASE_GROUPS)
 
 const count = z.number().int().min(0).max(1_000_000)
 
-/** A plan's limits. A missing key means unlimited; `ai_budget` is NGN a month. */
+/**
+ * A plan's limits. A missing count means unlimited. `ai_budget` (NGN a month) is required, so
+ * the AI add-on's budget always has a base and can never read as unlimited.
+ */
 export const planLimits = z.strictObject({
   projects: count.optional(),
   entities: count.optional(),
   members: count.optional(),
-  ai_budget: money.optional(),
+  ai_budget: money,
 })
 export type PlanLimits = z.infer<typeof planLimits>
 

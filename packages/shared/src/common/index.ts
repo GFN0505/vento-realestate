@@ -22,4 +22,4 @@ export { MONTHS, monthNumber, NIGERIAN_STATES, nigerianState, stateLabel } from 
 export { ERROR_REFERENCE_PATTERN, errorReference } from './reference'
 export type { Currency, PaginationInput } from './schemas'
 export { currency, id, isoDate, paginated, paginationInput } from './schemas'
-export { joinNames } from './text'
+export { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters, joinNames } from './text'

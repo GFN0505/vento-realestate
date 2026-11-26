@@ -37,14 +37,18 @@ describe('planDefinition', () => {
 })
 
 describe('planLimits', () => {
-  it('treats a missing limit as unlimited by leaving it out', () => {
-    expect(planLimits.parse({})).toEqual({})
+  it('treats a missing count as unlimited by leaving it out', () => {
+    expect(planLimits.parse({ ai_budget: '0' })).toEqual({ ai_budget: '0.00' })
+  })
+
+  it('requires an AI budget, so the add-on always has a base', () => {
+    expect(planLimits.safeParse({ projects: 1 }).success).toBe(false)
   })
 
   it('refuses unknown limits and negative counts', () => {
-    expect(planLimits.safeParse({ units: 10 }).success).toBe(false)
-    expect(planLimits.safeParse({ projects: -1 }).success).toBe(false)
-    expect(planLimits.safeParse({ projects: 1.5 }).success).toBe(false)
+    expect(planLimits.safeParse({ ai_budget: '0', units: 10 }).success).toBe(false)
+    expect(planLimits.safeParse({ ai_budget: '0', projects: -1 }).success).toBe(false)
+    expect(planLimits.safeParse({ ai_budget: '0', projects: 1.5 }).success).toBe(false)
   })
 })
 

@@ -9,6 +9,7 @@ import {
   createInvitation,
   createMember,
   createOrganization,
+  createUser,
   setOverride,
   type TestOrg,
 } from '@/test/factories'
@@ -168,6 +169,34 @@ describe('plan limits: people', () => {
       await expect(client.invitations.resend({ id: invitation.id })).rejects.toMatchObject({
         data: { reason: 'plan_limit', limit: 'members' },
       })
+    }))
+})
+
+describe('plan limits: accepting an invitation', () => {
+  it('refuses to add a person while the organization is over its people limit after a downgrade', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      for (let i = 1; i < 10; i++) await createMember(tx, org, { role: 'viewer' })
+      const invitee = await createUser(tx, { name: 'Chidi Okafor' })
+      const { token } = await createInvitation(tx, org, { role: 'viewer', email: invitee.email })
+      await createInvitation(tx, org, { role: 'viewer' })
+      const { client } = clientAs(tx, invitee)
+      await expect(client.invitations.accept({ token })).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        data: { reason: 'plan_limit', limit: 'members', included: 10 },
+      })
+      const rows = await tx.select().from(members).where(eq(members.userId, invitee.id))
+      expect(rows).toEqual([])
+    }))
+
+  it('lets the invitee join when their invitation is within the limit', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      for (let i = 1; i < 9; i++) await createMember(tx, org, { role: 'viewer' })
+      const invitee = await createUser(tx, { name: 'Chidi Okafor' })
+      const { token } = await createInvitation(tx, org, { role: 'viewer', email: invitee.email })
+      const { client } = clientAs(tx, invitee)
+      await expect(client.invitations.accept({ token })).resolves.toBeTruthy()
     }))
 })
 

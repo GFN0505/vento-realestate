@@ -5,7 +5,7 @@ import {
   featureLabel,
   type LimitKey,
 } from '@vento/shared'
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { organizationOverrides, organizations, plans, planVersions } from '@/db/schema'
 import { formatDate } from '@/lib/format'
@@ -134,10 +134,47 @@ export async function clearOverride(
   return cleared ?? null
 }
 
+/**
+ * Marks overrides that already expired as cleared, so a new one for the same key can take the
+ * "one live override" slot (the unique index counts every row not cleared). Expired rows
+ * stopped applying at their expiry; this only records it.
+ */
+export async function clearExpiredOverrides(
+  tx: DbOrTx,
+  actor: Pick<PlatformActor, 'userId'>,
+  now: Date,
+  scope: { organizationId?: string; kind?: OverrideKind; keys?: readonly string[] } = {},
+): Promise<number> {
+  if (scope.keys && scope.keys.length === 0) return 0
+  const cleared = await tx
+    .update(organizationOverrides)
+    .set({ clearedAt: now, clearedByUserId: actor.userId })
+    .where(
+      and(
+        isNull(organizationOverrides.clearedAt),
+        lte(organizationOverrides.expiresAt, now),
+        scope.organizationId
+          ? eq(organizationOverrides.organizationId, scope.organizationId)
+          : undefined,
+        scope.kind ? eq(organizationOverrides.kind, scope.kind) : undefined,
+        scope.keys ? inArray(organizationOverrides.key, [...scope.keys]) : undefined,
+      ),
+    )
+    .returning({ id: organizationOverrides.id })
+  return cleared.length
+}
+
+/** A real calendar date written YYYY-MM-DD (refuses 2027-02-30). */
+export function isRealIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const d = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
+}
+
 /** `--until 2027-01-31`: applies through that Lagos day. */
 export function untilToExpiry(until: string | undefined, now: Date): Date | null {
   if (!until) return null
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || Number.isNaN(Date.parse(until))) {
+  if (!isRealIsoDate(until)) {
     throw new CommandError('Write --until as YYYY-MM-DD, e.g. 2027-01-31.')
   }
   const expiresAt = endOfLagosDay(until)
@@ -148,13 +185,6 @@ export function untilToExpiry(until: string | undefined, now: Date): Date | null
 /** "2 Jan 2027" for a Lagos calendar date. */
 export function formatIsoDate(isoDate: string): string {
   return formatDate(new Date(`${isoDate}T12:00:00Z`))
-}
-
-export const LIMIT_WORDS: Record<LimitKey, string> = {
-  projects: 'active projects',
-  entities: 'active entities',
-  members: 'people',
-  ai_budget: 'AI budget',
 }
 
 export function isCountLimit(key: LimitKey): key is CountLimitKey {

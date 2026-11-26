@@ -73,6 +73,8 @@ describe('account.me plan (owners)', () => {
   it('hints the lowest plan for a feature released but not included', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx, { planKey: 'starter' })
+      await setStage(tx, 'projects', 'on')
+      await setStage(tx, 'sales', 'on')
       await setOverride(tx, org, { kind: 'release', key: 'sales.commissions', enabled: true })
       await setOverride(tx, org, { kind: 'release', key: 'ai.ask', enabled: true })
       const { client } = clientAs(tx, org.owner, { activeOrganizationId: org.id })
@@ -81,6 +83,14 @@ describe('account.me plan (owners)', () => {
         { key: 'sales.commissions', label: 'Commissions', availableOn: 'Growth' },
         { key: 'ai.ask', label: 'Ask Vento', availableOn: 'the AI add-on' },
       ])
+    }))
+
+  it('gives no hint while a prerequisite is unavailable (Sales not released yet)', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      await setOverride(tx, org, { kind: 'release', key: 'sales.commissions', enabled: true })
+      const { client } = clientAs(tx, org.owner, { activeOrganizationId: org.id })
+      expect((await client.account.me()).plan?.upgradeHints).toEqual([])
     }))
 
   it('gives no hint for a feature that is not released to the organization', () =>

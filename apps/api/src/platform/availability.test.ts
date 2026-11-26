@@ -398,6 +398,29 @@ describe('limits', () => {
     )
   })
 
+  it('counts a missing base as zero when an add-on raises it: never unlimited AI', () => {
+    const ai: AddOnRow = {
+      addOnKey: 'ai',
+      limitIncreases: { ai_budget: '150000.00' },
+      startsAt: PAST,
+      endsAt: null,
+    }
+    expect(limitsFor('standard', { addOns: [ai] }, null).limit('ai_budget')).toBe('150000.00')
+    expect(limitsFor('standard', { addOns: [ai] }, null).countLimit('projects')).toBeNull()
+  })
+
+  it('leaves the AI budget at 0 with no plan when the add-on budget was malformed', () => {
+    const broken: AddOnRow = { addOnKey: 'ai', limitIncreases: {}, startsAt: PAST, endsAt: null }
+    expect(limitsFor('standard', { addOns: [broken] }, null).limit('ai_budget')).toBe('0.00')
+    expect(limitsFor('standard', { addOns: [broken] }, null).countLimit('projects')).toBeNull()
+  })
+
+  it('keeps the plan base when an add-on increase was malformed (skipped on load)', () => {
+    const broken: AddOnRow = { addOnKey: 'ai', limitIncreases: {}, startsAt: PAST, endsAt: null }
+    expect(limitsFor('standard', { addOns: [broken] }).countLimit('projects')).toBe(1)
+    expect(limitsFor('standard', { addOns: [broken] }).limit('ai_budget')).toBe('0.00')
+  })
+
   it('ignores add-on keys the catalog does not know', () => {
     const unknown: AddOnRow = {
       addOnKey: 'extra_project',

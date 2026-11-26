@@ -9,6 +9,7 @@ import {
 } from '@vento/shared'
 import { eq } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
+import { runQueries } from '@/db/run-queries'
 import {
   featureReleases,
   organizationOverrides,
@@ -83,7 +84,10 @@ export async function previewStage(
   stage: ReleaseStage,
   now = new Date(),
 ): Promise<{ current: ReleaseStage; lines: string[] }> {
-  const [snapshot, orgs] = await Promise.all([loadSnapshot(db, { now }), allOrganizationPlans(db)])
+  const [snapshot, orgs] = await runQueries(db, [
+    () => loadSnapshot(db, { now }),
+    () => allOrganizationPlans(db),
+  ])
   const label = featureLabel(key)
   const current = stageOf(snapshot, key)
   const before = holders(snapshot, orgs, key, now)
@@ -199,9 +203,9 @@ export async function missingPrerequisites(
   key: FeatureKey,
   now = new Date(),
 ): Promise<string | null> {
-  const [snapshot, plan] = await Promise.all([
-    loadSnapshot(db, { organizationId: org.id, now }),
-    loadOrganizationPlan(db, org.id),
+  const [snapshot, plan] = await runQueries(db, [
+    () => loadSnapshot(db, { organizationId: org.id, now }),
+    () => loadOrganizationPlan(db, org.id),
   ])
   const availability = organizationAvailability(snapshot, { organizationId: org.id, ...plan }, now)
   const missing = prerequisitesOf(key).filter((p) => !availability.has(p))

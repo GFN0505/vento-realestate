@@ -99,7 +99,7 @@ Every variable is listed in `.env.example` and validated in `apps/api/src/env.ts
 | API | `tsx watch` on the TypeScript source | `tsdown` bundles to `apps/api/dist` (shared package inlined), run with `node dist/index.mjs` |
 | Web | Vite dev server on :5173 | `vite build` to `apps/web/dist`, static files |
 | Migrations | `pnpm db:migrate` | `node dist/db/migrate.mjs` as a release step |
-| Flag and plan commands | `pnpm flags …`, `pnpm plans …`, `pnpm superadmin …` | `node dist/platform/cli/main.mjs flags …`; `plans notify-trials` daily at 08:00 Lagos (cron) |
+| Flag and plan commands | `pnpm flags …`, `pnpm plans …`, `pnpm superadmin …` | `node dist/platform/cli/main.mjs flags …`; `plans notify-trials` daily at 08:00 Lagos (cron, with `VENTO_CRON=1`). Trust model: a shell plus `DATABASE_URL` on the API host is super-admin power; `--by` is attribution, not authentication, until the R2 console (decision 0015). The operator is recorded from `VENTO_OPERATOR`, `SUDO_USER`, the SSH client, or `os-user@host` |
 
 ## Quality gates
 - `pnpm check` (Biome), `pnpm typecheck` (TypeScript 7, strict), `pnpm test` (Vitest: shared schemas, API against Postgres, web components), `pnpm e2e` (Playwright, desktop and mobile).

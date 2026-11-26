@@ -1,5 +1,6 @@
 import { FEATURE_KEYS, featureLabel, isFeatureKey, prerequisitesOf } from '@vento/shared'
 import { and, desc, eq, isNull } from 'drizzle-orm'
+import { runQueries } from '@/db/run-queries'
 import {
   featureReleases,
   organizationOverrides,
@@ -41,9 +42,9 @@ export const FLAGS_HELP = `Usage: pnpm flags <command>
 Changes need --reason "…" and --by <super-admin email>; --yes skips the question.`
 
 async function unknownKeysInData(deps: CommandDeps): Promise<string[]> {
-  const [stages, versions] = await Promise.all([
-    deps.db.select({ key: featureReleases.featureKey }).from(featureReleases),
-    deps.db.select({ features: planVersions.features }).from(planVersions),
+  const [stages, versions] = await runQueries(deps.db, [
+    () => deps.db.select({ key: featureReleases.featureKey }).from(featureReleases),
+    () => deps.db.select({ features: planVersions.features }).from(planVersions),
   ])
   const keys = new Set([...stages.map((s) => s.key), ...versions.flatMap((v) => v.features)])
   return [...keys].filter((k) => !isFeatureKey(k)).sort()
@@ -51,9 +52,9 @@ async function unknownKeysInData(deps: CommandDeps): Promise<string[]> {
 
 async function list(deps: CommandDeps): Promise<void> {
   const now = deps.now()
-  const [snapshot, orgs] = await Promise.all([
-    loadSnapshot(deps.db, { now }),
-    allOrganizationPlans(deps.db),
+  const [snapshot, orgs] = await runQueries(deps.db, [
+    () => loadSnapshot(deps.db, { now }),
+    () => allOrganizationPlans(deps.db),
   ])
   deps.io.print('Flag                              Stage     Orgs  Plans')
   for (const key of FEATURE_KEYS) {
@@ -70,9 +71,9 @@ async function list(deps: CommandDeps): Promise<void> {
 async function show(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const key = featureArg(parsed.positionals[1])
   const now = deps.now()
-  const [snapshot, orgs] = await Promise.all([
-    loadSnapshot(deps.db, { now }),
-    allOrganizationPlans(deps.db),
+  const [snapshot, orgs] = await runQueries(deps.db, [
+    () => loadSnapshot(deps.db, { now }),
+    () => allOrganizationPlans(deps.db),
   ])
   const having = holders(snapshot, orgs, key, now)
   const io = deps.io

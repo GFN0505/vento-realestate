@@ -19,6 +19,8 @@ export type RefreshingFeatureStore = FeatureStore & {
 
 /** A stale snapshot past this is an incident: a kill switch can't propagate. */
 const STALE_AFTER_MS = 60_000
+/** Past this, serve nothing optional rather than a snapshot that may predate a kill switch. */
+const FAIL_CLOSED_AFTER_MS = 5 * 60_000
 
 /**
  * Loads the snapshot once before serving, then reloads it every `refreshMs` (decision 0016).
@@ -68,7 +70,14 @@ export async function startFeatureStore(
           staleSeconds: Math.round(staleMs / 1000),
           error: error instanceof Error ? error.name : 'unknown',
         }
-        if (staleMs > STALE_AFTER_MS) log.error('Feature snapshot is stale', details)
+        if (staleMs > FAIL_CLOSED_AFTER_MS) {
+          // A kill switch set since the last load can't be seen: fail closed, not open.
+          current = safeSnapshot()
+          log.error(
+            'Feature snapshot stale for over 5 minutes; every feature is off until it reloads',
+            details,
+          )
+        } else if (staleMs > STALE_AFTER_MS) log.error('Feature snapshot is stale', details)
         else log.warn('Feature snapshot reload failed; keeping the last one', details)
       } finally {
         running = null

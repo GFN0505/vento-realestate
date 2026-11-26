@@ -1,6 +1,8 @@
 import { ORPCError } from '@orpc/client'
 import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { DEFAULT_ROLES, defaultPermissions, type Role } from '@vento/shared'
+import { afterEach, describe, expect, it } from 'vitest'
+import { clearPreview, startPreview } from '@/features/preview/preview-role'
 import { testMe } from '@/test/me'
 import { renderWithMe } from '@/test/render-with-me'
 import { PlanLimitMessage } from './plan-limit-message'
@@ -14,6 +16,20 @@ const limitError = (message: string) =>
     message,
     data: { reason: 'plan_limit', limit: 'entities', included: 2 },
   })
+
+const roles: Role[] = DEFAULT_ROLES.map((r) => ({
+  id: `role-${r.key}`,
+  key: r.key,
+  name: r.name,
+  pluralName: r.pluralName,
+  description: r.description,
+  isSystem: true,
+  requiresTwoStep: r.requiresTwoStep,
+  permissions: defaultPermissions(r),
+  canApprove: [],
+}))
+
+afterEach(() => clearPreview())
 
 describe('PlanLimitMessage', () => {
   it('gives an owner the message and Talk to Vento, about this limit', () => {
@@ -30,6 +46,14 @@ describe('PlanLimitMessage', () => {
     renderWithMe(<PlanLimitMessage error={limitError(MEMBER_COPY)} />, testMe('admin'))
 
     expect(screen.getByRole('alert')).toHaveTextContent(MEMBER_COPY)
+    expect(screen.queryByRole('link', { name: 'Talk to Vento' })).not.toBeInTheDocument()
+  })
+
+  it('offers no Talk to Vento while an owner previews another role', () => {
+    startPreview('org-a', 'role-sales')
+    renderWithMe(<PlanLimitMessage error={limitError(OWNER_COPY)} />, testMe('owner'), roles)
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Talk to Vento' })).not.toBeInTheDocument()
   })
 

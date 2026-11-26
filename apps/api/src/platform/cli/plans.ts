@@ -9,7 +9,8 @@ import {
 import { asc, count, eq } from 'drizzle-orm'
 import { organizationPlans, plans, planVersions } from '@/db/schema'
 import { CommandError } from '../command-error'
-import { findPlanVersion, LIMIT_WORDS, naira, resolveOrganization } from '../operations/common'
+import { LIMIT_WORDS } from '../limit-words'
+import { findPlanVersion, naira, resolveOrganization } from '../operations/common'
 import { notifyTrials } from '../operations/notify-trials'
 import {
   addAddOn,
@@ -23,7 +24,9 @@ import {
   setLimitOverride,
   startTrial,
 } from '../operations/plans'
-import { bootstrapStartingData } from '../seed-plans'
+import { type PlatformActor, SCHEDULED_ACTOR } from '../platform-audit'
+import { bootstrapStartingData, previewStartingData, SETUP_ACTOR } from '../seed-plans'
+import { activeSuperAdminCount, requireSuperAdmin } from '../super-admins'
 import {
   addOnArg,
   authorise,
@@ -43,14 +46,15 @@ export const PLANS_HELP = `Usage: pnpm plans <command>
   addon <organization> ai --budget 150000   |   addon <organization> ai --remove
   override <organization> feature <flag> <on|off|clear> [--until YYYY-MM-DD]
   override <organization> limit <projects|entities|members|ai_budget> <n|unlimited|clear> [--until …]
-  notify-trials                          daily: trial emails and "trial ended" records
+  notify-trials                          daily from cron (VENTO_CRON=1); by hand needs --by
   bootstrap                              starting plans; internal organizations without a plan go on Enterprise
+                                         (needs --by and --reason once any super-admin exists)
 Changes need --reason "…" and --by <super-admin email>; --yes skips the question.`
 
 function describeLimits(limits: Record<string, unknown>): string {
   return (
     Object.entries(LIMIT_WORDS)
-      .map(([key, words]) => {
+      .map(([key, { many: words }]) => {
         const v = limits[key]
         return `${words} ${v === undefined ? 'unlimited' : String(v)}`
       })
@@ -224,8 +228,8 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
     const { actor, reason } = await authorise(deps, parsed)
     const line =
       value === 'clear'
-        ? `${org.name}'s ${LIMIT_WORDS[key]} limit goes back to the plan's.`
-        : `${org.name}'s ${LIMIT_WORDS[key]} limit will be ${parsed.positionals[4]}${parsed.until ? ` until ${parsed.until}` : ''}.`
+        ? `${org.name}'s ${LIMIT_WORDS[key].many} limit goes back to the plan's.`
+        : `${org.name}'s ${LIMIT_WORDS[key].many} limit will be ${parsed.positionals[4]}${parsed.until ? ` until ${parsed.until}` : ''}.`
     if (!(await confirm(deps, parsed, [line]))) return
     deps.io.print(
       await setLimitOverride(
@@ -242,8 +246,17 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
   )
 }
 
-async function bootstrap(deps: CommandDeps): Promise<void> {
-  const { published, assigned } = await bootstrapStartingData(deps.db)
+/**
+ * Starting data on an environment. On a fresh one (no super-admin yet) it runs as "Vento
+ * (setup)"; once any super-admin exists it needs --by and --reason like every other change.
+ */
+async function bootstrap(deps: CommandDeps, parsed: Parsed): Promise<void> {
+  const actor: PlatformActor =
+    (await activeSuperAdminCount(deps.db)) > 0
+      ? (await authorise(deps, parsed)).actor
+      : { ...SETUP_ACTOR, operator: deps.operator }
+  if (!(await confirm(deps, parsed, await previewStartingData(deps.db)))) return
+  const { published, assigned } = await bootstrapStartingData(deps.db, actor)
   deps.io.print(
     published.length ? `Published: ${published.join(', ')}.` : 'Plans already published.',
   )
@@ -252,6 +265,15 @@ async function bootstrap(deps: CommandDeps): Promise<void> {
       ? `On Enterprise (internal): ${assigned.join(', ')}.`
       : 'No internal organization was without a plan.',
   )
+}
+
+/** Daily from the scheduler (VENTO_CRON=1); by hand it needs a super-admin's --by. */
+async function runNotifyTrials(deps: CommandDeps, parsed: Parsed): Promise<void> {
+  const actor = deps.scheduled
+    ? { ...SCHEDULED_ACTOR, operator: deps.operator }
+    : await requireSuperAdmin(deps.db, parsed.by, deps.operator)
+  const { emailed, ended } = await notifyTrials(deps.db, deps.mailer, deps.now(), actor)
+  deps.io.print(`Trial emails sent: ${emailed}. Trials recorded as ended: ${ended}.`)
 }
 
 export async function plansCommand(deps: CommandDeps, parsed: Parsed): Promise<void> {
@@ -270,13 +292,10 @@ export async function plansCommand(deps: CommandDeps, parsed: Parsed): Promise<v
       return addon(deps, parsed)
     case 'override':
       return override(deps, parsed)
-    case 'notify-trials': {
-      const { emailed, ended } = await notifyTrials(deps.db, deps.mailer, deps.now())
-      deps.io.print(`Trial emails sent: ${emailed}. Trials recorded as ended: ${ended}.`)
-      return
-    }
+    case 'notify-trials':
+      return runNotifyTrials(deps, parsed)
     case 'bootstrap':
-      return bootstrap(deps)
+      return bootstrap(deps, parsed)
     default:
       deps.io.print(PLANS_HELP)
   }

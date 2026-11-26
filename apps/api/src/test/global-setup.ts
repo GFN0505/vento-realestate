@@ -30,7 +30,7 @@ export default async function setup() {
   })
   // The starting plans, committed once: test files run in parallel, and each publishing them in
   // its own transaction would collide on the plan keys.
-  execFileSync('pnpm', ['exec', 'tsx', 'src/platform/cli/main.ts', 'plans', 'bootstrap'], {
+  execFileSync('pnpm', ['exec', 'tsx', 'src/platform/cli/main.ts', 'plans', 'bootstrap', '--yes'], {
     env: { ...process.env, DATABASE_URL: url, LOG_LEVEL: 'error' },
     stdio: 'ignore',
   })

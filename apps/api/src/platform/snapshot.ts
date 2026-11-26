@@ -9,6 +9,7 @@ import {
 import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import type { PgColumn } from 'drizzle-orm/pg-core'
 import type { DbOrTx } from '@/db/client'
+import { runQueries } from '@/db/run-queries'
 import {
   featureReleases,
   organizationAddOns,
@@ -30,10 +31,25 @@ import {
   type TrialRow,
 } from './availability'
 
+function toLimitValue(raw: unknown): string | null {
+  if (typeof raw !== 'number' && typeof raw !== 'string') return null
+  try {
+    const value = new Decimal(raw)
+    return value.isFinite() && value.gte(0) ? value.toFixed(2) : null
+  } catch {
+    return null
+  }
+}
+
 /** Turns stored limits (`{ projects: 1, ai_budget: "0.00" }`) into decimal strings, dropping unknown keys. */
 export function parseLimits(
   value: unknown,
   unknown: Set<string>,
+  /**
+   * `skip` (add-on increases): a bad increase is ignored, so the plan's base applies.
+   * `zero` (a plan's base): a bad base counts as 0, so creates are refused, never unlimited.
+   */
+  onBad: 'skip' | 'zero' = 'skip',
 ): Partial<Record<LimitKey, string>> {
   const limits: Partial<Record<LimitKey, string>> = {}
   if (!value || typeof value !== 'object') return limits
@@ -42,9 +58,13 @@ export function parseLimits(
       unknown.add(`limit:${key}`)
       continue
     }
-    if (typeof raw === 'number' || (typeof raw === 'string' && raw.trim() !== '')) {
-      limits[key as LimitKey] = new Decimal(raw).toFixed(2)
-    }
+    const parsed = toLimitValue(raw)
+    // One malformed value is dropped and reported; it must never stop the whole snapshot loading.
+    if (parsed === null) {
+      unknown.add(`bad-limit:${key}`)
+      // Fail closed: a malformed value must never read as "unlimited".
+      if (onBad === 'zero') limits[key as LimitKey] = '0.00'
+    } else limits[key as LimitKey] = parsed
   }
   return limits
 }
@@ -61,6 +81,21 @@ type PlanVersionRow = {
   limits: unknown
 }
 
+/** A plan version's limits; a malformed one (publish validates, so never expected) counts as 0. */
+function planBaseLimits(row: PlanVersionRow, unknown: Set<string>) {
+  const bad = new Set<string>()
+  const limits = parseLimits(row.limits, bad, 'zero')
+  for (const key of bad) unknown.add(key)
+  if ([...bad].some((k) => k.startsWith('bad-limit:'))) {
+    logger.error('A plan version has a malformed limit; it counts as 0 until fixed', {
+      planKey: row.planKey,
+      version: row.version,
+      keys: [...bad],
+    })
+  }
+  return limits
+}
+
 function toPlanVersion(row: PlanVersionRow, unknown: Set<string>): PlanVersionInfo {
   const features = new Set<FeatureKey>()
   for (const key of row.features) {
@@ -75,7 +110,7 @@ function toPlanVersion(row: PlanVersionRow, unknown: Set<string>): PlanVersionIn
     sortOrder: row.sortOrder,
     version: row.version,
     features,
-    limits: parseLimits(row.limits, unknown),
+    limits: planBaseLimits(row, unknown),
   }
 }
 
@@ -125,63 +160,67 @@ export async function loadSnapshot(
   const now = options.now ?? new Date()
   const orgFilter = (column: PgColumn) =>
     options.organizationId ? eq(column, options.organizationId) : undefined
-  const [stageRows, versionRows, overrideRows, addOnRows, trialRows] = await Promise.all([
-    db
-      .select({ key: featureReleases.featureKey, stage: featureReleases.stage })
-      .from(featureReleases),
-    selectPlanVersions(db),
-    db
-      .select({
-        organizationId: organizationOverrides.organizationId,
-        kind: organizationOverrides.kind,
-        key: organizationOverrides.key,
-        enabled: organizationOverrides.enabled,
-        limitValue: organizationOverrides.limitValue,
-        expiresAt: organizationOverrides.expiresAt,
-        trialId: organizationOverrides.trialId,
-      })
-      .from(organizationOverrides)
-      .where(
-        and(
-          isNull(organizationOverrides.clearedAt),
-          or(isNull(organizationOverrides.expiresAt), gt(organizationOverrides.expiresAt, now)),
-          orgFilter(organizationOverrides.organizationId),
+  const [stageRows, versionRows, overrideRows, addOnRows, trialRows] = await runQueries(db, [
+    () =>
+      db
+        .select({ key: featureReleases.featureKey, stage: featureReleases.stage })
+        .from(featureReleases),
+    () => selectPlanVersions(db),
+    () =>
+      db
+        .select({
+          organizationId: organizationOverrides.organizationId,
+          kind: organizationOverrides.kind,
+          key: organizationOverrides.key,
+          enabled: organizationOverrides.enabled,
+          limitValue: organizationOverrides.limitValue,
+          expiresAt: organizationOverrides.expiresAt,
+          trialId: organizationOverrides.trialId,
+        })
+        .from(organizationOverrides)
+        .where(
+          and(
+            isNull(organizationOverrides.clearedAt),
+            or(isNull(organizationOverrides.expiresAt), gt(organizationOverrides.expiresAt, now)),
+            orgFilter(organizationOverrides.organizationId),
+          ),
         ),
-      ),
-    db
-      .select({
-        organizationId: organizationAddOns.organizationId,
-        addOnKey: organizationAddOns.addOnKey,
-        limitIncreases: organizationAddOns.limitIncreases,
-        startsAt: organizationAddOns.startsAt,
-        endsAt: organizationAddOns.endsAt,
-      })
-      .from(organizationAddOns)
-      .where(
-        and(
-          isNull(organizationAddOns.cancelledAt),
-          or(isNull(organizationAddOns.endsAt), gt(organizationAddOns.endsAt, now)),
-          orgFilter(organizationAddOns.organizationId),
+    () =>
+      db
+        .select({
+          organizationId: organizationAddOns.organizationId,
+          addOnKey: organizationAddOns.addOnKey,
+          limitIncreases: organizationAddOns.limitIncreases,
+          startsAt: organizationAddOns.startsAt,
+          endsAt: organizationAddOns.endsAt,
+        })
+        .from(organizationAddOns)
+        .where(
+          and(
+            isNull(organizationAddOns.cancelledAt),
+            or(isNull(organizationAddOns.endsAt), gt(organizationAddOns.endsAt, now)),
+            orgFilter(organizationAddOns.organizationId),
+          ),
         ),
-      ),
-    db
-      .select({
-        organizationId: organizationTrials.organizationId,
-        id: organizationTrials.id,
-        planName: plans.name,
-        endsOn: organizationTrials.endsOn,
-        expiresAt: organizationTrials.expiresAt,
-      })
-      .from(organizationTrials)
-      .innerJoin(planVersions, eq(planVersions.id, organizationTrials.planVersionId))
-      .innerJoin(plans, eq(plans.id, planVersions.planId))
-      .where(
-        and(
-          isNull(organizationTrials.cancelledAt),
-          gt(organizationTrials.expiresAt, now),
-          orgFilter(organizationTrials.organizationId),
+    () =>
+      db
+        .select({
+          organizationId: organizationTrials.organizationId,
+          id: organizationTrials.id,
+          planName: plans.name,
+          endsOn: organizationTrials.endsOn,
+          expiresAt: organizationTrials.expiresAt,
+        })
+        .from(organizationTrials)
+        .innerJoin(planVersions, eq(planVersions.id, organizationTrials.planVersionId))
+        .innerJoin(plans, eq(plans.id, planVersions.planId))
+        .where(
+          and(
+            isNull(organizationTrials.cancelledAt),
+            gt(organizationTrials.expiresAt, now),
+            orgFilter(organizationTrials.organizationId),
+          ),
         ),
-      ),
   ])
 
   // A flag removed from the code leaves its key in the data: ignored, and reported once per load.
@@ -257,11 +296,21 @@ export async function availabilityForOrganization(
   organizationId: string,
   now = new Date(),
 ): Promise<OrganizationAvailability> {
-  const [snapshot, plan] = await Promise.all([
-    loadSnapshot(db, { organizationId, now }),
-    loadOrganizationPlan(db, organizationId),
-  ])
-  return organizationAvailability(snapshot, { organizationId, ...plan }, now)
+  return (await loadOrganizationState(db, organizationId, now)).availability
+}
+
+/** The organization's availability and the snapshot it came from (its overrides, trials). */
+export async function loadOrganizationState(
+  db: DbOrTx,
+  organizationId: string,
+  now = new Date(),
+): Promise<{ snapshot: Snapshot; availability: OrganizationAvailability }> {
+  const snapshot = await loadSnapshot(db, { organizationId, now })
+  const plan = await loadOrganizationPlan(db, organizationId)
+  return {
+    snapshot,
+    availability: organizationAvailability(snapshot, { organizationId, ...plan }, now),
+  }
 }
 
 /** Makes sure the organization has its plan row (old code may have created it without one). */

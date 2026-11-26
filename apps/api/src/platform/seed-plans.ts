@@ -34,19 +34,36 @@ export async function seedPlans(db: DbOrTx, actor: PlatformActor = SETUP_ACTOR):
  * goes on Enterprise (internal organizations already have everything; this names their plan).
  * Safe to run again.
  */
-export async function bootstrapStartingData(
-  db: DbOrTx,
-  actor: PlatformActor = SETUP_ACTOR,
-): Promise<{ published: string[]; assigned: string[] }> {
-  const published = await seedPlans(db, actor)
-  const target = await findPlanVersion(db, 'enterprise')
-  const orphans = await db
+/** What `plans bootstrap` would do, for the confirm step. */
+export async function previewStartingData(db: DbOrTx): Promise<string[]> {
+  const existing = new Set((await db.select({ key: plans.key }).from(plans)).map((p) => p.key))
+  const toPublish = STARTING_PLANS.filter((p) => !existing.has(p.key)).map((p) => p.name)
+  const orphans = await internalWithoutPlan(db)
+  return [
+    toPublish.length ? `Publishes: ${toPublish.join(', ')}.` : 'Plans are already published.',
+    orphans.length
+      ? `Puts on Enterprise (internal, no plan yet): ${orphans.map((o) => o.name).join(', ')}.`
+      : 'No internal organization is without a plan.',
+  ]
+}
+
+function internalWithoutPlan(db: DbOrTx) {
+  return db
     .select({ id: organizations.id, name: organizations.name })
     .from(organizationPlans)
     .innerJoin(organizations, eq(organizations.id, organizationPlans.organizationId))
     .where(
       and(eq(organizationPlans.releaseGroup, 'internal'), isNull(organizationPlans.planVersionId)),
     )
+}
+
+export async function bootstrapStartingData(
+  db: DbOrTx,
+  actor: PlatformActor = SETUP_ACTOR,
+): Promise<{ published: string[]; assigned: string[] }> {
+  const published = await seedPlans(db, actor)
+  const target = await findPlanVersion(db, 'enterprise')
+  const orphans = await internalWithoutPlan(db)
   for (const organization of orphans) {
     await assignPlan(db, actor, {
       organization,

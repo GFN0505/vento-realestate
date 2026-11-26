@@ -31,7 +31,12 @@ import { startTrial } from './operations/plans'
 
 const NOW = new Date('2026-12-03T09:00:00Z')
 
-async function run(db: DbOrTx, args: string[], answers: boolean[] = [true]) {
+async function run(
+  db: DbOrTx,
+  args: string[],
+  answers: boolean[] = [true],
+  options: { scheduled?: boolean } = {},
+) {
   const io = memoryIo(answers)
   const mailer = createMemoryTransport()
   const code = await runCommand('plans', args, {
@@ -40,6 +45,7 @@ async function run(db: DbOrTx, args: string[], answers: boolean[] = [true]) {
     operator: 'ada@ops-laptop',
     mailer,
     now: () => NOW,
+    scheduled: options.scheduled ?? false,
   })
   return { code, io, mailer }
 }
@@ -184,7 +190,7 @@ describe('pnpm plans', () => {
           name: 'Growth',
           sortOrder: 2,
           features: ['land'],
-          limits: { projects: 8 },
+          limits: { projects: 8, ai_budget: '0' },
         }),
       )
       const { io } = await run(tx, ['publish', 'growth', '--from', file, ...by(admin.email)])
@@ -268,6 +274,134 @@ describe('pnpm plans', () => {
       ])
       expect(code).toBe(1)
       expect(io.errors[0]).toMatch(/^Unknown limit "units"/)
+    }))
+})
+
+describe('system commands', () => {
+  it('needs --by and --reason for bootstrap once a super-admin exists, and asks first', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const refused = await run(tx, ['bootstrap'])
+      expect(refused.code).toBe(1)
+      expect(refused.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+      const declined = await run(tx, ['bootstrap', ...by(admin.email)], [false])
+      expect(declined.io.output.at(-1)).toBe('Nothing changed.')
+      const done = await run(tx, ['bootstrap', ...by(admin.email)])
+      expect(done.code).toBe(0)
+    }))
+
+  it('runs notify-trials without --by only from the scheduler, recording the operator', () =>
+    withRollback(async (tx) => {
+      const byHand = await run(tx, ['notify-trials'])
+      expect(byHand.code).toBe(1)
+      expect(byHand.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      const target = await findPlanVersion(tx, 'enterprise')
+      const actor = { userId: null, name: 'Test', operator: null }
+      await startTrial(
+        tx,
+        actor,
+        { organization: org, target, days: 1, reason: 'Trial' },
+        new Date('2026-11-20T09:00:00Z'),
+      )
+      const scheduled = await run(tx, ['notify-trials'], [], { scheduled: true })
+      expect(scheduled.code).toBe(0)
+      const [event] = await tx
+        .select()
+        .from(platformAuditEvents)
+        .where(
+          and(
+            eq(platformAuditEvents.organizationId, org.id),
+            eq(platformAuditEvents.action, 'plan.trial_ended'),
+          ),
+        )
+      expect(event).toMatchObject({ actorName: 'Vento (scheduled)', operator: 'ada@ops-laptop' })
+    }))
+})
+
+describe('trials after earlier ones lapse', () => {
+  const actor = { userId: null, name: 'Test', operator: null }
+
+  it('starts a second trial after the first has expired', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
+      const target = await findPlanVersion(tx, 'enterprise')
+      await startTrial(
+        tx,
+        actor,
+        { organization: org, target, days: 7, reason: 'First trial' },
+        NOW,
+      )
+      const later = new Date('2027-02-01T09:00:00Z')
+      await expect(
+        startTrial(
+          tx,
+          actor,
+          { organization: org, target, days: 7, reason: 'Second trial' },
+          later,
+        ),
+      ).resolves.toMatch(/has an Enterprise trial until 8 Feb 2027/)
+    }))
+
+  it('starts a trial on a key whose --until deal has lapsed', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
+      await setOverride(tx, org, {
+        kind: 'feature',
+        key: 'analytics.board_pack',
+        enabled: true,
+        expiresAt: new Date('2026-12-01T23:00:00Z'),
+      })
+      const target = await findPlanVersion(tx, 'enterprise')
+      await startTrial(tx, actor, { organization: org, target, days: 30, reason: 'Trial' }, NOW)
+      const live = await tx
+        .select()
+        .from(organizationOverrides)
+        .where(
+          and(
+            eq(organizationOverrides.organizationId, org.id),
+            eq(organizationOverrides.key, 'analytics.board_pack'),
+            isNull(organizationOverrides.clearedAt),
+          ),
+        )
+      expect(live).toHaveLength(1)
+      expect(live[0]?.trialId).not.toBeNull()
+    }))
+
+  it("clears a trial's overrides when the daily run records its end", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      const target = await findPlanVersion(tx, 'enterprise')
+      await startTrial(tx, actor, { organization: org, target, days: 1, reason: 'Trial' }, NOW)
+      await notifyTrials(tx, createMemoryTransport(), new Date('2026-12-10T07:00:00Z'))
+      const live = await tx
+        .select()
+        .from(organizationOverrides)
+        .where(
+          and(
+            eq(organizationOverrides.organizationId, org.id),
+            isNull(organizationOverrides.clearedAt),
+          ),
+        )
+      expect(live).toEqual([])
+    }))
+
+  it('refuses a date that does not exist', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const org = await createOrganization(tx, { planKey: 'growth' })
+      const { code, io } = await run(tx, [
+        'override',
+        org.id,
+        'feature',
+        'sales.commissions',
+        'on',
+        '--until',
+        '2027-02-30',
+        ...by(admin.email),
+      ])
+      expect(code).toBe(1)
+      expect(io.errors).toEqual(['Write --until as YYYY-MM-DD, e.g. 2027-01-31.'])
     }))
 })
 

@@ -7,10 +7,21 @@ export type Io = {
   confirm(question: string): Promise<boolean>
 }
 
+// Control characters (except line breaks) and direction overrides, which could repaint the
+// operator's terminal or disguise an organization name. Shown as \u{…} instead.
+const UNPRINTABLE = /[\p{Cc}\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu
+
+/** Text safe to write to a terminal: data from the database is never trusted to be printable. */
+export function printable(line: string): string {
+  return line.replace(UNPRINTABLE, (c) =>
+    c === '\n' ? c : `\\u{${c.codePointAt(0)?.toString(16).padStart(4, '0')}}`,
+  )
+}
+
 export function terminalIo(): Io {
   return {
-    print: (line) => process.stdout.write(`${line}\n`),
-    error: (line) => process.stderr.write(`${line}\n`),
+    print: (line) => process.stdout.write(`${printable(line)}\n`),
+    error: (line) => process.stderr.write(`${printable(line)}\n`),
     confirm: async (question) => {
       const rl = createInterface({ input: process.stdin, output: process.stdout })
       try {

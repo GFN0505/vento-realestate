@@ -1,10 +1,9 @@
-import { FEATURE_KEYS, featureLabel } from '@vento/shared'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
+import { runQueries } from '@/db/run-queries'
 import {
   members,
   organizationOverrides,
-  organizationPlans,
   organizations,
   organizationTrials,
   plans,
@@ -15,15 +14,16 @@ import {
 import { type EmailMessage, type Mailer, sendAll } from '@/email/mailer'
 import { trialEndingEmail } from '@/email/templates/trial-ending'
 import { daysUntil } from '../dates'
+import { trialLosing } from '../plan-summary'
 import {
   type PlatformActor,
   recordOrganizationNotice,
   recordPlatformAudit,
   SCHEDULED_ACTOR,
 } from '../platform-audit'
-import { availabilityForOrganization } from '../snapshot'
+import { loadOrganizationState } from '../snapshot'
 import { talkToVentoUrl } from '../talk-to-vento'
-import { formatIsoDate } from './common'
+import { clearExpiredOverrides, formatIsoDate } from './common'
 
 type OpenTrial = {
   id: string
@@ -74,31 +74,10 @@ async function ownerEmails(db: DbOrTx, organizationId: string): Promise<string[]
   return rows.map((r) => r.email)
 }
 
-/** Labels of what the trial adds on top of the plan: what goes when it ends. */
 async function losing(db: DbOrTx, trial: OpenTrial, now: Date): Promise<string[]> {
-  const [availability, overrides, [plan]] = await Promise.all([
-    availabilityForOrganization(db, trial.organizationId, now),
-    db
-      .select({ key: organizationOverrides.key })
-      .from(organizationOverrides)
-      .where(
-        and(
-          eq(organizationOverrides.trialId, trial.id),
-          eq(organizationOverrides.kind, 'feature'),
-          isNull(organizationOverrides.clearedAt),
-        ),
-      ),
-    db
-      .select({ features: planVersions.features })
-      .from(organizationPlans)
-      .leftJoin(planVersions, eq(planVersions.id, organizationPlans.planVersionId))
-      .where(eq(organizationPlans.organizationId, trial.organizationId)),
-  ])
-  const inPlan = new Set(plan?.features ?? [])
-  const keys = new Set(overrides.map((o) => o.key))
-  return FEATURE_KEYS.filter((k) => keys.has(k) && !inPlan.has(k) && availability.has(k)).map(
-    featureLabel,
-  )
+  const { snapshot, availability } = await loadOrganizationState(db, trial.organizationId, now)
+  const overrides = snapshot.organizations.get(trial.organizationId)?.overrides ?? []
+  return trialLosing(availability, overrides, trial.id, now)
 }
 
 /** Sets a notice stamp only if nobody else did, so two runs never send twice. */
@@ -130,6 +109,9 @@ export async function notifyTrials(
 ): Promise<{ emailed: number; ended: number }> {
   let emailed = 0
   let ended = 0
+  // Lapsed deals and trials stopped applying at their expiry; record them as cleared so the
+  // key is free for the next override.
+  await clearExpiredOverrides(db, actor, now)
   for (const trial of await openTrials(db)) {
     if (trial.expiresAt <= now) {
       const recorded = await db.transaction(async (tx) => {
@@ -141,6 +123,16 @@ export async function notifyTrials(
           )
           .returning({ id: organizationTrials.id })
         if (!row) return false
+        await tx
+          .update(organizationOverrides)
+          .set({ clearedAt: now, clearedByUserId: actor.userId })
+          .where(
+            and(
+              eq(organizationOverrides.organizationId, trial.organizationId),
+              eq(organizationOverrides.trialId, trial.id),
+              isNull(organizationOverrides.clearedAt),
+            ),
+          )
         await recordPlatformAudit(tx, {
           actor,
           action: 'plan.trial_ended',
@@ -168,9 +160,9 @@ export async function notifyTrials(
           ? 'notifiedSevenDaysAt'
           : null
     if (!stamp || !(await claim(db, trial.id, stamp, now))) continue
-    const [owners, gone] = await Promise.all([
-      ownerEmails(db, trial.organizationId),
-      losing(db, trial, now),
+    const [owners, gone] = await runQueries(db, [
+      () => ownerEmails(db, trial.organizationId),
+      () => losing(db, trial, now),
     ])
     const email = trialEndingEmail({
       planName: trial.planName,

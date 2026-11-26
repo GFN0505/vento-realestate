@@ -496,6 +496,14 @@ async function joinOrganization(
       ),
     )
   if (existing) throw conflict('already_member', 'You are already a member of this organization.')
+  // The invitation already holds a place, so adding nothing: refused only when the organization
+  // is over its people limit (e.g. after a downgrade).
+  await assertWithinLimit(
+    tx,
+    { organizationId: row.organizationId, member: { roleKey: null }, user },
+    'members',
+    0,
+  )
   const [member] = await tx
     .insert(members)
     .values({ organizationId: row.organizationId, userId: user.id, roleId: row.roleId })

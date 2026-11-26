@@ -1,12 +1,24 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
-import type { Me } from '@vento/shared'
+import type { Me, Role } from '@vento/shared'
 import type { ReactNode } from 'react'
 import { meQuery } from '@/features/account/api'
+import { rolesQuery } from '@/features/preview/use-effective-permissions'
 
-/** Renders with `me` already loaded, as the `_app` guard guarantees inside the shell. */
-export function renderWithMe(ui: ReactNode, me: Me) {
+/**
+ * Renders with `me` already loaded, as the `_app` guard guarantees inside the shell. Pass the
+ * roles too when a test previews one (the guard loads them first).
+ */
+export function renderWithMe(ui: ReactNode, me: Me, roles?: Role[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(meQuery().queryKey, me)
+  if (roles) {
+    queryClient.setQueryData(rolesQuery().queryKey, {
+      items: roles,
+      page: 1,
+      pageSize: roles.length,
+      total: roles.length,
+    })
+  }
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }

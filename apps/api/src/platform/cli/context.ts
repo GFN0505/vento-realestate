@@ -30,6 +30,8 @@ export type CommandDeps = {
   operator: string | null
   mailer: Mailer
   now: () => Date
+  /** Running from the scheduler (VENTO_CRON=1): `notify-trials` needs no `--by`. */
+  scheduled?: boolean
 }
 
 export type Parsed = {

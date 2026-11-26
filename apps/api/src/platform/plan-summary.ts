@@ -6,11 +6,18 @@ import {
   featureLabel,
   type MePlan,
   type PlanLimitUse,
+  prerequisitesOf,
   type UpgradeHint,
 } from '@vento/shared'
 import type { DbOrTx } from '@/db/client'
+import { runQueries } from '@/db/run-queries'
 import { supportContact } from '@/env'
-import { isLive, type OrganizationAvailability, type Snapshot } from './availability'
+import {
+  isLive,
+  type OrganizationAvailability,
+  type OverrideRow,
+  type Snapshot,
+} from './availability'
 import { LIMIT_USAGE } from './usage'
 
 /**
@@ -24,6 +31,8 @@ export function upgradeHints(
   const hints: UpgradeHint[] = []
   for (const key of FEATURE_KEYS) {
     if (!availability.released(key) || availability.entitled(key)) continue
+    // Buying it wouldn't help while something it needs isn't available here either.
+    if (!prerequisitesOf(key).every((p) => availability.has(p))) continue
     const addOn = addOnOf(key)
     const availableOn = addOn
       ? `the ${ADD_ONS[addOn].label} add-on`
@@ -33,18 +42,36 @@ export function upgradeHints(
   return hints
 }
 
+/**
+ * Labels of what a trial adds on top of the plan and that the organization has now: what goes
+ * when it ends. One rule for `me` and the trial emails.
+ */
+export function trialLosing(
+  availability: OrganizationAvailability,
+  overrides: readonly OverrideRow[],
+  trialId: string,
+  now: Date,
+): string[] {
+  const keys = new Set(
+    overrides
+      .filter((o) => o.trialId === trialId && o.kind === 'feature' && o.enabled && isLive(o, now))
+      .map((o) => o.key),
+  )
+  return FEATURE_KEYS.filter(
+    (k) => keys.has(k) && availability.has(k) && !availability.plan?.features.has(k),
+  ).map(featureLabel)
+}
+
 async function limitUses(
   db: DbOrTx,
   availability: OrganizationAvailability,
 ): Promise<PlanLimitUse[]> {
   const keys = COUNT_LIMIT_KEYS.filter((k) => LIMIT_USAGE[k])
-  return Promise.all(
-    keys.map(async (key) => ({
-      key,
-      included: availability.countLimit(key),
-      used: (await LIMIT_USAGE[key]?.(db, availability.organizationId)) ?? 0,
-    })),
+  const used = await runQueries(
+    db,
+    keys.map((key) => async () => (await LIMIT_USAGE[key]?.(db, availability.organizationId)) ?? 0),
   )
+  return keys.map((key, i) => ({ key, included: availability.countLimit(key), used: used[i] ?? 0 }))
 }
 
 /** The owner's `me.plan`: plan name, limits with use, trial, hints and the support contact. */
@@ -58,16 +85,7 @@ export async function planSummary(
   const rows = snapshot.organizations.get(availability.organizationId)
   const overrides = rows?.overrides ?? []
   const trial = rows?.trials?.find((t) => t.expiresAt > now) ?? null
-  // What the trial adds that the plan doesn't: these go when it ends.
-  const losing = trial
-    ? overrides
-        .filter(
-          (o) => o.trialId === trial.id && o.kind === 'feature' && o.enabled && isLive(o, now),
-        )
-        .flatMap((o) => FEATURE_KEYS.filter((k) => k === o.key && availability.has(k)))
-        .filter((k) => !availability.plan?.features.has(k))
-        .map(featureLabel)
-    : []
+  const losing = trial ? trialLosing(availability, overrides, trial.id, now) : []
   return {
     name: availability.plan?.planName ?? null,
     limits,

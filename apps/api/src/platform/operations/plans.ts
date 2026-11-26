@@ -13,6 +13,7 @@ import {
 } from '@vento/shared'
 import { and, eq, gt, isNull, max, ne, or } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
+import { runQueries } from '@/db/run-queries'
 import {
   organizationAddOns,
   organizationOverrides,
@@ -21,9 +22,11 @@ import {
   plans,
   planVersions,
 } from '@/db/schema'
+import { isUniqueViolation } from '@/lib/errors'
 import { isLive, organizationAvailability } from '../availability'
 import { CommandError } from '../command-error'
 import { addDays, endOfLagosDay, lagosToday } from '../dates'
+import { LIMIT_WORDS } from '../limit-words'
 import {
   type PlatformActor,
   recordOrganizationNotice,
@@ -32,10 +35,10 @@ import {
 import { loadOrganizationPlan, loadSnapshot } from '../snapshot'
 import { LIMIT_USAGE } from '../usage'
 import {
+  clearExpiredOverrides,
   clearOverride,
   formatIsoDate,
   isCountLimit,
-  LIMIT_WORDS,
   lockOrganizationPlan,
   naira,
   type OrganizationRef,
@@ -121,9 +124,9 @@ async function overLimitsOn(
   planVersionId: string,
   now: Date,
 ): Promise<LimitChange[]> {
-  const [snapshot, plan] = await Promise.all([
-    loadSnapshot(db, { organizationId: org.id, now }),
-    loadOrganizationPlan(db, org.id),
+  const [snapshot, plan] = await runQueries(db, [
+    () => loadSnapshot(db, { organizationId: org.id, now }),
+    () => loadOrganizationPlan(db, org.id),
   ])
   const availability = organizationAvailability(
     snapshot,
@@ -141,12 +144,6 @@ async function overLimitsOn(
   return over
 }
 
-const NOUN: Record<string, string> = {
-  projects: 'projects',
-  entities: 'entities',
-  members: 'people',
-}
-
 export async function previewAssign(
   db: DbOrTx,
   org: OrganizationRef,
@@ -156,7 +153,7 @@ export async function previewAssign(
   const lines = [`${org.name} moves to ${target.planName} (version ${target.version}).`]
   for (const o of await overLimitsOn(db, org, target.versionId, now)) {
     lines.push(
-      `${org.name} has ${o.used} ${LIMIT_WORDS[o.key]}; ${target.planName} includes ${o.included}. Nothing is archived, but they can't add ${NOUN[o.key]}.`,
+      `${org.name} has ${o.used} ${LIMIT_WORDS[o.key].many}; ${target.planName} includes ${o.included}. Nothing is archived, but they can't add ${LIMIT_WORDS[o.key].things}.`,
     )
   }
   const trial = await liveTrial(db, org.id, now)
@@ -331,6 +328,17 @@ export async function startTrial(
       })
       .returning({ id: organizationTrials.id })
     if (!trial) throw new Error('Trial insert returned nothing')
+    // A lapsed trial or deal on the same key still holds the live slot until it's cleared.
+    await clearExpiredOverrides(tx, actor, now, {
+      organizationId: org.id,
+      kind: 'feature',
+      keys: features,
+    })
+    await clearExpiredOverrides(tx, actor, now, {
+      organizationId: org.id,
+      kind: 'limit',
+      keys: limits.map((l) => l.key),
+    })
     const rows = [
       ...features.map((key) => ({
         kind: 'feature' as const,
@@ -346,16 +354,26 @@ export async function startTrial(
       })),
     ]
     if (rows.length) {
-      await tx.insert(organizationOverrides).values(
-        rows.map((r) => ({
-          ...r,
-          organizationId: org.id,
-          reason: input.reason,
-          expiresAt,
-          trialId: trial.id,
-          createdByUserId: actor.userId,
-        })),
-      )
+      try {
+        await tx.insert(organizationOverrides).values(
+          rows.map((r) => ({
+            ...r,
+            organizationId: org.id,
+            reason: input.reason,
+            expiresAt,
+            trialId: trial.id,
+            createdByUserId: actor.userId,
+          })),
+        )
+      } catch (error) {
+        // Someone set an override for one of these keys at the same moment.
+        if (isUniqueViolation(error, 'organization_overrides_live_unique')) {
+          throw new CommandError(
+            `${org.name} got a new override while the trial was being set up. Run the command again.`,
+          )
+        }
+        throw error
+      }
     }
     const after = {
       plan: `${target.planName} v${target.version}`,
@@ -589,7 +607,7 @@ export function parseLimitValue(key: LimitKey, raw: string): string | null | 'cl
   if (!pattern.test(raw)) {
     throw new CommandError(
       isCountLimit(key)
-        ? `Write the ${LIMIT_WORDS[key]} limit as a whole number, unlimited or clear.`
+        ? `Write the ${LIMIT_WORDS[key].many} limit as a whole number, unlimited or clear.`
         : 'Write the AI budget in naira, e.g. 150000, or unlimited or clear.',
     )
   }
@@ -602,9 +620,9 @@ function shown(key: LimitKey, value: string | null): string {
 }
 
 function limitSentence(key: LimitKey, value: string | null): string {
-  if (value === null) return `Vento removed your limit on ${LIMIT_WORDS[key]}`
+  if (value === null) return `Vento removed your limit on ${LIMIT_WORDS[key].many}`
   if (key === 'ai_budget') return `Vento set your AI budget to ${naira(value)} a month`
-  return `Vento set your limit to ${new Decimal(value).toFixed(0)} ${LIMIT_WORDS[key]}`
+  return `Vento set your limit to ${new Decimal(value).toFixed(0)} ${LIMIT_WORDS[key].many}`
 }
 
 export async function setLimitOverride(
@@ -625,7 +643,7 @@ export async function setLimitOverride(
     await lockOrganizationPlan(tx, org.id)
     const previous = await clearOverride(tx, actor, org.id, 'limit', key)
     if (value === 'clear' && !previous) {
-      throw new CommandError(`${org.name} has no override for ${LIMIT_WORDS[key]}.`)
+      throw new CommandError(`${org.name} has no override for ${LIMIT_WORDS[key].many}.`)
     }
     if (value !== 'clear') {
       await tx.insert(organizationOverrides).values({
@@ -655,13 +673,13 @@ export async function setLimitOverride(
       action: value === 'clear' ? 'plan.override_cleared' : 'plan.limit_overridden',
       message:
         value === 'clear'
-          ? `Vento's exception for ${LIMIT_WORDS[key]} ended`
+          ? `Vento's exception for ${LIMIT_WORDS[key].many} ended`
           : limitSentence(key, value),
       before,
       after,
     })
   })
   return value === 'clear'
-    ? `${org.name}'s ${LIMIT_WORDS[key]} limit is back to the plan's. Takes effect at once.`
-    : `${org.name}'s ${LIMIT_WORDS[key]} limit is now ${shown(key, value)}. Takes effect at once.`
+    ? `${org.name}'s ${LIMIT_WORDS[key].many} limit is back to the plan's. Takes effect at once.`
+    : `${org.name}'s ${LIMIT_WORDS[key].many} limit is now ${shown(key, value)}. Takes effect at once.`
 }

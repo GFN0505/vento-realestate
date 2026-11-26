@@ -1,13 +1,16 @@
 import { type RenderedEmail, renderEmail } from './layout'
 
-/** To owners, 7 days and 1 day before a trial ends. Same words as the Home line. */
+/**
+ * A service notice to owners, 7 days and 1 day before a trial ends: what ends, when, and what
+ * changes. Factual, not marketing (NDPA); the contact line is there for questions only.
+ */
 export function trialEndingEmail(p: {
   planName: string
   /** "2 Jan 2027". */
   endsOn: string
   /** Labels of what goes, e.g. ["Board pack", "Period close"]. */
   losing: string[]
-  /** mailto: or WhatsApp link with the organization filled in. */
+  /** mailto: or WhatsApp link with the organization filled in, for questions. */
   talkUrl: string
 }): RenderedEmail {
   const subject = `Your ${p.planName} trial ends on ${p.endsOn}`
@@ -17,7 +20,7 @@ export function trialEndingEmail(p: {
       : ` After that, ${listOf(p.losing)} ${p.losing.length === 1 ? 'is' : 'are'} no longer available.`
   return renderEmail(subject, subject, [
     { kind: 'p', text: `Your ${p.planName} trial ends on ${p.endsOn}.${after} Your data stays.` },
-    { kind: 'button', label: 'Talk to Vento', url: p.talkUrl },
+    { kind: 'small', text: `Questions about your plan? Contact Vento: ${p.talkUrl}` },
   ])
 }
 

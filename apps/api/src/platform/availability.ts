@@ -1,4 +1,5 @@
 import {
+  ADD_ONS,
   type AddOnKey,
   type AvailableFeature,
   addOnOf,
@@ -186,11 +187,21 @@ export function organizationAvailability(
     const override = liveOverride(rows, 'limit', key, now)
     if (override) return override.limitValue
     const base = plan?.limits[key]
-    if (base === undefined) return null
-    const total = activeAddOns.reduce((sum, a) => {
-      const increase = a.limitIncreases[key]
-      return increase === undefined ? sum : sum.plus(increase)
-    }, new Decimal(base))
+    // An add-on that raises this key (by catalog, even if its stored increase was malformed and
+    // skipped) means there is an allowance to count from 0, never unlimited.
+    const raised = activeAddOns.some(
+      (a) => a.limitIncreases[key] !== undefined || ADD_ONS[a.addOnKey as AddOnKey].limit === key,
+    )
+    // No base: unlimited, unless an add-on raises it, in which case the add-on is the whole
+    // allowance (an AI add-on with no plan must not mean unlimited AI spend).
+    if (base === undefined && !raised) return null
+    const total = activeAddOns.reduce(
+      (sum, a) => {
+        const increase = a.limitIncreases[key]
+        return increase === undefined ? sum : sum.plus(increase)
+      },
+      new Decimal(base ?? 0),
+    )
     return total.toFixed(2)
   }
 

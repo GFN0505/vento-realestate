@@ -18,6 +18,7 @@ import {
 } from '@/access/context'
 import { userIdForResetToken } from '@/auth/security-store'
 import type { DbOrTx } from '@/db/client'
+import { runQueries } from '@/db/run-queries'
 import { entities, sessions, users } from '@/db/schema'
 import { summariseUserAgent } from '@/lib/client-ip'
 import { notFound } from '@/lib/errors'
@@ -83,10 +84,10 @@ export async function getMe(
   store: FeatureStore,
 ): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
-  const [nextStep, organizations, { features, plan }] = await Promise.all([
-    nextStepFor(db, user, membership),
-    listActiveMemberships(db, user.id),
-    featuresAndPlan(db, membership, store),
+  const [nextStep, organizations, { features, plan }] = await runQueries(db, [
+    () => nextStepFor(db, user, membership),
+    () => listActiveMemberships(db, user.id),
+    () => featuresAndPlan(db, membership, store),
   ])
   return {
     user: {

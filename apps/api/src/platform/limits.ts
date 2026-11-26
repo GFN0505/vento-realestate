@@ -1,20 +1,12 @@
 import { type CountLimitKey, Decimal } from '@vento/shared'
-import type { ServiceContext } from '@/access/context'
+import type { MemberContext, ServiceContext } from '@/access/context'
 import { firstOwner } from '@/access/who-can-grant'
 import type { DbOrTx } from '@/db/client'
 import { planLimit } from '@/lib/errors'
 import { isLive, organizationAvailability, type PlanVersionInfo } from './availability'
+import { amountOf, LIMIT_WORDS } from './limit-words'
 import { ensureOrganizationPlanRow, loadOrganizationPlan, loadSnapshot } from './snapshot'
 import { LIMIT_USAGE } from './usage'
-
-const WORDS: Record<CountLimitKey, { one: string; many: string; action: string }> = {
-  projects: { one: 'active project', many: 'active projects', action: 'Archive a project' },
-  entities: { one: 'active entity', many: 'active entities', action: 'Archive an entity' },
-  members: { one: 'person', many: 'people', action: 'Remove someone' },
-}
-
-const amount = (key: CountLimitKey, n: number) =>
-  `${n} ${n === 1 ? WORDS[key].one : WORDS[key].many}`
 
 export type LimitMessageInput = {
   key: CountLimitKey
@@ -33,17 +25,17 @@ export function planLimitMessage(input: LimitMessageInput): string {
   const { key, included } = input
   if (!input.isOwner) {
     const ask = input.ownerName ? ` Ask ${input.ownerName} (owner).` : ''
-    return `Your organization has reached its limit of ${amount(key, included)}.${ask}`
+    return `Your organization has reached its limit of ${amountOf(key, included)}.${ask}`
   }
   const talk = input.higherPlanName
     ? `talk to Vento about ${input.higherPlanName}`
     : 'talk to Vento'
   if (key === 'members') {
     const are = input.used === 1 ? 'is' : 'are'
-    return `Your plan includes ${amount(key, included)}, and ${input.used} ${are} in or invited. ${WORDS[key].action} or ${talk}.`
+    return `Your plan includes ${amountOf(key, included)}, and ${input.used} ${are} in or invited. ${LIMIT_WORDS[key].action} or ${talk}.`
   }
   const plan = input.planName ? `Your ${input.planName} plan` : 'Your plan'
-  return `${plan} includes ${amount(key, included)}. ${WORDS[key].action} or ${talk}.`
+  return `${plan} includes ${amountOf(key, included)}. ${LIMIT_WORDS[key].action} or ${talk}.`
 }
 
 /** The lowest plan above the current one whose limit is higher (or unlimited). */
@@ -69,7 +61,11 @@ export function higherPlanFor(
  */
 export async function assertWithinLimit(
   tx: DbOrTx,
-  ctx: Pick<ServiceContext, 'organizationId' | 'member' | 'user'>,
+  ctx: {
+    organizationId: string
+    member: Pick<MemberContext, 'roleKey'>
+    user: Pick<ServiceContext['user'], 'id'>
+  },
   key: CountLimitKey,
   adding: number,
 ): Promise<void> {

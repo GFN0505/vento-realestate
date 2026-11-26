@@ -1,6 +1,6 @@
 # Vento admin
 
-Journeys for Vento staff (super-admins), not for customers. Until the super-admin console ships (R2), these run as commands (`pnpm flags …`, `pnpm plans …`) where devops grants database access. The steps below name the command now and the console screen later.
+Journeys for Vento staff (super-admins), not for customers. Until the super-admin console ships (R2), these run as commands (`pnpm flags …`, `pnpm plans …`) where devops grants database access. **Trust model:** a shell plus `DATABASE_URL` on the API host is super-admin power; `--by` names who is responsible (attribution, not authentication), and the person at the keyboard is recorded as the operator (`VENTO_OPERATOR` set by devops per person). See decision 0015 and `docs/RUNBOOK.md`. The steps below name the command now and the console screen later.
 
 Spec: [feature-flags](../specs/feature-flags.md). Plan: [release-plan](../release-plan.md).
 

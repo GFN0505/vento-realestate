@@ -132,4 +132,27 @@ describe('feature store', () => {
     expect(await stageIn(store)).toBe('on')
     store.stop()
   })
+
+  it('fails closed (everything off) once the snapshot is over 5 minutes stale', async () => {
+    let fail = false
+    const logger = { warn: vi.fn(), error: vi.fn() }
+    const store = await startFeatureStore(db, {
+      refreshMs: 10_000,
+      logger,
+      load: async () => {
+        if (fail) throw new Error('down')
+        return withStage('on')
+      },
+    })
+    fail = true
+    await vi.advanceTimersByTimeAsync(290_000)
+    expect(await stageIn(store)).toBe('on')
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(await stageIn(store)).toBe('off')
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('every feature is off'),
+      expect.anything(),
+    )
+    store.stop()
+  })
 })

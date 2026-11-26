@@ -79,7 +79,7 @@ describe('email templates', () => {
     )
   })
 
-  it('writes the trial-ending email from the spec, with Talk to Vento', () => {
+  it('writes the trial-ending email as a factual notice with a plain contact line', () => {
     const email = trialEndingEmail({
       planName: 'Enterprise',
       endsOn: '2 Jan 2027',
@@ -90,6 +90,9 @@ describe('email templates', () => {
     expect(email.text).toContain(
       'Your Enterprise trial ends on 2 Jan 2027. After that, the board pack is no longer available. Your data stays.',
     )
-    expect(email.text).toContain('Talk to Vento: mailto:support@vento.ng')
+    expect(email.text).toContain(
+      'Questions about your plan? Contact Vento: mailto:support@vento.ng',
+    )
+    expect(email.html).not.toContain('Talk to Vento')
   })
 })
