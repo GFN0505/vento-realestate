@@ -8,7 +8,12 @@ import { id } from './schemas'
 export const unauthorizedReason = z.enum(['signed_out', 'session_expired'])
 export type UnauthorizedReason = z.infer<typeof unauthorizedReason>
 
-export const badRequestReason = z.enum([...PASSWORD_ERROR_CODES, 'role_needs_two_step'])
+export const badRequestReason = z.enum([
+  ...PASSWORD_ERROR_CODES,
+  'role_needs_two_step',
+  /** "Confirm it's you" with the wrong password. */
+  'wrong_password',
+])
 export type BadRequestReason = z.infer<typeof badRequestReason>
 
 export const forbiddenReason = z.enum([

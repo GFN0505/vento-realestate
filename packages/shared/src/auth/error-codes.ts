@@ -19,8 +19,26 @@ export const AUTH_ERROR_CODES = {
   VERIFICATION_RESEND_LIMITED: 'VERIFICATION_RESEND_LIMITED',
   /** 403 on /sign-in/email after an owner or admin reset two-step: set a new password first. */
   PASSWORD_RESET_REQUIRED: 'PASSWORD_RESET_REQUIRED',
-  /** 403 on /two-factor/disable when a role requires two-step. */
+  /**
+   * 403 on /two-factor/disable when a role requires two-step. Body also has `requiredBy`
+   * (a `TwoStepRequirement`); `message` is `twoStepRefusal(requiredBy)`.
+   */
   TWO_STEP_REQUIRED_BY_ROLE: 'TWO_STEP_REQUIRED_BY_ROLE',
+  /** 403 on /two-factor/disable when an organization requires two-step for everyone. As above. */
+  TWO_STEP_REQUIRED_BY_ORGANIZATION: 'TWO_STEP_REQUIRED_BY_ORGANIZATION',
+  /** 400 on /two-factor/disable without a `code` or `backupCode` in the body. */
+  CODE_REQUIRED: 'CODE_REQUIRED',
+  /**
+   * 404 on the passkey endpoints: `platform.passkeys` isn't available (adding: in the active
+   * organization; signing in: in any of the person's organizations, or switched off).
+   */
+  PASSKEYS_UNAVAILABLE: 'PASSKEYS_UNAVAILABLE',
+  /** 401 after a passkey sign-in for someone with no active membership. Reveals nothing. */
+  PASSKEY_NOT_RECOGNISED: 'PASSKEY_NOT_RECOGNISED',
+  /** 409 when adding an 11th passkey. */
+  PASSKEY_LIMIT: 'PASSKEY_LIMIT',
+  /** 403 on /passkey/generate-register-options: "Confirm it's you" first (account.confirmPassword). */
+  REAUTH_REQUIRED: 'REAUTH_REQUIRED',
   // Better Auth's, listed so the web can map them.
   INVALID_EMAIL_OR_PASSWORD: 'INVALID_EMAIL_OR_PASSWORD',
   EMAIL_NOT_VERIFIED: 'EMAIL_NOT_VERIFIED',
@@ -33,6 +51,13 @@ export const AUTH_ERROR_CODES = {
   OTP_EXPIRED: 'OTP_EXPIRED',
   INVALID_OTP: 'INVALID_OTP',
   TOO_MANY_ATTEMPTS: 'TOO_MANY_ATTEMPTS',
+  /** Two-step is off now (a stale "Make new codes" from another tab). */
+  TWO_FACTOR_NOT_ENABLED: 'TWO_FACTOR_NOT_ENABLED',
+  // The passkey plugin's: unknown or removed credential, failed check, missing or used challenge.
+  PASSKEY_NOT_FOUND: 'PASSKEY_NOT_FOUND',
+  AUTHENTICATION_FAILED: 'AUTHENTICATION_FAILED',
+  CHALLENGE_NOT_FOUND: 'CHALLENGE_NOT_FOUND',
+  FAILED_TO_VERIFY_REGISTRATION: 'FAILED_TO_VERIFY_REGISTRATION',
 } as const
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES]
 
@@ -63,7 +88,14 @@ export const AUTH_ERROR_MESSAGES: Record<
   | 'INVALID_EMAIL_OR_PASSWORD'
   | 'INVALID_CODE'
   | 'TWO_STEP_REQUIRED_BY_ROLE'
-  | 'PASSWORD_RESET_REQUIRED',
+  | 'PASSWORD_RESET_REQUIRED'
+  | 'CODE_REQUIRED'
+  | 'PASSKEYS_UNAVAILABLE'
+  | 'PASSKEY_NOT_RECOGNISED'
+  | 'PASSKEY_NOT_FOUND'
+  | 'PASSKEY_LIMIT'
+  | 'REAUTH_REQUIRED'
+  | 'TWO_FACTOR_NOT_ENABLED',
   string
 > = {
   PASSWORD_TOO_SHORT: 'Use at least 8 characters',
@@ -78,4 +110,13 @@ export const AUTH_ERROR_MESSAGES: Record<
   TWO_STEP_REQUIRED_BY_ROLE: 'Your role requires two-step sign-in, so it stays on.',
   PASSWORD_RESET_REQUIRED:
     'Your two-step sign-in was reset. Set a new password with the link we emailed you, then sign in.',
+  CODE_REQUIRED: 'Enter the code from your authenticator app, or a backup code.',
+  PASSKEYS_UNAVAILABLE:
+    "Passkeys aren't available for your account yet. Sign in with your password.",
+  PASSKEY_NOT_RECOGNISED: "That passkey isn't recognised. Sign in with your password.",
+  // Removed and unknown passkeys read the same (plan question 4).
+  PASSKEY_NOT_FOUND: "That passkey isn't recognised. Sign in with your password.",
+  PASSKEY_LIMIT: 'You can have up to 10 passkeys. Remove one you no longer use.',
+  REAUTH_REQUIRED: 'Enter your password to continue.',
+  TWO_FACTOR_NOT_ENABLED: 'Two-step is off now. The page is up to date.',
 }

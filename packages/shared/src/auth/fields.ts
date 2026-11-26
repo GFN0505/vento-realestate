@@ -24,6 +24,13 @@ export const authSessionFields = {
    */
   persistent: { type: 'boolean', required: false, input: false },
   lastActiveAt: { type: 'date', required: false, input: false },
+  // The three below have no defaultValue either, for the same reason as `persistent`.
+  /** Approximate place from the IP at sign-in ("Lekki, Lagos"); the full IP is never stored. */
+  place: { type: 'string', required: false, input: false },
+  /** "Confirm it's you": the password was proven at this moment (5-minute window). */
+  reauthenticatedAt: { type: 'date', required: false, input: false },
+  /** When the session last moved into its active organization; the two-step gate reads it. */
+  organizationEnteredAt: { type: 'date', required: false, input: false },
 } as const
 
 /** Better Auth's route prefix on the API and, through the proxy, on the web origin. */

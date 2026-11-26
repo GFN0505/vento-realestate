@@ -32,6 +32,10 @@ export const AUDIT_ACTIONS = [
   'session.revoked',
   'session.revoked_others',
   'session.revoked_by_removal',
+  'passkey.added',
+  'passkey.renamed',
+  'passkey.removed',
+  'account.name_changed',
   // Written by Vento's platform operations (feature flags and plans), actor "Vento".
   'plan.assigned',
   'plan.trial_started',

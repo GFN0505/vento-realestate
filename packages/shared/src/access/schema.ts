@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { nextStep } from '../account/schema'
 import { newPassword, termsVersion } from '../auth/password-schema'
-import { id, isoDate } from '../common/schemas'
+import { id, isoDate, paginated } from '../common/schemas'
 import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 import { systemRoleKey } from './default-roles'
 import { permissionModule, permissionSet } from './permissions'
@@ -73,6 +73,18 @@ export const role = z.object({
 })
 export type Role = z.infer<typeof role>
 
+/**
+ * The organization requires two-step for everyone: every role reads "Required" and the custom
+ * role switch is locked on. Roles keep their own `requiresTwoStep` for when it's turned off.
+ */
+const requiredForEveryone = z.boolean()
+
+export const roleList = paginated(role).extend({ requiredForEveryone })
+export type RoleList = z.infer<typeof roleList>
+
+export const roleDetail = role.extend({ requiredForEveryone })
+export type RoleDetail = z.infer<typeof roleDetail>
+
 export const createRoleInput = z.strictObject({ name: roleName, sourceRoleId: id })
 export type CreateRoleInput = z.input<typeof createRoleInput>
 
@@ -141,6 +153,7 @@ export const invitationPreview = z.object({
   entities: z.union([z.array(z.string()), z.literal('all')]),
   /** Module labels, e.g. ["Sales & CRM", "Finance", "HR & payroll"]. */
   canApprove: z.array(z.string()),
+  /** The role requires it, or the organization requires two-step for everyone. */
   twoStepRequired: z.boolean(),
   /** Last day it can be accepted, in Lagos time. */
   expiresOn: isoDate,
