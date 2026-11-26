@@ -34,5 +34,7 @@ docs/help/
 | [Find your way around](getting-started/find-your-way-around.md) | J-ONB-05 | written |
 | [Invite your team](getting-started/invite-your-team.md) | J-ONB-02 | written |
 | [Manage your team](getting-started/manage-your-team.md) | J-ONB-06 | written |
+| [Set up your organization and companies](getting-started/set-up-your-companies.md) | J-ONB-07 | written |
+| [Make a role that fits the job](getting-started/make-a-role.md) | J-ONB-08 | written |
 
 Status: `todo` · `written` · `published`

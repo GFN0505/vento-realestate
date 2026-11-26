@@ -8,7 +8,7 @@
 - **Branch:** `brick/03c-roles-org`, cut from `brick/03b-team`
 
 ## Problem
-Olumide set up Vento Homes Ltd with one company during onboarding. He runs Parkview Residences through its own SPV and is about to start Lekki Pearl in a third, and today he can't add either, fix the TIN he left blank, or correct the financial year he guessed. His site engineer, Emeka, needs Projects and Documents but none of Sales, and none of the nine built-in roles fits, so Emeka is either over-powered as a Project manager or useless as a Viewer. Olumide needs to see in plain words what each role can do, make a role that fits the job, and know that adding "another estate" doesn't mean adding a company.
+Olumide set up Vento Homes Ltd with one company during onboarding. He runs Parkview Residences through its own SPV and is about to start Lekki Pearl in a third, and today he can't add either, fix the TIN he left blank, or correct the financial year he guessed. His site engineer, Bayo, needs Projects and Documents but none of Sales, and none of the nine built-in roles fits, so Bayo is either over-powered as a Project manager or useless as a Viewer. Olumide needs to see in plain words what each role can do, make a role that fits the job, and know that adding "another estate" doesn't mean adding a company.
 
 ## Persona and job
 | Who | Job | How often |
@@ -58,7 +58,7 @@ Why: the people using Vento say "company" (CAC registers companies, banks open a
 1. *Roles & permissions* (1) → **Project manager** (2) → **Duplicate role** (3).
 2. *New role dialog:* Name "Site engineer" (the field holds "Copy of Project manager", selected, so typing replaces it); **Start from** is preset to Project manager → **Create role** (4).
 3. The new role's page opens, editable: untick **Sales: View**, **Land & title: View**; tick **Documents: Create**. A bar slides up: "3 changes · applies to nobody yet" → **Save changes**. Toast "Site engineer saved".
-4. Give it to Emeka on *Team* (role menu on his row: 2 clicks, unchanged from 3b). Custom roles sit under the built-ins in every role menu.
+4. Give it to Bayo on *Team* (role menu on his row: 2 clicks, unchanged from 3b). Custom roles sit under the built-ins in every role menu.
 
 **Preview a role: 1 click**
 1. On any role page, **Preview this role**. Home opens as that role under the 3a banner "Previewing as Site engineer" → **Stop preview**.

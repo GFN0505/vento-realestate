@@ -18,6 +18,7 @@ Clear, warm, professional. Like a capable colleague, not a robot or a salesperso
 7. **Domain terms** from `docs/DOMAIN.md` only. Never show internal codes, ids or technical errors.
 8. **No blame.** "That date is before the subscription date" — not "You entered an invalid date".
 9. **Respect money and privacy.** Reminders never shame. Never show a buyer's balance, delinquency or KYC details to anyone who isn't authorised.
+10. **Say "company", never "entity"** on screen, in emails and in help (decision 0018). "Entity" stays in code, the API and DOMAIN.md. An estate or site is a project, not a company.
 
 ## Patterns
 | Situation | Pattern | Example |
