@@ -4,6 +4,7 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 
 ## [Unreleased]
 ### Added
+- Real email delivery: invitations, sign-in codes, password resets and security alerts are sent through Postmark, from "{your company} via Vento" with replies going to the person who sent them. An invitation that can't be delivered shows "Email not delivered" on Team.
 - Team: one list of everyone in your organization and everyone you've invited, with roles you can change in place (and undo), access limited to some companies, two-step status and last activity. Invite up to 20 people at once by pasting a list; mistakes, duplicates and people already on the team are marked, and the rest still go. Reset a colleague's two-step when they lose their phone, make someone an owner, remove a leaver (history kept) and invite them again later. The list follows the company you pick at the top. Owners see how many places their plan has left.
 - Setup checklist on Home for owners and admins: each step ticks itself from what you've done; hide it any time and bring it back from ⌘K.
 - Settings, starting with Team, for owners and admins.
