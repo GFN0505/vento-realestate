@@ -37,3 +37,17 @@ export const VERIFICATION_RESEND_PER_HOUR = 5
 
 /** auth_attempts rows older than this are pruned when new ones are written. */
 export const AUTH_ATTEMPT_RETENTION_MS = DAY
+
+/** "Confirm it's you" lasts this long on a session (spec decision 6). */
+export const REAUTH_WINDOW_MS = 5 * MINUTE
+/** A browser not seen for this long counts as new again ("new sign-in" alert). */
+export const KNOWN_DEVICE_TTL_MS = 90 * DAY
+/** The device cookie's lifetime: browsers cap cookies at 400 days. */
+export const DEVICE_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60
+/**
+ * "Require two-step for everyone": people already signed in may carry on this long after it was
+ * turned on (spec decision 5). Their next sign-in or switch into the organization ends it sooner.
+ */
+export const TWO_STEP_GRACE_MS = 7 * DAY
+/** account.confirmPassword attempts per person per minute. */
+export const CONFIRM_PASSWORD_PER_MINUTE = 10

@@ -206,7 +206,7 @@ function readOnlyFrom(refusal: Refusal | null): ReadOnly {
 /** The member row's flags and read-only line for team.list. */
 export function memberRowRights(
   viewer: ManageViewer,
-  target: MemberTarget & { twoStep: TwoStepState },
+  target: MemberTarget & { twoStep: TwoStepState; passkeyCount: number },
   ownerName: string | null,
 ): {
   can: { changeAccess: boolean; resetTwoStep: boolean; remove: boolean }
@@ -218,8 +218,11 @@ export function memberRowRights(
   return {
     can: {
       changeAccess: hasPermission(p, 'settings', 'edit') && allowed('change'),
+      // Offered with passkeys too: a lost phone's passkey must be cut off as well (spec 3d).
       resetTwoStep:
-        target.twoStep === 'on' && hasPermission(p, 'settings', 'edit') && allowed('reset'),
+        (target.twoStep === 'on' || target.passkeyCount > 0) &&
+        hasPermission(p, 'settings', 'edit') &&
+        allowed('reset'),
       remove: hasPermission(p, 'settings', 'delete') && allowed('remove'),
     },
     readOnly: quietFor(

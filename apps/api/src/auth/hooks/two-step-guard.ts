@@ -7,11 +7,11 @@ import { requestScope } from '@/lib/request-scope'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
 import {
   activeLockUntil,
-  clearAttempts,
   clearTwoStepSetupRequired,
   findUserById,
   type IdentityUser,
 } from '../security-store'
+import { afterSignIn, type SignInContext } from './after-sign-in'
 import { type AuthDeps, errorCode, sendEmail, webUrl } from './deps'
 import { lockAccount, lockedError, lockedResponse } from './sign-in-guard'
 
@@ -51,6 +51,7 @@ async function twoStepLockedUntil(deps: AuthDeps, userId: string): Promise<Date 
 
 export async function afterTwoStepVerify(
   deps: AuthDeps,
+  ctx: SignInContext,
   input: { method: 'totp' | 'backup_code'; returned: unknown },
 ): Promise<Response | undefined> {
   const { twoStepMode, userId, wasTwoFactorEnabled } = requestScope().auth
@@ -93,13 +94,7 @@ export async function afterTwoStepVerify(
   }
   if (code) return
 
-  await clearAttempts(deps.db, 'password_failure', user.email)
-  await recordAccountEvent(deps.db, {
-    userId: user.id,
-    action: 'auth.signed_in',
-    actor: { userId: user.id, name: user.name },
-    metadata: { method: input.method },
-  })
+  await afterSignIn(deps, ctx, user, input.method)
   if (input.method === 'backup_code') await onBackupCodeUsed(deps, user)
 }
 

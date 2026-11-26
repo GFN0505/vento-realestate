@@ -28,6 +28,11 @@ const envSchema = z.object({
   SEED_PASSWORD: optionalText,
   /** Seconds between reloads of the feature snapshot; changes reach every server within this. */
   FEATURE_SNAPSHOT_REFRESH_SECONDS: z.coerce.number().int().min(1).max(30).default(10),
+  /**
+   * DB-IP "IP to City Lite" (MMDB) for approximate places on My security (decision 0020).
+   * Unset or missing file: no place is shown; sign-in works the same.
+   */
+  GEOIP_DB_PATH: optionalText,
   /** "Talk to Vento" for owners. Required in production. */
   SUPPORT_EMAIL: optionalText.pipe(z.email().optional()),
   SUPPORT_WHATSAPP: optionalText.pipe(
@@ -45,6 +50,15 @@ const parsed = envSchema.safeParse(process.env)
 if (!parsed.success) {
   const problems = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`)
   console.error(`Invalid environment variables (see .env.example):\n${problems.join('\n')}`)
+  process.exit(1)
+}
+
+// Passkeys (WebAuthn) need a secure context; browsers only exempt localhost (decision 0019).
+if (
+  parsed.data.NODE_ENV === 'production' &&
+  new URL(parsed.data.WEB_ORIGIN).protocol !== 'https:'
+) {
+  console.error('Invalid environment variables (see .env.example):\n  - WEB_ORIGIN: Use https://')
   process.exit(1)
 }
 

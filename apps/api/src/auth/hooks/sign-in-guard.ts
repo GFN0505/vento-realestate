@@ -13,11 +13,12 @@ import {
   findUserByEmail,
   type IdentityUser,
 } from '../security-store'
-import { type AuthDeps, authError, errorResponse, sendEmail, webUrl } from './deps'
+import { afterSignIn, type SignInContext } from './after-sign-in'
+import { type AuthDeps, authError, errorResponse, type LockDeps, sendEmail, webUrl } from './deps'
 
 const ATTEMPT_ACTOR = { userId: null, name: 'Sign-in attempt' }
 
-function lockedBody(lockedUntil: Date) {
+export function lockedBody(lockedUntil: Date) {
   return {
     code: AUTH_ERROR_CODES.ACCOUNT_LOCKED,
     message: `Sign-in is locked until ${formatTime(lockedUntil)}. We've emailed you.`,
@@ -47,7 +48,7 @@ export async function assertNotLocked(deps: AuthDeps, email: string): Promise<vo
  * sends the security alert. Unknown emails are locked too, so a lock reveals nothing.
  */
 export async function lockAccount(
-  deps: AuthDeps,
+  deps: LockDeps,
   input: { email: string; reason: 'password' | 'two_step'; lockedUntil?: Date },
 ): Promise<Date> {
   const now = new Date()
@@ -85,7 +86,7 @@ export async function lockAccount(
 }
 
 /** After a wrong email or password. Returns the lock end when this failure caused a lock. */
-export async function onPasswordFailure(deps: AuthDeps, rawEmail: string): Promise<Date | null> {
+export async function onPasswordFailure(deps: LockDeps, rawEmail: string): Promise<Date | null> {
   const email = rawEmail.toLowerCase()
   await addAttempt(deps.db, 'password_failure', email)
   const { count } = await countAttempts(deps.db, 'password_failure', email, PASSWORD_LOCK_WINDOW_MS)
@@ -102,15 +103,15 @@ export async function onPasswordFailure(deps: AuthDeps, rawEmail: string): Promi
   return null
 }
 
-/** A correct password. With two-step on, "signed in" is recorded after the code instead. */
-export async function onPasswordSuccess(deps: AuthDeps, user: IdentityUser): Promise<void> {
-  await clearAttempts(deps.db, 'password_failure', user.email)
-  if (!user.twoFactorEnabled) {
-    await recordAccountEvent(deps.db, {
-      userId: user.id,
-      action: 'auth.signed_in',
-      actor: { userId: user.id, name: user.name },
-      metadata: { method: 'password' },
-    })
+/** A correct password. With two-step on, the sign-in finishes after the code instead. */
+export async function onPasswordSuccess(
+  deps: AuthDeps,
+  ctx: SignInContext,
+  user: IdentityUser,
+): Promise<void> {
+  if (user.twoFactorEnabled) {
+    await clearAttempts(deps.db, 'password_failure', user.email)
+    return
   }
+  await afterSignIn(deps, ctx, user, 'password')
 }

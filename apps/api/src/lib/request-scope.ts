@@ -14,10 +14,18 @@ export type RequestScope = {
   /** Facts Better Auth before-hooks hand to after-hooks for the same request. */
   auth: {
     userId?: string
-    twoStepMode?: 'sign_in' | 'setup'
+    /** `turn_off`: our turn-off guard is calling the verifiers itself and does the bookkeeping. */
+    twoStepMode?: 'sign_in' | 'setup' | 'turn_off'
     wasTwoFactorEnabled?: boolean
     /** The resend endpoint already counted this request against the limit. */
     verificationCounted?: boolean
+    /** "Keep me signed in" for a passkey sign-in, from the x-vento-remember header. */
+    rememberMe?: boolean
+    /**
+     * A first sign-in (sign-up's automatic one, accepting an invitation): the browser is recorded
+     * silently, with no "new sign-in" email.
+     */
+    firstSignIn?: boolean
   }
 }
 

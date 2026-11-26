@@ -29,9 +29,21 @@ export const organizations = pgTable(
     singleCompanyConfirmedByUserId: uuid().references((): AnyPgColumn => users.id, {
       onDelete: 'restrict',
     }),
+    /** "Require two-step sign-in for everyone" (owners only). */
+    twoStepRequiredForEveryone: boolean().notNull().default(false),
+    /** Starts the 7-day grace for people already signed in; also "changed by … a moment ago". */
+    twoStepRequiredChangedAt: timestamptz(),
+    twoStepRequiredChangedByUserId: uuid().references((): AnyPgColumn => users.id, {
+      onDelete: 'set null',
+    }),
     ...timestamps,
   },
   (t) => [
+    check(
+      'organizations_two_step_required_changed_at',
+      sql`not ${t.twoStepRequiredForEveryone} or ${t.twoStepRequiredChangedAt} is not null`,
+    ),
+    index('organizations_two_step_changed_by_idx').on(t.twoStepRequiredChangedByUserId),
     check(
       'organizations_single_company_consistent',
       sql`(${t.singleCompanyConfirmedAt} is null) = (${t.singleCompanyConfirmedByUserId} is null)`,

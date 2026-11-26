@@ -153,19 +153,36 @@ describe('invitationRefusal', () => {
 
 describe('row rights for team.list', () => {
   it('gives an owner every action on a sales member with two-step on', () => {
-    expect(memberRowRights(viewer('owner'), { ...member('sales'), twoStep: 'on' }, null)).toEqual({
+    expect(
+      memberRowRights(
+        viewer('owner'),
+        { ...member('sales'), twoStep: 'on', passkeyCount: 0 },
+        null,
+      ),
+    ).toEqual({
       can: { changeAccess: true, resetTwoStep: true, remove: true },
       readOnly: null,
     })
   })
 
-  it('offers reset only while two-step is on', () => {
-    const rights = memberRowRights(viewer('owner'), { ...member('sales'), twoStep: 'off' }, null)
+  it('offers reset only while two-step is on or they have a passkey', () => {
+    const rights = memberRowRights(
+      viewer('owner'),
+      { ...member('sales'), twoStep: 'off', passkeyCount: 0 },
+      null,
+    )
     expect(rights.can.resetTwoStep).toBe(false)
   })
 
+  it('offers reset to someone with a passkey and two-step off, so a lost phone is cut off', () => {
+    const target = { ...member('sales'), twoStep: 'off' as const, passkeyCount: 1 }
+    expect(memberRowRights(viewer('owner'), target, null).can.resetTwoStep).toBe(true)
+  })
+
   it('gives a view-only role no actions, and no read-only line', () => {
-    expect(memberRowRights(viewer(null), { ...member('sales'), twoStep: 'on' }, null)).toEqual({
+    expect(
+      memberRowRights(viewer(null), { ...member('sales'), twoStep: 'on', passkeyCount: 0 }, null),
+    ).toEqual({
       can: { changeAccess: false, resetTwoStep: false, remove: false },
       readOnly: null,
     })
@@ -176,7 +193,11 @@ describe('row rights for team.list', () => {
     ['owner', viewer('admin'), member('owner')],
     ['wider_access', viewer('admin', [P]), member('sales', [P, L])],
   ] as const)('marks the row read-only for %s', (reason, v, target) => {
-    const rights = memberRowRights(v, { ...target, twoStep: 'on' }, 'Olumide Bankole')
+    const rights = memberRowRights(
+      v,
+      { ...target, twoStep: 'on', passkeyCount: 0 },
+      'Olumide Bankole',
+    )
     expect(rights.can).toEqual({ changeAccess: false, resetTwoStep: false, remove: false })
     expect(rights.readOnly?.reason).toBe(reason)
   })
@@ -184,7 +205,7 @@ describe('row rights for team.list', () => {
   it('tells the viewer about their own row in the sheet’s words', () => {
     const rights = memberRowRights(
       viewer('admin'),
-      { ...member('admin', ALL, 'me'), twoStep: 'on' },
+      { ...member('admin', ALL, 'me'), twoStep: 'on', passkeyCount: 0 },
       null,
     )
     expect(rights.readOnly?.message).toBe(
@@ -360,7 +381,7 @@ describe('row rights with the ceiling', () => {
   it("marks an admin's row read-only for an office manager, with the owner's name", () => {
     const rights = memberRowRights(
       VIEWERS.office_manager,
-      { ...targetOf('admin'), twoStep: 'on' },
+      { ...targetOf('admin'), twoStep: 'on', passkeyCount: 0 },
       'Olumide Bankole',
     )
     expect(rights).toEqual({
@@ -373,14 +394,18 @@ describe('row rights with the ceiling', () => {
   })
 
   it('shows a view-only viewer no ceiling line, since they manage nobody', () => {
-    const rights = memberRowRights(VIEWERS.view_only, { ...targetOf('admin'), twoStep: 'on' }, null)
+    const rights = memberRowRights(
+      VIEWERS.view_only,
+      { ...targetOf('admin'), twoStep: 'on', passkeyCount: 0 },
+      null,
+    )
     expect(rights.readOnly).toBeNull()
   })
 
   it('lets an office manager manage someone with the same permissions', () => {
     const rights = memberRowRights(
       VIEWERS.office_manager,
-      { ...targetOf('office_manager'), twoStep: 'on' },
+      { ...targetOf('office_manager'), twoStep: 'on', passkeyCount: 0 },
       null,
     )
     expect(rights.can).toEqual({ changeAccess: true, resetTwoStep: true, remove: true })

@@ -11,6 +11,7 @@ import {
   entities,
   memberEntityLimits,
   members,
+  passkeys,
   roles,
   sessions,
   twoFactors,
@@ -273,6 +274,12 @@ export async function resetMemberTwoStep(
     const target = await lockTarget(tx, live, memberId)
     await assertMayManage(tx, live, target, 'reset')
     await tx.delete(twoFactors).where(eq(twoFactors.userId, target.userId))
+    // A lost phone's passkey must stop working too (spec 3d). Before the sessions go, in the
+    // same transaction: registration needs a session, so none can be added meanwhile.
+    const removedPasskeys = await tx
+      .delete(passkeys)
+      .where(eq(passkeys.userId, target.userId))
+      .returning({ id: passkeys.id })
     await tx
       .update(users)
       .set({ twoFactorEnabled: false, twoStepSetupRequired: true, passwordResetRequired: true })
@@ -286,7 +293,11 @@ export async function resetMemberTwoStep(
       action: 'two_step.reset',
       actor: actorOf(live),
       target: { type: 'user', id: target.userId, label: target.name },
-      metadata: { resetFrom: live.organizationName, sessionsEnded: ended.length },
+      metadata: {
+        resetFrom: live.organizationName,
+        sessionsEnded: ended.length,
+        passkeysRemoved: removedPasskeys.length,
+      },
     })
     const alert = twoStepResetAlert({ byName: live.user.name })
     return {

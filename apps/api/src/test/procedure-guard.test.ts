@@ -38,6 +38,12 @@ const PERSONAL_PROCEDURES = [
   'account.sessions.list',
   'account.sessions.revoke',
   'account.sessions.revokeOthers',
+  // My security (3d): about the signed-in person only; no input names a person or organization.
+  'account.security',
+  'account.confirmPassword',
+  'account.updateName',
+  'account.passkeys.rename',
+  'account.passkeys.remove',
   'invitations.accept',
   'onboarding.createOrganization',
 ] as const
@@ -100,6 +106,7 @@ describe('all-companies guard (brick 3c)', () => {
   // Organization-wide changes: a member limited to some companies is refused before any write.
   const orgWide: [string, (ids: { role: string; entity: string }) => unknown][] = [
     ['organization.update', () => ({ name: 'Mine Ltd' })],
+    ['organization.setTwoStepRequired', () => ({ required: true, seenChangedAt: null })],
     ['entities.create', () => ({ name: 'New SPV Ltd', type: 'spv' })],
     ['entities.archivePreview', (ids) => ({ id: ids.entity })],
     ['entities.archive', (ids) => ({ id: ids.entity })],

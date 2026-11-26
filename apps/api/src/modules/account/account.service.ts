@@ -4,6 +4,7 @@ import type {
   PaginationInput,
   SessionItem,
   SwitchOrganizationOutput,
+  TwoStepRequirement,
 } from '@vento/shared'
 import { hasPermission } from '@vento/shared'
 import { and, count, desc, eq, gt, ne } from 'drizzle-orm'
@@ -19,7 +20,8 @@ import {
   touchMemberActivity,
   twoStepRequired,
 } from '@/access/context'
-import { userIdForResetToken } from '@/auth/security-store'
+import { enteredAtFor, memberTwoStepGate, type TwoStepGate } from '@/access/two-step-gate'
+import { firstTwoStepRequirement, userIdForResetToken } from '@/auth/security-store'
 import type { DbOrTx } from '@/db/client'
 import { runQueries } from '@/db/run-queries'
 import { entities, sessions, users } from '@/db/schema'
@@ -42,8 +44,8 @@ async function hasEntity(db: DbOrTx, organizationId: string): Promise<boolean> {
 
 async function nextStepFor(
   db: DbOrTx,
-  user: AuthUser,
   membership: Membership | null,
+  gate: TwoStepGate,
 ): Promise<NextStep> {
   if (!membership) return 'onboarding_organization'
   // Only an owner can finish setting the organization up; anyone invited before the first
@@ -51,8 +53,46 @@ async function nextStepFor(
   if (membership.member.roleKey === 'owner' && !(await hasEntity(db, membership.organizationId))) {
     return 'onboarding_entity'
   }
-  if (twoStepRequired(user, membership.member) && !user.twoFactorEnabled) return 'two_step_setup'
+  if (gate.kind === 'required') return 'two_step_setup'
   return 'ready'
+}
+
+function gateFor(
+  user: AuthUser,
+  session: Pick<AuthSession, 'activeOrganizationId' | 'organizationEnteredAt'>,
+  membership: Membership | null,
+  now: Date,
+): TwoStepGate {
+  if (!membership) return { kind: 'ok' }
+  const enteredAt = enteredAtFor(session, membership.organizationId, now)
+  return memberTwoStepGate(user, membership.member, enteredAt, now)
+}
+
+/**
+ * What requires two-step for this person, the active organization first (My security's line).
+ * The active membership answers without a query when it requires it itself.
+ */
+export async function twoStepRequiredBy(
+  db: DbOrTx,
+  user: Pick<AuthUser, 'id' | 'twoStepSetupRequired'>,
+  membership: Pick<Membership, 'organizationId' | 'organizationName' | 'member'> | null,
+): Promise<TwoStepRequirement | null> {
+  const member = membership?.member
+  if (membership && member?.requiresTwoStep) {
+    return {
+      reason: 'role',
+      organizationName: membership.organizationName,
+      roleName: member.roleName,
+    }
+  }
+  if (membership && member?.organizationTwoStep.required) {
+    return { reason: 'organization', organizationName: membership.organizationName, roleName: null }
+  }
+  const elsewhere = await firstTwoStepRequirement(db, user.id, membership?.organizationId ?? null)
+  if (elsewhere) return elsewhere
+  return user.twoStepSetupRequired
+    ? { reason: 'reset', organizationName: membership?.organizationName ?? '', roleName: null }
+    : null
 }
 
 /**
@@ -87,10 +127,12 @@ export async function getMe(
   store: FeatureStore,
 ): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
-  const [nextStep, organizations, { features, plan }] = await runQueries(db, [
-    () => nextStepFor(db, user, membership),
+  const gate = gateFor(user, session, membership, new Date())
+  const [nextStep, organizations, { features, plan }, requiredBy] = await runQueries(db, [
+    () => nextStepFor(db, membership, gate),
     () => listActiveMemberships(db, user.id),
     () => featuresAndPlan(db, membership, store),
+    () => twoStepRequiredBy(db, user, membership),
   ])
   // Only someone through every gate (onboarding, two-step) is using the organization.
   if (membership && nextStep === 'ready') await touchMemberActivity(db, membership.member)
@@ -126,6 +168,8 @@ export async function getMe(
       : null,
     nextStep,
     twoStepRequired: twoStepRequired(user, membership?.member ?? null),
+    twoStepRequiredBy: requiredBy,
+    twoStepSetupBy: gate.kind === 'grace' ? gate.deadline.toISOString() : null,
     canAddCompany: membership ? canAddCompany(membership.member) : false,
   }
 }
@@ -154,9 +198,11 @@ export async function switchOrganization(
     }
     return found
   })
+  // Switching in counts as entering: a requiring organization asks for setup now (gateFor).
+  const gate = gateFor(user, session, membership, new Date())
   return {
     organization: { id: membership.organizationId, name: membership.organizationName },
-    nextStep: await nextStepFor(db, user, membership),
+    nextStep: await nextStepFor(db, membership, gate),
   }
 }
 
@@ -187,6 +233,7 @@ export async function listSessions(
         lastActiveAt: sessions.lastActiveAt,
         createdAt: sessions.createdAt,
         persistent: sessions.persistent,
+        place: sessions.place,
       })
       .from(sessions)
       .where(where)
@@ -199,6 +246,7 @@ export async function listSessions(
     id: r.id,
     ...summariseUserAgent(r.userAgent),
     ipMasked: r.ipAddress || null,
+    place: r.place || null,
     lastActiveAt: r.lastActiveAt.toISOString(),
     createdAt: r.createdAt.toISOString(),
     persistent: r.persistent,
@@ -221,7 +269,7 @@ export async function revokeSession(
       .where(and(eq(sessions.id, id), eq(sessions.userId, user.id)))
       .returning({ id: sessions.id, userAgent: sessions.userAgent })
     const [row] = ended
-    if (!row) throw notFound()
+    if (!row) throw notFound('That device is already signed out. The list is up to date.')
     const { device, browser } = summariseUserAgent(row.userAgent)
     await recordAccountEvent(tx, {
       userId: user.id,

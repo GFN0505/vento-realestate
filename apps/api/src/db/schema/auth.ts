@@ -58,6 +58,16 @@ export const sessions = pgTable(
     activeOrganizationId: uuid().references(() => organizations.id, { onDelete: 'set null' }),
     persistent: boolean().notNull().default(false),
     lastActiveAt: timestamptz().defaultNow().notNull(),
+    /** Approximate place from the IP at sign-in ("Lekki, Lagos"), decision 0020. */
+    place: text(),
+    /** "Confirm it's you": the password was proven at this moment (5-minute window). */
+    reauthenticatedAt: timestamptz(),
+    /**
+     * When the session last moved into its active organization (sign-in, switch, invitation,
+     * onboarding). The two-step gate tells "next sign-in or switch" from "already in" with it;
+     * null reads as created_at.
+     */
+    organizationEnteredAt: timestamptz(),
     ...timestamps,
   },
   (t) => [
@@ -120,5 +130,39 @@ export const twoFactors = pgTable(
   (t) => [
     uniqueIndex('two_factors_user_id_unique').on(t.userId),
     index('two_factors_secret_idx').on(t.secret),
+  ],
+)
+
+/**
+ * Better Auth passkey plugin's model `passkey` (decision 0019). A credential belongs to one
+ * person, so `credential_id` is unique across Vento. At most 10 per person (trigger in
+ * 0010_passkey_guards). `last_used_at` is Vento's, written by our after-hook.
+ */
+export const passkeys = pgTable(
+  'passkeys',
+  {
+    id: id(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text(),
+    publicKey: text().notNull(),
+    // Better Auth's field name; the column is named explicitly so casing can't make it credential_i_d.
+    credentialID: text('credential_id').notNull(),
+    counter: integer().notNull(),
+    deviceType: text().notNull(),
+    backedUp: boolean().notNull(),
+    transports: text(),
+    aaguid: text(),
+    lastUsedAt: timestamptz(),
+    ...timestamps,
+  },
+  (t) => [
+    index('passkeys_user_id_idx').on(t.userId),
+    uniqueIndex('passkeys_credential_id_unique').on(t.credentialID),
+    check(
+      'passkeys_name_length',
+      sql`${t.name} is null or char_length(${t.name}) between 1 and 40`,
+    ),
   ],
 )
