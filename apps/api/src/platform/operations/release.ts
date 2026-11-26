@@ -263,7 +263,7 @@ export async function setReleaseGroup(
   },
 ): Promise<string> {
   const { organization: org } = input
-  const done = `${org.name} is now in the ${input.group} group. Takes effect on its next request.`
+  const done = `${org.name} is now in the ${input.group} group. Takes effect within 30 seconds.`
   await db.transaction(async (tx) => {
     const current = await lockOrganizationPlan(tx, org.id)
     await assertExpected(

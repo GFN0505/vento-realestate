@@ -381,7 +381,7 @@ export async function assignPlan(
   now = new Date(),
 ): Promise<string> {
   const { organization: org, target } = input
-  const done = `${org.name} is now on ${target.planName} (version ${target.version}). Takes effect on its next request.`
+  const done = `${org.name} is now on ${target.planName} (version ${target.version}). Takes effect within 30 seconds.`
   await db.transaction(async (tx) => {
     const current = await lockOrganizationPlan(tx, org.id)
     await assertExpected(
