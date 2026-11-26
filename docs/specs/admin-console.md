@@ -1,10 +1,10 @@
 # Vento console (super-admin)
 
-- **Status:** approved (owner, 26 Nov 2026)
+- **Status:** in build. Approved by the owner on 26 Nov 2026; slice 1 (console core) is built on `feat/admin-console` and becomes `shipped` when it merges. Slice 2 (support view) is not planned yet. Plan: [admin-console](../plans/admin-console.md); decision [0021](../decisions/0021-the-console-is-a-separate-area-behind-fresh-two-step.md).
 - **Module:** Platform
 - **Journeys:** J-ADM-01 and J-ADM-02 (changed: console first, commands as fallback), J-ADM-03 (new: manage super-admins and review platform activity), J-ADM-04 (new, slice 2: look at a customer's account with their permission), J-ONB-11 (new, slice 2: an owner lets Vento support see their account)
 - **Screens:** see [Screens this spec touches](#screens-this-spec-touches)
-- **Decisions:** builds on 0015 (platform configuration outside organizations; trust model until the console), 0016 (availability in the contract, snapshot within 30 seconds), 0019 (passkeys count as two-step; passkeys bound to the web app's host), 0013 (tab guard), 0018 ("company" on screen). Needs one new record from the architect: "The console is a separate area on the same origin, behind fresh two-step" (and, for slice 2, "Support view is read-only by declaration").
+- **Decisions:** builds on 0015 (platform configuration outside organizations; trust model until the console), 0016 (availability in the contract, snapshot within 30 seconds), 0019 (passkeys count as two-step; passkeys bound to the web app's host), 0013 (tab guard), 0018 ("company" on screen). New record [0021](../decisions/0021-the-console-is-a-separate-area-behind-fresh-two-step.md) "The console is a separate area on the same origin, behind fresh two-step" (amends 0015's trust model); slice 2 still needs "Support view is read-only by declaration".
 - **Release plan:** [section 8](../release-plan.md#8-build-order): built right after brick 3d (owner, 26 Nov 2026)
 - **Builds on:** [feature-flags](feature-flags.md). Every rule, warning, confirmation and audit event there still holds; this spec only changes *how* a super-admin makes the change.
 

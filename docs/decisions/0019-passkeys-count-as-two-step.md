@@ -14,7 +14,7 @@ Brick 3d adds passkeys (Face ID, Touch ID, a fingerprint, Windows Hello or the d
 
 ## Consequences
 - Every sign-in path we add later (buyer portal, realtor portal) must say whether it counts as two-step, and the gating middleware must keep treating "two-step on" as "the app is set up", not "signed in with a second factor".
-- Changing the production host name (for example from `app.vento.ng` to another domain) makes every passkey stop working. People fall back to password and code and add new passkeys; the release notes must warn them. A move to a shared parent domain (`rpID: 'vento.ng'`) needs a new record.
+- Changing the production host name (for example from `app.ventoerp.com` to another domain) makes every passkey stop working. People fall back to password and code and add new passkeys; the release notes must warn them. A move to a shared parent domain (`rpID: 'ventoerp.com'`) needs a new record.
 - The security agent audits the passkey routes before `platform.passkeys` moves beyond `pilot`.
 - A required member can't go passkey-only. Passkey-only accounts, and requiring passkeys for an organization, stay out of scope.
 

@@ -78,8 +78,9 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-AI-02 | Match a bank statement with AI | Finance officer | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-AI-03 | Ask Vento a question | Any member | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-AI-04 | Turn on AI and set a budget | Owner | [11-ai-add-on](11-ai-add-on.md) | draft |
-| J-ADM-01 | Release a feature, stage by stage | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (commands; console in R2) |
-| J-ADM-02 | Put an organization on a plan, start a trial, record a deal | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (commands; console in R2) |
+| J-ADM-01 | Release a feature, stage by stage | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; commands are break-glass; e2e being written) |
+| J-ADM-02 | Put an organization on a plan, start a trial, record a deal | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; commands are break-glass; e2e being written) |
+| J-ADM-03 | Manage super-admins and review platform activity | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; e2e being written) |
 
 ## Assumptions to confirm
 Writing these journeys meant picking defaults the product docs don't settle. The approved designs settled some of them (now written into the journeys and `docs/design/DESIGN-NOTES.md`). Each is a setting or rule, not hard-coded.
@@ -147,3 +148,12 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Sessions show a **city and country from an offline lookup** (no outside service, full IP never stored); no "unusual location" warning.
 - **My profile is the name only**; phone with the WhatsApp digest, no photos, email change later.
 - A **passkey offer once per device** after a password sign-in; up to **10 passkeys** each.
+
+**Settled by the owner (26 Nov 2026, [admin-console](../specs/admin-console.md) spec and plan)**
+- The Vento console is at **`/console`** on the web app's origin; entering needs a passkey or code from the last **5 minutes**; the console window closes after **15 minutes** without console activity or **8 hours**.
+- Console defaults: trial **30 days** (at most **90**), AI **₦150,000 a month**, a reason of at least **3 characters** on every change.
+- Change commands are **break-glass** (`--break-glass`), and every break-glass change emails all other super-admins.
+
+**Still need the owner's yes (admin-console build)**
+- Every console change sheet has a **Review** step between its fields and the confirm, so a plan change is 5 clicks from *Organizations* instead of the spec's 4.
+- *Activity* filters by organization only from an organization's **See all** link, not from a drop-down.

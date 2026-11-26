@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 185 rows · 138 designed (22 of them partly) · 47 without a design.
+**Coverage:** 186 rows · 138 designed (22 of them partly) · 48 without a design.
 
 
 
@@ -20,7 +20,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Set up two-step (forced at sign-in, after accepting an invitation, or when the organization requires it for everyone; brick 3d: also opened as a sheet from My security) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
 | Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K; brick 3c: "Add your first company" and "Add your other companies (SPVs)" with "We only have one company") | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | built |
-| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role; brick 3d: **My security** for everyone, also in More and ⌘K), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K; brick 3c: switcher labelled "Company", "+ Add company" for owners and admins, "No company" state) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
+| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role; brick 3d: **My security** for everyone, also in More and ⌘K), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K; brick 3c: switcher labelled "Company", "+ Add company" for owners and admins, "No company" state; admin console: **Vento console** in the user menu, More and ⌘K for active super-admins only, see §15) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
 | ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
 | Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | pattern (component built; first used in 3b) |
@@ -29,7 +29,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
 | Keyboard shortcuts help (`?`) (brick 3a) | – | pattern |
-| My security, every member, `/settings/security` (brick 3d): name edited in place; *Sign-in* card (password, two-step on/off and what requires it, backup codes left); *Passkeys* card (add, rename, remove, last used); *Where you're signed in* (device and browser, approximate place, masked IP, last active, This device, sign out one or all others). Phone, photo and email change out of scope | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (two-step and sessions only; one page instead of tabs; passkeys, name and password not designed) | built |
+| My security, every member, `/settings/security` (brick 3d): name edited in place; *Sign-in* card (password, two-step on/off and what requires it, backup codes left); *Passkeys* card (add, rename, remove, last used); *Where you're signed in* (device and browser, approximate place, masked IP, last active, This device, sign out one or all others). Phone, photo and email change out of scope. Admin console: a super-admin's two-step shows "Required because you're a Vento super-admin" with no **Turn off** | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (two-step and sessions only; one page instead of tabs; passkeys, name and password not designed) | built |
 | My security dialogs (brick 3d): Confirm it's you (password), Change password, Turn off two-step (password and code), New backup codes, Remove passkey, Sign out other devices | – | pattern |
 | Passkey offer after a password sign-in, once per device (brick 3d) | – | pattern |
 | Two-step required banner: "{Organization} now requires two-step sign-in" with **Set up two-step** (brick 3d; members without two-step when the organization requires it for everyone) | – | pattern |
@@ -255,7 +255,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Releases list and feature detail: stage control, **Turn off for everyone** always at the foot, holders by group, overrides, recent changes | – | pattern, needs-design |
 | Plans list, plan detail (versions side by side), **Publish new version** stepped sheet (also a new plan) | – | pattern, needs-design |
 | Super-admins: list, add (sheet), remove (confirm with reason), "fewer than 4" line | – | pattern |
-| Activity (platform audit trail): person, feature, kind and date filters; **Command line** rose and **Console** tags | – (pattern from [AuditLog](claude-design/AuditLog.dc.html)) | pattern |
+| Activity (platform audit trail): person, feature, kind and date filters (organization from a detail page's **See all**); **Command line** rose, **Console** and **Scheduled** tags | – (pattern from [AuditLog](claude-design/AuditLog.dc.html)) | pattern |
 | User menu, More sheet and ⌘K: **Vento console** / "Open Vento console" (active super-admins only) | – | built |
-| Flag and plan commands (`pnpm flags …`, `pnpm plans …`, `pnpm superadmin …`; text output, used until the console ships) | – | built |
+| Emails: break-glass change ("Moved Sales to off from the command line", to every other super-admin), "You're now a Vento super-admin", "You're no longer a Vento super-admin", and the notice to the other super-admins | – | pattern |
+| Flag and plan commands (`pnpm flags …`, `pnpm plans …`, `pnpm superadmin …`; text output). Break-glass only since the console: change commands refuse without `--break-glass` | – | built |
 | System health and failed jobs | [AdminJobs](claude-design/AdminJobs.dc.html) (failed jobs only) | todo |

@@ -102,8 +102,8 @@ The "Release" column is the [release plan](../release-plan.md)'s recommendation;
 ## User flow
 **Release to a pilot developer (J-ADM-01): 1 command**
 1. `pnpm flags show sales`: stage, who has it, overrides, prerequisites, which plans include it.
-2. `pnpm flags group "Lekki Partners Ltd" pilot --reason "Pilot agreement signed" --by ada@vento.ng` (once per pilot).
-3. `pnpm flags stage sales pilot --reason "Release 1 pilot" --by ada@vento.ng`. It shows what changes ("Sales will be available to 3 organizations: 1 internal, 2 pilot") and asks to confirm.
+2. `pnpm flags group "Lekki Partners Ltd" pilot --reason "Pilot agreement signed" --by ada@ventoerp.com` (once per pilot).
+3. `pnpm flags stage sales pilot --reason "Release 1 pilot" --by ada@ventoerp.com`. It shows what changes ("Sales will be available to 3 organizations: 1 internal, 2 pilot") and asks to confirm.
 4. Within 30 seconds, Lekki Partners' members who can view Sales see it with an "Early access" tag.
 
 **Release to everyone:** `pnpm flags stage sales on …`. The command warns if no plan includes the feature ("Sales is in no plan, so standard organizations still won't have it"). **Kill switch:** `pnpm flags stage sales off …`.

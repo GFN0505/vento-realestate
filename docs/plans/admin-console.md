@@ -1,6 +1,6 @@
 # Plan: Vento console, slice 1 (console core)
 
-- **Status:** approved (owner, 26 Nov 2026), with both §16 recommendations: `@simplewebauthn/server` and `/browser` imported directly for passkey re-proof, and the Projects column and limit hidden until the projects module counts them.
+- **Status:** built on `feat/admin-console` (shared 3444e03, screens 40bdcd6, API e4ab676, break-glass 04b2c85; docs with the e2e specs), awaiting review, the security audit and merge. Approved by the owner on 26 Nov 2026, with both §16 recommendations: `@simplewebauthn/server` and `/browser` imported directly for passkey re-proof, and the Projects column and limit hidden until the projects module counts them.
 - **Spec:** [docs/specs/admin-console.md](../specs/admin-console.md) (approved 26 Nov 2026; its "Owner's decisions" are final and not reopened here)
 - **Builds on:** [feature-flags](feature-flags.md) (operations, previews, audit, snapshot) and [my-security](my-security.md) (passkeys, in-process code checks, session fields)
 - **Journeys:** J-ADM-01, J-ADM-02 (changed: console first, commands as break-glass), J-ADM-03 (new). J-ADM-04 and J-ONB-11 are slice 2 and not planned here.
@@ -539,7 +539,7 @@ One component drives all 13 changes: `change-sheet.tsx` (fields → **Review**) 
 Both are pinned to the versions the plugin resolves; Renovate groups them with `@better-auth/passkey`. RUNBOOK §7 (release age) is satisfied, since both have been in the tree since 3d.
 
 ## 13. Seed and fixtures
-- Seed: `ada@ventoerp.com` (viewer in Vento Homes, super-admin, two-step and TOTP secret printed once, as today) and `tunde@ventoerp.com` (super-admin, no organization). Existing `ada@vento.ng` references in docs move to `ventoerp.com`.
+- Seed: `ada@ventoerp.com` (viewer in Vento Homes, super-admin, two-step and TOTP secret printed once, as today) and `tunde@ventoerp.com` (super-admin, no organization). Existing seed addresses on the old domain in docs move to `ventoerp.com`.
 - e2e fixtures (§10) never change global stages except the two keys `releases.spec.ts` owns, which it restores.
 - Production bootstrap (RUNBOOK §4) is unchanged; step 3 gains "then sign in at `/console` and confirm it opens before relying on it; the commands need `--break-glass` from now on".
 

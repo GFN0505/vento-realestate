@@ -23,5 +23,6 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 - "Entity" is now "Company" everywhere you read it.
 
 ### Security
+- Changes Vento makes to your plan or features now require a Vento staff member's two-step sign-in and are recorded with who made them. Your audit trail still shows them as "Vento", in plain words. Vento staff who can make these changes can't turn off their own two-step sign-in.
 - Unused sign-in endpoints are switched off, and wrong two-step codes are counted everywhere.
 - Keyboard focus is visible on every button again.
