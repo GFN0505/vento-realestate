@@ -98,6 +98,7 @@ export function useSendInvitations(onSent: (sent: readonly string[]) => void) {
       const reason = errorReason(error)
       if (
         reason === 'entity_unavailable' ||
+        reason === 'role_unavailable' ||
         (error instanceof ORPCError && error.code === 'NOT_FOUND')
       ) {
         // An entity was archived (or a role deleted) meanwhile: refresh the choices.

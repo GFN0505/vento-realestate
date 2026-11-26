@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useRouter } from '@tanstack/react-router'
 import {
   Building2Icon,
+  BuildingIcon,
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
@@ -10,6 +11,9 @@ import {
   LayersIcon,
   ListChecksIcon,
   LogOutIcon,
+  PlusIcon,
+  ShieldCheckIcon,
+  ShieldPlusIcon,
   UserPlusIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -18,17 +22,30 @@ import { THEME_OPTIONS } from '@/components/shell/theme-icons'
 import { CommandGroup, CommandHint, CommandItem } from '@/components/ui/command'
 import { checklistQuery } from '@/features/checklist/checklist-queries'
 import { showChecklist } from '@/features/checklist/checklist-visibility'
+import { openAddCompany } from '@/features/companies/open-add-company'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
 import { useSwitchOrganization } from '@/features/organization/switch-organization'
 import { UpgradeHintRows } from '@/features/plan/upgrade-hint-rows'
-import { canPreview, useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
-import { type SettingsPath, visibleSections } from '@/features/settings/sections'
+import {
+  canPreview,
+  rolesQuery,
+  useEffectiveAccess,
+  useMe,
+} from '@/features/preview/use-effective-permissions'
+import { type SettingsKey, type SettingsPath, visibleSections } from '@/features/settings/sections'
 import { can } from '@/lib/permissions'
 import { setTheme, useTheme } from '@/lib/theme'
 import { canView, type NavPath, navItemForModule, navTag, visibleNav } from './nav'
 import { readRecentPages } from './recent-pages'
 import { shellUi } from './shell-ui'
 import { useShellActions } from './use-shell-actions'
+
+const SECTION_ICONS: Record<SettingsKey, typeof UsersIcon> = {
+  organization: Building2Icon,
+  companies: BuildingIcon,
+  team: UsersIcon,
+  roles: ShieldCheckIcon,
+}
 
 type Props = {
   page: 'root' | 'preview'
@@ -58,6 +75,12 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
   const canInvite = can(access.permissions, 'settings', 'create')
   const checklist = useQuery({ ...checklistQuery(), enabled: canInvite })
   const checklistHidden = canInvite && checklist.data?.hidden === true
+  const canAddCompany = me.canAddCompany && canInvite
+  // New role: settings create and every company (organization-wide, as the server checks).
+  const canNewRole = canInvite && me.member?.entityIds === null
+  // Roles by name, only once the list is cached: ⌘K never fetches roles itself.
+  const canSeeRoles = can(access.permissions, 'settings', 'view')
+  const roles = useQuery({ ...rolesQuery(), enabled: false }).data?.items ?? []
   const run = (fn: () => void) => () => {
     close()
     fn()
@@ -135,19 +158,44 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             {navTag(access, item) === 'early_access' && <CommandHint>Early access</CommandHint>}
           </CommandItem>
         ))}
-        {visibleSections(access).map((section) => (
-          <CommandItem
-            key={section.key}
-            value={`go:settings:${section.key}`}
-            keywords={[`Go to ${section.label}`, 'settings', ...section.keywords]}
-            onSelect={() => navigate(section.to)}
-          >
-            <UsersIcon aria-hidden />
-            Go to {section.label}
-            <CommandHint>Settings</CommandHint>
-          </CommandItem>
-        ))}
+        {visibleSections(access).map((section) => {
+          const Icon = SECTION_ICONS[section.key]
+          return (
+            <CommandItem
+              key={section.key}
+              value={`go:settings:${section.key}`}
+              keywords={[`Go to ${section.label}`, 'settings', ...section.keywords]}
+              onSelect={() => navigate(section.to)}
+            >
+              <Icon aria-hidden />
+              Go to {section.label}
+              <CommandHint>Settings</CommandHint>
+            </CommandItem>
+          )
+        })}
       </CommandGroup>
+      {canSeeRoles && roles.length > 0 && (
+        <CommandGroup heading="Roles">
+          {roles.map((role) => (
+            <CommandItem
+              key={role.id}
+              value={`role:${role.id}`}
+              keywords={[`${role.name} role`, 'roles permissions access']}
+              onSelect={run(
+                () =>
+                  void router.navigate({
+                    to: '/settings/roles/$roleId',
+                    params: { roleId: role.id },
+                  }),
+              )}
+            >
+              <ShieldCheckIcon aria-hidden />
+              <span className="truncate">{role.name} role</span>
+              {!role.isSystem && <CommandHint>Custom</CommandHint>}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      )}
       <CommandGroup heading="Actions">
         {canInvite && (
           <CommandItem
@@ -157,6 +205,28 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
           >
             <UserPlusIcon aria-hidden />
             Invite people
+          </CommandItem>
+        )}
+        {canAddCompany && (
+          <CommandItem
+            value="company:add"
+            keywords={['Add company', 'new company spv entity holding']}
+            onSelect={run(() => openAddCompany(access.showUpgradeHints ? me.plan : null))}
+          >
+            <PlusIcon aria-hidden />
+            Add company
+          </CommandItem>
+        )}
+        {canNewRole && (
+          <CommandItem
+            value="role:new"
+            keywords={['New role', 'create custom role permissions duplicate']}
+            onSelect={run(
+              () => void router.navigate({ to: '/settings/roles', search: { new: true } }),
+            )}
+          >
+            <ShieldPlusIcon aria-hidden />
+            New role
           </CommandItem>
         )}
         {checklistHidden && (

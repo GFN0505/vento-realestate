@@ -17,10 +17,14 @@ export function twoStepNote(role: Pick<Role, 'name' | 'requiresTwoStep'>, joinin
     : `${role.name} needs two-step sign-in. They'll set it up at their next sign-in if it's off.`
 }
 
-/** Owners appear in role menus for owners only (spec: nobody is made an owner by accident). */
-export function grantableRoles<T extends Pick<Role, 'key'>>(
+/**
+ * The roles a viewer may give, in the server's order (built-ins, then custom A–Z). Roles wider
+ * than the viewer's own permissions are left out, like Owner for non-owners (plan question 2):
+ * nobody is offered something they can't do.
+ */
+export function grantableRoles<T extends Pick<Role, 'key' | 'can'>>(
   roles: readonly T[],
   viewerIsOwner: boolean,
 ) {
-  return roles.filter((role) => viewerIsOwner || role.key !== 'owner')
+  return roles.filter((role) => role.can.assign && (viewerIsOwner || role.key !== 'owner'))
 }

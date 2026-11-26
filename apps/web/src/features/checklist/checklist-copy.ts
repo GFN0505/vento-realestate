@@ -10,6 +10,11 @@ export const CHECKLIST_COPY: Record<ChecklistItemKey, Copy> = {
     open: 'The company that holds your first project',
     short: 'first entity',
   },
+  other_companies: {
+    label: 'Add your other companies (SPVs)',
+    open: 'Most estates sit in their own company. Add each SPV you run.',
+    short: 'other companies',
+  },
   two_step: {
     label: 'Turn on two-step sign-in',
     open: 'A code from your phone at each sign-in',

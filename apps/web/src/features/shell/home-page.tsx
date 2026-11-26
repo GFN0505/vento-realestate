@@ -9,6 +9,7 @@ import { greeting, longDateInLagos } from './greeting'
 import { HomeHero } from './home-hero'
 import { homeKpis, kpiNote } from './home-kpis'
 import { navItemForModule, workspaceModules } from './nav'
+import { NoCompanyCard } from './no-company-card'
 import { usePageTitle } from './use-page-title'
 import { WorkspaceGrid } from './workspace-grid'
 
@@ -31,7 +32,7 @@ export function HomePage() {
     entity.status === 'pending' && !entity.locked ? (
       <Skeleton className="inline-block h-3.5 w-24 bg-auth-hairline align-middle" />
     ) : (
-      (entity.entity?.name ?? 'All entities')
+      (entity.entity?.name ?? (entity.noCompany ? 'No company' : 'All entities'))
     )
 
   return (
@@ -46,6 +47,7 @@ export function HomePage() {
         }
       />
       <TrialLine />
+      {entity.noCompany && <NoCompanyCard />}
       {canSeeChecklist(access) && <HomeChecklist />}
       {kpis.length > 0 && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">

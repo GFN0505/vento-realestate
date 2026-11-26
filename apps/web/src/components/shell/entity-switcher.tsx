@@ -3,8 +3,16 @@ import type { ComponentType } from 'react'
 import { LazyMenu, type LazyMenuProps } from '@/components/ui/lazy-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
-import { useMe } from '@/features/preview/use-effective-permissions'
+import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
+import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
+
+/** "+ Add company" in the menu: the server's answer, narrowed by a preview (spec). */
+export function useCanAddCompany(): boolean {
+  const me = useMe()
+  const { permissions } = useEffectiveAccess()
+  return me.canAddCompany && can(permissions, 'settings', 'create')
+}
 
 type Variant = { compact: boolean }
 
@@ -68,8 +76,9 @@ const loaders = { compact: loadMenu(true), bar: loadMenu(false) }
 export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
   const me = useMe()
   const current = useCurrentEntity()
+  const canAdd = useCanAddCompany()
   const organization = me.organization?.name ?? 'Vento'
-  const label = current.entity?.name ?? 'All entities'
+  const label = switcherLabel(current)
 
   if (current.status === 'pending' && !current.locked) {
     return compact ? (
@@ -84,7 +93,8 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
     )
   }
 
-  if (current.locked) {
+  // One company (or none left) and nothing to add: a label, not a menu of one.
+  if ((current.locked || current.noCompany) && !canAdd) {
     return (
       <div className={cn(entityTriggerClass({ compact }), 'cursor-default active:bg-transparent')}>
         <EntityTriggerContent
@@ -105,4 +115,10 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
       <EntityTriggerContent compact={compact} organization={organization} label={label} menu />
     </LazyMenu>
   )
+}
+
+/** The company name, "All entities", or "No company" when every one of theirs is archived. */
+export function switcherLabel(current: ReturnType<typeof useCurrentEntity>): string {
+  if (current.entity) return current.entity.name
+  return current.noCompany ? 'No company' : 'All entities'
 }

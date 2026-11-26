@@ -22,6 +22,11 @@ export function entitiesQuery() {
 }
 
 export type CurrentEntity = EntityView & {
+  /**
+   * Limited to companies that are all archived now: nothing to show. The switcher reads
+   * "No company" and Home says who to ask (spec "Company switcher changes").
+   */
+  noCompany: boolean
   options: readonly Entity[]
   status: 'pending' | 'error' | 'success'
   refetch: () => void
@@ -45,8 +50,10 @@ export function useCurrentEntity(): CurrentEntity {
     void navigate({ to: '.', search: (prev) => ({ ...prev, entity: entityId ?? undefined }) })
   }
 
+  const limits = me.member?.entityIds ?? null
   return {
     ...view,
+    noCompany: query.isSuccess && limits !== null && options.length === 0,
     options,
     status: query.status,
     refetch: () => void query.refetch(),

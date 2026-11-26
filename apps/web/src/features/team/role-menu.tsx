@@ -7,6 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { rolesQuery, useEffectiveAccess } from '@/features/preview/use-effective-permissions'
@@ -47,11 +48,26 @@ export function RoleMenu({ row }: { row: TeamMemberRow }) {
             if (role) actions.changeRole(row, { id: role.id, key: role.key, name: role.name })
           }}
         >
-          {options.map((role) => (
-            <DropdownMenuRadioItem key={role.id} value={role.id}>
-              {role.name}
-            </DropdownMenuRadioItem>
-          ))}
+          {options
+            .filter((role) => role.isSystem)
+            .map((role) => (
+              <DropdownMenuRadioItem key={role.id} value={role.id}>
+                {role.name}
+              </DropdownMenuRadioItem>
+            ))}
+          {options.some((role) => !role.isSystem) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Custom roles</DropdownMenuLabel>
+            </>
+          )}
+          {options
+            .filter((role) => !role.isSystem)
+            .map((role) => (
+              <DropdownMenuRadioItem key={role.id} value={role.id}>
+                {role.name}
+              </DropdownMenuRadioItem>
+            ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
