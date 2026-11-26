@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
 import { members } from '@/db/schema'
 import { withRollback } from '@/test/db'
-import { createMember, createOrganization, type TestOrg } from '@/test/factories'
+import { createMember, createOrganization, createUser, type TestOrg } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 
 async function joinedOn(tx: DbOrTx, memberId: string, day: string) {
@@ -72,6 +72,17 @@ describe('access.whoCanChangeAccess', () => {
         { name: 'Bisi Lawal', roleName: 'Owner' },
         { name: 'Ngozi Adeyemi', roleName: 'Admin' },
       ])
+    }))
+
+  it('never names a member of another organization', () =>
+    withRollback(async (tx) => {
+      const { org, grace } = await team(tx)
+      const outsider = await createUser(tx, { name: 'Chidi Outsider', twoFactorEnabled: true })
+      const other = await createOrganization(tx, { owner: outsider })
+      await joinedOn(tx, other.ownerMemberId, '2020-01-01')
+      const result = await ask(tx, org, grace.user)({ module: 'hr' })
+      expect(result.contacts.map((c) => c.name)).not.toContain(other.owner.name)
+      expect(result.contacts[0]).toEqual({ name: 'Olumide Bankole', roleName: 'Owner' })
     }))
 
   it('returns names and roles only, never an email', () =>

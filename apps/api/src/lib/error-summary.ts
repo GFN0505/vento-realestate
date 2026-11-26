@@ -1,3 +1,5 @@
+import { ORPCError } from '@orpc/server'
+
 type ErrorLike = { code?: unknown; constraint?: unknown; cause?: unknown }
 
 /** The innermost error that carries a database (or system) error code, if any. */
@@ -15,6 +17,8 @@ function findCoded(error: unknown): ErrorLike | undefined {
  * What to log about an unexpected error without leaking personal data. Drizzle puts query
  * parameters (emails, names) into its message, and Postgres messages can quote input values,
  * so database errors are logged by code and constraint only, and stacks keep only their frames.
+ * Any other message may come from a third party and quote input (an email, a name), so only our
+ * own errors (ORPCError, whose code and message we wrote) log their message.
  */
 export function errorSummary(error: unknown): Record<string, string | undefined> {
   if (!(error instanceof Error)) return { error: typeof error }
@@ -25,6 +29,9 @@ export function errorSummary(error: unknown): Record<string, string | undefined>
     .filter((line) => /^\s+at /.test(line))
     .slice(0, 8)
     .join('\n')
+  if (error instanceof ORPCError) {
+    return { error: error.name, code: error.code, detail: error.message.slice(0, 200), stack }
+  }
   if (coded) {
     return {
       error: error.name,
@@ -33,5 +40,5 @@ export function errorSummary(error: unknown): Record<string, string | undefined>
       stack,
     }
   }
-  return { error: error.name, detail: error.message.split('\n')[0]?.slice(0, 200), stack }
+  return { error: error.name, stack }
 }

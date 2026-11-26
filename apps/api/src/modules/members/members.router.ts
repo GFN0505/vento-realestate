@@ -1,6 +1,7 @@
 import { requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
 import { sendAll } from '@/email/mailer'
+import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
 import { member } from '@/orpc'
 import {
@@ -34,7 +35,7 @@ export const membersRouter = {
         // The reset is done; they can still use "Forgot password" to get a link.
         logger.error('Reset link after two-step reset not sent', {
           requestId: context.requestId,
-          error: error instanceof Error ? error.message : String(error),
+          ...errorSummary(error),
         })
       }
       return { notice: result.notice }
