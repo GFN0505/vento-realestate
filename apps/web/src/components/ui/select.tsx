@@ -114,4 +114,40 @@ function SelectItem({
   )
 }
 
-export { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue }
+/** A quiet group heading, e.g. "Custom roles" under the built-ins. */
+function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
+  return (
+    <SelectPrimitive.Label
+      data-slot="select-label"
+      className={cn(
+        'px-2 pt-2 pb-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em]',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function SelectSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Separator>) {
+  return (
+    <SelectPrimitive.Separator
+      data-slot="select-separator"
+      className={cn('-mx-1 my-1 h-px bg-border', className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+}

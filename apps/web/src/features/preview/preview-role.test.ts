@@ -1,20 +1,10 @@
-import { DEFAULT_ROLES, defaultPermissions, type Role } from '@vento/shared'
+import type { Role } from '@vento/shared'
 import { afterEach, describe, expect, it } from 'vitest'
-import { testMe } from '@/test/me'
+import { testMe, testRoles } from '@/test/me'
 import { clearPreview, getPreview, resetPreviewForTests, startPreview } from './preview-role'
 import { effectiveAccess } from './use-effective-permissions'
 
-const roles: Role[] = DEFAULT_ROLES.map((r) => ({
-  id: `role-${r.key}`,
-  key: r.key,
-  name: r.name,
-  pluralName: r.pluralName,
-  description: r.description,
-  isSystem: true,
-  requiresTwoStep: r.requiresTwoStep,
-  permissions: defaultPermissions(r),
-  canApprove: [],
-}))
+const roles: Role[] = testRoles().map((r) => ({ ...r, canApprove: [] }))
 
 const me = testMe
 

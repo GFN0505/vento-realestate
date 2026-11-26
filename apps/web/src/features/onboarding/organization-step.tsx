@@ -4,12 +4,12 @@ import { createOrganizationInput, MONTHS, NIGERIAN_STATES, stateLabel } from '@v
 import { useId } from 'react'
 import { useForm } from 'react-hook-form'
 import { FormAlert } from '@/components/auth/form-alert'
+import { NativeSelect } from '@/components/native-select'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { apiErrorMessage } from '@/lib/api-errors'
 import { orpc } from '@/lib/orpc'
-import { NativeSelect } from './native-select'
 import { OnboardingActions, StepHeader } from './onboarding-layout'
 
 /** Step 1. No RC number or logo here, and NGN is fixed (CHANGES.md). */

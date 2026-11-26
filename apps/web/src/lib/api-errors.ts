@@ -15,9 +15,15 @@ export const OFFLINE_SAVE_ERROR =
  * that's out of date (the page reloads into the right organization with its own notice).
  */
 export function toastApiError(error: unknown) {
-  if (error instanceof ORPCError && error.code === 'UNAUTHORIZED') return
-  if (isOrganizationChanged(error)) return
+  if (isHandledElsewhere(error)) return
   toast.error(apiErrorMessage(error))
+}
+
+/** A refused session or an out-of-date tab: the shell already says so; forms stay quiet. */
+export function isHandledElsewhere(error: unknown): boolean {
+  return (
+    (error instanceof ORPCError && error.code === 'UNAUTHORIZED') || isOrganizationChanged(error)
+  )
 }
 
 /**

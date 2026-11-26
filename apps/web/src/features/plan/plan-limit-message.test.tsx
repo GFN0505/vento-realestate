@@ -1,9 +1,9 @@
 import { ORPCError } from '@orpc/client'
 import { screen } from '@testing-library/react'
-import { DEFAULT_ROLES, defaultPermissions, type Role } from '@vento/shared'
+import type { Role } from '@vento/shared'
 import { afterEach, describe, expect, it } from 'vitest'
 import { clearPreview, startPreview } from '@/features/preview/preview-role'
-import { testMe } from '@/test/me'
+import { testMe, testRoles } from '@/test/me'
 import { renderWithMe } from '@/test/render-with-me'
 import { PlanLimitMessage } from './plan-limit-message'
 
@@ -17,17 +17,7 @@ const limitError = (message: string) =>
     data: { reason: 'plan_limit', limit: 'entities', included: 2 },
   })
 
-const roles: Role[] = DEFAULT_ROLES.map((r) => ({
-  id: `role-${r.key}`,
-  key: r.key,
-  name: r.name,
-  pluralName: r.pluralName,
-  description: r.description,
-  isSystem: true,
-  requiresTwoStep: r.requiresTwoStep,
-  permissions: defaultPermissions(r),
-  canApprove: [],
-}))
+const roles: Role[] = testRoles().map((r) => ({ ...r, canApprove: [] }))
 
 afterEach(() => clearPreview())
 

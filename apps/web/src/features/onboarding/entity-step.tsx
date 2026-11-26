@@ -1,26 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { entityInput, rcNumberWarning, tinWarning } from '@vento/shared'
-import { type ComponentProps, useId } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { entityInput } from '@vento/shared'
+import { useId } from 'react'
+import { Controller, type Resolver, useForm } from 'react-hook-form'
 import { FormAlert } from '@/components/auth/form-alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { CompanyFields, type CompanyFieldValues } from '@/features/companies/sheet/company-fields'
 import { apiErrorMessage, errorReason } from '@/lib/api-errors'
 import { orpc } from '@/lib/orpc'
-import { EntityTypePicker } from './entity-type-picker'
 import { OnboardingActions, StepHeader } from './onboarding-layout'
 
 /** Step 2. No collections account here: bank accounts come with Finance (CHANGES.md). */
 export function EntityStep({ organizationName }: { organizationName: string }) {
-  const ids = { name: useId(), rc: useId(), tin: useId(), vat: useId() }
+  const vatId = useId()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const form = useForm({
-    resolver: zodResolver(entityInput),
+  const form = useForm<CompanyFieldValues>({
+    // The schema turns blank RC and TIN into null; the form keeps strings for the inputs.
+    resolver: zodResolver(entityInput) as unknown as Resolver<CompanyFieldValues>,
     defaultValues: {
       name: organizationName,
       type: 'spv',
@@ -29,7 +28,6 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
       vatRegistered: false,
     },
   })
-  const { errors } = form.formState
   const create = useMutation(
     orpc.onboarding.createFirstEntity.mutationOptions({
       onSuccess: async () => {
@@ -43,14 +41,11 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
       },
     }),
   )
-  // Format hints warn but never block: RC and TIN can be fixed later.
-  const rcHint = rcNumberWarning(form.watch('rcNumber'))
-  const tinHint = tinWarning(form.watch('tin'))
   const showAlert = create.error && errorReason(create.error) !== 'rc_number_taken'
 
   return (
     <form
-      onSubmit={form.handleSubmit((values) => create.mutate(values))}
+      onSubmit={form.handleSubmit((values) => create.mutate(entityInput.parse(values)))}
       noValidate
       className="contents"
     >
@@ -59,41 +54,9 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
         entity.
       </StepHeader>
       {showAlert && <FormAlert variant="error">{apiErrorMessage(create.error)}</FormAlert>}
-      <Controller
-        control={form.control}
-        name="type"
-        render={({ field }) => <EntityTypePicker value={field.value} onChange={field.onChange} />}
-      />
-      <Field data-invalid={!!errors.name}>
-        <FieldLabel htmlFor={ids.name}>Entity name</FieldLabel>
-        <Input
-          id={ids.name}
-          aria-invalid={!!errors.name}
-          aria-describedby={errors.name ? `${ids.name}-error` : undefined}
-          {...form.register('name')}
-        />
-        <FieldError id={`${ids.name}-error`}>{errors.name?.message}</FieldError>
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2 sm:gap-3.5">
-        <CodeField
-          id={ids.rc}
-          label="RC number"
-          placeholder="RC 1234567"
-          hint={rcHint}
-          error={errors.rcNumber?.message}
-          {...form.register('rcNumber')}
-        />
-        <CodeField
-          id={ids.tin}
-          label="TIN"
-          placeholder="12345678-0001"
-          hint={tinHint}
-          error={errors.tin?.message}
-          {...form.register('tin')}
-        />
-      </div>
+      <CompanyFields form={form} nameLabel="Entity name" />
       <label
-        htmlFor={ids.vat}
+        htmlFor={vatId}
         className="flex cursor-pointer items-start gap-2.5 border-t py-2.5 text-[13px]"
       >
         <Controller
@@ -101,7 +64,7 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
           name="vatRegistered"
           render={({ field }) => (
             <Checkbox
-              id={ids.vat}
+              id={vatId}
               checked={field.value}
               onCheckedChange={(v) => field.onChange(v === true)}
               className="mt-px"
@@ -121,36 +84,5 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
         </Button>
       </OnboardingActions>
     </form>
-  )
-}
-
-type CodeFieldProps = ComponentProps<'input'> & {
-  id: string
-  label: string
-  hint: string | null
-  error?: string | undefined
-}
-
-function CodeField({ id, label, hint, error, ...input }: CodeFieldProps) {
-  const describedBy = `${id}-hint`
-  return (
-    <Field data-invalid={!!error}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        className="tabular-nums"
-        autoCapitalize="characters"
-        aria-invalid={!!error}
-        aria-describedby={describedBy}
-        {...input}
-      />
-      {error ? (
-        <FieldError id={describedBy}>{error}</FieldError>
-      ) : (
-        <FieldDescription id={describedBy} className={hint ? 'text-status-amber-fg' : undefined}>
-          {hint ?? 'You can add this later'}
-        </FieldDescription>
-      )}
-    </Field>
   )
 }
