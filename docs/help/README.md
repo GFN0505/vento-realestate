@@ -31,5 +31,6 @@ docs/help/
 | [Set up your organization](getting-started/set-up-your-organization.md) | J-ONB-01 | written |
 | [Sign in with two-step](getting-started/sign-in-and-two-step.md) | J-ONB-04 | written |
 | [Join your team](getting-started/join-your-team.md) | J-ONB-02 | written |
+| [Find your way around](getting-started/find-your-way-around.md) | J-ONB-05 | written |
 
 Status: `todo` · `written` · `published`

@@ -20,17 +20,17 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
 | Setup checklist on Home (brick 3b) | [Onboarding](claude-design/Onboarding.dc.html) | todo |
-| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | todo |
-| ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | todo |
-| Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | todo |
+| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
+| ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
+| Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
 | Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | todo |
 | Trial ending: line on Home and email to owners (feature flags) | – | todo |
 | Notifications panel and notification preferences | [Notifications](claude-design/Notifications.dc.html), [NotificationPrefs](claude-design/NotificationPrefs.dc.html) | todo |
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
-| Keyboard shortcuts help (`?`) (brick 3a) | – | todo |
+| Keyboard shortcuts help (`?`) (brick 3a) | – | pattern |
 | My security: two-step on/off, backup codes, active sessions, passkeys (brick 3d); my profile | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (security only; passkeys and profile not designed) | todo |
-| 403 no access, 404 not found, 500 error, offline banner and page (brick 3a; Request access in brick 4) | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | todo |
+| 403 no access, 404 not found, 500 error, offline banner and page (brick 3a; Request access in brick 4) | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | built (Request access in brick 4) |
 | Maintenance page | – | todo |
 | Session expired / signed out elsewhere | [SessionExpired](claude-design/SessionExpired.dc.html) | built |
 | Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | built (tokens, fonts, form components) |
@@ -38,8 +38,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 1. Home and analytics
 | Screen | Design | Status |
 |---|---|---|
-| Executive home | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) | todo |
-| Role homes: Land & legal, Project manager, Sales, Finance, HR, Facility | [HomeLand](claude-design/HomeLand.dc.html), [HomePM](claude-design/HomePM.dc.html), [HomeSales](claude-design/HomeSales.dc.html), [HomeFinance](claude-design/HomeFinance.dc.html), [HomeHR](claude-design/HomeHR.dc.html), [HomeFM](claude-design/HomeFM.dc.html) | todo |
+| Executive home | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) | built (shell Home: hero, KPI placeholders, workspace; data arrives per module) |
+| Role homes: Land & legal, Project manager, Sales, Finance, HR, Facility | [HomeLand](claude-design/HomeLand.dc.html), [HomePM](claude-design/HomePM.dc.html), [HomeSales](claude-design/HomeSales.dc.html), [HomeFinance](claude-design/HomeFinance.dc.html), [HomeHR](claude-design/HomeHR.dc.html), [HomeFM](claude-design/HomeFM.dc.html) | built (role KPI sets; queues arrive per module) |
 | Daily digest (WhatsApp and email) | [MorningDigest](claude-design/MorningDigest.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
 | Dashboards: collections, delinquency, project progress, cash by entity, budget variance | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (as home cards) | todo |
 | Project IRR / ROI calculator | – | todo |
