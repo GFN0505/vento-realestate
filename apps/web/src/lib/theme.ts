@@ -121,3 +121,53 @@ export function useSidebarCollapsed(): boolean {
     () => false,
   )
 }
+
+// Sidebar width --------------------------------------------------------------------------------
+// The person drags the sidebar edge (desktop). index.html applies the stored width before first
+// paint; keep these values in sync with it (theme.test.ts reads both).
+
+export const SIDEBAR_WIDTH_KEY = 'vento-sidebar-width'
+export const SIDEBAR_WIDTH = { min: 220, max: 320, default: 256 } as const
+/** Dragged narrower than this, the sidebar snaps to icons (like Linear). */
+export const SIDEBAR_COLLAPSE_BELOW = 180
+const STEP = 16
+const BIG_STEP = 48
+
+export function clampSidebarWidth(width: number): number {
+  if (!Number.isFinite(width)) return SIDEBAR_WIDTH.default
+  return Math.round(Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, width)))
+}
+
+/** Where a drag to `x` (px from the sidebar's left edge) leaves the sidebar. */
+export function widthFromDrag(x: number): { collapsed: boolean; width: number } {
+  if (x < SIDEBAR_COLLAPSE_BELOW) return { collapsed: true, width: SIDEBAR_WIDTH.min }
+  return { collapsed: false, width: clampSidebarWidth(x) }
+}
+
+/** The width after a key press on the handle, or null if the key isn't a resize key. */
+export function widthFromKey(width: number, key: string, shift: boolean): number | null {
+  const step = shift ? BIG_STEP : STEP
+  if (key === 'ArrowLeft') return clampSidebarWidth(width - step)
+  if (key === 'ArrowRight') return clampSidebarWidth(width + step)
+  if (key === 'Home') return SIDEBAR_WIDTH.min
+  if (key === 'End') return SIDEBAR_WIDTH.max
+  return null
+}
+
+/** The stored width, or the default when missing or out of range. */
+export function storedSidebarWidth(): number {
+  const value = Number(readItem(SIDEBAR_WIDTH_KEY))
+  return value >= SIDEBAR_WIDTH.min && value <= SIDEBAR_WIDTH.max ? value : SIDEBAR_WIDTH.default
+}
+
+/** Live while dragging: only the CSS variable changes, so React doesn't re-render per frame. */
+export function previewSidebarWidth(width: number): void {
+  document.documentElement.style.setProperty('--sidebar-open-width', `${width}px`)
+}
+
+/** Commit a width: apply and remember it on this device (the default isn't stored). */
+export function setSidebarWidth(width: number): void {
+  const next = clampSidebarWidth(width)
+  previewSidebarWidth(next)
+  writeItem(SIDEBAR_WIDTH_KEY, next === SIDEBAR_WIDTH.default ? null : String(next))
+}

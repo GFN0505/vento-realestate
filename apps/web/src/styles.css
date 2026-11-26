@@ -280,16 +280,24 @@
  */
 :root {
   /*
-   * 248px, tested against 240 and 256: every module label and group heading fits at all three,
-   * and organization names up to about 22 characters ("Lekki Partners Ltd") fit the card;
-   * longer ones truncate with a tooltip at every width. 256 bought 8px of name and cost 8px of
-   * content; 240 felt cramped beside the card. 248 matches Linear and Mercury's proportions.
+   * The open width is the person's choice: dragged between 220 and 320px, 256 by default
+   * (owner's decision). The script in index.html sets --sidebar-open-width before first paint.
    */
-  --sidebar-width: 248px;
+  --sidebar-open-width: 256px;
+  --sidebar-width: var(--sidebar-open-width);
   --topbar-height: 60px;
 }
 :root[data-sidebar="collapsed"] {
   --sidebar-width: 64px;
+}
+/* While dragging the sidebar edge: follow the pointer exactly, and don't select text. */
+:root[data-sidebar-resizing] {
+  cursor: col-resize;
+  user-select: none;
+}
+:root[data-sidebar-resizing] * {
+  /* biome-ignore lint/complexity/noImportantStyles: a drag must not lag behind width transitions */
+  transition: none !important;
 }
 
 @layer base {

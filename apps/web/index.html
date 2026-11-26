@@ -8,8 +8,8 @@
     <title>Vento Real Estate</title>
     <script>
       // Before first paint: the theme (light by default; 'dark' or 'system' when chosen in the
-      // user menu) and the collapsed sidebar, so nothing flashes or shifts. The keys and values
-      // must match src/lib/theme.ts (a unit test reads this script).
+      // user menu), the collapsed sidebar and its width, so nothing flashes or shifts. The keys
+      // and values must match src/lib/theme.ts (a unit test reads this script).
       ;(() => {
         try {
           const root = document.documentElement
@@ -23,6 +23,10 @@
           }
           if (localStorage.getItem('vento-sidebar') === 'collapsed') {
             root.dataset.sidebar = 'collapsed'
+          }
+          const width = Number(localStorage.getItem('vento-sidebar-width'))
+          if (width >= 220 && width <= 320) {
+            root.style.setProperty('--sidebar-open-width', `${width}px`)
           }
         } catch (_) {}
       })()

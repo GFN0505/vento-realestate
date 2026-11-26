@@ -1,4 +1,5 @@
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { VentoMark } from '@/components/vento-mark'
 import { toggleSidebar, useSidebarCollapsed } from '@/lib/theme'
@@ -6,6 +7,11 @@ import { cn } from '@/lib/utils'
 import { OrganizationSwitcher } from './organization-switcher'
 import { SidebarFooterNav, SidebarNav, sidebarRow } from './sidebar-nav'
 import { UserMenu } from './user-menu'
+
+// Invisible at rest, so it can arrive a moment after first paint with no shift.
+const SidebarResizer = lazy(() =>
+  import('./sidebar-resizer').then((m) => ({ default: m.SidebarResizer })),
+)
 
 /**
  * The fixed navy sidebar on lg and wider (board ExecutiveHome), refined: lockup, organization
@@ -33,6 +39,9 @@ export function Sidebar() {
           <UserMenu variant="sidebar" collapsed={collapsed} />
         </div>
       </div>
+      <Suspense fallback={null}>
+        <SidebarResizer />
+      </Suspense>
     </nav>
   )
 }
