@@ -12,7 +12,10 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
-    "mail": "tsx src/scripts/mail.ts"
+    "mail": "tsx src/scripts/mail.ts",
+    "flags": "tsx src/platform/cli/main.ts flags",
+    "plans": "tsx src/platform/cli/main.ts plans",
+    "superadmin": "tsx src/platform/cli/main.ts superadmin"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.28",

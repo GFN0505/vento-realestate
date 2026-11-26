@@ -1,6 +1,7 @@
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
 import { PASSWORD_ERROR_CODES } from '../auth/error-codes'
+import { type FeatureKey, LIMIT_KEYS } from '../features/catalog'
 
 /** Why a request has no signed-in person. `session_expired` opens the "Session expired" dialog. */
 export const unauthorizedReason = z.enum(['signed_out', 'session_expired'])
@@ -14,6 +15,8 @@ export const forbiddenReason = z.enum([
   'invitation_email_mismatch',
   /** A granter limited to some entities can only give access within them. */
   'entity_limit',
+  /** A create would go over the plan's limit (projects, entities, people). */
+  'plan_limit',
 ])
 export type ForbiddenReason = z.infer<typeof forbiddenReason>
 
@@ -62,6 +65,9 @@ export const errorMap = {
       askName: z.string().optional(),
       /** That person's role, e.g. "owner". */
       askRole: z.string().optional(),
+      /** `plan_limit` only: which limit, and how many the plan includes. */
+      limit: z.enum(LIMIT_KEYS).optional(),
+      included: z.number().int().optional(),
     }),
   },
   NOT_FOUND: {
@@ -86,5 +92,21 @@ export const errorMap = {
   },
 } as const
 
-/** Base contract builder: every procedure declares the shared error map. */
-export const base = oc.errors(errorMap)
+/** The data of a FORBIDDEN error, e.g. `{ reason: 'plan_limit', limit: 'entities', included: 2 }`. */
+export type ForbiddenData = z.infer<(typeof errorMap)['FORBIDDEN']['data']>
+
+/**
+ * Procedure metadata (decision 0016). `feature` is the catalog key the procedure belongs to, or
+ * null for platform procedures with no flag. The server gates on it; a test checks every
+ * procedure declares it.
+ */
+export type ProcedureMeta = { feature?: FeatureKey | null }
+
+/** Base contract builder: the shared error map, no feature declared. Use `platform` or `forFeature`. */
+export const base = oc.$meta<ProcedureMeta>({}).errors(errorMap)
+
+/** Platform procedures: no flag, in every plan (accounts, organization, team, access). */
+export const platform = base.meta({ feature: null })
+
+/** Module procedures: `const sales = forFeature('sales')`, then `sales.input(…).output(…)`. */
+export const forFeature = (feature: FeatureKey) => base.meta({ feature })

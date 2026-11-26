@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { notice } from '../account/schema'
-import { base } from '../common/errors'
+import { platform } from '../common/errors'
 import { id, paginated } from '../common/schemas'
 import {
   acceptInvitationAsNewUserInput,
@@ -21,32 +21,32 @@ import {
 
 export const rolesContract = {
   /** At most a few dozen roles, still in the shared list shape. */
-  list: base.output(paginated(role)),
+  list: platform.output(paginated(role)),
 }
 
 export const membersContract = {
-  list: base.input(listMembersInput).output(paginated(member)),
-  updateAccess: base.input(updateMemberAccessInput).output(notice.extend({ member })),
-  remove: base.input(memberIdInput).output(notice),
-  resetTwoStep: base.input(memberIdInput).output(notice),
+  list: platform.input(listMembersInput).output(paginated(member)),
+  updateAccess: platform.input(updateMemberAccessInput).output(notice.extend({ member })),
+  remove: platform.input(memberIdInput).output(notice),
+  resetTwoStep: platform.input(memberIdInput).output(notice),
 }
 
 export const invitationsContract = {
-  list: base.input(listInvitationsInput).output(paginated(invitation)),
-  create: base.input(createInvitationsInput).output(notice.extend({ sent: z.number().int() })),
-  resend: base.input(z.strictObject({ id })).output(notice),
-  withdraw: base.input(z.strictObject({ id })).output(notice),
+  list: platform.input(listInvitationsInput).output(paginated(invitation)),
+  create: platform.input(createInvitationsInput).output(notice.extend({ sent: z.number().int() })),
+  resend: platform.input(z.strictObject({ id })).output(notice),
+  withdraw: platform.input(z.strictObject({ id })).output(notice),
   /** Public: what the invitation offers, for the Accept invitation screen. */
-  preview: base.input(invitationTokenInput).output(invitationPreview),
+  preview: platform.input(invitationTokenInput).output(invitationPreview),
   /** Signed in as the invited email. */
-  accept: base.input(invitationTokenInput).output(acceptInvitationOutput),
+  accept: platform.input(invitationTokenInput).output(acceptInvitationOutput),
   /** Public: creates the account and signs in (sets the session cookie). */
-  acceptAsNewUser: base.input(acceptInvitationAsNewUserInput).output(acceptInvitationOutput),
+  acceptAsNewUser: platform.input(acceptInvitationAsNewUserInput).output(acceptInvitationOutput),
   /** Public. */
-  decline: base.input(invitationTokenInput).output(notice),
+  decline: platform.input(invitationTokenInput).output(notice),
 }
 
 export const accessContract = {
   /** Any member: who can open a module and who to ask, for the 403 page. */
-  whoCanChangeAccess: base.input(whoCanChangeAccessInput).output(whoCanChangeAccessOutput),
+  whoCanChangeAccess: platform.input(whoCanChangeAccessInput).output(whoCanChangeAccessOutput),
 }

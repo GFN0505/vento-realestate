@@ -11,7 +11,9 @@ import {
 
 export const accountRouter = {
   // Not behind the tab guard: `me` is how a tab learns the truth, and switching is deliberate.
-  me: authed.account.me.handler(({ context }) => getMe(context.db, context.user, context.session)),
+  me: authed.account.me.handler(({ context }) =>
+    getMe(context.db, context.user, context.session, context.featureStore),
+  ),
   switchOrganization: authed.account.switchOrganization.handler(({ context, input }) =>
     switchOrganization(context.db, context.user, context.session, input.organizationId),
   ),

@@ -1,12 +1,14 @@
 import { z } from 'zod'
 import { monthNumber, nigerianState } from '../common/nigeria'
 import { id, paginationInput } from '../common/schemas'
+import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 
 export const organizationName = z
   .string()
   .trim()
   .min(2, { message: 'Enter at least 2 characters' })
   .max(120, { message: 'Use 120 characters or fewer' })
+  .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
 
 export const organization = z.object({
   id,
@@ -86,6 +88,7 @@ export const entityName = z
   .trim()
   .min(2, { message: 'Enter at least 2 characters' })
   .max(120, { message: 'Use 120 characters or fewer' })
+  .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
 
 export const entity = z.object({
   id,

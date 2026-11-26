@@ -2,9 +2,10 @@ import { useMatches } from '@tanstack/react-router'
 import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react'
 import { InShellContext } from '@/components/errors/error-state'
 import { LazyForbiddenPage } from '@/components/errors/lazy-pages'
+import { useFeatureLoss, useNotFoundRefetch } from '@/features/availability/use-availability-sync'
 import { useEntitySync } from '@/features/entity/use-current-entity'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
-import { canView, navItemForModule } from '@/features/shell/nav'
+import { canView, isAvailable, navItemForModule } from '@/features/shell/nav'
 import { routeModule } from '@/features/shell/route-module'
 import { loadPalette, preloadPalette, useOverlay } from '@/features/shell/shell-ui'
 import { useRouteFocus } from '@/features/shell/use-route-focus'
@@ -30,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useRouteFocus()
   useEntitySync()
   useShellSync()
+  useNotFoundRefetch()
 
   return (
     <InShellContext.Provider value>
@@ -61,14 +63,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 /**
- * The route guard runs once per navigation; this re-checks live, so a role changed while the
- * page is open (or a preview started) turns it into the 403 page without a reload.
+ * The route guard runs once per navigation; this re-checks live. A role changed while the page
+ * is open (or a preview started) turns it into the 403 page without a reload; a module the
+ * organization no longer has sends the member Home with a toast.
  */
 function PermittedPage({ children }: { children: ReactNode }) {
-  const { permissions } = useEffectiveAccess()
-  const module = useMatches({ select: routeModule })
+  const access = useEffectiveAccess()
+  // Only pages that loaded: a guard's 404 (e.g. a typed link) keeps its own page.
+  const module = useMatches({
+    select: (matches) => routeModule(matches.filter((m) => m.status === 'success')),
+  })
   const item = module ? navItemForModule(module) : undefined
-  if (module && item && !canView(permissions, item)) return <LazyForbiddenPage module={module} />
+  const lost = item && !isAvailable(access, item) ? item : null
+  useFeatureLoss(lost)
+  if (lost) return null
+  if (module && item && !canView(access, item)) return <LazyForbiddenPage module={module} />
   return children
 }
 

@@ -1,17 +1,40 @@
 import { type QueryClient, useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import type { Me, PermissionSet, Role, SystemRoleKey } from '@vento/shared'
+import type { FeatureKey, Me, PermissionSet, Role, SystemRoleKey } from '@vento/shared'
 import { meQuery } from '@/features/account/api'
+import type { NavAccess } from '@/features/shell/nav'
 import { orpc } from '@/lib/orpc'
 import { can, intersectPermissions } from '@/lib/permissions'
 import { getPreview, type PreviewRole, usePreview } from './preview-role'
 
-export type EffectiveAccess = {
+export type EffectiveAccess = NavAccess & {
   /** What navigation shows: the previewed role's view, never wider than the member's own. */
   permissions: PermissionSet | null
   roleKey: SystemRoleKey | null
   roleName: string | null
   /** The role being previewed, if any. */
   previewing: Role | null
+  /**
+   * Owner-only "Available on Growth" rows (⌘K, limit messages). Follows the previewed role, so
+   * an owner previewing Sales sees none, as a Sales member would.
+   */
+  showUpgradeHints: boolean
+}
+
+type Features = NavAccess['features']
+const NO_FEATURES: Features = new Map()
+// One Map per `me` response, so renders don't rebuild it.
+const featureMaps = new WeakMap<Me['features'], Features>()
+
+/** The organization's available features, keyed for lookups. The same while previewing. */
+export function featuresOf(me: Me): Features {
+  let map = featureMaps.get(me.features)
+  if (!map) {
+    map = new Map<FeatureKey, { earlyAccess: boolean }>(
+      me.features.map((f) => [f.key, { earlyAccess: f.earlyAccess }]),
+    )
+    featureMaps.set(me.features, map)
+  }
+  return map
 }
 
 export function rolesQuery() {
@@ -29,22 +52,31 @@ export function effectiveAccess(
   preview: PreviewRole | null,
 ): EffectiveAccess {
   const own = me.member
-  if (!own) return { permissions: null, roleKey: null, roleName: null, previewing: null }
-  const role = preview && canPreview(me) ? roles?.find((r) => r.id === preview.roleId) : undefined
-  if (!role) {
+  const organization = {
+    features: own ? featuresOf(me) : NO_FEATURES,
+    internal: me.organization?.internal ?? false,
+  }
+  if (!own) {
     return {
-      permissions: own.permissions,
-      roleKey: own.role.key,
-      roleName: own.role.name,
+      ...organization,
+      permissions: null,
+      roleKey: null,
+      roleName: null,
       previewing: null,
+      showUpgradeHints: false,
     }
   }
+  const role = preview && canPreview(me) ? roles?.find((r) => r.id === preview.roleId) : undefined
+  const roleKey = role ? role.key : own.role.key
   return {
+    ...organization,
     // Decision 12: a preview only narrows; never more than the member's own role can view.
-    permissions: intersectPermissions(role.permissions, own.permissions),
-    roleKey: role.key,
-    roleName: role.name,
-    previewing: role,
+    permissions: role ? intersectPermissions(role.permissions, own.permissions) : own.permissions,
+    roleKey,
+    roleName: role ? role.name : own.role.name,
+    previewing: role ?? null,
+    // The server sends `plan` to owners only; the role check covers a preview.
+    showUpgradeHints: me.plan !== null && roleKey === 'owner',
   }
 }
 

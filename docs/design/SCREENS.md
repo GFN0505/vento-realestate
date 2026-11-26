@@ -23,8 +23,8 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
 | ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
-| Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | todo |
-| Trial ending: line on Home and email to owners (feature flags) | – | todo |
+| Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | pattern (component built; first used in 3b) |
+| Trial ending: line on Home and email to owners (feature flags) | – | pattern |
 | Notifications panel and notification preferences | [Notifications](claude-design/Notifications.dc.html), [NotificationPrefs](claude-design/NotificationPrefs.dc.html) | todo |
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
@@ -240,5 +240,5 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | AI usage and cost by organization and feature | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
 | Feature flags: stage per flag, who has it, plans that include it (console in R2) | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
 | Plans: contents, limits, versions (console in R2) | – | todo |
-| Flag and plan commands (`pnpm flags …`, `pnpm plans …`; text output, used until the console ships) | – | todo |
+| Flag and plan commands (`pnpm flags …`, `pnpm plans …`, `pnpm superadmin …`; text output, used until the console ships) | – | built |
 | System health and failed jobs | [AdminJobs](claude-design/AdminJobs.dc.html) (failed jobs only) | todo |

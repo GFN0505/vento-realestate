@@ -1,22 +1,26 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRightIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { NavItem } from './nav'
+import { type NavAccess, type NavItem, navTag } from './nav'
 
 /**
  * "Your workspace": the modules this member can open (decision 12: only those) as cards, each
  * with a few words on what it holds and a link to its page. Unbuilt modules carry a small cyan
- * dot, explained once in the header, instead of a caption on every card.
+ * dot, explained once in the header, instead of a caption on every card. Early access modules
+ * carry the same small tag as the sidebar.
  */
 export function WorkspaceGrid({
   modules,
+  access,
   className,
 }: {
   modules: readonly NavItem[]
+  access: NavAccess
   className?: string
 }) {
   if (modules.length === 0) return null
-  const anySoon = modules.some((m) => m.status === 'soon')
+  const anySoon = modules.some((m) => navTag(access, m) === 'soon')
   return (
     <section aria-labelledby="workspace-title" className={cn('flex flex-col gap-4', className)}>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
@@ -32,7 +36,8 @@ export function WorkspaceGrid({
       </div>
       <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         {modules.map((item) => {
-          const soon = item.status === 'soon'
+          const tag = navTag(access, item)
+          const soon = tag === 'soon'
           return (
             <li key={item.key} className="flex">
               <Link
@@ -54,6 +59,7 @@ export function WorkspaceGrid({
                         <span className="sr-only">, opening soon</span>
                       </>
                     )}
+                    {tag === 'early_access' && <Badge variant="brand">Early access</Badge>}
                   </span>
                   <span className="text-pretty text-muted-foreground text-xs leading-snug">
                     {item.summary}

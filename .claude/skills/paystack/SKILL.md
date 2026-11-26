@@ -48,3 +48,6 @@ Recorded as new reversing entries linked to the original receipt and its allocat
 
 ## Env vars (document in `.env.example`, no values)
 `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_URL`
+
+## Feature availability
+Webhooks are public and never feature-gated: money arriving for an organization that has lost `finance.paystack` (rollback, downgrade, trial end) is still verified and recorded. Availability hides features; it never drops inbound money or data.

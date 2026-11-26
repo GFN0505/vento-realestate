@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { entities, invitations, members, sessions, users } from '@/db/schema'
 import { withRollback } from './db'
 import {
+  addAddOnRow,
   createEntity,
   createInvitation,
   createMember,
   createOrganization,
   createSession,
   createUser,
+  setOverride,
+  setStage,
 } from './factories'
 import { clientAs } from './router-client'
 
@@ -184,5 +187,48 @@ describe('organization isolation', () => {
         organizationId: theirs.id,
       } as unknown as Parameters<typeof client.entities.create>[0]
       await expect(client.entities.create(sneaky)).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+    }))
+})
+
+describe('feature and plan isolation', () => {
+  it("never lets one organization's overrides, add-ons or deals reach another", () =>
+    withRollback(async (tx) => {
+      const a = await createOrganization(tx, { name: 'Org A Ltd', planKey: 'starter' })
+      const b = await createOrganization(tx, { name: 'Org B Ltd', planKey: 'starter' })
+      await setStage(tx, 'land', 'on')
+      await setOverride(tx, a, { kind: 'release', key: 'sales.commissions', enabled: true })
+      await setOverride(tx, a, { kind: 'feature', key: 'facility', enabled: true })
+      await setOverride(tx, a, { kind: 'release', key: 'facility', enabled: true })
+      await setOverride(tx, a, { kind: 'limit', key: 'entities', limitValue: null })
+      await addAddOnRow(tx, a)
+      await createEntity(tx, b, { name: 'B Holding Ltd', type: 'holding' })
+      await createEntity(tx, b, { name: 'B SPV Ltd' })
+
+      const { client } = clientAs(tx, b.owner, { activeOrganizationId: b.id })
+      const me = await client.account.me()
+      expect(me.features).toEqual([{ key: 'land', earlyAccess: false }])
+      expect(me.plan).toMatchObject({ aiBudget: null, upgradeHints: [] })
+      await expect(
+        client.entities.create({ name: 'B Third Ltd', type: 'spv' }),
+      ).rejects.toMatchObject({ data: { reason: 'plan_limit' } })
+    }))
+
+  it("gives a person B's features, not internal A's, after switching to B", () =>
+    withRollback(async (tx) => {
+      const person = await createUser(tx, { name: 'Bisi Lawal', twoFactorEnabled: true })
+      const a = await createOrganization(tx, { name: 'Vento Demo Ltd', owner: person })
+      const b = await createOrganization(tx, {
+        name: 'Lekki Partners Ltd',
+        owner: person,
+        planKey: 'starter',
+      })
+      const session = await createSession(tx, person, { activeOrganizationId: a.id })
+      const inA = clientAs(tx, person, { sessionId: session.id, activeOrganizationId: a.id })
+      expect((await inA.client.account.me()).features.length).toBeGreaterThan(10)
+      await inA.client.account.switchOrganization({ organizationId: b.id })
+      const inB = clientAs(tx, person, { sessionId: session.id, activeOrganizationId: b.id })
+      const me = await inB.client.account.me()
+      expect(me.organization).toMatchObject({ id: b.id, internal: false })
+      expect(me.features).toEqual([])
     }))
 })

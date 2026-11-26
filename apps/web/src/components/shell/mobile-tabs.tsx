@@ -11,14 +11,14 @@ const MoreSheet = lazy(() => import('./more-sheet').then((m) => ({ default: m.Mo
 const tab =
   'flex min-h-12 flex-1 flex-col items-center justify-center gap-[3px] rounded-lg font-semibold text-[11px] text-muted-foreground outline-none transition-colors focus-visible:outline-2 focus-visible:outline-ring active:bg-muted data-[status=active]:text-nav-active'
 
-/** Phones: Home, up to three of the role's modules, and More (boards *Mobile). */
+/** Phones: Home, up to three of the modules the member can open, and More (boards *Mobile). */
 export function MobileTabs() {
-  const { permissions, roleKey } = useEffectiveAccess()
+  const access = useEffectiveAccess()
   const [moreOpen, setMoreOpen] = useState(false)
   const [moreUsed, setMoreUsed] = useState(false)
   const pathname = useLocation({ select: (l) => l.pathname })
-  const tabs = mobileTabs(permissions, roleKey)
-  const inMore = moreItems(permissions, roleKey).some(
+  const tabs = mobileTabs(access, access.roleKey)
+  const inMore = moreItems(access, access.roleKey).some(
     (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
   )
 

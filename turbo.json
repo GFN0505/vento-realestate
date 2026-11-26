@@ -24,7 +24,10 @@
         "EMAIL_FROM",
         "EMAIL_DEV_DIR",
         "AUTH_RATE_LIMIT",
-        "TRUSTED_IP_HEADER"
+        "TRUSTED_IP_HEADER",
+        "FEATURE_SNAPSHOT_REFRESH_SECONDS",
+        "SUPPORT_EMAIL",
+        "SUPPORT_WHATSAPP"
       ]
     },
     "dev": {
@@ -41,7 +44,10 @@
         "EMAIL_FROM",
         "EMAIL_DEV_DIR",
         "AUTH_RATE_LIMIT",
-        "TRUSTED_IP_HEADER"
+        "TRUSTED_IP_HEADER",
+        "FEATURE_SNAPSHOT_REFRESH_SECONDS",
+        "SUPPORT_EMAIL",
+        "SUPPORT_WHATSAPP"
       ]
     }
   }

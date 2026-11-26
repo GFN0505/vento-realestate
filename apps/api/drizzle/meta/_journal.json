@@ -22,6 +22,20 @@
       "when": 1795642328200,
       "tag": "0002_reset_required_drop_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795660927723,
+      "tag": "0003_feature_flags_and_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795660931267,
+      "tag": "0004_platform_guards",
+      "breakpoints": true
     }
   ]
 }

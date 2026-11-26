@@ -4,9 +4,9 @@ import {
   type PermissionModule,
   SYSTEM_ROLE_KEYS,
 } from '@vento/shared'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq, ne } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
-import { rolePermissions, roles } from '@/db/schema'
+import { members, rolePermissions, roles, users } from '@/db/schema'
 import { accessContacts } from './access-contacts'
 
 /** Built-in roles in system order (owner first); custom roles after them. */
@@ -62,4 +62,31 @@ export async function whoCanGrant(
   if (!person) return { message: only }
   const askRole = person.roleName.toLowerCase()
   return { message: `${only} Ask ${person.name} (${askRole}).`, askName: person.name, askRole }
+}
+
+/** The longest-standing active owner other than the caller, for "Ask Olumide Bankole (owner)". */
+export async function firstOwner(
+  db: DbOrTx,
+  organizationId: string,
+  excludeUserId: string,
+): Promise<{ name: string } | null> {
+  const [row] = await db
+    .select({ name: users.name })
+    .from(members)
+    .innerJoin(users, eq(users.id, members.userId))
+    .innerJoin(
+      roles,
+      and(eq(roles.id, members.roleId), eq(roles.organizationId, members.organizationId)),
+    )
+    .where(
+      and(
+        eq(members.organizationId, organizationId),
+        eq(members.status, 'active'),
+        eq(roles.key, 'owner'),
+        ne(members.userId, excludeUserId),
+      ),
+    )
+    .orderBy(asc(members.joinedAt), asc(members.id))
+    .limit(1)
+  return row ?? null
 }

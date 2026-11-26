@@ -8,16 +8,25 @@ import type { DbOrTx } from '@/db/client'
 import {
   accounts,
   entities,
+  featureReleases,
   invitationEntityLimits,
   invitations,
   memberEntityLimits,
   members,
+  organizationAddOns,
+  organizationOverrides,
+  organizationPlans,
   organizations,
   passwordHistories,
+  platformAdmins,
   sessions,
   users,
 } from '@/db/schema'
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
+import type { OverrideKind } from '@/platform/availability'
+import { findPlanVersion } from '@/platform/operations/common'
+import { seedPlans } from '@/platform/seed-plans'
+import { availabilityForOrganization } from '@/platform/snapshot'
 import { uniqueEmail } from './db'
 
 // Meets every password rule; apps/web/e2e signs up with the same literal.
@@ -53,16 +62,37 @@ export type TestOrg = {
   ownerMemberId: string
 }
 
-/** An organization with the nine roles and an owner (two-step on, so member procedures work). */
+/**
+ * An organization with the nine roles and an owner (two-step on, so member procedures work).
+ * It's `internal` (everything, no limits) unless a release group or plan is given, so tests
+ * about other things never trip over availability.
+ */
 export async function createOrganization(
   db: DbOrTx,
-  overrides: { name?: string; owner?: TestUser } = {},
+  overrides: {
+    name?: string
+    owner?: TestUser
+    releaseGroup?: 'standard' | 'pilot' | 'internal'
+    /** `starter`, `growth` or `enterprise` (published if missing). */
+    planKey?: string
+  } = {},
 ): Promise<TestOrg> {
   const [org] = await db
     .insert(organizations)
     .values({ name: overrides.name ?? 'Vento Homes Ltd', headOfficeState: 'Lagos' })
     .returning()
   if (!org) throw new Error('org insert failed')
+  let planVersionId: string | null = null
+  if (overrides.planKey) {
+    await seedPlans(db)
+    planVersionId = (await findPlanVersion(db, overrides.planKey)).versionId
+  }
+  await db.insert(organizationPlans).values({
+    organizationId: org.id,
+    releaseGroup: overrides.releaseGroup ?? (overrides.planKey ? 'standard' : 'internal'),
+    planVersionId,
+    planAssignedAt: planVersionId ? new Date() : null,
+  })
   const roleIds = await syncSystemRoles(db, org.id)
   const owner =
     overrides.owner ??
@@ -203,10 +233,74 @@ export async function contextFor(
     user: { id: user.id, name: user.name, email: user.email },
     member: membership.member,
     sessionId: null,
+    features: await availabilityForOrganization(db, membership.organizationId),
   }
+}
+
+/** Sets a flag's release stage for everyone (inside the test's transaction only). */
+export async function setStage(
+  db: DbOrTx,
+  key: string,
+  stage: 'off' | 'internal' | 'pilot' | 'on',
+): Promise<void> {
+  await db
+    .insert(featureReleases)
+    .values({ featureKey: key, stage, reason: 'test' })
+    .onConflictDoUpdate({ target: featureReleases.featureKey, set: { stage } })
+}
+
+/** A live override for one organization, without going through the commands. */
+export async function setOverride(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id'>,
+  input: {
+    kind: OverrideKind
+    key: string
+    enabled?: boolean
+    limitValue?: string | null
+    expiresAt?: Date | null
+  },
+): Promise<void> {
+  await db.insert(organizationOverrides).values({
+    organizationId: org.id,
+    kind: input.kind,
+    key: input.key,
+    enabled: input.kind === 'limit' ? null : (input.enabled ?? true),
+    limitValue: input.kind === 'limit' ? (input.limitValue ?? null) : null,
+    expiresAt: input.expiresAt ?? null,
+    reason: 'test',
+  })
+}
+
+export async function addAddOnRow(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id'>,
+  input: { addOnKey?: string; budget?: string } = {},
+): Promise<void> {
+  await db.insert(organizationAddOns).values({
+    organizationId: org.id,
+    addOnKey: input.addOnKey ?? 'ai',
+    limitIncreases: { ai_budget: input.budget ?? '150000.00' },
+    reason: 'test',
+  })
 }
 
 export async function reloadUser(db: DbOrTx, id: string) {
   const [row] = await db.select().from(users).where(eq(users.id, id))
   return row
+}
+
+/** A Vento super-admin (two-step on), for the flag and plan commands. */
+export async function createSuperAdmin(
+  db: DbOrTx,
+  overrides: Partial<typeof users.$inferInsert> = {},
+): Promise<TestUser> {
+  const user = await createUser(db, {
+    name: 'Ada Okafor',
+    email: uniqueEmail('ada'),
+    twoFactorEnabled: true,
+    ...overrides,
+  })
+  await db.insert(platformAdmins).values({ userId: user.id, reason: 'test' })
+  return user
 }

@@ -11,6 +11,17 @@
  *   tsx src/test/e2e-fixtures.ts multi-org              Tunde in two organizations, plus one whose second role needs two-step
  *   tsx src/test/e2e-fixtures.ts set-role <email> <role>  changes that person's role in their current organization
  *   tsx src/test/e2e-fixtures.ts remove-member <email>  removes that person from their current organization (ends those sessions)
+ *   tsx src/test/e2e-fixtures.ts plans                  publishes the starting plans (Starter, Growth, Enterprise) if missing
+ *   tsx src/test/e2e-fixtures.ts starter-org            standard organization on Starter: owner (two-step on), a sales member, one entity
+ *   tsx src/test/e2e-fixtures.ts org-group <orgId> <standard|pilot|internal>
+ *   tsx src/test/e2e-fixtures.ts org-override <orgId> <release|feature> <flag> <on|off|clear>
+ *   tsx src/test/e2e-fixtures.ts org-override <orgId> limit <limit> <n|unlimited|clear>
+ *   tsx src/test/e2e-fixtures.ts org-trial <orgId> <plan> <days>
+ *   tsx src/test/e2e-fixtures.ts org-release <orgId> <flag,flag,...>   release overrides on, in one go
+ *
+ * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
+ * every organization was before feature flags. Fixtures only change per-organization data, never
+ * global release stages, so specs can run in parallel.
  *
  * Prints one JSON line. Emails are unique per run, so specs never share or collide with seed data.
  */
@@ -32,7 +43,146 @@ async function createMember() {
   await onboard(b, organizationName)
   const { totpURI, backupCodes } = await setUpTwoStep(b)
   const secret = new URL(totpURI).searchParams.get('secret') ?? ''
+  await makeInternal(email)
   return { email, password: TEST_PASSWORD, totpSecret: secret, organizationName, backupCodes }
+}
+
+/** Onboarding makes a standard organization; the 3a journeys expect an internal one. */
+async function makeInternal(ownerEmail: string) {
+  const { db } = await import('@/db/client')
+  const { members, organizationPlans, users } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const [row] = await db
+    .select({ organizationId: members.organizationId })
+    .from(members)
+    .innerJoin(users, eq(users.id, members.userId))
+    .where(eq(users.email, ownerEmail))
+  if (!row) throw new Error(`no organization for ${ownerEmail}`)
+  await db
+    .update(organizationPlans)
+    .set({ releaseGroup: 'internal' })
+    .where(eq(organizationPlans.organizationId, row.organizationId))
+}
+
+const E2E_ACTOR = { userId: null, name: 'Vento (e2e)', operator: 'e2e' }
+const E2E_REASON = 'e2e fixture'
+
+async function publishPlans() {
+  const { db } = await import('@/db/client')
+  const { seedPlans } = await import('@/platform/seed-plans')
+  return { published: await seedPlans(db, E2E_ACTOR) }
+}
+
+/** "Lekki Partners …" on Starter: the owner sees plan hints, the sales member never does. */
+async function createStarterOrg() {
+  const { db } = await import('@/db/client')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+  await publishPlans()
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Bisi Lawal', 'e2e.starter.owner')
+  const org = await createOrganization(db, {
+    name: `Lekki Partners ${suffix}`,
+    owner,
+    planKey: 'starter',
+  })
+  await createEntity(db, org, { name: `Lekki Partners ${suffix} Ltd`, type: 'holding' })
+  const sales = await passwordUser(db, 'Grace Umeh', 'e2e.starter.sales')
+  await addMember(db, org, { role: 'sales', user: sales })
+  const totpSecret = await turnOnTwoStep(owner.email)
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: TEST_PASSWORD,
+    owner: { email: owner.email, name: owner.name, totpSecret },
+    sales: { email: sales.email, name: sales.name },
+  }
+}
+
+async function organizationRef(id: string | undefined) {
+  const { db } = await import('@/db/client')
+  const { organizationById } = await import('@/platform/operations/common')
+  return { db, organization: await organizationById(db, id ?? '') }
+}
+
+async function orgGroup(id: string | undefined, group: string | undefined) {
+  const { releaseGroup } = await import('@vento/shared')
+  const { db, organization } = await organizationRef(id)
+  const { setReleaseGroup } = await import('@/platform/operations/release')
+  const to = releaseGroup.parse(group)
+  const { releaseGroup: current } = await (
+    await import('@/platform/snapshot')
+  ).loadOrganizationPlan(db, organization.id)
+  if (current !== to) {
+    await setReleaseGroup(db, E2E_ACTOR, { organization, group: to, reason: E2E_REASON })
+  }
+  return { organizationId: organization.id, releaseGroup: to }
+}
+
+async function orgOverride(args: (string | undefined)[]) {
+  const [id, kind, key, value] = args
+  const { featureKey, limitKey } = await import('@vento/shared')
+  const { db, organization } = await organizationRef(id)
+  const ops = await import('@/platform/operations/plans')
+  const release = await import('@/platform/operations/release')
+  const base = { organization, reason: E2E_REASON }
+  const onOff = (v: string | undefined) => {
+    if (v === 'on' || v === 'off' || v === 'clear') return v
+    throw new Error('value must be on, off or clear')
+  }
+  if (kind === 'release') {
+    await release.setReleaseOverride(db, E2E_ACTOR, {
+      ...base,
+      key: featureKey.parse(key),
+      value: onOff(value),
+    })
+  } else if (kind === 'feature') {
+    await ops.setFeatureOverride(db, E2E_ACTOR, {
+      ...base,
+      key: featureKey.parse(key),
+      value: onOff(value),
+    })
+  } else if (kind === 'limit') {
+    const limit = limitKey.parse(key)
+    await ops.setLimitOverride(db, E2E_ACTOR, {
+      ...base,
+      key: limit,
+      value: ops.parseLimitValue(limit, value ?? ''),
+    })
+  } else {
+    throw new Error('kind must be release, feature or limit')
+  }
+  return { organizationId: organization.id, kind, key, value }
+}
+
+/** Releases several flags to one organization in one process: a feature and what it needs. */
+async function orgRelease(id: string | undefined, flags: string | undefined) {
+  const keys = (flags ?? '').split(',').filter(Boolean)
+  for (const key of keys) await orgOverride([id, 'release', key, 'on'])
+  return { organizationId: id, released: keys }
+}
+
+async function orgTrial(
+  id: string | undefined,
+  plan: string | undefined,
+  days: string | undefined,
+) {
+  const { db, organization } = await organizationRef(id)
+  const { findPlanVersion } = await import('@/platform/operations/common')
+  const { startTrial } = await import('@/platform/operations/plans')
+  await publishPlans()
+  const target = await findPlanVersion(db, plan ?? '')
+  await startTrial(db, E2E_ACTOR, {
+    organization,
+    target,
+    days: Number(days),
+    reason: E2E_REASON,
+  })
+  return { organizationId: organization.id, plan: target.planKey, days: Number(days) }
 }
 
 async function createUnverified() {
@@ -342,7 +492,7 @@ async function removeMemberFixture(email: string | undefined) {
 }
 
 async function main() {
-  const [name, arg, arg2] = process.argv.slice(2)
+  const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
     member: createMember,
     unverified: createUnverified,
@@ -354,6 +504,12 @@ async function main() {
     'multi-org': createMultiOrg,
     'set-role': () => setRole(arg, arg2),
     'remove-member': () => removeMemberFixture(arg),
+    plans: publishPlans,
+    'starter-org': createStarterOrg,
+    'org-group': () => orgGroup(arg, arg2),
+    'org-override': () => orgOverride([arg, arg2, arg3, arg4]),
+    'org-trial': () => orgTrial(arg, arg2, arg3),
+    'org-release': () => orgRelease(arg, arg2),
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

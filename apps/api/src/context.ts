@@ -2,6 +2,7 @@ import type { Auth } from '@/auth/auth'
 import type { DbOrTx } from '@/db/client'
 import type { Mailer } from '@/email/mailer'
 import type { RateLimiter } from '@/lib/rate-limit'
+import type { FeatureStore } from '@/platform/feature-store'
 
 /** What every procedure receives. */
 export type BaseContext = {
@@ -15,4 +16,6 @@ export type BaseContext = {
   auth: Auth
   mailer: Mailer
   rateLimiter: RateLimiter
+  /** The in-memory availability snapshot (decision 0016). */
+  featureStore: FeatureStore
 }

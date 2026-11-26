@@ -72,6 +72,7 @@ export function CommandPalette() {
               <CommandEmpty>No pages or actions match "{search.trim()}".</CommandEmpty>
               <CommandResults
                 page={page}
+                search={search}
                 onPreviewPage={() => {
                   setSearch('')
                   setPage('preview')

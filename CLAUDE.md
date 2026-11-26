@@ -30,7 +30,7 @@ Read before working (map of all docs: `docs/README.md`; code layout: `docs/ARCHI
 - Before any commit: `pnpm check && pnpm typecheck && pnpm test`
 
 ## Non-negotiables
-1. **Organization isolation.** Every domain table has `organizationId` (FK, indexed, NOT NULL). Every query filters by the organization from the auth context, never from request input.
+1. **Organization isolation.** Every domain table has `organizationId` (FK, indexed, NOT NULL). Every query filters by the organization from the auth context, never from request input. Exception: Vento-wide platform configuration (feature release stages, plans and plan versions, super-admins, platform audit) has no `organizationId`; it is read-only to customers and changed only by Vento super-admins (decision 0015).
 2. **Server-side authorization** per module × action in oRPC middleware. UI hiding is cosmetic only.
 3. **Money** is `numeric(14,2)` in Postgres, a string in TS, and calculated with a decimal library. Never floats. Store currency (ISO 4217, default `NGN`) beside every amount; foreign amounts also store the FX rate, its source and date. Ledger entries are append-only and must balance per entity.
 4. **One source of truth for types:** zod schemas in `packages/shared`. Never redeclare an API type in `apps/web`.

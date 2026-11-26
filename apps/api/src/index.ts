@@ -3,8 +3,13 @@ import { createApp } from '@/app'
 import { db, pool } from '@/db/client'
 import { env } from '@/env'
 import { logger } from '@/lib/logger'
+import { startFeatureStore } from '@/platform/feature-store'
 
-const app = createApp({ db })
+// The first snapshot loads before serving, so no request ever sees an empty one.
+const features = await startFeatureStore(db, {
+  refreshMs: env.FEATURE_SNAPSHOT_REFRESH_SECONDS * 1000,
+})
+const app = createApp({ db, features })
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   logger.info('API listening', { port: info.port, env: env.NODE_ENV })
@@ -25,6 +30,7 @@ async function shutdown(signal: string) {
     server.close(() => resolve())
     if ('closeIdleConnections' in server) server.closeIdleConnections()
   })
+  features.stop()
   await pool.end()
   process.exit(0)
 }

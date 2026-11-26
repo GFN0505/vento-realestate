@@ -1,6 +1,6 @@
 # Plan: Feature flags and plans
 
-- **Status:** approved by the owner on 26 Nov 2026; build after 3a merges. Answers: (1) a self-signed-up organization gets Starter by default; (2) no two-step code on admin commands until the R2 console. The plan's other decisions are accepted.
+- **Status:** approved by the owner on 26 Nov 2026 and built (after review: expired overrides cleared before a new trial, add-on limits start from 0, malformed limits never read as unlimited, operator identity recorded, snapshot fails closed after 5 minutes stale, invitation acceptance checks the people limit, hidden characters refused in names). Build after 3a merges. Answers: (1) a self-signed-up organization gets Starter by default; (2) no two-step code on admin commands until the R2 console. The plan's other decisions are accepted.
 - **Spec:** [docs/specs/feature-flags.md](../specs/feature-flags.md) (approved 26 Nov 2026; its "Owner's decisions" apply)
 - **Release plan:** [docs/release-plan.md](../release-plan.md) (approved)
 - **Journeys:** J-ADM-01, J-ADM-02 (new), J-ONB-05 step 2 and "watch for" (changed), J-AI-04 (Settings → AI appears only once AI is available)

@@ -1,5 +1,5 @@
-import { oc } from '@orpc/contract'
 import { z } from 'zod'
+import { platform } from '../common/errors'
 
 export const healthStatus = z.object({
   status: z.enum(['ok', 'degraded']),
@@ -9,5 +9,5 @@ export const healthStatus = z.object({
 export type HealthStatus = z.infer<typeof healthStatus>
 
 export const healthContract = {
-  check: oc.route({ method: 'GET' }).output(healthStatus),
+  check: platform.route({ method: 'GET' }).output(healthStatus),
 }

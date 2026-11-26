@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/sheet'
 import { useSwitchOrganization } from '@/features/organization/switch-organization'
 import { canPreview, useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
-import { moreItems } from '@/features/shell/nav'
+import { moreItems, type NavTag, navTag } from '@/features/shell/nav'
 import { shellUi } from '@/features/shell/shell-ui'
 import { useShellActions } from '@/features/shell/use-shell-actions'
 import { cn } from '@/lib/utils'
@@ -32,7 +32,7 @@ export function MoreSheet({ open, onOpenChange }: Props) {
   const switchOrganization = useSwitchOrganization()
   const [view, setView] = useState<'main' | 'preview'>('main')
   const close = () => onOpenChange(false)
-  const modules = moreItems(access.permissions, access.roleKey)
+  const modules = moreItems(access, access.roleKey)
 
   return (
     <Sheet
@@ -71,7 +71,7 @@ export function MoreSheet({ open, onOpenChange }: Props) {
                   <Link key={item.key} to={item.to} onClick={close} className={sheetRow}>
                     <item.icon aria-hidden strokeWidth={1.8} />
                     <span className="flex-1 truncate">{item.label}</span>
-                    {item.status === 'soon' && <Badge variant="outline">Soon</Badge>}
+                    <NavTagBadge tag={navTag(access, item)} />
                   </Link>
                 ))}
               </Section>
@@ -140,6 +140,12 @@ export function MoreSheet({ open, onOpenChange }: Props) {
       </SheetContent>
     </Sheet>
   )
+}
+
+function NavTagBadge({ tag }: { tag: NavTag | null }) {
+  if (tag === 'soon') return <Badge variant="outline">Soon</Badge>
+  if (tag === 'early_access') return <Badge variant="brand">Early access</Badge>
+  return null
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {

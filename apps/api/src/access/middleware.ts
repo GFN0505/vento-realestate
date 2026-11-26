@@ -1,10 +1,11 @@
 import { os as baseOs, ORPCError } from '@orpc/server'
-import type { PermissionAction, PermissionModule } from '@vento/shared'
+import type { PermissionAction, PermissionModule, ProcedureMeta } from '@vento/shared'
 import { hasPermission, ORGANIZATION_HEADER } from '@vento/shared'
 import { applySessionPolicy, toPolicySession } from '@/auth/session-policy'
 import type { BaseContext } from '@/context'
-import { forbidden, organizationChanged } from '@/lib/errors'
+import { forbidden, notFound, organizationChanged } from '@/lib/errors'
 import { requestScope } from '@/lib/request-scope'
+import { type OrganizationAvailability, organizationAvailability } from '@/platform/availability'
 import {
   type AuthSession,
   type AuthUser,
@@ -72,9 +73,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  * Tab guard (decision 0013): when the request names the organization its tab is showing, any
  * mismatch is refused before the membership is read and before the session is written back.
  * The header can only make a request fail; the organization always comes from the session.
+ *
+ * Feature gate (decision 0016): the procedure's contract declares `meta.feature`. When that
+ * feature isn't available to the organization (not released or not entitled), the answer is
+ * NOT_FOUND, before any permission check, from the in-memory snapshot (no query).
  */
 export function memberMiddleware(enforceTwoStep: boolean) {
-  return baseOs.$context<AuthedContext>().middleware(async ({ context, next }) => {
+  return baseOs.$context<AuthedContext>().middleware(async ({ context, next, procedure }) => {
     const expected = context.headers.get(ORGANIZATION_HEADER)
     const active = context.session.activeOrganizationId
     if (expected && (!UUID.test(expected) || (active && expected !== active))) {
@@ -94,11 +99,20 @@ export function memberMiddleware(enforceTwoStep: boolean) {
     ) {
       throw forbidden('two_step_setup_required', 'Set up two-step sign-in to continue.')
     }
+    const features = organizationAvailability(
+      await context.featureStore.get(),
+      { organizationId: membership.organizationId, ...membership.plan },
+      new Date(),
+    )
+    const feature = (procedure['~orpc'].meta as ProcedureMeta).feature
+    // Unavailable reads exactly like a missing record: to this organization it doesn't exist.
+    if (feature && !features.has(feature)) throw notFound()
     return next({
       context: {
         organizationId: membership.organizationId,
         organizationName: membership.organizationName,
         member: membership.member,
+        features,
       },
     })
   })
@@ -108,6 +122,7 @@ type MemberRequestContext = AuthedContext & {
   organizationId: string
   organizationName: string
   member: MemberContext
+  features: OrganizationAvailability
 }
 
 /**

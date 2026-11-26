@@ -55,7 +55,7 @@ export const subscriptionContract = {
   remove: oc.input(z.object({ id })).output(z.void()),
 }
 ```
-Register it in `packages/shared/src/contract.ts`.
+Build every procedure from `forFeature('<key>')` (e.g. `const sales = forFeature('sales')`; `sales.input(…).output(…)`), not `base`: the key must be in the catalog (`packages/shared/src/features/catalog.ts`; add a module or a separately released part there, starting at stage `internal`). The member middleware then answers NOT_FOUND when the feature isn't available to the organization, before `requirePermission`; the declaration walk in `src/test/procedure-guard.test.ts` fails for a procedure without it. Platform procedures with no flag use `platform`. Register it in `packages/shared/src/contract.ts`.
 
 ## 3. Table — `apps/api/src/db/schema/subscription.ts`
 ```ts
@@ -98,6 +98,9 @@ Then follow the `db-migration` skill.
 - Use the decimal library for any maths on `price` and instalment amounts.
 - Lists: build filters with `and(...)`, return `{ items, page, pageSize, total }` using `pageOffset` and `toPage` from `@/lib/paginate`.
 - Emails or messages: return them from the service and send them in the router after the transaction commits (`sendAll`).
+- Plan limits: a create that counts against a limit calls `assertWithinLimit(tx, ctx, 'projects', 1)` (`@/platform/limits`) inside its transaction; register the counter in `LIMIT_USAGE` (`@/platform/usage.ts`) and the module's record counter in `FEATURE_RECORD_COUNTERS` for the `flags stage` warning.
+- Optional behaviour inside a handler checks `ctx.features.has('platform.whatsapp')`. Jobs and messages check `availabilityForOrganization(db, orgId)` (`@/platform/snapshot`) at send time and skip organizations that lost the feature.
+- Buyer-portal procedures (own authentication) must apply the same feature gate with the organization taken from the token.
 
 ## 5. Router — `apps/api/src/modules/subscription/subscription.router.ts`
 ```ts
@@ -118,6 +121,9 @@ Cover the happy path, validation, permission denied, not found, the domain confl
 
 ## 7. Web
 Follow the `add-list-page` skill.
+
+## 8. Role homes
+Add the module's contribution to every role home it serves (see `docs/release-plan.md` §8 and DESIGN-NOTES "Role homes"): its numbers (replacing the "—" placeholders in `features/shell/home-kpis.ts`), its work-queue items (due date, then impact; one clear action each) and any job-specific panel. Every number, queue item and panel respects the location filter: `?entity=` (All entities = group-wide with a per-entity breakdown) and, once Projects exists, the project filter; members limited to entities see only those. Only show what the role can view and the organization has available. Test per role and per entity.
 
 ## Done when
 `pnpm check && pnpm typecheck && pnpm test` pass, and the migration is generated and applied.

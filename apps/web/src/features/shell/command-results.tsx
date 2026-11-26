@@ -14,15 +14,17 @@ import { THEME_OPTIONS } from '@/components/shell/theme-icons'
 import { CommandGroup, CommandHint, CommandItem } from '@/components/ui/command'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
 import { useSwitchOrganization } from '@/features/organization/switch-organization'
+import { UpgradeHintRows } from '@/features/plan/upgrade-hint-rows'
 import { canPreview, useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
 import { setTheme, useTheme } from '@/lib/theme'
-import { canView, type NavPath, navItemForModule, visibleNav } from './nav'
+import { canView, type NavPath, navItemForModule, navTag, visibleNav } from './nav'
 import { readRecentPages } from './recent-pages'
 import { shellUi } from './shell-ui'
 import { useShellActions } from './use-shell-actions'
 
 type Props = {
   page: 'root' | 'preview'
+  search: string
   onPreviewPage: () => void
   close: () => void
   navigate: (to: NavPath) => void
@@ -30,10 +32,11 @@ type Props = {
 
 /**
  * What ⌘K offers (spec): pages the member can open and the shell's actions. Decision 12: built
- * from the same registry and effective permissions as the sidebar, so nothing hidden there
- * appears here. `keywords[0]` is the label the filter ranks on.
+ * from the same registry and effective access as the sidebar, so nothing hidden there appears
+ * here. The one exception is for owners: "Other plans" rows when they search for something
+ * outside their plan. `keywords[0]` is the label the filter ranks on.
  */
-export function CommandResults({ page, onPreviewPage, close, navigate }: Props) {
+export function CommandResults({ page, search, onPreviewPage, close, navigate }: Props) {
   const me = useMe()
   const access = useEffectiveAccess()
   const entity = useCurrentEntity()
@@ -83,7 +86,7 @@ export function CommandResults({ page, onPreviewPage, close, navigate }: Props) 
         // The page you're on isn't "recent".
         if (p.href.split('?')[0] === pathname) return false
         const item = p.module ? navItemForModule(p.module) : undefined
-        return !item || canView(access.permissions, item)
+        return !item || canView(access, item)
       })
     : []
   const otherOrganizations = me.organizations.filter((o) => o.id !== me.organization?.id)
@@ -106,7 +109,7 @@ export function CommandResults({ page, onPreviewPage, close, navigate }: Props) 
         </CommandGroup>
       )}
       <CommandGroup heading="Go to">
-        {visibleNav(access.permissions).map((item) => (
+        {visibleNav(access).map((item) => (
           <CommandItem
             key={item.key}
             value={`go:${item.key}`}
@@ -116,6 +119,7 @@ export function CommandResults({ page, onPreviewPage, close, navigate }: Props) 
             <item.icon aria-hidden />
             Go to {item.label}
             {item.key === 'home' && <CommandHint>G then H</CommandHint>}
+            {navTag(access, item) === 'early_access' && <CommandHint>Early access</CommandHint>}
           </CommandItem>
         ))}
       </CommandGroup>
@@ -219,6 +223,7 @@ export function CommandResults({ page, onPreviewPage, close, navigate }: Props) 
           Sign out
         </CommandItem>
       </CommandGroup>
+      {access.showUpgradeHints && <UpgradeHintRows search={search} close={close} />}
     </>
   )
 }

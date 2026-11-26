@@ -5,7 +5,7 @@ import { ORPCError } from '@orpc/client'
  * oRPC link and the route guards don't pull messages into the first-load bundle.
  */
 
-function dataString(error: unknown, field: string): string | null {
+export function dataString(error: unknown, field: string): string | null {
   if (!(error instanceof ORPCError)) return null
   const data: unknown = error.data
   if (typeof data !== 'object' || data === null || !(field in data)) return null
@@ -29,6 +29,18 @@ export function isOrganizationChanged(error: unknown): boolean {
     error instanceof ORPCError &&
     error.code === 'CONFLICT' &&
     errorReason(error) === 'organization_changed'
+  )
+}
+
+/** NOT_FOUND: a missing record, or a whole feature the organization doesn't have (spec). */
+export function isNotFound(error: unknown): boolean {
+  return error instanceof ORPCError && error.code === 'NOT_FOUND'
+}
+
+/** A create refused because the organization's plan limit is reached (FORBIDDEN plan_limit). */
+export function isPlanLimit(error: unknown): error is ORPCError<'FORBIDDEN', unknown> {
+  return (
+    error instanceof ORPCError && error.code === 'FORBIDDEN' && errorReason(error) === 'plan_limit'
   )
 }
 

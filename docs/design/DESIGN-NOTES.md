@@ -89,7 +89,7 @@ These are decisions, not decoration. They're folded into the journeys (`docs/jou
 | Emails | Single column, 600px. |
 | WhatsApp | Each message is an approved template with quick-reply buttons; replies land in the buyer's conversation. |
 | AI | One marker (star + "AI") on anything AI produced; suggestions sit on a faint violet surface until accepted. Ask Vento states what it's based on. Flags are questions, not accusations. |
-| Role homes | Same anatomy: four numbers for the role, a queue sorted by due date then impact, two job-specific panels. Each role gets its own sidebar and four mobile tabs. Admins can preview any role. |
+| Role homes | Same anatomy: four numbers for the role, a queue sorted by due date then impact, two job-specific panels. Each role gets its own sidebar and four mobile tabs. Admins can preview any role. Home follows the location filter: "All entities" is the group-wide view with a per-entity breakdown; one entity shows only that entity; each module fills its part as it ships (release plan §8). |
 | Settings | New settings pages use a left sub-navigation. |
 | Super-admin | Staff-only console, clearly labelled. Support access is read-only and logged. |
 | Statutory | Rates are sourced and dated but must be confirmed by the finance team before go-live. |

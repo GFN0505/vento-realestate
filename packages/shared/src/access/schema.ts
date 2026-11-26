@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { nextStep, roleRef } from '../account/schema'
 import { newPassword, termsVersion } from '../auth/password-schema'
 import { id, isoDate, paginationInput } from '../common/schemas'
+import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 import { systemRoleKey } from './default-roles'
 import { permissionModule, permissionSet } from './permissions'
 
@@ -16,6 +17,7 @@ export const personName = z
   .trim()
   .min(2, { message: 'Enter your full name' })
   .max(100, { message: 'Use 100 characters or fewer' })
+  .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
 
 export const role = z.object({
   id,

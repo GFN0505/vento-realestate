@@ -19,6 +19,7 @@ import { logger } from '@/lib/logger'
 import { createRateLimiter, type RateLimiter } from '@/lib/rate-limit'
 import { requestScope, runWithRequestScope } from '@/lib/request-scope'
 import { checkHealth } from '@/modules/health/health.service'
+import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
 import { router } from '@/router'
 
 export type AppDeps = {
@@ -26,6 +27,8 @@ export type AppDeps = {
   mailer?: Mailer
   auth?: Auth
   rateLimiter?: RateLimiter
+  /** The server passes its refreshing store; tests default to one that reads on every call. */
+  features?: FeatureStore
 }
 
 function socketAddress(c: Context): string | undefined {
@@ -51,6 +54,7 @@ export function createApp(deps: AppDeps): Hono {
   const mailer = deps.mailer ?? createMailer(env)
   const auth = deps.auth ?? createAuth({ db, mailer })
   const rateLimiter = deps.rateLimiter ?? createRateLimiter()
+  const features = deps.features ?? liveFeatureStore(db)
 
   const rpc = new RPCHandler(router, {
     plugins: [new ResponseHeadersPlugin()],
@@ -153,6 +157,7 @@ export function createApp(deps: AppDeps): Hono {
         auth,
         mailer,
         rateLimiter,
+        featureStore: features,
       },
     })
     if (matched) return c.newResponse(response.body, response)

@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/db/migrate.ts', 'src/db/seed.ts'],
+  entry: ['src/index.ts', 'src/db/migrate.ts', 'src/db/seed.ts', 'src/platform/cli/main.ts'],
   platform: 'node',
   target: 'node24',
   format: 'esm',

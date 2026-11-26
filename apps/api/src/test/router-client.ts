@@ -3,8 +3,9 @@ import { ORGANIZATION_HEADER } from '@vento/shared'
 import type { Auth } from '@/auth/auth'
 import type { BaseContext } from '@/context'
 import type { DbOrTx } from '@/db/client'
-import { createMemoryTransport } from '@/email/transports/memory'
+import { createMemoryTransport, type MemoryMailer } from '@/email/transports/memory'
 import { createRateLimiter } from '@/lib/rate-limit'
+import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
 import { router } from '@/router'
 import type { TestUser } from './factories'
 
@@ -23,8 +24,20 @@ export function clientAs(
     expectedOrganizationId?: string
     /** Extra Better Auth server calls a procedure makes (requestPasswordReset, signInEmail). */
     authApi?: Record<string, (...args: never[]) => unknown>
+    /** Availability source; by default read from `db` on every call, so changes show at once. */
+    features?: FeatureStore
   } = {},
 ) {
+  const context = testContext(db, user, options)
+  return { client: createRouterClient(router, { context }), mailer: context.mailer as MemoryMailer }
+}
+
+/** The context `clientAs` passes, for test-only routers (the feature probe). */
+export function testContext(
+  db: DbOrTx,
+  user: TestUser | null,
+  options: Parameters<typeof clientAs>[2] = {},
+): BaseContext {
   const now = new Date()
   const auth = {
     api: {
@@ -46,7 +59,7 @@ export function clientAs(
     },
   } as unknown as Auth
   const mailer = createMemoryTransport()
-  const context: BaseContext = {
+  return {
     db,
     requestId: 'test',
     headers: new Headers(
@@ -57,6 +70,6 @@ export function clientAs(
     auth,
     mailer,
     rateLimiter: createRateLimiter(false),
+    featureStore: options.features ?? liveFeatureStore(db),
   }
-  return { client: createRouterClient(router, { context }), mailer }
 }

@@ -10,6 +10,8 @@ const badgeVariants = cva(
         default: 'border-transparent bg-primary text-primary-foreground',
         outline: 'border-border bg-card text-muted-foreground',
         muted: 'border-transparent bg-muted text-muted-foreground',
+        /** "Early access": the brand's faint violet, the selection highlight's surface. */
+        brand: 'border-brand/30 bg-highlight text-link',
       },
     },
     defaultVariants: { variant: 'default' },

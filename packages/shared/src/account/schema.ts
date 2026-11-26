@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { systemRoleKey } from '../access/default-roles'
 import { permissionSet } from '../access/permissions'
 import { id } from '../common/schemas'
+import { availableFeature, mePlan } from '../features/schema'
 
 /** Where the web sends a signed-in person next. The server decides; the web only follows. */
 export const nextStep = z.enum([
@@ -28,7 +29,18 @@ export const me = z.object({
     /** Typed at sign-up; pre-fills onboarding step 1. */
     companyName: z.string().nullable(),
   }),
-  organization: z.object({ id, name: z.string() }).nullable(),
+  organization: z
+    .object({
+      id,
+      name: z.string(),
+      /** A Vento demo or test organization: unbuilt modules show "Soon" here only. */
+      internal: z.boolean(),
+    })
+    .nullable(),
+  /** Features available to the organization (released and entitled). [] with no organization. */
+  features: z.array(availableFeature),
+  /** Owners only: plan, limits with use, trial, upgrade hints, contact. null for everyone else. */
+  plan: mePlan.nullable(),
   /** Every active membership, by organization name. The switcher shows when there are two or more. */
   organizations: z.array(organizationOption),
   member: z

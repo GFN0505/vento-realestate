@@ -23,3 +23,11 @@ export function initials(name: string): string {
     .map((word) => word[0]?.toUpperCase())
     .join('')
 }
+
+const lagosDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' })
+
+/** Whole days from today (Lagos) to a calendar date: 0 = today, 1 = tomorrow, -1 = yesterday. */
+export function daysUntilInLagos(isoDate: string, now: Date = new Date()): number {
+  const today = Date.parse(`${lagosDay.format(now)}T00:00:00Z`)
+  return Math.round((Date.parse(`${isoDate}T00:00:00Z`) - today) / 86_400_000)
+}
