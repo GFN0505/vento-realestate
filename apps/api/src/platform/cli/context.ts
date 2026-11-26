@@ -14,11 +14,14 @@ import {
   type ReleaseGroup,
   type ReleaseStage,
 } from '@vento/shared'
+import { and, eq, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
+import { platformAuditEvents } from '@/db/schema'
 import type { Mailer } from '@/email/mailer'
 import type { PlatformActor } from '../platform-audit'
 import { PlatformError } from '../platform-error'
 import { requireSuperAdmin } from '../super-admins'
+import type { ChangeCommandId } from './change-commands'
 import { closestKey } from './closest-key'
 import type { Io } from './io'
 
@@ -31,7 +34,24 @@ export type CommandDeps = {
   now: () => Date
   /** Running from the scheduler (VENTO_CRON=1): `notify-trials` needs no `--by`. */
   scheduled?: boolean
+  /**
+   * Filled by `authorise` with each break-glass change this run made, so `runCommand` can email
+   * the other super-admins once it has committed. Set by `runCommand`, not by the caller.
+   */
+  breakGlass?: BreakGlassChange[]
 }
+
+/** A change made with --break-glass: who, which command, and how to find its audit rows. */
+export type BreakGlassChange = {
+  command: ChangeCommandId
+  actor: PlatformActor
+  /** This person's command rows before the change: the rows after that are the change's. */
+  rowsBefore: number
+}
+
+/** The console is the way to change things; the commands are kept for when it's down. */
+export const BREAK_GLASS_REFUSAL =
+  'Make this change in the Vento console. If the console is down, add --break-glass.'
 
 export type Parsed = {
   positionals: string[]
@@ -49,6 +69,8 @@ export type Parsed = {
   sort?: string
   default: boolean
   bootstrap: boolean
+  /** The console is down: allow a change from the command line (and tell the other super-admins). */
+  breakGlass: boolean
 }
 
 export function parse(args: string[]): Parsed {
@@ -71,9 +93,11 @@ export function parse(args: string[]): Parsed {
       sort: { type: 'string' },
       default: { type: 'boolean', default: false },
       bootstrap: { type: 'boolean', default: false },
+      'break-glass': { type: 'boolean', default: false },
     },
   })
-  return { ...values, positionals } as Parsed
+  const { 'break-glass': breakGlass, ...rest } = values
+  return { ...rest, breakGlass, positionals } as Parsed
 }
 
 function unknown(kind: string, value: string, keys: readonly string[]): never {
@@ -121,13 +145,38 @@ export function requireReason(reason: string | undefined): string {
   return trimmed
 }
 
-/** `--by` must be an active super-admin with two-step on; `--reason` is required. */
+/** How many platform audit rows this person has written from the command line. */
+export async function commandRowCount(db: DbOrTx, actor: PlatformActor): Promise<number> {
+  if (!actor.userId) return 0
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(platformAuditEvents)
+    .where(
+      and(
+        eq(platformAuditEvents.actorUserId, actor.userId),
+        eq(platformAuditEvents.channel, 'command'),
+      ),
+    )
+  return row?.n ?? 0
+}
+
+/**
+ * A change from the command line: refused without --break-glass, then `--by` must be an active
+ * super-admin with two-step on and `--reason` is required.
+ */
 export async function authorise(
   deps: CommandDeps,
   parsed: Parsed,
+  command: ChangeCommandId,
 ): Promise<{ actor: PlatformActor; reason: string }> {
+  // First, before --by and --reason: changes belong in the console (decision 0021).
+  if (!parsed.breakGlass) throw new PlatformError(BREAK_GLASS_REFUSAL)
   const actor = await requireSuperAdmin(deps.db, parsed.by, deps.operator)
-  return { actor, reason: requireReason(parsed.reason) }
+  const reason = requireReason(parsed.reason)
+  if (deps.breakGlass) {
+    deps.breakGlass.push({ command, actor, rowsBefore: await commandRowCount(deps.db, actor) })
+  }
+  return { actor, reason }
 }
 
 /** Prints what will change and asks, unless --yes. */

@@ -1,5 +1,6 @@
 import { PlatformError } from '../platform-error'
-import { type CommandDeps, parse } from './context'
+import { announceBreakGlass } from './break-glass'
+import { type BreakGlassChange, type CommandDeps, parse } from './context'
 import { flagsCommand } from './flags'
 import { plansCommand } from './plans'
 import { superadminCommand } from './superadmin'
@@ -25,8 +26,9 @@ export async function runCommand(
     deps.io.error(error instanceof Error ? error.message : String(error))
     return 2
   }
+  const breakGlass: BreakGlassChange[] = []
   try {
-    await handler(deps, parsed)
+    await handler({ ...deps, breakGlass }, parsed)
     return 0
   } catch (error) {
     if (error instanceof PlatformError) {
@@ -35,6 +37,9 @@ export async function runCommand(
       return 1
     }
     throw error
+  } finally {
+    // Whatever the outcome, any change that did commit is announced (a refused one wrote nothing).
+    await announceBreakGlass(deps, breakGlass)
   }
 }
 

@@ -49,8 +49,9 @@ export const PLANS_HELP = `Usage: pnpm plans <command>
   override <organization> limit <projects|entities|members|ai_budget> <n|unlimited|clear> [--until …]
   notify-trials                          daily from cron (VENTO_CRON=1); by hand needs --by
   bootstrap                              starting plans; internal organizations without a plan go on Enterprise
-                                         (needs --by and --reason once any super-admin exists)
-Changes need --reason "…" and --by <super-admin email>; --yes skips the question.`
+                                         (needs --break-glass, --by and --reason once any super-admin exists)
+Make changes in the Vento console. If it's down, changes need --break-glass, --reason "…" and
+--by <super-admin email> (the other super-admins are emailed); --yes skips the question.`
 
 function describeLimits(limits: Record<string, unknown>): string {
   return (
@@ -139,7 +140,7 @@ async function readDefinition(parsed: Parsed): Promise<PlanDefinition> {
 
 async function publish(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const definition = await readDefinition(parsed)
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'plans publish')
   const preview = await previewPublish(deps.db, definition)
   const lines = [...preview.lines, `Limits: ${describeLimits(definition.limits)}`]
   if (!(await confirm(deps, parsed, lines))) return
@@ -152,7 +153,7 @@ async function assign(deps: CommandDeps, parsed: Parsed): Promise<void> {
   if (version !== undefined && !Number.isInteger(version))
     throw new PlatformError('--version is a number.')
   const target = await findPlanVersion(deps.db, parsed.positionals[2] ?? '', version)
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'plans assign')
   const preview = await previewAssign(deps.db, org, target, deps.now())
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(await assignPlan(deps.db, actor, { organization: org, target, reason }, deps.now()))
@@ -161,7 +162,7 @@ async function assign(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function trial(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   if (parsed.end) {
-    const { actor, reason } = await authorise(deps, parsed)
+    const { actor, reason } = await authorise(deps, parsed, 'plans trial --end')
     const preview = await previewTrialEnd(deps.db, org, deps.now())
     if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(await endTrial(deps.db, actor, { organization: org, reason }, deps.now()))
@@ -171,7 +172,7 @@ async function trial(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const days = Number(parsed.days)
   if (!parsed.days || !Number.isInteger(days))
     throw new PlatformError('Add --days, e.g. --days 30.')
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'plans trial')
   const preview = await previewTrialStart(deps.db, org, target, days, deps.now())
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(
@@ -183,7 +184,7 @@ async function addon(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const addOn = addOnArg(parsed.positionals[2])
   if (parsed.remove) {
-    const { actor, reason } = await authorise(deps, parsed)
+    const { actor, reason } = await authorise(deps, parsed, 'plans addon --remove')
     const preview = await previewRemoveAddOn(deps.db, org, addOn, deps.now())
     if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(
@@ -194,7 +195,7 @@ async function addon(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const budget = parsed.budget === undefined ? null : parseLimitValue('ai_budget', parsed.budget)
   if (!budget || budget === 'clear')
     throw new PlatformError('Add --budget in naira a month, e.g. --budget 150000.')
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'plans addon')
   const preview = await previewAddOn(deps.db, org, addOn, budget, deps.now())
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(
@@ -208,7 +209,11 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
   if (kind === 'feature') {
     const key = featureArg(parsed.positionals[3])
     const value = onOffClear(parsed.positionals[4])
-    const { actor, reason } = await authorise(deps, parsed)
+    const { actor, reason } = await authorise(
+      deps,
+      parsed,
+      value === 'clear' ? 'plans override clear' : 'plans override feature',
+    )
     const preview = await previewFeatureOverride(deps.db, org, key, value, parsed.until, deps.now())
     if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(
@@ -224,7 +229,11 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
   if (kind === 'limit') {
     const key = limitArg(parsed.positionals[3])
     const value = parseLimitValue(key, parsed.positionals[4] ?? '')
-    const { actor, reason } = await authorise(deps, parsed)
+    const { actor, reason } = await authorise(
+      deps,
+      parsed,
+      value === 'clear' ? 'plans override clear' : 'plans override limit',
+    )
     const preview = await previewLimitOverride(deps.db, org, key, value, parsed.until, deps.now())
     if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(
@@ -249,7 +258,7 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function bootstrap(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const actor: PlatformActor =
     (await activeSuperAdminCount(deps.db)) > 0
-      ? (await authorise(deps, parsed)).actor
+      ? (await authorise(deps, parsed, 'plans bootstrap')).actor
       : { ...SETUP_ACTOR, operator: deps.operator }
   if (!(await confirm(deps, parsed, await previewStartingData(deps.db)))) return
   const { published, assigned } = await bootstrapStartingData(deps.db, actor)

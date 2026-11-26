@@ -18,7 +18,8 @@ import { runCommand } from './cli/run'
 
 async function run(db: DbOrTx, args: string[], answers: boolean[] = [true]) {
   const io = memoryIo(answers)
-  const code = await runCommand('flags', args, {
+  // Change commands are break-glass now (admin-console plan §7); console-parity.test.ts covers the refusal.
+  const code = await runCommand('flags', [...args, '--break-glass'], {
     db,
     io,
     operator: 'ada@ops-laptop',

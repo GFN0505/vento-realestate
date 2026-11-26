@@ -49,3 +49,31 @@ export function superAdminsChangedEmail(p: {
     { kind: 'small', text: "If you didn't expect this, check with them." },
   ])
 }
+
+/**
+ * To every other active super-admin after a change made with --break-glass (admin-console plan
+ * §7.1): the console was bypassed, so nobody should learn of it only from the activity page.
+ */
+export function breakGlassEmail(p: {
+  actorName: string
+  /** "Moved Sales to off". */
+  summary: string
+  /** The machine it ran on ("api-1"); null when unknown. */
+  host: string | null
+  /** "21:14 on 26 Nov 2026". */
+  at: string
+  reason: string
+  activityUrl: string
+}): RenderedEmail {
+  const subject = `${p.summary} from the command line`
+  const what = p.summary.charAt(0).toLowerCase() + p.summary.slice(1)
+  const where = p.host ? ` on ${p.host}` : ''
+  return renderEmail(subject, subject, [
+    {
+      kind: 'p',
+      text: `${p.actorName} ${what}${where} at ${p.at}. Reason: ${p.reason}`,
+    },
+    { kind: 'button', label: 'Check the activity', url: p.activityUrl },
+    { kind: 'small', text: "If you didn't expect this, check the Activity page." },
+  ])
+}

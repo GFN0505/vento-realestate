@@ -34,7 +34,8 @@ export const FLAGS_HELP = `Usage: pnpm flags <command>
   stage <flag> <off|internal|pilot|on>   release stage for everyone
   group <organization> <standard|pilot|internal>
   override <organization> <flag> <on|off|clear> [--until YYYY-MM-DD]
-Changes need --reason "…" and --by <super-admin email>; --yes skips the question.`
+Make changes in the Vento console. If it's down, changes need --break-glass, --reason "…" and
+--by <super-admin email> (the other super-admins are emailed); --yes skips the question.`
 
 async function list(deps: CommandDeps): Promise<void> {
   const now = deps.now()
@@ -112,7 +113,7 @@ async function show(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function stage(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const key = featureArg(parsed.positionals[1])
   const to = stageArg(parsed.positionals[2])
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'flags stage')
   const preview = await previewStage(deps.db, key, to, deps.now())
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(await setStage(deps.db, actor, { key, stage: to, reason }))
@@ -121,7 +122,7 @@ async function stage(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function group(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const to = groupArg(parsed.positionals[2])
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'flags group')
   const preview = await previewGroup(deps.db, org, to, deps.now())
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(await setReleaseGroup(deps.db, actor, { organization: org, group: to, reason }))
@@ -131,7 +132,11 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const key = featureArg(parsed.positionals[2])
   const value = onOffClear(parsed.positionals[3])
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(
+    deps,
+    parsed,
+    value === 'clear' ? 'flags override clear' : 'flags override',
+  )
   const preview = await previewReleaseOverride(deps.db, org, key, value, parsed.until, deps.now())
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(

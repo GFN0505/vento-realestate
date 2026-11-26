@@ -176,7 +176,7 @@ describe('previews', () => {
       expect(text).toContain('Adds Tax summary.')
       expect(text).toContain('Removes HR & payroll.')
       expect(text).toContain('Active projects: 5 → 8.')
-      expect(text.at(-1)).toMatch(/stay on Growth v\d+ or earlier until you move them\.$/)
+      expect(text.at(-1)).toMatch(/stays? on Growth v\d+ or earlier until you move them\.$/)
       expect(expected.latestVersion).toBe(growth.version)
     }))
 

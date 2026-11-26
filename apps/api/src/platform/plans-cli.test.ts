@@ -39,7 +39,8 @@ async function run(
 ) {
   const io = memoryIo(answers)
   const mailer = createMemoryTransport()
-  const code = await runCommand('plans', args, {
+  // Change commands are break-glass now (admin-console plan §7); console-parity.test.ts covers the refusal.
+  const code = await runCommand('plans', [...args, '--break-glass'], {
     db,
     io,
     operator: 'ada@ops-laptop',
