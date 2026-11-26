@@ -122,5 +122,8 @@ Cover the happy path, validation, permission denied, not found, the domain confl
 ## 7. Web
 Follow the `add-list-page` skill.
 
+## 8. Role homes
+Add the module's contribution to every role home it serves (see `docs/release-plan.md` §8 and DESIGN-NOTES "Role homes"): its numbers (replacing the "—" placeholders in `features/shell/home-kpis.ts`), its work-queue items (due date, then impact; one clear action each) and any job-specific panel. Every number, queue item and panel respects the location filter: `?entity=` (All entities = group-wide with a per-entity breakdown) and, once Projects exists, the project filter; members limited to entities see only those. Only show what the role can view and the organization has available. Test per role and per entity.
+
 ## Done when
 `pnpm check && pnpm typecheck && pnpm test` pass, and the migration is generated and applied.

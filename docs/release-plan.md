@@ -157,6 +157,8 @@ Before the first customer goes live, Vento also needs:
 ## 8. Build order
 The build follows the dependencies, not the release grouping, and continues through every module: shell and settings (3a–3d), feature flags and plans, approvals and audit (brick 4), then the modules along the thread (land, projects and site, sales, finance, compliance, documents, buyer portal, reports), then R2–R4 features and the AI add-on. A module can be built well before it is released, and stays at `internal` until the owner releases it.
 
+**Role homes grow with each module (owner's rule, 26 Nov 2026).** Every role lands on a home made for its job, with one anatomy (DESIGN-NOTES "Role homes"): four numbers for the role, a work queue sorted by due date then impact, and two job-specific panels. Each module brick adds its own numbers, queue items and panels to the role homes it serves (e.g. Sales adds overdue buyers to the Sales and MD homes; Projects adds today's diary and deliveries to the project manager and site homes). Everything on Home follows the location filter: **All entities** shows the group-wide view with a per-entity breakdown; choosing one entity shows only that entity's numbers, queue and panels; members limited to one entity see it automatically; Projects adds a project/site filter for project managers and site engineers. No separate dashboard project at the end.
+
 ---
 
 ## 9. Owner's decisions (26 Nov 2026)
