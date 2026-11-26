@@ -18,4 +18,8 @@ process.env.DATABASE_URL = testUrl
 process.env.LOG_LEVEL = process.env.TEST_LOG_LEVEL ?? 'warn'
 // Emails stay in memory, no per-IP limits between tests.
 process.env.EMAIL_TRANSPORT = 'memory'
+// A developer's .env may hold a Postmark token for manual testing; tests never see it (env.ts
+// refuses to start a test run that has one).
+process.env.POSTMARK_SERVER_TOKEN = ''
+process.env.EMAIL_ALLOWED_RECIPIENTS = ''
 process.env.AUTH_RATE_LIMIT = 'off'

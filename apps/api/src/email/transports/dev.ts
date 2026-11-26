@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { isAbsolute, join } from 'node:path'
-import { findRepoRoot } from '@/lib/repo-root'
+import { join } from 'node:path'
+import { logger } from '@/lib/logger'
 import { type EmailMessage, type Mailer, type SendResult, sendEachInTurn } from '../mailer'
+import { MAILBOX_RETENTION, mailboxFolder, pruneMailbox } from './prune'
 
 /** First link or 6-digit code, so a developer can act on the email from the console. */
 export function firstActionable(text: string): string | undefined {
@@ -13,9 +14,17 @@ export function firstActionable(text: string): string | undefined {
  * Development: nothing leaves the machine. Prints a one-line summary and writes the full
  * message as JSON (Playwright reads these to get verification codes).
  */
-export function createDevTransport(dir: string): Mailer {
-  const root = findRepoRoot(import.meta.dirname) ?? process.cwd()
-  const folder = isAbsolute(dir) ? dir : join(root, dir)
+export function createDevTransport(dir: string, options: { prune?: boolean } = {}): Mailer {
+  const folder = mailboxFolder(dir)
+  // Only the API at start-up asks for this (not fixtures or commands, which run mid-e2e while
+  // specs read codes from the folder), so it never grows without bound.
+  if (options.prune) {
+    pruneMailbox(folder, MAILBOX_RETENTION).catch((error: unknown) => {
+      logger.warn('Dev mailbox not pruned', {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    })
+  }
   const send = async (message: EmailMessage): Promise<SendResult> => {
     await mkdir(folder, { recursive: true })
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')

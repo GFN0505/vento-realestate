@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { automationFlags, emailConfigProblems } from './email/config'
 import { loadLocalEnvFile } from './lib/repo-root'
 
 // Local runs read the repo-root .env. In production the host injects variables and no file is read.
@@ -13,6 +14,8 @@ const optionalText = z
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  /** Which rules apply to email (and later other integrations). Unset = development. */
+  APP_ENV: optionalText.pipe(z.enum(['development', 'staging', 'production']).optional()),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   WEB_ORIGIN: z.url(),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
@@ -20,9 +23,14 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z
     .string()
     .min(32, { message: 'Use at least 32 random characters (openssl rand -base64 32)' }),
-  EMAIL_TRANSPORT: z.enum(['dev', 'memory']).default('dev'),
+  EMAIL_TRANSPORT: z.enum(['dev', 'memory', 'postmark']).default('dev'),
   EMAIL_FROM: z.string().min(3).default('Vento Real Estate <no-reply@localhost>'),
   EMAIL_DEV_DIR: z.string().min(1).default('.mail'),
+  POSTMARK_SERVER_TOKEN: optionalText,
+  POSTMARK_MESSAGE_STREAM: optionalText.transform((v) => v ?? 'outbound'),
+  POSTMARK_WEBHOOK_SECRET: optionalText,
+  /** Comma-separated domains (@example.com) and addresses that may get real email. */
+  EMAIL_ALLOWED_RECIPIENTS: optionalText,
   AUTH_RATE_LIMIT: onOff.default('on'),
   TRUSTED_IP_HEADER: optionalText.transform((v) => v?.toLowerCase()),
   SEED_PASSWORD: optionalText,
@@ -50,6 +58,15 @@ if (!parsed.success) {
 
 if (parsed.data.NODE_ENV === 'production' && !parsed.data.SUPPORT_EMAIL) {
   console.error('Invalid environment variables (see .env.example):\n  - SUPPORT_EMAIL: Required')
+  process.exit(1)
+}
+
+// Before anything can send: tests, CI and e2e never reach Postmark; staging and production must.
+const emailProblems = emailConfigProblems(parsed.data, automationFlags(process.env))
+if (emailProblems.length) {
+  console.error(
+    `Invalid email settings (see .env.example):\n${emailProblems.map((p) => `  - ${p}`).join('\n')}`,
+  )
   process.exit(1)
 }
 
