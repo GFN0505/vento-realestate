@@ -6,9 +6,12 @@ import { toast } from 'sonner'
 import { meQuery } from '@/features/account/api'
 import { checklistQuery } from '@/features/checklist/checklist-queries'
 import { toastApiError } from '@/lib/api-errors'
+import { errorReason } from '@/lib/error-data'
 import { client } from '@/lib/orpc'
 import { teamListKey } from './team-queries'
-import { useChangeRole } from './use-change-role'
+import { UNDO_MS, useChangeRole } from './use-change-role'
+
+const STALE_REASONS = new Set(['already_member', 'invitation_not_pending', 'invitation_withdrawn'])
 
 export type TeamConfirm =
   | { kind: 'remove'; row: TeamMemberRow }
@@ -32,8 +35,13 @@ export function useTeamActions(listKey: QueryKey) {
     }
   }
   const failed = (who: string) => (error: unknown) => {
-    if (error instanceof ORPCError && error.code === 'NOT_FOUND') {
-      toast.error(`${who} The list is up to date.`)
+    // Someone else acted since the list loaded (removed, withdrawn, or the invitee joined).
+    const stale =
+      (error instanceof ORPCError && error.code === 'NOT_FOUND') ||
+      STALE_REASONS.has(errorReason(error) ?? '')
+    if (stale) {
+      // Neutral, not an error: nothing went wrong, the list was just behind.
+      toast(`${who} The list is up to date.`)
       refresh(true)
       return
     }
@@ -51,13 +59,32 @@ export function useTeamActions(listKey: QueryKey) {
       toast.success(`Invitation sent again to ${row.email}`)
       refresh(true)
     },
-    onError: (error, row) => failed(invitationGone(row))(error),
+    onError: (error, row) =>
+      errorReason(error) === 'already_member'
+        ? failed(`${row.email} has joined.`)(error)
+        : failed(invitationGone(row))(error),
   })
   const withdraw = useMutation({
     mutationFn: (row: TeamInvitationRow) => client.invitations.withdraw({ id: row.id }),
     onSuccess: (_, row) => {
-      toast.success(`Invitation to ${row.email} withdrawn`)
       refresh(true)
+      // Undo invites them again with the same role and entities (a fresh email goes out).
+      toast.success(`Invitation to ${row.email} withdrawn`, {
+        duration: UNDO_MS,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            const entityIds =
+              row.access.kind === 'all' ? null : row.access.entities.map((e) => e.id)
+            client.invitations
+              .create({ items: [{ email: row.email, roleId: row.role.id }], entityIds })
+              .then(() => {
+                toast.success(`Invitation to ${row.email} restored and sent again`)
+                refresh(true)
+              }, toastApiError)
+          },
+        },
+      })
     },
     onError: (error, row) => failed(invitationGone(row))(error),
   })

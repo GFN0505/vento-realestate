@@ -16,6 +16,8 @@ export type TeamSearch = {
   page?: number
   /** The row whose sheet is open (member, invitation or removed person). */
   open?: string
+  /** The top bar's entity (the shell's `?entity`): only people who can work in it. */
+  entity?: string
 }
 
 const SHOWS = new Set<string>(['invited', 'removed'])
@@ -24,12 +26,19 @@ const short = (value: unknown, max: number) =>
     ? value.trim()
     : undefined
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// A role filter that isn't an id (a hand-edited link) is ignored, never an error.
+const roleId = (value: unknown) => {
+  const role = short(value, 64)
+  return role && UUID.test(role) ? role : undefined
+}
+
 export function validateTeamSearch(search: Record<string, unknown>): TeamSearch {
   const page = Number(search.page)
   const show = typeof search.show === 'string' && SHOWS.has(search.show) ? search.show : undefined
   return {
     q: short(search.q, 100),
-    role: short(search.role, 64),
+    role: roleId(search.role),
     show: show as TeamSearch['show'],
     page: Number.isInteger(page) && page > 1 && page < 10_000 ? page : undefined,
     open: short(search.open, 64),
@@ -43,6 +52,7 @@ export function teamListInput(search: TeamSearch): ListTeamInput {
   return {
     q: search.q,
     roleId: search.role,
+    entityId: search.entity && UUID.test(search.entity) ? search.entity : undefined,
     show: search.show ?? 'everyone',
     page: search.page ?? 1,
     pageSize: TEAM_PAGE_SIZE,

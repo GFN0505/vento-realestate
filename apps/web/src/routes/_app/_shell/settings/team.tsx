@@ -12,10 +12,15 @@ export const Route = createFileRoute('/_app/_shell/settings/team')({
     // A bare link to Team opens with this device's last role filter and chip.
     const me = context.queryClient.getQueryData<Me>(meQuery().queryKey)
     const restored = me?.organization ? restoreTeamFilters(me.organization.id, search) : null
-    if (restored) throw redirect({ to: '/settings/team', search: restored, replace: true })
+    if (restored)
+      throw redirect({
+        to: '/settings/team',
+        search: { ...restored, entity: search.entity },
+        replace: true,
+      })
   },
   // The open sheet isn't part of the list, so opening one never refetches it.
-  loaderDeps: ({ search: { q, role, show, page } }) => ({ q, role, show, page }),
+  loaderDeps: ({ search: { q, role, show, page, entity } }) => ({ q, role, show, page, entity }),
   loader: async ({ context: { queryClient }, deps }) => {
     // Roles feed the role filter and menus; not awaited, the list never waits for them.
     void queryClient.prefetchQuery(rolesQuery())

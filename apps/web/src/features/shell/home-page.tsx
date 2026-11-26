@@ -1,7 +1,7 @@
 import { StatCard } from '@/components/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { canSeeChecklist } from '@/features/checklist/checklist-queries'
-import { SetupChecklist } from '@/features/checklist/setup-checklist'
+import { HomeChecklist } from '@/features/checklist/home-checklist'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
 import { TrialLine } from '@/features/plan/trial-line'
 import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
@@ -46,7 +46,7 @@ export function HomePage() {
         }
       />
       <TrialLine />
-      {canSeeChecklist(access) && <SetupChecklist />}
+      {canSeeChecklist(access) && <HomeChecklist />}
       {kpis.length > 0 && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

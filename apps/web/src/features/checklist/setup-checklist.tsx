@@ -72,42 +72,65 @@ export function SetupChecklist() {
           </button>
         </div>
       ) : (
+        // Done steps fold into one line; the open ones get the room.
         <ul className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
-          {data.items.map((item) => (
-            <ChecklistRow key={item.key} item={item} />
-          ))}
+          {done > 0 && <DoneSummary items={data.items.filter((item) => item.done)} />}
+          {data.items
+            .filter((item) => !item.done)
+            .map((item) => (
+              <ChecklistRow key={item.key} item={item} />
+            ))}
         </ul>
       )}
     </section>
   )
 }
 
+/** "3 steps done", naming them underneath. */
+function DoneSummary({ items }: { items: readonly ChecklistItem[] }) {
+  const names = items.map((item) => CHECKLIST_COPY[item.key].short).join(', ')
+  return (
+    <li className="flex min-h-[60px] items-center gap-3 border-t py-2.5">
+      <Tick done />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="font-medium text-muted-foreground text-sm">
+          {items.length === 1 ? '1 step done' : `${items.length} steps done`}
+        </span>
+        <span className="truncate text-muted-foreground text-xs" title={names}>
+          {names}
+        </span>
+      </div>
+    </li>
+  )
+}
+
+function Tick({ done }: { done: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'flex size-5 shrink-0 items-center justify-center rounded-full border-[1.5px]',
+        done
+          ? 'border-status-emerald bg-status-emerald text-primary-foreground'
+          : 'border-border bg-card',
+      )}
+    >
+      {done && <CheckIcon className="size-3" strokeWidth={3} />}
+    </span>
+  )
+}
+
 /** ChecklistRow: a tick, the step and its detail, and the one action while it's open. */
 function ChecklistRow({ item }: { item: ChecklistItem }) {
   const copy = CHECKLIST_COPY[item.key]
-  const detail = item.done ? item.detail : copy.open
+  const detail = copy.open
   return (
     <li className="flex min-h-[60px] items-center gap-3 border-t py-2.5">
-      <span
-        aria-hidden
-        className={cn(
-          'flex size-5 shrink-0 items-center justify-center rounded-full border-[1.5px]',
-          item.done
-            ? 'border-status-emerald bg-status-emerald text-primary-foreground'
-            : 'border-border bg-card',
-        )}
-      >
-        {item.done && <CheckIcon className="size-3" strokeWidth={3} />}
-      </span>
+      <Tick done={false} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span
-          className={cn(
-            'truncate font-medium text-sm',
-            item.done && 'text-muted-foreground line-through decoration-border',
-          )}
-        >
+        <span className="truncate font-medium text-sm">
           {copy.label}
-          <span className="sr-only">{item.done ? ', done' : ', to do'}</span>
+          <span className="sr-only">, to do</span>
         </span>
         {detail && <span className="truncate text-muted-foreground text-xs">{detail}</span>}
       </div>

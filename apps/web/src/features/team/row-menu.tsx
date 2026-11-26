@@ -15,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useMe } from '@/features/preview/use-effective-permissions'
 import { useTeamActionsContext } from './use-team-actions'
 
 const trigger =
@@ -37,7 +36,6 @@ type Props = {
 /** ⋯ on a row: only the actions this viewer may take (the server computes `can`). */
 export function RowMenu({ row, onOpen }: Props) {
   const actions = useTeamActionsContext()
-  const organization = useMe().organization?.name ?? 'the organization'
   if (!hasMenu(row)) return null
   const name = row.kind === 'member' ? row.name : row.email
 
@@ -69,7 +67,7 @@ export function RowMenu({ row, onOpen }: Props) {
                   onSelect={() => actions.setConfirm({ kind: 'remove', row })}
                 >
                   <UserMinusIcon aria-hidden />
-                  <span className="truncate">Remove from {organization}</span>
+                  Remove from team
                 </DropdownMenuItem>
               </>
             )}

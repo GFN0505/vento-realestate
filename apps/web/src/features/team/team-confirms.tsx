@@ -21,7 +21,6 @@ export function TeamConfirms() {
         onOpenChange={close}
         title={confirm?.kind === 'remove' ? `Remove ${confirm.row.name}?` : ''}
         confirmLabel={confirm?.kind === 'remove' ? `Remove ${confirm.row.name}` : 'Remove'}
-        cancelLabel="Keep access"
         destructive
         pending={actions.remove.isPending}
         onConfirm={() => confirm?.kind === 'remove' && actions.remove.mutate(confirm.row)}
@@ -34,7 +33,6 @@ export function TeamConfirms() {
         onOpenChange={close}
         title={confirm?.kind === 'reset' ? `Reset ${confirm.row.name}'s two-step?` : ''}
         confirmLabel="Reset two-step"
-        destructive
         pending={actions.resetTwoStep.isPending}
         onConfirm={() => confirm?.kind === 'reset' && actions.resetTwoStep.mutate(confirm.row)}
       >

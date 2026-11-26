@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { rowProblem } from './invite-plan'
 import { type InviteRow, inviteDraft } from './use-invite-draft'
 
 type Props = {
@@ -16,27 +17,34 @@ type Props = {
   roles: readonly Role[]
   /** The role chosen for everyone; a row follows it until given its own. */
   batchRoleId: string | null
+  /** "Give people different roles" is on: each row shows its role. */
+  perRow: boolean
+  /** Rows past the places left on the plan (owners). */
+  over: ReadonlySet<string>
   viewerEmail: string
   onResendInstead: (row: InviteRow, invitationId: string) => void
   resending: string | null
 }
 
-/** What's wrong with a row, or null. Shown on the row itself, never in a banner (spec). */
-export function rowProblem(row: InviteRow, viewerEmail: string): string | null {
-  if (!row.valid) return 'Check this email'
-  if (row.email === viewerEmail.toLowerCase()) return "That's you"
-  if (row.clash?.kind === 'member') return 'Already a member'
-  if (row.clash?.kind === 'invited') return 'Already invited'
-  return null
-}
+const link =
+  'rounded-sm font-semibold underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-1'
 
-export function InviteRows({ rows, roles, batchRoleId, viewerEmail, ...actions }: Props) {
+export function InviteRows({
+  rows,
+  roles,
+  batchRoleId,
+  perRow,
+  over,
+  viewerEmail,
+  ...actions
+}: Props) {
   if (rows.length === 0) return null
   return (
     <ul aria-label="People to invite" className="flex flex-col divide-y rounded-lg border bg-card">
       {rows.map((row) => {
         const problem = rowProblem(row, viewerEmail)
         const clash = row.clash
+        const noPlace = !problem && over.has(row.email)
         return (
           <li
             key={row.email}
@@ -46,23 +54,30 @@ export function InviteRows({ rows, roles, batchRoleId, viewerEmail, ...actions }
           >
             <div className="flex min-w-0 flex-1 basis-48 flex-col">
               <span
-                className={cn('truncate text-sm', problem && 'text-status-rose-fg')}
+                className={cn(
+                  'truncate text-sm',
+                  problem && 'text-status-rose-fg',
+                  noPlace && 'text-muted-foreground',
+                )}
                 title={row.email}
               >
                 {row.email}
               </span>
-              {(problem || row.suggestion) && (
-                <span className="flex flex-wrap items-center gap-x-2 text-xs">
+              {(problem || row.suggestion || noPlace) && (
+                <span className="flex flex-wrap items-center gap-x-2.5 text-xs">
                   {problem && (
                     <span className="inline-flex items-center gap-1 text-status-rose-fg">
                       <CircleAlertIcon aria-hidden className="size-3.5" />
                       {problem}
                     </span>
                   )}
+                  {noPlace && (
+                    <span className="text-status-amber-fg">No place left on your plan</span>
+                  )}
                   {!problem && row.suggestion && (
                     <button
                       type="button"
-                      className="rounded-sm text-link underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                      className={cn(link, 'font-normal text-link')}
                       onClick={() =>
                         row.suggestion && inviteDraft.replace(row.email, row.suggestion)
                       }
@@ -80,10 +95,20 @@ export function InviteRows({ rows, roles, batchRoleId, viewerEmail, ...actions }
                       Resend instead
                     </Button>
                   )}
+                  {problem && (
+                    // One tap: marked rows are skipped anyway; this clears them from view.
+                    <button
+                      type="button"
+                      className={cn(link, 'text-foreground')}
+                      onClick={() => inviteDraft.remove(row.email)}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </span>
               )}
             </div>
-            <RowRole row={row} roles={roles} batchRoleId={batchRoleId} />
+            {perRow && <RowRole row={row} roles={roles} batchRoleId={batchRoleId} />}
             <button
               type="button"
               aria-label={`Remove ${row.email}`}
@@ -99,7 +124,7 @@ export function InviteRows({ rows, roles, batchRoleId, viewerEmail, ...actions }
   )
 }
 
-/** A row's own role: quiet until someone changes it, then it stays put when the batch role does. */
+/** A row's own role, once "Give people different roles" is on. */
 function RowRole({
   row,
   roles,
@@ -115,10 +140,7 @@ function RowRole({
     <Select value={value} onValueChange={(roleId) => inviteDraft.setRowRole(row.email, roleId)}>
       <SelectTrigger
         aria-label={`Role for ${row.email}`}
-        className={cn(
-          'h-9 w-auto max-w-40 gap-1 border-transparent bg-transparent px-2 text-[13px] hover:bg-muted md:h-8',
-          row.roleId ? 'text-foreground' : 'text-muted-foreground',
-        )}
+        className="h-9 w-auto max-w-40 gap-1 border-transparent bg-transparent px-2 text-[13px] hover:bg-muted md:h-8"
       >
         <SelectValue />
       </SelectTrigger>

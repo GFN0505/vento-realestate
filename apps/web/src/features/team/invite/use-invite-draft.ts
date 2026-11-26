@@ -23,6 +23,8 @@ export type InviteDraft = {
   text: string
   rows: readonly InviteRow[]
   roleId: string | null
+  /** "Give people different roles": each row shows its own role menu. Off by default. */
+  perRow: boolean
   entityMode: EntityMode
   entityIds: readonly string[]
   /** "Removed 1 duplicate" or the 20-at-a-time line, announced politely. */
@@ -38,6 +40,7 @@ const empty = (limits: readonly string[] | null): InviteDraft => ({
   text: '',
   rows: [],
   roleId: null,
+  perRow: false,
   // A granter limited to some entities can only give those (all ticked to start).
   entityMode: limits ? 'some' : 'all',
   entityIds: limits ?? [],
@@ -84,6 +87,15 @@ export const inviteDraft = {
   },
   remove(email: string) {
     set({ rows: draft.rows.filter((r) => r.email !== email), notice: null, error: null })
+  },
+  /** After a send: the rows that went leave; any marked rows stay to be fixed. */
+  removeMany(emails: readonly string[]) {
+    const gone = new Set(emails)
+    set({ rows: draft.rows.filter((r) => !gone.has(r.email)), notice: null })
+  },
+  /** One role for everyone again clears the rows' own choices. */
+  setPerRow(perRow: boolean) {
+    set({ perRow, rows: perRow ? draft.rows : draft.rows.map((r) => ({ ...r, roleId: null })) })
   },
   removeLast() {
     set({ rows: draft.rows.slice(0, -1), notice: null })

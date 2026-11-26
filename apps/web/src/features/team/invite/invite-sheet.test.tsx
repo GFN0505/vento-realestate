@@ -5,11 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { entitiesQuery } from '@/features/entity/use-current-entity'
 import { shellUi } from '@/features/shell/shell-ui'
 import { client } from '@/lib/orpc'
-import { testMe, testRoles } from '@/test/me'
+import { testMe, testPlan, testRoles } from '@/test/me'
 import { renderWithMe } from '@/test/render-with-me'
 import { InviteSheet } from './invite-sheet'
 import { inviteDraft } from './use-invite-draft'
 
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  useSearch: () => undefined,
+}))
 vi.mock('@/lib/orpc', async (original) => {
   const actual = await original<typeof import('@/lib/orpc')>()
   return {
@@ -20,8 +24,7 @@ vi.mock('@/lib/orpc', async (original) => {
 
 const roles = testRoles()
 
-function renderSheet() {
-  const me = testMe('owner', { plan: null })
+function renderSheet(me = testMe('owner', { plan: null })) {
   const view = renderWithMe(<InviteSheet />, me, roles, (queryClient) =>
     queryClient.setQueryData(entitiesQuery().queryKey, {
       items: [],
@@ -39,31 +42,49 @@ function paste(text: string) {
   fireEvent.paste(box, { clipboardData: { getData: () => text } })
 }
 
-beforeEach(() => inviteDraft.reset(null))
+beforeEach(() => {
+  inviteDraft.reset(null)
+  localStorage.clear()
+})
 afterEach(() => {
   act(() => shellUi.close('invite'))
   vi.mocked(client.invitations.create).mockReset()
 })
 
+const sent = () => vi.mocked(client.invitations.create).mock.calls[0]?.[0]
+
 describe('InviteSheet', () => {
-  it('turns a pasted column into rows and names the count on Send', () => {
+  it('turns a pasted column into rows, with a role already chosen', () => {
     renderSheet()
     paste('aisha@ventohomes.ng\ngrace@ventohomes.ng\nkunle@ventohomes.ng')
 
-    const rows = within(screen.getByRole('list', { name: 'People to invite' })).getAllByRole(
-      'listitem',
-    )
-    expect(rows).toHaveLength(3)
-    expect(screen.getByRole('button', { name: 'Send 3 invitations' })).toBeInTheDocument()
+    const list = screen.getByRole('list', { name: 'People to invite' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByRole('combobox', { name: 'Role' })).toHaveTextContent('Sales')
+    expect(screen.getByRole('button', { name: 'Send 3 invitations' })).toBeEnabled()
   })
 
-  it("asks for a role before sending, and marks the viewer's own email", async () => {
+  it('counts only rows that will go, and skips marked rows when sending', async () => {
+    vi.mocked(client.invitations.create).mockResolvedValue({ notice: '', sent: 1, invitations: [] })
     renderSheet()
-    paste('bisi@lekkipartners.ng aisha@ventohomes.ng')
+    paste('bisi@lekkipartners.ng aisha@ventohomes.ng kemi@')
 
     expect(screen.getByText("That's you")).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Send 2 invitations' }))
-    expect(client.invitations.create).not.toHaveBeenCalled()
+    expect(screen.getByText("2 marked emails won't be sent.")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    expect(sent()?.items).toEqual([{ email: 'aisha@ventohomes.ng', roleId: 'role-sales' }])
+    // The marked rows stay behind to fix or remove.
+    expect(screen.getByText('kemi@')).toBeInTheDocument()
+  })
+
+  it('says why Send is off when every row is marked', () => {
+    renderSheet()
+    paste('kemi@')
+
+    const button = screen.getByRole('button', { name: 'Send invitation' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription('Fix or remove the marked email to send.')
   })
 
   it('marks every clashing row from one refusal, and keeps them all', async () => {
@@ -79,21 +100,34 @@ describe('InviteSheet', () => {
     )
     renderSheet()
     paste('aisha@ventohomes.ng, grace@ventohomes.ng, kunle@ventohomes.ng')
-    act(() => inviteDraft.setRole('role-sales'))
 
     await userEvent.click(screen.getByRole('button', { name: 'Send 3 invitations' }))
 
     expect(await screen.findByText('Already a member')).toBeInTheDocument()
     expect(screen.getByText('Already invited')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Resend instead' })).toBeInTheDocument()
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByRole('button', { name: 'Send invitation' })).toBeInTheDocument()
+  })
+
+  it('over the plan, says so above Send and offers to send only what fits', async () => {
+    vi.mocked(client.invitations.create).mockResolvedValue({ notice: '', sent: 1, invitations: [] })
+    const plan = testPlan({ limits: [{ key: 'members', included: 3, used: 2 }] })
+    renderSheet(testMe('owner', { plan }))
+    paste('a1@ventohomes.ng a2@ventohomes.ng')
+
+    const button = screen.getByRole('button', { name: 'Send 2 invitations' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription(/You have 1 place left on your Starter plan/)
+    expect(screen.getByText('No place left on your plan')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Send only 1' }))
+
+    expect(sent()?.items.map((i) => i.email)).toEqual(['a1@ventohomes.ng'])
   })
 
   it('cannot be sent twice while sending', async () => {
     vi.mocked(client.invitations.create).mockReturnValue(new Promise(() => undefined))
     renderSheet()
     paste('aisha@ventohomes.ng')
-    act(() => inviteDraft.setRole('role-sales'))
 
     const send = screen.getByRole('button', { name: 'Send invitation' })
     await userEvent.click(send)

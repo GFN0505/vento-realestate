@@ -3,6 +3,7 @@ import type { TeamRemovedRow } from '@vento/shared'
 import { useEffect } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useCurrentEntity } from '@/features/entity/use-current-entity'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { shellUi } from '@/features/shell/shell-ui'
 import { PAGE_SHORTCUT_EVENT } from '@/features/shell/shortcuts'
@@ -20,6 +21,7 @@ import { TeamRowSheet } from './team-row-sheet'
 import { hasFilters, TEAM_PAGE_SIZE } from './team-search'
 import {
   BringInYourTeam,
+  EntityScopeLine,
   InviteButtonInline,
   TeamEmpty,
   TeamError,
@@ -54,10 +56,18 @@ export function TeamPage() {
   const openRow = search.open ? rows.find((r) => r.id === search.open) : undefined
   const open = (row: ListRow) => update({ open: row.id })
   const filtered = hasFilters(search)
+  const current = useCurrentEntity()
+  // A member limited to one entity has nothing to clear, so no line for them.
+  const scoped = current.entity && !current.locked ? current.entity : null
+  const allEntities = () => current.select(null)
   const empty = data !== undefined && data.items.length === 0
   // Only the owner so far: their row, then an invitation to bring the team in.
   const alone =
-    show === 'everyone' && !filtered && data?.counts.members === 1 && data.counts.invited === 0
+    show === 'everyone' &&
+    !filtered &&
+    !scoped &&
+    data?.counts.members === 1 &&
+    data.counts.invited === 0
 
   return (
     <TeamActionsContext.Provider value={actions}>
@@ -69,13 +79,14 @@ export function TeamPage() {
             actions={canInvite && <InviteButtonInline />}
             className="[&>div:last-child]:max-md:hidden"
           />
-          <TeamToolbar search={search} update={update} counts={data?.counts} />
+          <TeamToolbar search={search} update={update} />
+          {scoped && <EntityScopeLine name={scoped.name} onAllEntities={allEntities} />}
           <div
             aria-busy={list.isFetching || undefined}
             // Old rows stay while new ones load (no flash); dimmed so the wait is visible.
             className={cn(
               'flex flex-col gap-4 transition-opacity duration-150',
-              list.isPlaceholderData && 'opacity-60',
+              list.isPlaceholderData && list.isFetching && 'opacity-60',
             )}
           >
             {list.isError && !data ? (
@@ -87,6 +98,8 @@ export function TeamPage() {
                 show={show}
                 query={search.q}
                 filtered={filtered}
+                entityName={scoped?.name ?? null}
+                onAllEntities={allEntities}
                 onClear={() => update({ q: undefined, role: undefined })}
               />
             ) : show === 'removed' ? (

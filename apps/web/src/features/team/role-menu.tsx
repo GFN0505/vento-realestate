@@ -27,10 +27,13 @@ export function RoleMenu({ row }: { row: TeamMemberRow }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Role for ${row.name}: ${row.role.name}. Change role`}
-        className="-ml-2 inline-flex h-8 max-w-full items-center gap-1 rounded-md px-2 text-left text-[13px] outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted"
+        className="group/role -ml-2 inline-flex h-8 max-w-full items-center gap-1 rounded-md px-2 text-left text-[13px] outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted"
       >
         <span className="truncate">{row.role.name}</span>
-        <ChevronDownIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <ChevronDownIcon
+          aria-hidden
+          className="size-3.5 shrink-0 text-muted-foreground/70 transition-[color,transform] duration-150 group-hover/role:translate-y-px group-hover/role:text-foreground group-data-[state=open]/role:text-foreground"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuLabel>Role</DropdownMenuLabel>

@@ -5,7 +5,6 @@ import { type ComponentProps, type RefObject, useState } from 'react'
 import { Avatar } from '@/components/avatar'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
-import { useMe } from '@/features/preview/use-effective-permissions'
 import { formatDate } from '@/lib/format'
 import { lastActiveLabel } from './last-active'
 import { MEMBER_FORM_ID, MemberAccessForm, useMemberAccessForm } from './member-access-form'
@@ -25,7 +24,6 @@ type Props = Pick<ComponentProps<typeof SheetFrame>, 'onCloseAutoFocus' | 'heigh
 /** Member sheet (pattern: side sheet with facts and actions). */
 export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Props) {
   const actions = useTeamActionsContext()
-  const organization = useMe().organization?.name ?? 'the organization'
   const form = useMemberAccessForm(row)
   const save = useSaveAccess(listKey, actions, onClose)
   const [discarding, setDiscarding] = useState(false)
@@ -135,7 +133,7 @@ export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Pro
               className="-ml-2.5 text-status-rose-fg hover:bg-status-rose-bg hover:text-status-rose-fg max-md:h-11"
             >
               <UserMinusIcon aria-hidden />
-              Remove from {organization}
+              Remove from team
             </Button>
           )}
         </section>

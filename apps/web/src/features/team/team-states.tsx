@@ -84,10 +84,40 @@ type EmptyProps = {
   query: string | undefined
   onClear: () => void
   filtered: boolean
+  /** The top bar's entity, when one is picked. */
+  entityName: string | null
+  onAllEntities: () => void
 }
 
-/** No rows: a search or role filter matched nobody, or a chip is empty. */
-export function TeamEmpty({ show, query, onClear, filtered }: EmptyProps) {
+/** No rows: a search or role filter matched nobody, a chip is empty, or nobody in the entity. */
+export function TeamEmpty({
+  show,
+  query,
+  onClear,
+  filtered,
+  entityName,
+  onAllEntities,
+}: EmptyProps) {
+  if (entityName && !filtered) {
+    const what =
+      show === 'removed'
+        ? `Nobody who worked in ${entityName} has been removed.`
+        : show === 'invited'
+          ? `No open invitations for ${entityName}.`
+          : `No one can work in ${entityName} yet.`
+    return (
+      <EmptyState
+        icon={UsersIcon}
+        action={
+          <Button variant="outline" onClick={onAllEntities} className="max-md:h-11">
+            Show all entities
+          </Button>
+        }
+      >
+        {what}
+      </EmptyState>
+    )
+  }
   if (filtered) {
     return (
       <EmptyState
@@ -121,5 +151,29 @@ export function TeamError({ onRetry, retrying }: { onRetry: () => void; retrying
     >
       <span role="alert">Team couldn't load. Check your connection and try again.</span>
     </EmptyState>
+  )
+}
+
+/** Above the list while the top bar has one entity picked. */
+export function EntityScopeLine({
+  name,
+  onAllEntities,
+}: {
+  name: string
+  onAllEntities: () => void
+}) {
+  return (
+    <p className="-mb-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
+      <span>
+        People who can work in <span className="font-medium text-foreground">{name}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onAllEntities}
+        className="rounded-sm font-semibold text-link underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+      >
+        Show all entities
+      </button>
+    </p>
   )
 }

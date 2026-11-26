@@ -23,9 +23,9 @@ describe('plan places', () => {
     expect(planPlacesMessage(starter(8), 2)).toBeNull()
   })
 
-  it('says how many to remove when the rows exceed the places left', () => {
+  it('leads with the places left and the way to get more', () => {
     expect(planPlacesMessage(starter(8), 3)).toBe(
-      'You have 2 places left on your Starter plan and 3 people here. Remove 1, or talk to Vento about a bigger plan.',
+      'You have 2 places left on your Starter plan. Talk to Vento for more.',
     )
   })
 

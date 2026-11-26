@@ -18,19 +18,21 @@ export function placesLeft(limit: PeopleLimit): number {
   return Math.max(0, limit.included - limit.used)
 }
 
-const people = (n: number) => (n === 1 ? '1 person' : `${n} people`)
 const places = (n: number) => (n === 1 ? '1 place' : `${n} places`)
 const onPlan = (limit: PeopleLimit) => (limit.planName ? ` on your ${limit.planName} plan` : '')
 
-/** The sentence above Send when the rows don't fit, or null when they do. */
+/**
+ * The reason above a disabled Send when the rows don't fit (owners), leading with the way out;
+ * null when they fit. Which rows are over is marked on the rows.
+ */
 export function planPlacesMessage(limit: PeopleLimit | null, rows: number): string | null {
   if (!limit) return null
   const left = placesLeft(limit)
   if (rows <= left) return null
   if (left === 0) {
-    return `All ${limit.included} places${onPlan(limit)} are taken. Remove someone from the team, or talk to Vento about a bigger plan.`
+    return `All ${limit.included} places${onPlan(limit)} are taken. Talk to Vento for more.`
   }
-  return `You have ${places(left)} left${onPlan(limit)} and ${people(rows)} here. Remove ${rows - left}, or talk to Vento about a bigger plan.`
+  return `You have ${places(left)} left${onPlan(limit)}. Talk to Vento for more.`
 }
 
 /** "8 of 10 people on your Starter plan" for the Team context line. */

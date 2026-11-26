@@ -45,7 +45,7 @@ export function TeamTable({ rows, onOpen }: Props) {
               Two-step
             </th>
             <th scope="col" className={`${th} hidden @3xl:table-cell`}>
-              Last active
+              Activity
             </th>
             <th scope="col" className={th}>
               <span className="sr-only">Actions</span>

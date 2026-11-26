@@ -30,12 +30,12 @@ function renderChecklist(data: Checklist) {
 afterEach(() => vi.restoreAllMocks())
 
 describe('SetupChecklist', () => {
-  it('shows progress, what is done and the one open step', () => {
+  it('shows progress, folds the done steps into one line and keeps the open step', () => {
     renderChecklist(checklist())
 
     expect(screen.getByRole('heading', { name: 'Finish setting up' })).toBeInTheDocument()
     expect(screen.getByText('3 of 4 done')).toBeInTheDocument()
-    expect(screen.getByText('Parkview Residences SPV Ltd')).toBeInTheDocument()
+    expect(screen.getByText('3 steps done')).toBeInTheDocument()
     expect(screen.getByText('Bring in finance, sales and site staff')).toBeInTheDocument()
   })
 

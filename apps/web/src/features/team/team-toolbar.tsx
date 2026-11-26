@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import type { ListTeamOutput } from '@vento/shared'
 import { SearchIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
@@ -11,27 +10,29 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
+import { useMediaQuery } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
 import type { TeamSearch, TeamShow } from './team-search'
 
 type Props = {
   search: TeamSearch
   update: (patch: Partial<TeamSearch>, options?: { replace?: boolean }) => void
-  counts: ListTeamOutput['counts'] | undefined
 }
 
 const SEARCH_DEBOUNCE_MS = 300
 export const TEAM_SEARCH_ID = 'team-search'
 
-const CHIPS: { show: TeamShow; label: string; count: keyof ListTeamOutput['counts'] | null }[] = [
-  { show: 'everyone', label: 'Everyone', count: null },
-  { show: 'invited', label: 'Invited', count: 'invited' },
-  { show: 'removed', label: 'Removed', count: 'removed' },
+// Counts live in the line under the title, so the chips stay single words.
+const CHIPS: { show: TeamShow; label: string }[] = [
+  { show: 'everyone', label: 'Everyone' },
+  { show: 'invited', label: 'Invited' },
+  { show: 'removed', label: 'Removed' },
 ]
 
 /** Search, Role and the Everyone · Invited · Removed chips, all held in the address. */
-export function TeamToolbar({ search, update, counts }: Props) {
+export function TeamToolbar({ search, update }: Props) {
   const roles = useQuery(rolesQuery())
+  const narrow = useMediaQuery('(max-width: 639px)')
   const [text, setText] = useState(search.q ?? '')
   const show = search.show ?? 'everyone'
   const updateRef = useRef(update)
@@ -72,7 +73,7 @@ export function TeamToolbar({ search, update, counts }: Props) {
           name="q"
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Search by name or email"
+          placeholder={narrow ? 'Search people' : 'Search by name or email'}
           aria-label="Search by name or email"
           aria-keyshortcuts="/"
           autoComplete="off"
@@ -107,7 +108,6 @@ export function TeamToolbar({ search, update, counts }: Props) {
       >
         {CHIPS.map((chip) => {
           const on = chip.show === show
-          const n = chip.count && counts ? counts[chip.count] : 0
           return (
             <button
               key={chip.show}
@@ -122,7 +122,6 @@ export function TeamToolbar({ search, update, counts }: Props) {
               )}
             >
               {chip.label}
-              {n > 0 && <span className="font-medium tabular-nums opacity-80">{n}</span>}
             </button>
           )
         })}

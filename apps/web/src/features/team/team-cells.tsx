@@ -44,7 +44,12 @@ export function accessLabel(access: EntityAccess): string {
 export function AccessText({ access, className }: { access: EntityAccess; className?: string }) {
   const label = accessLabel(access)
   if (access.kind === 'all' || access.entities.length < 2) {
-    return <span className={className}>{label}</span>
+    // The title shows a long entity name in full where the cell truncates it.
+    return (
+      <span className={className} title={label}>
+        {label}
+      </span>
+    )
   }
   const names = access.entities.map((e) => e.name).join(', ')
   return (
