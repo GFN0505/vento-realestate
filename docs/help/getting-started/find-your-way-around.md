@@ -11,8 +11,8 @@ After you sign in you land on **Home**: your key numbers (they fill in as each p
 - Press **⌘K** (Ctrl+K on Windows) and type where you want to go, e.g. "sales". Press Enter to go there.
 - Press **?** to see every keyboard shortcut. `g` then `h` takes you Home.
 
-**Entities**
-- The **Entity** menu at the top filters what you see to one company (SPV), or shows all entities. It never changes who can see what.
+**Companies**
+- The **Company** menu at the top filters what you see to one company (SPV), or shows all companies. Owners and admins can add a company from the bottom of that menu. It never changes who can see what.
 
 **Light or dark**
 - Open your name at the bottom of the side panel and choose Light, Dark or System.
