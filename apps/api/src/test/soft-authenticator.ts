@@ -58,7 +58,11 @@ export type SoftAuthenticator = {
     opts?: { userVerified?: boolean; aaguid?: Buffer },
   ): unknown
   /** The answer to /passkey/generate-authenticate-options, for /passkey/verify-authentication. */
-  signIn(options: { challenge: string }, opts?: { userVerified?: boolean }): unknown
+  /** `counter` replays a given signature counter, as a copied key would. */
+  signIn(
+    options: { challenge: string },
+    opts?: { userVerified?: boolean; counter?: number; badSignature?: boolean },
+  ): unknown
 }
 
 export function softAuthenticator(origin: string): SoftAuthenticator {
@@ -120,10 +124,14 @@ export function softAuthenticator(origin: string): SoftAuthenticator {
       }
     },
     signIn(options, opts = {}) {
-      counter += 1
+      counter = opts.counter ?? counter + 1
       const data = authData(FLAG_UP | (opts.userVerified === false ? 0 : FLAG_UV))
       const json = clientData('webauthn.get', options.challenge)
-      const signature = sign('sha256', Buffer.concat([data, sha256(json)]), privateKey)
+      // A forger without the private key signs with some other key.
+      const signer = opts.badSignature
+        ? generateKeyPairSync('ec', { namedCurve: 'P-256' }).privateKey
+        : privateKey
+      const signature = sign('sha256', Buffer.concat([data, sha256(json)]), signer)
       return {
         id: b64url(credential),
         rawId: b64url(credential),

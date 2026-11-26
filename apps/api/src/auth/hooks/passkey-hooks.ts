@@ -1,8 +1,9 @@
 import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES, PASSKEY_LIMIT } from '@vento/shared'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, gt } from 'drizzle-orm'
 import { listActiveMemberships } from '@/access/context'
-import { passkeys, sessions } from '@/db/schema'
-import { passkeyAddedAlert } from '@/email/templates/security-alert'
+import { auditEvents, passkeys, sessions } from '@/db/schema'
+import { passkeyAddedAlert, passkeyCopiedAlert } from '@/email/templates/security-alert'
+import { env } from '@/env'
 import { formatDate, formatTime } from '@/lib/format'
 import { requestScope } from '@/lib/request-scope'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
@@ -11,6 +12,7 @@ import {
   passkeysAvailableHere,
   passkeysSwitchedOff,
 } from '../passkey-availability'
+import { isSuspectedClone, readAssertion } from '../passkey-clone'
 import { REAUTH_WINDOW_MS } from '../policy'
 import { findUserById, passkeyCountFor } from '../security-store'
 import { afterSignIn, type SignInContext } from './after-sign-in'
@@ -24,6 +26,8 @@ export type HookSession = {
   activeOrganizationId: string | null
   reauthenticatedAt: Date | null
 }
+
+const webOrigin = () => new URL(env.WEB_ORIGIN).origin
 
 const unavailable = () =>
   authError(
@@ -69,6 +73,35 @@ export function readRememberMe(value: string | null | undefined): void {
   requestScope().auth.rememberMe = value === '1'
 }
 
+/**
+ * Keeps this request's challenge before the plugin consumes it, so a failed sign-in can be checked
+ * for a copied key (passkey-clone.ts).
+ */
+export async function rememberChallenge(ctx: ChallengeContext): Promise<void> {
+  const cookie = ctx.context.createAuthCookie('passkey_challenge').name
+  const token = await ctx.getSignedCookie(cookie, ctx.context.secret)
+  const row = token ? await ctx.context.internalAdapter.findVerificationValue(token) : null
+  try {
+    const value = row ? (JSON.parse(row.value) as { expectedChallenge?: unknown }) : null
+    if (typeof value?.expectedChallenge === 'string') {
+      requestScope().auth.passkeyChallenge = value.expectedChallenge
+    }
+  } catch {
+    // Not ours to judge: the plugin answers a bad challenge itself.
+  }
+}
+
+export type ChallengeContext = {
+  getSignedCookie(name: string, secret: string): Promise<string | null | false>
+  context: {
+    secret: string
+    createAuthCookie(name: string): { name: string }
+    internalAdapter: {
+      findVerificationValue(identifier: string): Promise<{ value: string } | null>
+    }
+  }
+}
+
 /** What the passkey sign-in after-hook needs from Better Auth's context. */
 export type PasskeySignInContext = SignInContext & {
   context: SignInContext['context'] & {
@@ -81,22 +114,87 @@ export type PasskeySignInContext = SignInContext & {
   }
 }
 
+/** Better Auth's cookie helpers, applied to the hook context (typed loosely by Better Auth). */
+export type SessionCookies = {
+  /** Expires the session cookies and drops any value already on this response. */
+  drop(): void
+  /** Re-issues the session cookie without max-age: it ends when the browser closes. */
+  forBrowserSession(): Promise<void>
+}
+
+/** Audits and emails a suspected copy, at most one email an hour per passkey. */
+async function reportSuspectedClone(deps: AuthDeps, response: unknown): Promise<void> {
+  const assertion = readAssertion(response)
+  if (!assertion) return
+  const [stored] = await deps.db
+    .select({
+      id: passkeys.id,
+      userId: passkeys.userId,
+      name: passkeys.name,
+      counter: passkeys.counter,
+      publicKey: passkeys.publicKey,
+    })
+    .from(passkeys)
+    .where(eq(passkeys.credentialID, assertion.credentialId))
+  const expected = { challenge: requestScope().auth.passkeyChallenge, origin: webOrigin() }
+  if (!stored || !isSuspectedClone(assertion, stored, expected)) return
+  const user = await findUserById(deps.db, stored.userId)
+  if (!user) return
+  const [recent] = await deps.db
+    .select({ id: auditEvents.id })
+    .from(auditEvents)
+    .where(
+      and(
+        eq(auditEvents.action, 'passkey.suspected_clone'),
+        eq(auditEvents.targetId, stored.id),
+        gt(auditEvents.createdAt, new Date(Date.now() - 3_600_000)),
+      ),
+    )
+    .limit(1)
+  const name = stored.name ?? 'Passkey'
+  await recordAccountEvent(deps.db, {
+    userId: user.id,
+    action: 'passkey.suspected_clone',
+    actor: { userId: null, name: 'Sign-in attempt' },
+    target: { type: 'passkey', id: stored.id, label: name },
+  })
+  if (recent) return
+  const now = new Date()
+  await sendEmail(
+    deps,
+    user.email,
+    'security_alert',
+    passkeyCopiedAlert({
+      name,
+      at: formatTime(now),
+      on: formatDate(now),
+      securityUrl: webUrl('/settings/security'),
+      resetUrl: webUrl('/forgot-password'),
+    }),
+  )
+}
+
 /**
- * A verified passkey made a session. Refuse it (deleting the session) when the person must set a
- * new password, belongs to no organization, or has passkeys available nowhere; otherwise record
- * the use and finish the sign-in. A failed passkey check never counts towards a lock.
+ * A verified passkey made a session. Refuse it (deleting the session and its cookie) when the
+ * person must set a new password, belongs to no organization, or has passkeys available nowhere;
+ * otherwise record the use and finish the sign-in. A failed passkey check never counts towards a
+ * lock, but one that looks like a copied key is reported.
  */
 export async function afterPasskeySignIn(
   deps: AuthDeps,
   ctx: PasskeySignInContext,
-  credentialId: unknown,
+  cookies: SessionCookies,
+  response: unknown,
 ): Promise<Response | undefined> {
-  if (errorCode(ctx.context.returned)) return
+  const code = errorCode(ctx.context.returned)
+  if (code === AUTH_ERROR_CODES.AUTHENTICATION_FAILED) await reportSuspectedClone(deps, response)
+  if (code) return
   const created = ctx.context.newSession
   if (!created) return
   const user = await findUserById(deps.db, created.user.id)
   const refuse = async (status: 401 | 403, code: keyof typeof AUTH_ERROR_MESSAGES) => {
     await deps.db.delete(sessions).where(eq(sessions.token, created.session.token))
+    cookies.drop()
     ctx.context.setNewSession(null)
     return errorResponse(status, { code, message: AUTH_ERROR_MESSAGES[code] })
   }
@@ -109,12 +207,15 @@ export async function afterPasskeySignIn(
   if (!(await passkeysAvailableForUser(deps.db, deps.features, user.id))) {
     return refuse(403, 'PASSKEYS_UNAVAILABLE')
   }
-  if (typeof credentialId === 'string') {
+  const credentialId = readAssertion(response)?.credentialId
+  if (credentialId) {
     await deps.db
       .update(passkeys)
       .set({ lastUsedAt: new Date() })
       .where(and(eq(passkeys.credentialID, credentialId), eq(passkeys.userId, user.id)))
   }
+  // Like a password sign-in without "Keep me signed in": the cookie ends with the browser.
+  if (requestScope().auth.rememberMe !== true) await cookies.forBrowserSession()
   await afterSignIn(deps, ctx, user, 'passkey')
   return
 }

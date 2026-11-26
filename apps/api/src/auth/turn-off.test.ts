@@ -160,3 +160,17 @@ describe('new sign-in alerts', () => {
     expect(alerts().map((m) => m.subject)).toEqual(['Vento: new sign-in on Safari on iPhone'])
   })
 })
+
+describe('checking codes while signed in', () => {
+  it('refuses the verify endpoints once two-step is on, right code or wrong, so they check nothing', async () => {
+    const { b, totpURI, backupCodes } = await salesPersonWithTwoStep()
+    const answers = []
+    for (let i = 0; i < 10; i++)
+      answers.push(await b.auth('/two-factor/verify-totp', { code: '000000' }))
+    answers.push(await b.auth('/two-factor/verify-totp', { code: totpFromUri(totpURI) }))
+    answers.push(await b.auth('/two-factor/verify-backup-code', { code: backupCodes[0] }))
+    expect(new Set(answers.map((a) => a.json.code))).toEqual(new Set(['TWO_STEP_ALREADY_ON']))
+    // The backup code wasn't spent.
+    expect((await turnOff(b, { backupCode: backupCodes[0] })).status).toBe(200)
+  })
+})

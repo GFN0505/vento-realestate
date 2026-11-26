@@ -37,6 +37,8 @@ export const AUTH_ERROR_CODES = {
   PASSKEY_NOT_RECOGNISED: 'PASSKEY_NOT_RECOGNISED',
   /** 409 when adding an 11th passkey. */
   PASSKEY_LIMIT: 'PASSKEY_LIMIT',
+  /** 400 on /two-factor/verify-totp or /verify-backup-code while signed in with two-step already on. */
+  TWO_STEP_ALREADY_ON: 'TWO_STEP_ALREADY_ON',
   /** 403 on /passkey/generate-register-options: "Confirm it's you" first (account.confirmPassword). */
   REAUTH_REQUIRED: 'REAUTH_REQUIRED',
   // Better Auth's, listed so the web can map them.
@@ -95,7 +97,8 @@ export const AUTH_ERROR_MESSAGES: Record<
   | 'PASSKEY_NOT_FOUND'
   | 'PASSKEY_LIMIT'
   | 'REAUTH_REQUIRED'
-  | 'TWO_FACTOR_NOT_ENABLED',
+  | 'TWO_FACTOR_NOT_ENABLED'
+  | 'TWO_STEP_ALREADY_ON',
   string
 > = {
   PASSWORD_TOO_SHORT: 'Use at least 8 characters',
@@ -119,4 +122,5 @@ export const AUTH_ERROR_MESSAGES: Record<
   PASSKEY_LIMIT: 'You can have up to 10 passkeys. Remove one you no longer use.',
   REAUTH_REQUIRED: 'Enter your password to continue.',
   TWO_FACTOR_NOT_ENABLED: 'Two-step is off now. The page is up to date.',
+  TWO_STEP_ALREADY_ON: 'Two-step is already on. The page is up to date.',
 }

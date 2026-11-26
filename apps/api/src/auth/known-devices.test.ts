@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { knownDevices } from '@/db/schema'
 import { withRollback } from '@/test/db'
 import { createUser } from '@/test/factories'
-import { deviceHash, recordDevice } from './known-devices'
+import { deviceHash, pruneStaleDevices, recordDevice } from './known-devices'
 
 const DAY = 24 * 3600_000
 
@@ -27,5 +27,17 @@ describe('known devices', () => {
       expect(await recordDevice(tx, user.id, 'old-laptop')).toEqual({ isNew: true })
       const rows = await tx.select().from(knownDevices).where(eq(knownDevices.userId, user.id))
       expect(rows.map((r) => r.deviceHash)).toEqual([deviceHash('old-laptop')])
+    }))
+})
+
+describe('pruning known devices', () => {
+  it('removes every browser unseen for 90 days, for everyone', () =>
+    withRollback(async (tx) => {
+      const user = await createUser(tx)
+      await recordDevice(tx, user.id, 'recent', new Date(Date.now() - DAY))
+      await recordDevice(tx, user.id, 'old', new Date(Date.now() - 100 * DAY))
+      expect(await pruneStaleDevices(tx)).toBeGreaterThanOrEqual(1)
+      const rows = await tx.select().from(knownDevices).where(eq(knownDevices.userId, user.id))
+      expect(rows.map((r) => r.deviceHash)).toEqual([deviceHash('recent')])
     }))
 })

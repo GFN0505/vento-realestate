@@ -1,4 +1,4 @@
-import { AUTH_ERROR_CODES } from '@vento/shared'
+import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@vento/shared'
 import { eq } from 'drizzle-orm'
 import { twoFactors } from '@/db/schema'
 import { backupCodeUsedAlert } from '@/email/templates/security-alert'
@@ -12,7 +12,7 @@ import {
   type IdentityUser,
 } from '../security-store'
 import { afterSignIn, type SignInContext } from './after-sign-in'
-import { type AuthDeps, errorCode, sendEmail, webUrl } from './deps'
+import { type AuthDeps, authError, errorCode, sendEmail, webUrl } from './deps'
 import { lockAccount, lockedError, lockedResponse } from './sign-in-guard'
 
 /**
@@ -26,6 +26,16 @@ export async function beforeTwoStepVerify(
 ): Promise<void> {
   const scope = requestScope()
   if (input.sessionUser) {
+    // With a session these endpoints only confirm a newly scanned authenticator. Once two-step is
+    // on they would be an uncounted code checker for a signed-in guesser, so they refuse; turning
+    // two-step off checks its code through turn-off-guard.ts, which counts.
+    if (input.sessionUser.twoFactorEnabled) {
+      throw authError(
+        'BAD_REQUEST',
+        AUTH_ERROR_CODES.TWO_STEP_ALREADY_ON,
+        AUTH_ERROR_MESSAGES.TWO_STEP_ALREADY_ON,
+      )
+    }
     scope.auth = {
       twoStepMode: 'setup',
       userId: input.sessionUser.id,

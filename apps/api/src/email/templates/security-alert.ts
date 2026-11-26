@@ -174,3 +174,20 @@ export function twoStepNoLongerRequiredAlert(p: {
     ],
   )
 }
+
+/** A passkey answered with a counter that went backwards: someone may have copied it. */
+export function passkeyCopiedAlert(p: {
+  name: string
+  at: string
+  on: string
+  securityUrl: string
+  resetUrl: string
+}): RenderedEmail {
+  return renderEmail('Vento: a passkey may have been copied', 'A passkey may have been copied', [
+    {
+      kind: 'p',
+      text: `At ${p.at} on ${p.on} someone tried to sign in with your passkey ${p.name}, but it looked like a copy of the key, so we refused it. If you didn't just sign in on two devices at once, remove this passkey and reset your password: ${p.resetUrl}`,
+    },
+    { kind: 'button', label: 'Check My security', url: p.securityUrl },
+  ])
+}

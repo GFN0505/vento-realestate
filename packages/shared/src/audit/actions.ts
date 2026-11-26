@@ -35,6 +35,8 @@ export const AUDIT_ACTIONS = [
   'passkey.added',
   'passkey.renamed',
   'passkey.removed',
+  /** A passkey signed with a counter that went backwards: it may have been copied. */
+  'passkey.suspected_clone',
   'account.name_changed',
   // Written by Vento's platform operations (feature flags and plans), actor "Vento".
   'plan.assigned',

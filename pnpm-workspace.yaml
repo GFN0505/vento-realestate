@@ -5,3 +5,39 @@ packages:
 # Packages allowed to run install scripts (pnpm blocks them by default)
 allowBuilds:
   esbuild: true
+
+# Supply-chain guard (3d security audit L8): a release must be 3 days old (4320 minutes) before
+# pnpm resolves it, so a hijacked publish is usually caught and pulled first.
+minimumReleaseAge: 4320
+# Exact versions already in pnpm-lock.yaml (reviewed) when the guard arrived on 26 Nov 2026, all
+# under 3 days old then: the better-auth 1.7.28 family (the passkey plugin's required peer),
+# Biome 2.6.9 and a few web packages. Versions only, never names, so any other version still
+# waits. Delete these lines after 29 Nov 2026; they're harmless but no longer needed.
+minimumReleaseAgeExclude:
+  - '@axe-core/playwright@4.14.1'
+  - '@better-auth/core@1.7.28'
+  - '@better-auth/drizzle-adapter@1.7.28'
+  - '@better-auth/kysely-adapter@1.7.28'
+  - '@better-auth/memory-adapter@1.7.28'
+  - '@better-auth/mongo-adapter@1.7.28'
+  - '@better-auth/passkey@1.7.28'
+  - '@better-auth/prisma-adapter@1.7.28'
+  - '@better-auth/telemetry@1.7.28'
+  - '@biomejs/biome@2.6.9'
+  - '@biomejs/cli-android-arm64@2.6.9'
+  - '@biomejs/cli-android-x64@2.6.9'
+  - '@biomejs/cli-darwin-arm64@2.6.9'
+  - '@biomejs/cli-darwin-x64@2.6.9'
+  - '@biomejs/cli-linux-arm64-musl@2.6.9'
+  - '@biomejs/cli-linux-arm64@2.6.9'
+  - '@biomejs/cli-linux-x64-musl@2.6.9'
+  - '@biomejs/cli-linux-x64@2.6.9'
+  - '@biomejs/cli-win32-arm64@2.6.9'
+  - '@biomejs/cli-win32-x64@2.6.9'
+  - '@hookform/resolvers@7.0.9'
+  - '@types/react@19.3.1'
+  - 'better-auth@1.7.28'
+  - 'caniuse-lite@1.0.30001828'
+  - 'electron-to-chromium@1.5.493'
+  - 'isbot@5.2.4'
+  - 'lucide-react@1.79.0'

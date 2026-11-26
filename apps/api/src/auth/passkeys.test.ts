@@ -335,3 +335,123 @@ describe('Better Auth endpoints switched off', () => {
     expect(row).toEqual({ name: 'Olumide Bankole', image: null })
   })
 })
+
+/** Session cookies this response sets with a value (an expiring one has none). */
+function liveSessionCookies(headers: Headers): string[] {
+  return headers.getSetCookie().filter((c) => /^(__Secure-)?vento\.session_token=[^;]+/.test(c))
+}
+
+describe('security audit fixes', () => {
+  it.each<[string, (userId: string, organizationId: string) => Promise<unknown>]>([
+    [
+      'a reset',
+      (userId) => db.update(users).set({ passwordResetRequired: true }).where(eq(users.id, userId)),
+    ],
+    ['no organization', (userId) => leaveEveryOrganization(userId)],
+    ['passkeys unavailable', (_userId, organizationId) => releaseTo(organizationId, 'standard')],
+  ])('sets no session cookie on a sign-in refused for %s', async (_name, refuseFor) => {
+    const { app, b, userId, organizationId } = await person()
+    const { key } = await addPasskey(b)
+    await refuseFor(userId, organizationId)
+    const { res } = await passkeySignIn(app, key)
+    expect(res.status).toBeGreaterThanOrEqual(400)
+    expect(liveSessionCookies(res.headers)).toEqual([])
+  })
+
+  it('never makes a second session while adding a passkey', async () => {
+    const { b, userId } = await person()
+    await b.rpc('account/confirmPassword', { password: TEST_PASSWORD })
+    const before = await sessionCount(userId)
+    const options = await b.authGet('/passkey/generate-register-options')
+    const key = softAuthenticator(env.WEB_ORIGIN)
+    const res = await b.auth('/passkey/verify-registration', {
+      response: key.register(options.json as { challenge: string }),
+      createSession: true,
+    })
+    expect(res.status).toBe(200)
+    expect(await sessionCount(userId)).toBe(before)
+    expect(liveSessionCookies(res.headers)).toEqual([])
+  })
+
+  it('gives a passkey sign-in without "Keep me signed in" a cookie that ends with the browser', async () => {
+    const { app, b } = await person()
+    const { key } = await addPasskey(b)
+    const plain = (await passkeySignIn(app, key)).res
+    const remembered = (await passkeySignIn(app, key, { 'x-vento-remember': '1' })).res
+    expect(liveSessionCookies(plain.headers)).toHaveLength(1)
+    expect(liveSessionCookies(plain.headers)[0]).not.toMatch(/max-age|expires/i)
+    expect(liveSessionCookies(remembered.headers)[0]).toMatch(/max-age=\d+/i)
+  })
+
+  it('reports a copied key: a counter that went backwards with a valid signature', async () => {
+    const { app, b, mailer, email, userId } = await person()
+    const { key } = await addPasskey(b)
+    await passkeySignIn(app, key) // counter 1
+    const other = browser(app)
+    const options = await other.authGet('/passkey/generate-authenticate-options')
+    const res = await other.auth('/passkey/verify-authentication', {
+      response: key.signIn(options.json as { challenge: string }, { counter: 1 }),
+    })
+    expect(res.json.code).toBe('AUTHENTICATION_FAILED')
+    const audited = await db
+      .select()
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.targetId, (await passkeyOf(userId)).id),
+          eq(auditEvents.action, 'passkey.suspected_clone'),
+        ),
+      )
+    expect(audited.length).toBeGreaterThan(0)
+    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: a passkey may have been copied')
+  })
+
+  it('ignores a low counter with a forged signature', async () => {
+    const { app, b, mailer, email } = await person()
+    const { key } = await addPasskey(b)
+    await passkeySignIn(app, key)
+    const other = browser(app)
+    const options = await other.authGet('/passkey/generate-authenticate-options')
+    await other.auth('/passkey/verify-authentication', {
+      response: key.signIn(options.json as { challenge: string }, {
+        counter: 1,
+        badSignature: true,
+      }),
+    })
+    expect(mailer.to(email).filter((m) => m.subject.includes('copied'))).toEqual([])
+  })
+
+  it('only moves the stored counter forward', async () => {
+    const { b, userId } = await person()
+    await addPasskey(b)
+    const { id } = await passkeyOf(userId)
+    await db.update(passkeys).set({ counter: 5 }).where(eq(passkeys.id, id))
+    await expect(
+      db.update(passkeys).set({ counter: 5 }).where(eq(passkeys.id, id)),
+    ).rejects.toMatchObject({ cause: { message: 'PASSKEY_COUNTER_REPLAY' } })
+  })
+})
+
+async function passkeyOf(userId: string) {
+  const [row] = await db.select().from(passkeys).where(eq(passkeys.userId, userId))
+  if (!row) throw new Error('no passkey')
+  return row
+}
+
+/** An organization always keeps an owner: hand it to someone else, then leave. */
+async function leaveEveryOrganization(userId: string) {
+  const [membership] = await db.select().from(members).where(eq(members.userId, userId))
+  const [heir] = await db
+    .insert(users)
+    .values({ name: 'Bisi Lawal', email: uniqueEmail('bisi'), emailVerified: true })
+    .returning()
+  await db.insert(members).values({
+    organizationId: membership?.organizationId ?? '',
+    userId: heir?.id ?? '',
+    roleId: membership?.roleId ?? '',
+  })
+  await db
+    .update(members)
+    .set({ status: 'removed', removedAt: new Date() })
+    .where(eq(members.userId, userId))
+}

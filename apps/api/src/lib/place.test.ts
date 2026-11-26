@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { logger } from './logger'
 import { createPlaceLookup, formatPlace } from './place'
 
@@ -107,7 +107,9 @@ const fixture = buildMmdb([
 ])
 
 describe('place lookup', () => {
-  const lookup = createPlaceLookup(() => fixture)
+  const places = createPlaceLookup()
+  beforeAll(() => places.load(async () => fixture))
+  const lookup = (ip: string | null) => places.lookup(ip)
 
   it('says "City, State" in Nigeria, without " State"', () => {
     expect(lookup('102.89.34.14')).toBe('Lekki, Lagos')
@@ -128,20 +130,24 @@ describe('place lookup', () => {
     }
   })
 
-  it('answers null with one log line, never the address, when the file is missing', () => {
+  it('answers null with one log line, never the address, when the file is missing', async () => {
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-    const missing = createPlaceLookup(() => {
-      throw Object.assign(new Error('ENOENT: /srv/geo/dbip.mmdb'), { name: 'Error' })
+    const missing = createPlaceLookup()
+    await missing.load(async () => {
+      throw new Error('ENOENT: /srv/geo/dbip.mmdb')
     })
-    expect(missing('102.89.34.14')).toBeNull()
-    expect(missing('81.2.69.160')).toBeNull()
+    expect(missing.lookup('102.89.34.14')).toBeNull()
+    expect(missing.lookup('81.2.69.160')).toBeNull()
     expect(warn).toHaveBeenCalledTimes(1)
     expect(JSON.stringify(warn.mock.calls)).not.toContain('102.89')
     warn.mockRestore()
   })
 
-  it('answers null without a file configured', () => {
-    expect(createPlaceLookup(() => null)('102.89.34.14')).toBeNull()
+  it('answers null until loaded, and without a file configured', async () => {
+    const places = createPlaceLookup()
+    expect(places.lookup('102.89.34.14')).toBeNull()
+    await places.load(async () => null)
+    expect(places.lookup('102.89.34.14')).toBeNull()
   })
 
   it('formats a record with only a region', () => {

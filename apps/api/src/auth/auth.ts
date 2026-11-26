@@ -12,6 +12,7 @@ import {
 } from '@vento/shared'
 import { betterAuth } from 'better-auth'
 import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { deleteSessionCookie, setSessionCookie } from 'better-auth/cookies'
 import { emailOTP, twoFactor } from 'better-auth/plugins'
 import { eq } from 'drizzle-orm'
 import type { Db } from '@/db/client'
@@ -31,9 +32,12 @@ import {
   afterPasskeySignIn,
   beforePasskeyAuthenticateOptions,
   beforePasskeyRegistration,
+  type ChallengeContext,
   type HookSession,
   type PasskeySignInContext,
   readRememberMe,
+  rememberChallenge,
+  type SessionCookies,
 } from './hooks/passkey-hooks'
 import { assertPasswordAllowed, assertTermsAccepted } from './hooks/password-history'
 import {
@@ -93,6 +97,21 @@ export const DISABLED_AUTH_PATHS = [
   // Names change through account.updateName, audited; nothing else here may be changed by the
   // person (image, company name) (plan question 1).
   '/update-user',
+  // Unused, and dangerous while reachable: a signed-in guesser could try passwords without
+  // counting towards the lock (/verify-password), and the right one shows the authenticator
+  // secret (/two-factor/get-totp-uri). The secret is shown once, by /two-factor/enable.
+  '/verify-password',
+  '/two-factor/get-totp-uri',
+  // Unused: sessions change only through our hooks and procedures; no social sign-in or linked
+  // accounts (decision 0010).
+  '/update-session',
+  '/list-accounts',
+  '/unlink-account',
+  '/account-info',
+  '/link-social',
+  '/sign-in/social',
+  '/get-access-token',
+  '/refresh-token',
 ]
 
 /** The passkey plugin's live endpoints, each limited to 10 a minute per IP. */
@@ -148,6 +167,35 @@ function bodyEmail(body: unknown): string | null {
 
 function optionalDate(value: unknown): Date | null {
   return value instanceof Date || typeof value === 'string' ? new Date(value) : null
+}
+
+type HookContext = Parameters<typeof deleteSessionCookie>[0]
+
+/** Drops a cookie already set on this response (Better Auth keeps them in two scopes). */
+function dropPendingCookie(ctx: HookContext, name: string): void {
+  const scoped = ctx as unknown as {
+    responseHeaders?: Headers
+    context: { responseHeaders?: Headers }
+  }
+  for (const headers of new Set([scoped.responseHeaders, scoped.context.responseHeaders])) {
+    if (!headers) continue
+    const kept = headers.getSetCookie().filter((c) => !c.startsWith(`${name}=`))
+    headers.delete('set-cookie')
+    for (const cookie of kept) headers.append('set-cookie', cookie)
+  }
+}
+
+/** Better Auth's own cookie helpers for the passkey sign-in after-hook. */
+function sessionCookies(ctx: HookContext): SessionCookies {
+  return {
+    drop: () => deleteSessionCookie(ctx),
+    forBrowserSession: async () => {
+      const created = ctx.context.newSession
+      if (!created) return
+      dropPendingCookie(ctx, ctx.context.authCookies.sessionToken.name)
+      await setSessionCookie(ctx, created, true)
+    },
+  }
 }
 
 /** The session fields the passkey hooks read, from Better Auth's loosely typed session. */
@@ -361,7 +409,10 @@ export function createAuth(options: CreateAuthOptions) {
             )
             // A client-chosen name would win over ours; it's renamed afterwards if wanted. Blank,
             // not removed: Better Auth merges hook changes into the body and skips undefined.
-            return { context: { body: { ...(ctx.body as object), name: '' } } }
+            // Never a second session: one made here would skip our sign-in checks and audit.
+            return {
+              context: { body: { ...(ctx.body as object), name: '', createSession: false } },
+            }
           }
           case '/passkey/generate-authenticate-options':
             await beforePasskeyAuthenticateOptions(deps)
@@ -369,6 +420,7 @@ export function createAuth(options: CreateAuthOptions) {
           case '/passkey/verify-authentication':
             // No lock check: a passkey can't be guessed (spec decision 8).
             readRememberMe(ctx.headers?.get(REMEMBER_ME_HEADER))
+            await rememberChallenge(ctx as unknown as ChallengeContext)
             return
           case '/sign-in/email': {
             const email = bodyEmail(ctx.body)
@@ -450,7 +502,8 @@ export function createAuth(options: CreateAuthOptions) {
             return afterPasskeySignIn(
               deps,
               ctx as unknown as PasskeySignInContext,
-              bodyField(bodyField(ctx.body, 'response'), 'id'),
+              sessionCookies(ctx),
+              bodyField(ctx.body, 'response'),
             )
           case '/passkey/verify-registration':
             return afterPasskeyRegistration(deps, ctx.context.session?.user.id, returned)

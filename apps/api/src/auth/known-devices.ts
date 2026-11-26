@@ -52,3 +52,16 @@ export async function recordDevice(
     })
   return { isNew: true }
 }
+
+/**
+ * Removes every browser record unseen for 90 days, for people who haven't signed in since (each
+ * sign-in already prunes that person's own). Run by the API process every few hours.
+ */
+export async function pruneStaleDevices(db: DbOrTx, now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - KNOWN_DEVICE_TTL_MS)
+  const removed = await db
+    .delete(knownDevices)
+    .where(lt(knownDevices.lastSeenAt, cutoff))
+    .returning({ id: knownDevices.id })
+  return removed.length
+}

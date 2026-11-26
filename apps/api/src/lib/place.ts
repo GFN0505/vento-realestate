@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { BlockList, isIP } from 'node:net'
 import { type CityResponse, Reader } from 'mmdb-lib'
 import { env } from '@/env'
@@ -50,17 +50,22 @@ export function formatPlace(record: CityResponse | null): string | null {
   return city ?? area ?? country ?? null
 }
 
-/**
- * A lookup over the database `load` returns, opened on the first call and kept. Any failure (no
- * file, bad file) logs once and answers null until restart: sign-in never fails over a place.
- */
-export function createPlaceLookup(load: () => Buffer | null): (ip: string | null) => string | null {
-  let reader: CityReader | null | undefined
-  return (ip) => {
-    if (!ip || !isPublic(ip)) return null
-    if (reader === undefined) {
+export type PlaceLookup = {
+  /**
+   * Reads the database once, in the background: startup never waits for it and sign-in never
+   * reads a file. Any failure (no file, bad file) logs once and leaves places off until restart.
+   */
+  load(read: () => Promise<Buffer | null>): Promise<void>
+  /** Null until loaded, without a database, or when nothing useful is known. */
+  lookup(ip: string | null): string | null
+}
+
+export function createPlaceLookup(): PlaceLookup {
+  let reader: CityReader | null = null
+  return {
+    async load(read) {
       try {
-        const file = load()
+        const file = await read()
         reader = file ? new Reader<CityResponse>(file) : null
       } catch (error) {
         reader = null
@@ -68,17 +73,25 @@ export function createPlaceLookup(load: () => Buffer | null): (ip: string | null
           reason: error instanceof Error ? error.name : 'unknown',
         })
       }
-    }
-    if (!reader) return null
-    try {
-      return formatPlace(reader.get(ip))
-    } catch {
-      return null
-    }
+    },
+    lookup(ip) {
+      if (!reader || !ip || !isPublic(ip)) return null
+      try {
+        return formatPlace(reader.get(ip))
+      } catch {
+        return null
+      }
+    },
   }
 }
 
-/** The app's lookup, over GEOIP_DB_PATH. Unset: no places (tests and CI need no download). */
-export const lookupPlace = createPlaceLookup(() =>
-  env.GEOIP_DB_PATH ? readFileSync(env.GEOIP_DB_PATH) : null,
-)
+const places = createPlaceLookup()
+
+/** The app's lookup. Without `preloadPlaces` (tests, CI) it simply answers null. */
+export const lookupPlace = (ip: string | null): string | null => places.lookup(ip)
+
+/** Called once at startup, not awaited: loads GEOIP_DB_PATH (about 120 MB) in the background. */
+export function preloadPlaces(path = env.GEOIP_DB_PATH): Promise<void> {
+  if (!path) return Promise.resolve()
+  return places.load(() => readFile(path))
+}
