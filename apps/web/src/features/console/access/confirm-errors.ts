@@ -1,4 +1,4 @@
-import { ORPCError } from '@orpc/client'
+import { fallbackORPCErrorMessage, ORPCError } from '@orpc/client'
 import type { ConfirmInput } from '@vento/shared/console'
 import { COPY, formatLockTime } from '@/lib/auth-errors'
 import { GENERIC_ERROR, NETWORK_ERROR } from '@/lib/error-copy'
@@ -9,6 +9,19 @@ export const PASSKEY_UNAVAILABLE = "Passkeys aren't available right now. Use a c
 
 /** Five wrong codes lock sign-in for 15 minutes; the per-minute rate limit is shorter. */
 const LOCK_AFTER_SECONDS = 120
+
+/** The error map's default line for BAD_REQUEST: not worth showing over our own copy. */
+const DEFAULT_BAD_REQUEST = 'Check the highlighted fields'
+
+/**
+ * The server's own sentence, when it sent one ("These backup codes were made with only your
+ * password…"): it knows why better than we do. Plain words by contract (errorMap).
+ */
+function ownMessage(error: ORPCError<string, unknown>): string | null {
+  const message = error.message.trim()
+  const generic = [DEFAULT_BAD_REQUEST, fallbackORPCErrorMessage(error.code, undefined)]
+  return message && !generic.includes(message) ? message : null
+}
 
 export type ConfirmFailure = {
   message: string
@@ -29,11 +42,11 @@ export function confirmFailure(
     return { message: GENERIC_ERROR, onField: false, locked: false }
   }
   if (error.code === 'BAD_REQUEST' && errorReason(error) === 'wrong_code') {
-    const message = method === 'backup_code' ? COPY.wrongBackupCode : COPY.wrongCode
-    return { message, onField: true, locked: false }
+    const fallback = method === 'backup_code' ? COPY.wrongBackupCode : COPY.wrongCode
+    return { message: ownMessage(error) ?? fallback, onField: true, locked: false }
   }
   if (error.code === 'BAD_REQUEST' && errorReason(error) === 'passkey_failed') {
-    return { message: PASSKEY_FAILED, onField: false, locked: false }
+    return { message: ownMessage(error) ?? PASSKEY_FAILED, onField: false, locked: false }
   }
   if (error.code === 'NOT_FOUND' && method === 'passkey') {
     return { message: PASSKEY_UNAVAILABLE, onField: false, locked: false }

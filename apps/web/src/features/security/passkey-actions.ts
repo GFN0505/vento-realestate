@@ -33,6 +33,9 @@ export function addPasskeyError(
       return AUTH_ERROR_MESSAGES.PASSKEY_LIMIT
     case C.PASSKEYS_UNAVAILABLE:
       return "Passkeys aren't available here any more."
+    // Not REAUTH_REQUIRED: a password can't satisfy it, so no password prompt (console plan §4).
+    case C.SECOND_FACTOR_REQUIRED:
+      return AUTH_ERROR_MESSAGES.SECOND_FACTOR_REQUIRED
   }
   return ADD_FAILED
 }

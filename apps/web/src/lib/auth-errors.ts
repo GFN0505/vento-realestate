@@ -114,6 +114,9 @@ export function authErrorMessage(error: AuthClientError, step: Step = 'general')
       return AUTH_ERROR_MESSAGES.TERMS_NOT_ACCEPTED
     case C.VERIFICATION_RESEND_LIMITED:
       return COPY.tooManyRequests
+    // A super-admin minting a new second factor needs a fresh code or passkey, not a password.
+    case C.SECOND_FACTOR_REQUIRED:
+      return AUTH_ERROR_MESSAGES.SECOND_FACTOR_REQUIRED
   }
   if (error.status === 429) return COPY.tooManyRequests
   if (error.status === 401 && step === 'sign-in') return COPY.wrongPassword

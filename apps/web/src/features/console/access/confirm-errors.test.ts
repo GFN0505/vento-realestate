@@ -24,6 +24,20 @@ describe("what a refused 'Confirm it's you' says", () => {
     })
   })
 
+  it("shows the server's own reason when it sends one", () => {
+    const message =
+      "These backup codes were made with only your password, so they can't open the Vento console. Use your authenticator app or a passkey."
+    const codes = new ORPCError('BAD_REQUEST', { message, data: { reason: 'wrong_code' } })
+    expect(confirmFailure(codes, 'backup_code')).toMatchObject({ message, onField: true })
+    const later =
+      'This passkey was added after you last used a code. Use a code from your authenticator app this time.'
+    const passkey = new ORPCError('BAD_REQUEST', {
+      message: later,
+      data: { reason: 'passkey_failed' },
+    })
+    expect(confirmFailure(passkey, 'passkey').message).toBe(later)
+  })
+
   it('treats a long wait as the sign-in lock, with its time', () => {
     const now = Date.parse('2026-11-26T10:30:00Z')
     const error = new ORPCError('TOO_MANY_REQUESTS', { data: { retryAfterSeconds: 900 } })
