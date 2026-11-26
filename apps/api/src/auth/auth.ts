@@ -359,9 +359,9 @@ export function createAuth(options: CreateAuthOptions) {
               hookSession(await getSessionFromCtx(ctx)),
               'verify',
             )
-            // A client-chosen name would win over ours; it's renamed afterwards if wanted.
-            const { name: _ignored, ...body } = (ctx.body ?? {}) as Record<string, unknown>
-            return { context: { body } }
+            // A client-chosen name would win over ours; it's renamed afterwards if wanted. Blank,
+            // not removed: Better Auth merges hook changes into the body and skips undefined.
+            return { context: { body: { ...(ctx.body as object), name: '' } } }
           }
           case '/passkey/generate-authenticate-options':
             await beforePasskeyAuthenticateOptions(deps)
