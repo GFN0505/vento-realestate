@@ -1,8 +1,13 @@
 import { formatDate } from '@/lib/format'
-import { requireReason } from '../operations/common'
-import { grantSuperAdmin, listSuperAdmins, revokeSuperAdmin } from '../operations/super-admin'
+import {
+  grantSuperAdmin,
+  listSuperAdmins,
+  previewGrant,
+  previewRevoke,
+  revokeSuperAdmin,
+} from '../operations/super-admin'
 import { requireSuperAdmin } from '../super-admins'
-import { authorise, type CommandDeps, confirm, type Parsed } from './context'
+import { authorise, type CommandDeps, confirm, type Parsed, requireReason } from './context'
 
 export const SUPERADMIN_HELP = `Usage: pnpm superadmin <command>
   list
@@ -23,13 +28,15 @@ export async function superadminCommand(deps: CommandDeps, parsed: Parsed): Prom
     const actor = parsed.bootstrap
       ? ('bootstrap' as const)
       : await requireSuperAdmin(deps.db, parsed.by, deps.operator)
-    if (!(await confirm(deps, parsed, [`${email} will become a Vento super-admin.`]))) return
+    const preview = await previewGrant(deps.db, { email })
+    if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(await grantSuperAdmin(deps.db, actor, { email, reason, operator: deps.operator }))
     return
   }
   if (command === 'revoke') {
     const { actor, reason } = await authorise(deps, parsed)
-    if (!(await confirm(deps, parsed, [`${email} will no longer be a super-admin.`]))) return
+    const preview = await previewRevoke(deps.db, actor, { email })
+    if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(await revokeSuperAdmin(deps.db, actor, { email, reason }))
     return
   }

@@ -51,3 +51,17 @@ export const DEVICE_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60
 export const TWO_STEP_GRACE_MS = 7 * DAY
 /** account.confirmPassword attempts per person per minute. */
 export const CONFIRM_PASSWORD_PER_MINUTE = 10
+
+// The Vento console (admin-console spec, owner's decision 6).
+/** A passkey or code proven this recently opens the console without asking again. */
+export const CONSOLE_PROOF_FRESH_MS = 5 * MINUTE
+/** The console window closes after this long without a console request… */
+export const CONSOLE_IDLE_MS = 15 * MINUTE
+/** …or this long after it opened, whichever comes first. */
+export const CONSOLE_MAX_MS = 8 * HOUR
+/** platform_admins.last_console_at is written at most this often ("Last console activity"). */
+export const CONSOLE_ADMIN_ACTIVITY_WRITE_MS = MINUTE
+/** console.access.confirm attempts per person per minute, on top of the two-step lock. */
+export const CONSOLE_CONFIRM_PER_MINUTE = 10
+/** How long a console passkey challenge stays valid. */
+export const CONSOLE_PASSKEY_CHALLENGE_MS = 2 * MINUTE

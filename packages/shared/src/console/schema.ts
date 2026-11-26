@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { email } from '../access/schema'
 import { Decimal } from '../common/decimal'
 import { money } from '../common/money'
-import { id, isoDate, paginationInput } from '../common/schemas'
+import { id, isoDate, paginated, paginationInput } from '../common/schemas'
 import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 import { ADD_ONS, type AddOnKey } from '../features/catalog'
 import {
@@ -153,6 +153,10 @@ export const listOrganizationsInput = paginationInput
     filter: organizationsFilter.default('all'),
     /** Organization name or owner email, matched anywhere. */
     search: z.string().trim().max(100).optional(),
+    /** Only organizations on this plan (plan detail's "N organizations" link). */
+    planKey: planDefinition.shape.key.optional(),
+    /** With `planKey`: only that version of it. */
+    version: z.number().int().min(1).optional(),
   })
   .strict()
 export type ListOrganizationsInput = z.input<typeof listOrganizationsInput>
@@ -405,6 +409,15 @@ export const activityRow = z.object({
   reason: z.string(),
 })
 export type ActivityRow = z.infer<typeof activityRow>
+
+/**
+ * The Activity page: the shared list shape, plus the organization's name when the list is
+ * filtered by one (so the filter chip can name it even when it has no rows yet).
+ */
+export const activityPage = paginated(activityRow).extend({
+  organizationName: z.string().nullable().optional(),
+})
+export type ActivityPage = z.infer<typeof activityPage>
 
 /** Everyone who appears as an actor, for the person filter. */
 export const activityPerson = z.object({ userId: id, name })

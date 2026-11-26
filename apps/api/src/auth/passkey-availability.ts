@@ -2,6 +2,7 @@ import { type SQL, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { organizationAvailability, stageOf } from '@/platform/availability'
 import type { FeatureStore } from '@/platform/feature-store'
+import { activeSuperAdmin } from '@/platform/super-admins'
 
 // `platform.passkeys` (decision 0016): adding needs it in the active organization; signing in
 // needs it in any of the person's organizations, because sign-in comes before choosing one.
@@ -55,13 +56,17 @@ export async function passkeysAvailableHere(
   return anyHas(store, rows)
 }
 
-/** Available in at least one of the person's active organizations (one query). */
+/**
+ * Available in at least one of the person's active organizations (one query), or to an active
+ * Vento super-admin unless passkeys are switched off for everyone (they may have no organization).
+ */
 export async function passkeysAvailableForUser(
   db: DbOrTx,
   store: FeatureStore,
   userId: string,
 ): Promise<boolean> {
-  return anyHas(store, await planRows(db, sql`m.user_id = ${userId}`))
+  if (await anyHas(store, await planRows(db, sql`m.user_id = ${userId}`))) return true
+  return !(await passkeysSwitchedOff(store)) && (await activeSuperAdmin(db, userId)) !== null
 }
 
 /** The kill switch: at `off`, passkey sign-in is refused before anyone is known. */

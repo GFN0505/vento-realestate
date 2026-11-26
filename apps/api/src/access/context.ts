@@ -35,6 +35,11 @@ export type AuthSession = {
   organizationEnteredAt: Date
   /** "Confirm it's you": when the password was last proven on this session. */
   reauthenticatedAt: Date | null
+  /** The last passkey, authenticator code or backup code proven on this session. */
+  secondFactorAt: Date | null
+  /** The Vento console window: when it opened and the last console request. */
+  consoleOpenedAt: Date | null
+  consoleActiveAt: Date | null
 }
 
 export type MemberContext = {

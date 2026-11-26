@@ -10,6 +10,7 @@ export type EmailTag =
   | 'invitation'
   | 'security_alert'
   | 'trial_ending'
+  | 'platform_notice'
 
 export type EmailMessage = {
   to: string

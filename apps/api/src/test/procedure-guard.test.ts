@@ -50,6 +50,8 @@ const PERSONAL_PROCEDURES = [
 
 const isPublic = (path: string) => (PUBLIC_PROCEDURES as readonly string[]).includes(path)
 const isPersonal = (path: string) => (PERSONAL_PROCEDURES as readonly string[]).includes(path)
+/** The Vento console has no organization at all (decision 0021); its own walk covers it. */
+const isConsole = (path: string) => path.startsWith('console.')
 
 type Callable = (input: unknown) => Promise<unknown>
 
@@ -82,7 +84,7 @@ describe('procedure guard', () => {
 
 describe('organization guard walk', () => {
   const paths = procedurePaths(router)
-  const tabGuarded = paths.filter((p) => !isPublic(p) && !isPersonal(p))
+  const tabGuarded = paths.filter((p) => !isPublic(p) && !isPersonal(p) && !isConsole(p))
 
   it('lists only procedures that exist', () => {
     for (const path of PERSONAL_PROCEDURES) expect(paths).toContain(path)
@@ -152,6 +154,13 @@ describe('feature declaration walk (decision 0016)', () => {
     const meta = metaAt(router, path)
     expect(Object.hasOwn(meta, 'feature'), path).toBe(true)
     expect(meta.feature === null || isFeatureKey(meta.feature ?? '')).toBe(true)
+  })
+
+  // Decision 0021: console procedures are marked `area: 'console'` and only they are.
+  it.each(paths)('%s is marked console exactly when it sits under console.', (path) => {
+    const meta = metaAt(router, path)
+    expect(meta.area === 'console', path).toBe(isConsole(path))
+    if (isConsole(path)) expect(meta.feature, path).toBeNull()
   })
 
   it('never gates a public or personal procedure', () => {

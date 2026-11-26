@@ -1,3 +1,4 @@
+import { authSessionFields, consoleSessionFields } from '@vento/shared'
 import { getSchema } from 'better-auth/db'
 import { getTableColumns, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
@@ -14,6 +15,7 @@ import {
 } from '@/db/schema'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { createAuth } from './auth'
+import { webAuthnSettings } from './webauthn-settings'
 
 // We write Better Auth's tables by hand (decision 0010). This fails when an upgrade expects a
 // column we don't have: diff `npx auth generate` against db/schema/auth.ts and add it.
@@ -38,6 +40,28 @@ describe('Better Auth schema', () => {
     const fields = Object.keys(expected[model]?.fields ?? {})
     const columns = table ? Object.keys(getTableColumns(table)) : []
     expect(fields.filter((f) => !columns.includes(f))).toEqual([])
+  })
+})
+
+describe('session fields', () => {
+  // A default would overwrite a rotated session's value (see auth/fields.ts).
+  it('include the console fields, with no default', () => {
+    for (const [name, field] of Object.entries(consoleSessionFields)) {
+      expect(authSessionFields).toHaveProperty(name)
+      expect(field).not.toHaveProperty('defaultValue')
+    }
+  })
+})
+
+describe('WebAuthn settings', () => {
+  // The console checks passkeys itself (admin-console plan §4.3): both must use the same party.
+  it('are the ones the passkey plugin was given', () => {
+    const auth = createAuth({ db, mailer: createMemoryTransport() })
+    const plugin = auth.options.plugins?.find((p) => p.id === 'passkey') as
+      | { options?: { rpID?: string; origin?: string } }
+      | undefined
+    const ours = webAuthnSettings()
+    expect(plugin?.options).toMatchObject({ rpID: ours.rpID, origin: ours.origin })
   })
 })
 

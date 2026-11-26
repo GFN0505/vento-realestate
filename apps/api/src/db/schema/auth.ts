@@ -68,6 +68,15 @@ export const sessions = pgTable(
      * null reads as created_at.
      */
     organizationEnteredAt: timestamptz(),
+    /**
+     * The last passkey, authenticator code or backup code proven on this session (never a
+     * password). The Vento console opens without a prompt when it's under 5 minutes old.
+     */
+    secondFactorAt: timestamptz(),
+    /** The Vento console window opened on this session (closes 8 hours later at most). */
+    consoleOpenedAt: timestamptz(),
+    /** The last console request (the window closes after 15 minutes without one). */
+    consoleActiveAt: timestamptz(),
     ...timestamps,
   },
   (t) => [

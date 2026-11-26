@@ -212,6 +212,9 @@ importers:
       '@orpc/server':
         specifier: ^1.16.5
         version: 1.16.5
+      '@simplewebauthn/server':
+        specifier: 13.3.3
+        version: 13.3.3
       '@vento/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -273,6 +276,9 @@ importers:
       '@orpc/tanstack-query':
         specifier: ^1.16.5
         version: 1.16.5(@orpc/client@1.16.5)(@tanstack/query-core@5.108.4)
+      '@simplewebauthn/browser':
+        specifier: 13.3.0
+        version: 13.3.0
       '@tanstack/react-query':
         specifier: ^5.108.4
         version: 5.108.4(@types/react@19.3.1)(react@19.3.1)

@@ -15,6 +15,20 @@ export const authUserFields = {
   twoStepSetupRequired: { type: 'boolean', required: false, input: false, defaultValue: false },
 } as const
 
+/**
+ * The Vento console's session columns (docs/plans/admin-console.md §3, migration 0011), spread
+ * into `authSessionFields`. No defaultValue, for the same reason as `persistent`: a rotated
+ * session must carry them over (or have the server clear them), never be reset by a default.
+ */
+export const consoleSessionFields = {
+  /** The last passkey, authenticator code or backup code proven on this session. Never a password. */
+  secondFactorAt: { type: 'date', required: false, input: false },
+  /** The console window opened (closes 8 hours later at most). */
+  consoleOpenedAt: { type: 'date', required: false, input: false },
+  /** The last console request (the window closes after 15 minutes without one). */
+  consoleActiveAt: { type: 'date', required: false, input: false },
+} as const
+
 export const authSessionFields = {
   activeOrganizationId: { type: 'string', required: false, input: false },
   /**
@@ -31,21 +45,7 @@ export const authSessionFields = {
   reauthenticatedAt: { type: 'date', required: false, input: false },
   /** When the session last moved into its active organization; the two-step gate reads it. */
   organizationEnteredAt: { type: 'date', required: false, input: false },
-} as const
-
-/**
- * The Vento console's session columns (docs/plans/admin-console.md §3). Kept apart until their
- * migration lands, then spread into `authSessionFields`: Better Auth reads every field it's
- * given, so listing them before the columns exist would break sign-in. No defaultValue, for the
- * same reason as `persistent`: a rotated session must carry them over, not reset them.
- */
-export const consoleSessionFields = {
-  /** The last passkey, authenticator code or backup code proven on this session. Never a password. */
-  secondFactorAt: { type: 'date', required: false, input: false },
-  /** The console window opened (closes 8 hours later at most). */
-  consoleOpenedAt: { type: 'date', required: false, input: false },
-  /** The last console request (the window closes after 15 minutes without one). */
-  consoleActiveAt: { type: 'date', required: false, input: false },
+  ...consoleSessionFields,
 } as const
 
 /** Better Auth's route prefix on the API and, through the proxy, on the web origin. */

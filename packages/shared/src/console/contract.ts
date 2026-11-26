@@ -2,8 +2,8 @@ import { z } from 'zod'
 import { base } from '../common/errors'
 import { paginated } from '../common/schemas'
 import {
+  activityPage,
   activityPerson,
-  activityRow,
   addAi,
   addSuperAdmin,
   changeAiBudget,
@@ -117,7 +117,7 @@ export const consoleContract = {
     remove: changeProcedures(removeSuperAdmin),
   },
   activity: {
-    list: staff.input(listActivityInput).output(paginated(activityRow)),
+    list: staff.input(listActivityInput).output(activityPage),
     people: staff.output(z.array(activityPerson)),
   },
 }

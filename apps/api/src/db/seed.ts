@@ -265,7 +265,12 @@ const LEKKI_PEOPLE: Person[] = [
   { name: 'Bisi Lawal', email: 'bisi@lekkipartners.ng', role: 'owner' },
   { name: 'Femi Adeoye', email: 'femi@lekkipartners.ng', role: 'sales' },
 ]
-const SUPER_ADMIN = { name: 'Ada Okafor', email: 'ada@vento.ng', role: 'viewer' as const }
+// Vento staff (admin-console plan §13): Ada is also a viewer in Vento Homes; Tunde belongs to no
+// organization, so signing in lands him on the console.
+const SUPER_ADMINS = [
+  { name: 'Ada Okafor', email: 'ada@ventoerp.com', viewerIn: ORGANIZATION },
+  { name: 'Tunde Bello', email: 'tunde@ventoerp.com', viewerIn: null },
+] as const
 
 async function upsertEntities(
   tx: DbOrTx,
@@ -488,20 +493,24 @@ async function seed() {
 
   await bootstrapStartingData(db)
   await seedLekki(passwordHash)
-  const adminSecret = await seedSuperAdmin(passwordHash, password)
+  const adminSecrets: [string, string][] = []
+  for (const admin of SUPER_ADMINS) {
+    const secret = await seedSuperAdmin(admin, passwordHash, password)
+    if (secret) adminSecrets.push([admin.email, secret])
+  }
 
   logger.info('Seeded Vento Homes Ltd and Lekki Partners Ltd', {
     people: PEOPLE.length + LEKKI_PEOPLE.length,
     customRoles: CUSTOM_ROLES.map((r) => r.name),
     archivedCompanies: [ARCHIVED_ENTITY.name],
   })
-  const everyone = [...PEOPLE, ...LEKKI_PEOPLE, SUPER_ADMIN].map((p) => p.email)
+  const everyone = [...PEOPLE, ...LEKKI_PEOPLE, ...SUPER_ADMINS].map((p) => p.email)
   process.stdout.write(
     `\nSign in as any of: ${everyone.join(', ')}\n(password: SEED_PASSWORD from .env)\n\nInvitation links:\n  ${links.join('\n  ')}\n\n`,
   )
-  if (adminSecret) {
+  for (const [email, secret] of adminSecrets) {
     process.stdout.write(
-      `Super-admin ${SUPER_ADMIN.email}: two-step is on. Add this secret to an authenticator app now; it isn't shown again:\n  ${adminSecret}\n\n`,
+      `Super-admin ${email}: two-step is on. Add this secret to an authenticator app now; it isn't shown again:\n  ${secret}\n\n`,
     )
   }
 }
@@ -596,11 +605,27 @@ async function seedLekki(passwordHash: string) {
 }
 
 /**
- * ada@vento.ng, a Vento super-admin. Two-step is switched on through Better Auth the way the
- * e2e fixtures do it; returns the authenticator secret the first time only.
+ * A Vento super-admin, optionally a viewer in an organization. Two-step is switched on through
+ * Better Auth the way the e2e fixtures do it; returns the authenticator secret the first time only.
  */
-async function seedSuperAdmin(passwordHash: string, password: string): Promise<string | null> {
-  const userId = await db.transaction((tx) => upsertPerson(tx, SUPER_ADMIN, passwordHash, 'Vento'))
+async function seedSuperAdmin(
+  admin: (typeof SUPER_ADMINS)[number],
+  passwordHash: string,
+  password: string,
+): Promise<string | null> {
+  const userId = await db.transaction(async (tx) => {
+    const id = await upsertPerson(tx, admin, passwordHash, 'Vento')
+    if (admin.viewerIn) {
+      const organizationId = await upsertOrganization(tx, admin.viewerIn)
+      const roleIds = await syncSystemRoles(tx, organizationId)
+      await upsertMembership(tx, {
+        organizationId,
+        userId: id,
+        roleId: roleIds.get('viewer') ?? '',
+      })
+    }
+    return id
+  })
   const [user] = await db
     .select({ twoFactorEnabled: users.twoFactorEnabled })
     .from(users)
@@ -610,16 +635,16 @@ async function seedSuperAdmin(passwordHash: string, password: string): Promise<s
     const { testApp, browser } = await import('@/test/auth-client')
     const { setUpTwoStep, signIn } = await import('@/test/flows')
     const b = browser(testApp().app)
-    const res = await signIn(b, SUPER_ADMIN.email, password)
-    if (res.status !== 200) throw new Error('Super-admin sign-in failed')
+    const res = await signIn(b, admin.email, password)
+    if (res.status !== 200) throw new Error(`Super-admin sign-in failed for ${admin.email}`)
     const { totpURI } = await setUpTwoStep(b, password)
     secret = new URL(totpURI).searchParams.get('secret')
   }
-  const [admin] = await db
+  const [row] = await db
     .select({ id: platformAdmins.id })
     .from(platformAdmins)
     .where(and(eq(platformAdmins.userId, userId), isNull(platformAdmins.revokedAt)))
-  if (!admin) await db.insert(platformAdmins).values({ userId, reason: 'Demo super-admin' })
+  if (!row) await db.insert(platformAdmins).values({ userId, reason: 'Demo super-admin' })
   return secret
 }
 

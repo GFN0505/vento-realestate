@@ -16,9 +16,8 @@ import {
 } from '@vento/shared'
 import type { DbOrTx } from '@/db/client'
 import type { Mailer } from '@/email/mailer'
-import { CommandError } from '../command-error'
-import { requireReason } from '../operations/common'
 import type { PlatformActor } from '../platform-audit'
+import { PlatformError } from '../platform-error'
 import { requireSuperAdmin } from '../super-admins'
 import { closestKey } from './closest-key'
 import type { Io } from './io'
@@ -79,13 +78,13 @@ export function parse(args: string[]): Parsed {
 
 function unknown(kind: string, value: string, keys: readonly string[]): never {
   const near = closestKey(value, keys)
-  throw new CommandError(
+  throw new PlatformError(
     `Unknown ${kind} "${value}".${near ? ` Did you mean ${near}?` : ` Known: ${keys.join(', ')}.`}`,
   )
 }
 
 export function featureArg(value: string | undefined): FeatureKey {
-  if (!value) throw new CommandError('Name a flag, e.g. sales or sales.commissions.')
+  if (!value) throw new PlatformError('Name a flag, e.g. sales or sales.commissions.')
   if (!isFeatureKey(value)) unknown('flag', value, FEATURE_KEYS)
   return value
 }
@@ -112,7 +111,14 @@ export function addOnArg(value: string | undefined): AddOnKey {
 
 export function onOffClear(value: string | undefined): 'on' | 'off' | 'clear' {
   if (value === 'on' || value === 'off' || value === 'clear') return value
-  throw new CommandError('Say on, off or clear.')
+  throw new PlatformError('Say on, off or clear.')
+}
+
+/** `--reason` is required on every change (the console's own `reason` field does the same). */
+export function requireReason(reason: string | undefined): string {
+  const trimmed = reason?.trim() ?? ''
+  if (trimmed.length < 3) throw new PlatformError('Add --reason so the audit trail says why.')
+  return trimmed
 }
 
 /** `--by` must be an active super-admin with two-step on; `--reason` is required. */
@@ -128,9 +134,10 @@ export async function authorise(
 export async function confirm(
   deps: CommandDeps,
   parsed: Parsed,
-  lines: string[],
+  lines: readonly (string | { text: string })[],
 ): Promise<boolean> {
-  for (const line of lines) deps.io.print(line)
+  // The shared previews carry a tone for the console; the terminal prints the words.
+  for (const line of lines) deps.io.print(typeof line === 'string' ? line : line.text)
   if (parsed.yes) return true
   const ok = await deps.io.confirm('Continue?')
   if (!ok) deps.io.print('Nothing changed.')

@@ -55,6 +55,9 @@ export async function authenticate(
     activeOrganizationId: s.activeOrganizationId ?? null,
     organizationEnteredAt: optionalDate(s.organizationEnteredAt) ?? policy.createdAt,
     reauthenticatedAt: optionalDate(s.reauthenticatedAt),
+    secondFactorAt: optionalDate(s.secondFactorAt),
+    consoleOpenedAt: optionalDate(s.consoleOpenedAt),
+    consoleActiveAt: optionalDate(s.consoleActiveAt),
   }
   const u = result.user
   const user: AuthUser = {

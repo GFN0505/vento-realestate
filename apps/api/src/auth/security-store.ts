@@ -1,5 +1,19 @@
 import { PASSWORD_HISTORY_SIZE, type TwoStepRequirement } from '@vento/shared'
-import { and, asc, count, desc, eq, gt, lt, max, min, notInArray, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  isNull,
+  lt,
+  max,
+  min,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import {
   accounts,
@@ -8,6 +22,7 @@ import {
   organizations,
   passkeys,
   passwordHistories,
+  platformAdmins,
   roles,
   signInLocks,
   users,
@@ -149,13 +164,20 @@ export async function recentPasswordHashes(db: DbOrTx, userId: string): Promise<
 /**
  * The first active membership that requires two-step, by role or by the organization's
  * "Require two-step for everyone": the preferred (active) organization first, then by name.
- * A role requirement is named before the organization's when both apply. Null when none does.
+ * A role requirement is named before the organization's when both apply; being a Vento
+ * super-admin comes before both. Null when none does.
  */
 export async function firstTwoStepRequirement(
   db: DbOrTx,
   userId: string,
   preferOrganizationId: string | null = null,
 ): Promise<TwoStepRequirement | null> {
+  // A Vento super-admin can't turn two-step off: the console needs it (decision 0021).
+  const [admin] = await db
+    .select({ id: platformAdmins.id })
+    .from(platformAdmins)
+    .where(and(eq(platformAdmins.userId, userId), isNull(platformAdmins.revokedAt)))
+  if (admin) return { reason: 'super_admin', organizationName: 'Vento', roleName: null }
   const [row] = await db
     .select({
       organizationName: organizations.name,

@@ -31,6 +31,11 @@
  *   tsx src/test/e2e-fixtures.ts age-reauth <email>     makes that person's password confirmations 10 minutes old ("Confirm it's you" asks again)
  *   tsx src/test/e2e-fixtures.ts session-expiry <email> days until the person's longest-lived session expires, and whether it is persistent
  *   tsx src/test/e2e-fixtures.ts force-reset <email>    marks a password reset as required without removing passkeys (the race path)
+ *   tsx src/test/e2e-fixtures.ts super-admin <member|no-org|revoked|two-step-reset>  a Vento super-admin (owner of an internal organization unless no-org)
+ *   tsx src/test/e2e-fixtures.ts age-console <email> <idle|max>  closes that person's console window (16 minutes idle, or opened 8 hours ago)
+ *   tsx src/test/e2e-fixtures.ts age-second-factor <email>  makes that person's last code or passkey 10 minutes old (the console asks again)
+ *   tsx src/test/e2e-fixtures.ts flag-stage <flag> <off|internal|pilot|on>  sets a global release stage (releases.spec.ts only, to restore its own keys)
+ *   tsx src/test/e2e-fixtures.ts platform-activity <email>  a break-glass row by that super-admin in Vento's activity (channel command)
  *
  * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
  * every organization was before feature flags. Fixtures only change per-organization data, never
@@ -38,6 +43,8 @@
  *
  * Prints one JSON line. Emails are unique per run, so specs never share or collide with seed data.
  */
+
+import type { PlatformActor } from '@/platform/platform-audit'
 
 // Quiet logs so stdout stays one JSON line; set before the app modules read the environment.
 process.env.LOG_LEVEL ??= 'error'
@@ -77,7 +84,12 @@ async function makeInternal(ownerEmail: string) {
     .where(eq(organizationPlans.organizationId, row.organizationId))
 }
 
-const E2E_ACTOR = { userId: null, name: 'Vento (e2e)', operator: 'e2e' }
+const E2E_ACTOR: PlatformActor = {
+  userId: null,
+  name: 'Vento (e2e)',
+  channel: 'command',
+  operator: 'e2e',
+}
 const E2E_REASON = 'e2e fixture'
 
 async function publishPlans() {
@@ -928,6 +940,121 @@ async function forceReset(email: string | undefined) {
   return { email }
 }
 
+type SuperAdminState = 'member' | 'no-org' | 'revoked' | 'two-step-reset'
+
+/** A Vento super-admin to sign in as (admin-console plan §13). */
+async function createSuperAdminFixture(state: string | undefined) {
+  const allowed: SuperAdminState[] = ['member', 'no-org', 'revoked', 'two-step-reset']
+  if (!allowed.includes(state as SuperAdminState)) {
+    throw new Error(`super-admin needs one of: ${allowed.join(', ')}`)
+  }
+  const { db } = await import('@/db/client')
+  const { platformAdmins, users } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  let person: { email: string; password: string; totpSecret: string; backupCodes: string[] } & {
+    organizationName: string | null
+  }
+  if (state === 'no-org') {
+    const { testApp, browser } = await import('./auth-client')
+    const { setUpTwoStep, signUpVerified } = await import('./flows')
+    const { TEST_PASSWORD } = await import('./factories')
+    const { uniqueEmail } = await import('./db')
+    const { app, mailer } = testApp()
+    const b = browser(app)
+    const email = uniqueEmail('e2e.vento')
+    await signUpVerified(b, mailer, email)
+    const { totpURI, backupCodes } = await setUpTwoStep(b)
+    const totpSecret = new URL(totpURI).searchParams.get('secret') ?? ''
+    person = { email, password: TEST_PASSWORD, totpSecret, backupCodes, organizationName: null }
+  } else {
+    person = await createMember()
+  }
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, person.email))
+  if (!user) throw new Error('super-admin fixture user missing')
+  await db.insert(platformAdmins).values({
+    userId: user.id,
+    reason: 'e2e',
+    ...(state === 'revoked' && { revokedAt: new Date() }),
+  })
+  if (state === 'two-step-reset') {
+    await db
+      .update(users)
+      .set({ twoFactorEnabled: false, twoStepSetupRequired: true })
+      .where(eq(users.id, user.id))
+  }
+  return { ...person, userId: user.id, state }
+}
+
+/** Closes the console window on every session: idle (16 minutes) or past the 8-hour limit. */
+async function ageConsole(email: string | undefined, how: string | undefined) {
+  if (how !== 'idle' && how !== 'max') throw new Error('age-console needs idle or max')
+  const { db, user } = await userByEmail(email)
+  const { sessions } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(sessions)
+    .set(
+      how === 'idle'
+        ? { consoleActiveAt: sql`now() - interval '16 minutes'` }
+        : {
+            consoleOpenedAt: sql`now() - interval '8 hours 1 minute'`,
+            consoleActiveAt: sql`now()`,
+          },
+    )
+    .where(eq(sessions.userId, user.id))
+    .returning({ id: sessions.id })
+  return { email, sessions: aged.length }
+}
+
+/** The last code or passkey proven 10 minutes ago: opening the console asks again. */
+async function ageSecondFactor(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { sessions } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(sessions)
+    .set({ secondFactorAt: sql`now() - interval '10 minutes'` })
+    .where(eq(sessions.userId, user.id))
+    .returning({ id: sessions.id })
+  return { email, sessions: aged.length }
+}
+
+/**
+ * A global release stage. Only releases.spec.ts may use it, on the keys it owns, to put them back
+ * (fixtures otherwise never change global stages, so specs can run in parallel).
+ */
+async function flagStage(key: string | undefined, stage: string | undefined) {
+  const { isFeatureKey, RELEASE_STAGES } = await import('@vento/shared')
+  if (!key || !isFeatureKey(key)) throw new Error(`unknown flag ${key}`)
+  if (!(RELEASE_STAGES as readonly string[]).includes(stage ?? '')) {
+    throw new Error(`stage must be one of ${RELEASE_STAGES.join(', ')}`)
+  }
+  const { db } = await import('@/db/client')
+  const { featureReleases } = await import('@/db/schema')
+  const value = stage as (typeof RELEASE_STAGES)[number]
+  await db
+    .insert(featureReleases)
+    .values({ featureKey: key, stage: value, reason: 'e2e restore' })
+    .onConflictDoUpdate({ target: featureReleases.featureKey, set: { stage: value } })
+  return { key, stage: value }
+}
+
+/** A break-glass change by that super-admin, as the command line records it. */
+async function platformActivity(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { recordPlatformAudit } = await import('@/platform/platform-audit')
+  await recordPlatformAudit(db, {
+    actor: { userId: user.id, name: user.name, channel: 'command', operator: 'ada@ops-laptop' },
+    action: 'release.stage_changed',
+    targetType: 'feature',
+    targetKey: 'documents.contracts',
+    before: { stage: 'internal' },
+    after: { stage: 'internal' },
+    reason: 'e2e break-glass fixture',
+  })
+  return { email }
+}
+
 async function main() {
   const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
@@ -960,6 +1087,11 @@ async function main() {
     'age-reauth': () => ageReauth(arg),
     'session-expiry': () => sessionExpiry(arg),
     'force-reset': () => forceReset(arg),
+    'super-admin': () => createSuperAdminFixture(arg),
+    'age-console': () => ageConsole(arg, arg2),
+    'age-second-factor': () => ageSecondFactor(arg),
+    'flag-stage': () => flagStage(arg, arg2),
+    'platform-activity': () => platformActivity(arg),
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

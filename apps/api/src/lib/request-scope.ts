@@ -14,8 +14,8 @@ export type RequestScope = {
   /** Facts Better Auth before-hooks hand to after-hooks for the same request. */
   auth: {
     userId?: string
-    /** `turn_off`: our turn-off guard is calling the verifiers itself and does the bookkeeping. */
-    twoStepMode?: 'sign_in' | 'setup' | 'turn_off'
+    /** `in_place`: we're calling the verifiers ourselves (turn-off, the console) and keep the books. */
+    twoStepMode?: 'sign_in' | 'setup' | 'in_place'
     wasTwoFactorEnabled?: boolean
     /** The resend endpoint already counted this request against the limit. */
     verificationCounted?: boolean

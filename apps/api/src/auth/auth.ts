@@ -68,6 +68,7 @@ import {
   rememberPasswordHash,
   userIdForResetToken,
 } from './security-store'
+import { webAuthnSettings } from './webauthn-settings'
 
 /**
  * Better Auth routes we switch off: passwordless sign-ins that would skip two-step, and
@@ -138,6 +139,17 @@ const PASSWORD_SIGN_IN_PATHS = new Set([
   '/sign-in/email',
   '/two-factor/verify-totp',
   '/two-factor/verify-backup-code',
+])
+
+/**
+ * Sign-ins and set-ups that just proved a passkey, an authenticator code or a backup code: the
+ * session records when (`second_factor_at`), so the Vento console can open without asking again.
+ * A password alone never counts.
+ */
+export const SECOND_FACTOR_PATHS = new Set([
+  '/two-factor/verify-totp',
+  '/two-factor/verify-backup-code',
+  '/passkey/verify-authentication',
 ])
 
 /** Signed-in endpoints that check the password in the body: wrong ones count towards the lock. */
@@ -224,6 +236,7 @@ export function createAuth(options: CreateAuthOptions) {
     features: options.features ?? liveFeatureStore(db),
   }
 
+  const webauthn = webAuthnSettings()
   const auth = betterAuth({
     appName: 'Vento',
     basePath: AUTH_BASE_PATH,
@@ -336,9 +349,23 @@ export function createAuth(options: CreateAuthOptions) {
                 .where(eq(users.id, session.userId))
               activeOrganizationId = user?.lastActiveOrganizationId ?? null
             }
+            // Changing the password makes a fresh session (not a rotation), so its proof comes
+            // from the session that made the request.
+            const previous: Record<string, unknown> | null = rotated
+              ? session
+              : path === '/change-password'
+                ? (ctx?.context.session?.session ?? null)
+                : null
+            const secondFactorAt = SECOND_FACTOR_PATHS.has(path)
+              ? new Date(now)
+              : optionalDate(previous?.secondFactorAt)
             return {
               data: {
                 ...session,
+                // A rotated session keeps its proof but never the console window: re-prove it.
+                secondFactorAt,
+                consoleOpenedAt: null,
+                consoleActiveAt: null,
                 persistent,
                 expiresAt: persistent ? session.expiresAt : new Date(now + SESSION_MAX_MS),
                 lastActiveAt: new Date(now),
@@ -446,7 +473,7 @@ export function createAuth(options: CreateAuthOptions) {
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code': {
             // Our turn-off guard is calling the verifier itself and keeps the books.
-            if (requestScope().auth.twoStepMode === 'turn_off') return
+            if (requestScope().auth.twoStepMode === 'in_place') return
             const session = await getSessionFromCtx(ctx)
             const sessionUser = session ? await findUserById(db, session.user.id) : null
             let pendingUserId: string | null = null
@@ -493,7 +520,7 @@ export function createAuth(options: CreateAuthOptions) {
           }
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code':
-            if (requestScope().auth.twoStepMode === 'turn_off') return
+            if (requestScope().auth.twoStepMode === 'in_place') return
             return afterTwoStepVerify(deps, ctx, {
               method: ctx.path === '/two-factor/verify-totp' ? 'totp' : 'backup_code',
               returned,
@@ -570,10 +597,13 @@ export function createAuth(options: CreateAuthOptions) {
       // Decision 0019: bound to the web app's own host; every passkey must check the person
       // (user verification) and be findable without an email (resident key).
       passkey({
-        rpID: new URL(env.WEB_ORIGIN).hostname,
-        rpName: 'Vento',
-        origin: new URL(env.WEB_ORIGIN).origin,
-        authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+        rpID: webauthn.rpID,
+        rpName: webauthn.rpName,
+        origin: webauthn.origin,
+        authenticatorSelection: {
+          residentKey: 'required',
+          userVerification: webauthn.userVerification,
+        },
         registration: {
           requireSession: true,
           afterVerification: ({ verification }) => ({

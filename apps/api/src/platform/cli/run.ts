@@ -1,4 +1,4 @@
-import { CommandError } from '../command-error'
+import { PlatformError } from '../platform-error'
 import { type CommandDeps, parse } from './context'
 import { flagsCommand } from './flags'
 import { plansCommand } from './plans'
@@ -29,10 +29,22 @@ export async function runCommand(
     await handler(deps, parsed)
     return 0
   } catch (error) {
-    if (error instanceof CommandError) {
-      deps.io.error(error.message)
+    if (error instanceof PlatformError) {
+      const step = nextStep(error)
+      deps.io.error(step ? `${error.message} ${step}` : error.message)
       return 1
     }
     throw error
   }
+}
+
+/** The command's own next step after a refusal; operation messages never name a flag. */
+function nextStep(error: PlatformError): string | null {
+  const { next, organizationName, missing } = error.extra
+  if (next === 'end_trial') {
+    return `End it first with plans trial "${organizationName ?? '…'}" --end.`
+  }
+  if (next === 'change_ai_budget') return 'Remove it first with --remove.'
+  if (missing === 'plan') return 'Run plans list to see them.'
+  return null
 }

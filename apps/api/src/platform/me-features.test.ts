@@ -9,7 +9,7 @@ import { findPlanVersion } from './operations/common'
 import { startTrial } from './operations/plans'
 import { loadSnapshot } from './snapshot'
 
-const ACTOR = { userId: null, name: 'Test', operator: null }
+const ACTOR = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
 
 describe('account.me features', () => {
   it('gives an internal organization every flag at internal, all as early access', () =>

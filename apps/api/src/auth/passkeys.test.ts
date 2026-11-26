@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import {
@@ -6,6 +6,7 @@ import {
   members,
   organizationPlans,
   passkeys,
+  platformAdmins,
   sessions,
   signInLocks,
   users,
@@ -167,6 +168,19 @@ describe('signing in with a passkey', () => {
     expect(row?.lastUsedAt).not.toBeNull()
   })
 
+  it('records the passkey as a fresh second factor on the new session', async () => {
+    const { app, b, userId } = await person()
+    const { key } = await addPasskey(b)
+    await passkeySignIn(app, key)
+    const [latest] = await db
+      .select({ secondFactorAt: sessions.secondFactorAt })
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.createdAt))
+      .limit(1)
+    expect(latest?.secondFactorAt).toBeInstanceOf(Date)
+  })
+
   it('keeps the session 30 days with x-vento-remember: 1, else 12 hours', async () => {
     const { app, b, userId } = await person()
     const { key } = await addPasskey(b)
@@ -238,6 +252,33 @@ describe('signing in with a passkey', () => {
     expect(res.status).toBe(401)
     expect(res.json.code).toBe('PASSKEY_NOT_RECOGNISED')
     expect(await sessionCount(userId)).toBe(0)
+  })
+
+  it('lets a Vento super-admin with no organization in, to land on the console', async () => {
+    const { app, b, userId } = await person()
+    const { key } = await addPasskey(b)
+    await db.update(users).set({ twoFactorEnabled: true }).where(eq(users.id, userId))
+    const [membership] = await db.select().from(members).where(eq(members.userId, userId))
+    const [heir] = await db
+      .insert(users)
+      .values({ name: 'Bisi Lawal', email: uniqueEmail('bisi'), emailVerified: true })
+      .returning()
+    await db.insert(members).values({
+      organizationId: membership?.organizationId ?? '',
+      userId: heir?.id ?? '',
+      roleId: membership?.roleId ?? '',
+    })
+    await db
+      .update(members)
+      .set({ status: 'removed', removedAt: new Date() })
+      .where(eq(members.userId, userId))
+    await db.insert(platformAdmins).values({ userId, reason: 'Vento staff' })
+    const { b: signedIn, res } = await passkeySignIn(app, key)
+    expect(res.status).toBe(200)
+    expect((await signedIn.rpc('account/me')).body).toMatchObject({
+      nextStep: 'console',
+      console: { twoStepOn: true },
+    })
   })
 
   it('refuses an unknown passkey without counting towards a lock', async () => {

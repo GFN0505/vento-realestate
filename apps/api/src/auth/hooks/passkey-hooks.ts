@@ -1,12 +1,14 @@
 import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES, PASSKEY_LIMIT } from '@vento/shared'
 import { and, desc, eq, gt } from 'drizzle-orm'
 import { listActiveMemberships } from '@/access/context'
+import type { DbOrTx } from '@/db/client'
 import { auditEvents, passkeys, sessions } from '@/db/schema'
 import { passkeyAddedAlert, passkeyCopiedAlert } from '@/email/templates/security-alert'
 import { env } from '@/env'
 import { formatDate, formatTime } from '@/lib/format'
 import { requestScope } from '@/lib/request-scope'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
+import { activeSuperAdmin } from '@/platform/super-admins'
 import {
   passkeysAvailableForUser,
   passkeysAvailableHere,
@@ -122,8 +124,14 @@ export type SessionCookies = {
   forBrowserSession(): Promise<void>
 }
 
-/** Audits and emails a suspected copy, at most one email an hour per passkey. */
-async function reportSuspectedClone(deps: AuthDeps, response: unknown): Promise<void> {
+/**
+ * Audits and emails a suspected copy, at most one email an hour per passkey. The expected
+ * challenge is this request's (`requestScope().auth.passkeyChallenge`); the console sets it too.
+ */
+export async function reportSuspectedClone(
+  deps: Pick<AuthDeps, 'mailer'> & { db: DbOrTx },
+  response: unknown,
+): Promise<void> {
   const assertion = readAssertion(response)
   if (!assertion) return
   const [stored] = await deps.db
@@ -200,8 +208,12 @@ export async function afterPasskeySignIn(
   }
   if (!user) return refuse(401, 'PASSKEY_NOT_RECOGNISED')
   if (user.passwordResetRequired) return refuse(403, 'PASSWORD_RESET_REQUIRED')
-  // Removed from every organization reads like an unknown passkey: it reveals nothing.
-  if ((await listActiveMemberships(deps.db, user.id)).length === 0) {
+  // Removed from every organization reads like an unknown passkey: it reveals nothing. A Vento
+  // super-admin may belong to none: they land on the console.
+  if (
+    (await listActiveMemberships(deps.db, user.id)).length === 0 &&
+    !(await activeSuperAdmin(deps.db, user.id))
+  ) {
     return refuse(401, 'PASSKEY_NOT_RECOGNISED')
   }
   if (!(await passkeysAvailableForUser(deps.db, deps.features, user.id))) {

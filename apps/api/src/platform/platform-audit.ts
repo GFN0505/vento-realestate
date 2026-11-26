@@ -4,18 +4,25 @@ import type { DbOrTx } from '@/db/client'
 import { organizations, platformAuditEvents } from '@/db/schema'
 import { recordAudit } from '@/modules/audit/audit.service'
 
-/** Who made a platform change: a super-admin (or a scheduled run) and the machine user. */
+/** Where a platform change came from (admin-console plan §6.3). */
+export type PlatformChannel = 'console' | 'command' | 'scheduled'
+
+/** Who made a platform change, from where, and (console) the key that makes a retry safe. */
 export type PlatformActor = {
-  /** null = a scheduled run. */
+  /** null = a scheduled run or the seed. */
   userId: string | null
   name: string
-  /** `os-user@host` that ran the command. */
+  channel: PlatformChannel
+  /** `os-user@host` for a command; "console · Chrome on Mac · 102.89.34.x" for the console. */
   operator: string | null
+  /** One per confirmed console change: the same key never applies twice. */
+  idempotencyKey?: string
 }
 
 export const SCHEDULED_ACTOR: PlatformActor = {
   userId: null,
   name: 'Vento (scheduled)',
+  channel: 'scheduled',
   operator: null,
 }
 
@@ -30,6 +37,7 @@ export type PlatformAuditAction =
   | 'plan.trial_ended'
   | 'plan.trial_cancelled'
   | 'plan.add_on_added'
+  | 'plan.add_on_changed'
   | 'plan.add_on_removed'
   | 'plan.feature_overridden'
   | 'plan.limit_overridden'
@@ -50,12 +58,18 @@ export async function recordPlatformAudit(
     after?: Record<string, unknown> | null
     reason: string
     metadata?: Record<string, unknown> | null
+    /** The operation's answer, so a retried console request can return it without running again. */
+    done?: string
   },
 ): Promise<void> {
+  const metadata =
+    input.done === undefined ? (input.metadata ?? null) : { ...input.metadata, done: input.done }
   await db.insert(platformAuditEvents).values({
     actorUserId: input.actor.userId,
     actorName: input.actor.name,
     operator: input.actor.operator,
+    channel: input.actor.channel,
+    idempotencyKey: input.actor.idempotencyKey ?? null,
     action: input.action,
     targetType: input.targetType,
     targetKey: input.targetKey,
@@ -63,8 +77,25 @@ export async function recordPlatformAudit(
     before: input.before ?? null,
     after: input.after ?? null,
     reason: input.reason,
-    metadata: input.metadata ?? null,
+    metadata,
   })
+}
+
+/** The change a console idempotency key already made: who, and the answer it gave. */
+export async function findByIdempotencyKey(
+  db: DbOrTx,
+  key: string,
+): Promise<{ actorUserId: string | null; done: string } | null> {
+  const [row] = await db
+    .select({
+      actorUserId: platformAuditEvents.actorUserId,
+      metadata: platformAuditEvents.metadata,
+    })
+    .from(platformAuditEvents)
+    .where(eq(platformAuditEvents.idempotencyKey, key))
+  if (!row) return null
+  const done = (row.metadata as { done?: unknown } | null)?.done
+  return { actorUserId: row.actorUserId, done: typeof done === 'string' ? done : 'Done.' }
 }
 
 /**

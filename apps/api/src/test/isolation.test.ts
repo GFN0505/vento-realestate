@@ -22,11 +22,12 @@ import {
   createMember,
   createOrganization,
   createSession,
+  createSuperAdmin,
   createUser,
   setOverride,
   setStage,
 } from './factories'
-import { clientAs } from './router-client'
+import { clientAs, consoleClientAs } from './router-client'
 
 describe('organization isolation', () => {
   it('answers not found for every id from another organization and changes nothing', () =>
@@ -429,5 +430,53 @@ describe('feature and plan isolation', () => {
       const me = await inB.client.account.me()
       expect(me.organization).toMatchObject({ id: b.id, internal: false })
       expect(me.features).toEqual([])
+    }))
+})
+
+describe('Vento console isolation', () => {
+  it("changes organization A without touching B's features, limits or trail", () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const a = await createOrganization(tx, { name: 'Console A Ltd', planKey: 'starter' })
+      const b = await createOrganization(tx, { name: 'Console B Ltd', planKey: 'starter' })
+      const meB = async () =>
+        await clientAs(tx, b.owner, { activeOrganizationId: b.id }).client.account.me()
+      const before = await meB()
+      const { client } = consoleClientAs(tx, admin)
+      const fields = {
+        organizationId: a.id,
+        kind: 'limit' as const,
+        key: 'members' as const,
+        value: 99,
+      }
+      const preview = await client.console.organizations.setOverride.preview(fields)
+      await client.console.organizations.setOverride.apply({
+        ...fields,
+        expected: preview.expected,
+        reason: 'Deal for A',
+        idempotencyKey: '6f1f0c52-4c8e-4c1a-9a51-0f0e7b0b8f0a',
+      })
+      const after = await meB()
+      expect(after.features).toEqual(before.features)
+      expect(after.plan?.limits).toEqual(before.plan?.limits)
+      const trailB = await tx.select().from(auditEvents).where(eq(auditEvents.organizationId, b.id))
+      expect(trailB.filter((e) => e.action.startsWith('plan.'))).toEqual([])
+    }))
+
+  it("reads one organization's detail without another's people or records", () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const a = await createOrganization(tx, { name: 'Console A Ltd' })
+      const b = await createOrganization(tx, { name: 'Console B Ltd' })
+      await createMember(tx, b, { role: 'sales', name: 'Only-In-B Person' })
+      await createEntity(tx, b, { name: 'Only-In-B SPV Ltd' })
+      const { client } = consoleClientAs(tx, admin)
+      const json = JSON.stringify([
+        await client.console.organizations.get({ id: a.id }),
+        await client.console.organizations.features({ id: a.id }),
+        await client.console.organizations.endedOverrides({ id: a.id }),
+      ])
+      expect(json).not.toContain('Only-In-B')
+      expect(json).not.toContain(b.owner.email)
     }))
 })

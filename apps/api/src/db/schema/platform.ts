@@ -27,6 +27,8 @@ export const releaseStage = pgEnum('release_stage', ['off', 'internal', 'pilot',
 export const releaseGroup = pgEnum('release_group', ['standard', 'pilot', 'internal'])
 export const overrideKind = pgEnum('override_kind', ['release', 'feature', 'limit'])
 export const platformRole = pgEnum('platform_role', ['super_admin'])
+/** Where a platform change came from. null on rows written before the console (read-time label). */
+export const platformChannel = pgEnum('platform_channel', ['console', 'command', 'scheduled'])
 
 /** Release stage per catalog key. No row = `internal` (a new flag starts there). */
 export const featureReleases = pgTable(
@@ -105,6 +107,8 @@ export const platformAdmins = pgTable(
     grantedByUserId: uuid().references(() => users.id, { onDelete: 'restrict' }),
     revokedAt: timestamptz(),
     revokedByUserId: uuid().references(() => users.id, { onDelete: 'restrict' }),
+    /** "Last console activity" on the Super-admins page; written at most once a minute. */
+    lastConsoleAt: timestamptz(),
     ...timestamps,
   },
   (t) => [
@@ -133,12 +137,26 @@ export const platformAuditEvents = pgTable(
     after: jsonb(),
     reason: text().notNull(),
     metadata: jsonb(),
+    /** null = written before the console: read as `scheduled` for "Vento (scheduled)", else `command`. */
+    channel: platformChannel(),
+    /** One per confirmed console change, so a retried request never applies it twice. */
+    idempotencyKey: uuid(),
     ...timestamps,
   },
   (t) => [
     index('platform_audit_events_created_idx').on(t.createdAt.desc()),
     index('platform_audit_events_org_idx').on(t.organizationId, t.createdAt.desc()),
     index('platform_audit_events_target_idx').on(t.targetType, t.targetKey, t.createdAt.desc()),
+    // Activity's person filter.
+    index('platform_audit_events_actor_idx').on(t.actorUserId, t.createdAt.desc()),
+    uniqueIndex('platform_audit_events_idempotency_unique')
+      .on(t.idempotencyKey)
+      .where(sql`${t.idempotencyKey} is not null`),
+    // A console change always has a signed-in person behind it.
+    check(
+      'platform_audit_events_console_actor',
+      sql`${t.channel} is distinct from 'console' or ${t.actorUserId} is not null`,
+    ),
   ],
 )
 

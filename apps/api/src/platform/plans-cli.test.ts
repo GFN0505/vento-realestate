@@ -195,7 +195,7 @@ describe('pnpm plans', () => {
       )
       const { io } = await run(tx, ['publish', 'growth', '--from', file, ...by(admin.email)])
       expect(io.output.at(-1)).toBe(
-        'Growth version 2 is published. Organizations on earlier versions stay there until you assign them.',
+        'Growth version 2 is published. Organizations on earlier versions stay there until you move them.',
       )
       const [row] = await tx
         .select()
@@ -297,7 +297,7 @@ describe('system commands', () => {
       expect(byHand.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
       const org = await createOrganization(tx, { planKey: 'starter' })
       const target = await findPlanVersion(tx, 'enterprise')
-      const actor = { userId: null, name: 'Test', operator: null }
+      const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
       await startTrial(
         tx,
         actor,
@@ -320,7 +320,7 @@ describe('system commands', () => {
 })
 
 describe('trials after earlier ones lapse', () => {
-  const actor = { userId: null, name: 'Test', operator: null }
+  const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
 
   it('starts a second trial after the first has expired', () =>
     withRollback(async (tx) => {
@@ -401,7 +401,7 @@ describe('trials after earlier ones lapse', () => {
         ...by(admin.email),
       ])
       expect(code).toBe(1)
-      expect(io.errors).toEqual(['Write --until as YYYY-MM-DD, e.g. 2027-01-31.'])
+      expect(io.errors).toEqual(['Write the end date as YYYY-MM-DD, e.g. 2027-01-31.'])
     }))
 })
 
@@ -410,7 +410,7 @@ describe('plans notify-trials', () => {
     withRollback(async (tx) => {
       const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
       const target = await findPlanVersion(tx, 'enterprise')
-      const actor = { userId: null, name: 'Test', operator: null }
+      const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
       await startTrial(
         tx,
         actor,

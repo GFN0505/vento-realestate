@@ -1,23 +1,23 @@
 import { readFile } from 'node:fs/promises'
-import {
-  ADD_ONS,
-  featureLabel,
-  isFeatureKey,
-  type PlanDefinition,
-  planDefinition,
-} from '@vento/shared'
+import { featureLabel, isFeatureKey, type PlanDefinition, planDefinition } from '@vento/shared'
 import { asc, count, eq } from 'drizzle-orm'
 import { organizationPlans, plans, planVersions } from '@/db/schema'
-import { CommandError } from '../command-error'
 import { LIMIT_WORDS } from '../limit-words'
-import { findPlanVersion, naira, resolveOrganization } from '../operations/common'
+import { findPlanVersion, resolveOrganization } from '../operations/common'
 import { notifyTrials } from '../operations/notify-trials'
 import {
   addAddOn,
   assignPlan,
   endTrial,
   parseLimitValue,
+  previewAddOn,
   previewAssign,
+  previewFeatureOverride,
+  previewLimitOverride,
+  previewPublish,
+  previewRemoveAddOn,
+  previewTrialEnd,
+  previewTrialStart,
   publishPlan,
   removeAddOn,
   setFeatureOverride,
@@ -25,6 +25,7 @@ import {
   startTrial,
 } from '../operations/plans'
 import { type PlatformActor, SCHEDULED_ACTOR } from '../platform-audit'
+import { PlatformError } from '../platform-error'
 import { bootstrapStartingData, previewStartingData, SETUP_ACTOR } from '../seed-plans'
 import { activeSuperAdminCount, requireSuperAdmin } from '../super-admins'
 import {
@@ -114,12 +115,12 @@ async function show(deps: CommandDeps, parsed: Parsed): Promise<void> {
 
 async function readDefinition(parsed: Parsed): Promise<PlanDefinition> {
   const key = parsed.positionals[1]
-  if (!parsed.from) throw new CommandError('Add --from <file.json> with the plan definition.')
+  if (!parsed.from) throw new PlatformError('Add --from <file.json> with the plan definition.')
   let raw: unknown
   try {
     raw = JSON.parse(await readFile(parsed.from, 'utf8'))
   } catch {
-    throw new CommandError(`Couldn't read ${parsed.from} as JSON.`)
+    throw new PlatformError(`Couldn't read ${parsed.from} as JSON.`)
   }
   const merged = {
     ...(raw as Record<string, unknown>),
@@ -131,7 +132,7 @@ async function readDefinition(parsed: Parsed): Promise<PlanDefinition> {
   const result = planDefinition.safeParse(merged)
   if (!result.success) {
     const problems = result.error.issues.map((i) => `  ${i.path.join('.') || 'plan'}: ${i.message}`)
-    throw new CommandError(`${parsed.from} isn't a valid plan:\n${problems.join('\n')}`)
+    throw new PlatformError(`${parsed.from} isn't a valid plan:\n${problems.join('\n')}`)
   }
   return result.data
 }
@@ -139,10 +140,8 @@ async function readDefinition(parsed: Parsed): Promise<PlanDefinition> {
 async function publish(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const definition = await readDefinition(parsed)
   const { actor, reason } = await authorise(deps, parsed)
-  const lines = [
-    `${definition.name}: ${definition.features.length} features (plus every core feature).`,
-    `Limits: ${describeLimits(definition.limits)}`,
-  ]
+  const preview = await previewPublish(deps.db, definition)
+  const lines = [...preview.lines, `Limits: ${describeLimits(definition.limits)}`]
   if (!(await confirm(deps, parsed, lines))) return
   deps.io.print(await publishPlan(deps.db, actor, { definition, reason }))
 }
@@ -151,10 +150,11 @@ async function assign(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const version = parsed.version === undefined ? undefined : Number(parsed.version)
   if (version !== undefined && !Number.isInteger(version))
-    throw new CommandError('--version is a number.')
+    throw new PlatformError('--version is a number.')
   const target = await findPlanVersion(deps.db, parsed.positionals[2] ?? '', version)
   const { actor, reason } = await authorise(deps, parsed)
-  if (!(await confirm(deps, parsed, await previewAssign(deps.db, org, target, deps.now())))) return
+  const preview = await previewAssign(deps.db, org, target, deps.now())
+  if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(await assignPlan(deps.db, actor, { organization: org, target, reason }, deps.now()))
 }
 
@@ -162,16 +162,18 @@ async function trial(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   if (parsed.end) {
     const { actor, reason } = await authorise(deps, parsed)
-    if (!(await confirm(deps, parsed, [`${org.name}'s trial will end now.`]))) return
+    const preview = await previewTrialEnd(deps.db, org, deps.now())
+    if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(await endTrial(deps.db, actor, { organization: org, reason }, deps.now()))
     return
   }
   const target = await findPlanVersion(deps.db, parsed.positionals[2] ?? '')
   const days = Number(parsed.days)
-  if (!parsed.days || !Number.isInteger(days)) throw new CommandError('Add --days, e.g. --days 30.')
+  if (!parsed.days || !Number.isInteger(days))
+    throw new PlatformError('Add --days, e.g. --days 30.')
   const { actor, reason } = await authorise(deps, parsed)
-  const lines = [`${org.name} gets a ${days}-day ${target.planName} trial.`]
-  if (!(await confirm(deps, parsed, lines))) return
+  const preview = await previewTrialStart(deps.db, org, target, days, deps.now())
+  if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(
     await startTrial(deps.db, actor, { organization: org, target, days, reason }, deps.now()),
   )
@@ -180,10 +182,10 @@ async function trial(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function addon(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const addOn = addOnArg(parsed.positionals[2])
-  const label = ADD_ONS[addOn].label
   if (parsed.remove) {
     const { actor, reason } = await authorise(deps, parsed)
-    if (!(await confirm(deps, parsed, [`${label} will be removed from ${org.name}.`]))) return
+    const preview = await previewRemoveAddOn(deps.db, org, addOn, deps.now())
+    if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(
       await removeAddOn(deps.db, actor, { organization: org, addOn, reason }, deps.now()),
     )
@@ -191,10 +193,10 @@ async function addon(deps: CommandDeps, parsed: Parsed): Promise<void> {
   }
   const budget = parsed.budget === undefined ? null : parseLimitValue('ai_budget', parsed.budget)
   if (!budget || budget === 'clear')
-    throw new CommandError('Add --budget in naira a month, e.g. --budget 150000.')
+    throw new PlatformError('Add --budget in naira a month, e.g. --budget 150000.')
   const { actor, reason } = await authorise(deps, parsed)
-  if (!(await confirm(deps, parsed, [`${org.name} gets ${label} with ${naira(budget)} a month.`])))
-    return
+  const preview = await previewAddOn(deps.db, org, addOn, budget, deps.now())
+  if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(
     await addAddOn(deps.db, actor, { organization: org, addOn, budget, reason }, deps.now()),
   )
@@ -207,11 +209,8 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
     const key = featureArg(parsed.positionals[3])
     const value = onOffClear(parsed.positionals[4])
     const { actor, reason } = await authorise(deps, parsed)
-    const line =
-      value === 'clear'
-        ? `${org.name}'s plan override for ${featureLabel(key)} will be cleared.`
-        : `${featureLabel(key)} will be ${value} in ${org.name}'s plan${parsed.until ? ` until ${parsed.until}` : ''}.`
-    if (!(await confirm(deps, parsed, [line]))) return
+    const preview = await previewFeatureOverride(deps.db, org, key, value, parsed.until, deps.now())
+    if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(
       await setFeatureOverride(
         deps.db,
@@ -226,11 +225,8 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
     const key = limitArg(parsed.positionals[3])
     const value = parseLimitValue(key, parsed.positionals[4] ?? '')
     const { actor, reason } = await authorise(deps, parsed)
-    const line =
-      value === 'clear'
-        ? `${org.name}'s ${LIMIT_WORDS[key].many} limit goes back to the plan's.`
-        : `${org.name}'s ${LIMIT_WORDS[key].many} limit will be ${parsed.positionals[4]}${parsed.until ? ` until ${parsed.until}` : ''}.`
-    if (!(await confirm(deps, parsed, [line]))) return
+    const preview = await previewLimitOverride(deps.db, org, key, value, parsed.until, deps.now())
+    if (!(await confirm(deps, parsed, preview.lines))) return
     deps.io.print(
       await setLimitOverride(
         deps.db,
@@ -241,7 +237,7 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
     )
     return
   }
-  throw new CommandError(
+  throw new PlatformError(
     'Say override <organization> feature … or override <organization> limit ….',
   )
 }

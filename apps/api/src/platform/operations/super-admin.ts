@@ -1,17 +1,50 @@
+import type { PreviewLine } from '@vento/shared/console'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
-import { platformAdmins, users } from '@/db/schema'
-import { CommandError } from '../command-error'
+import { platformAdmins, sessions, users } from '@/db/schema'
 import { type PlatformActor, recordPlatformAudit } from '../platform-audit'
+import { PlatformError } from '../platform-error'
 import { activeSuperAdminCount } from '../super-admins'
+import type { Preview } from './release'
 
-async function userByEmail(db: DbOrTx, email: string) {
+/** The owner asked for a second approver from four super-admins on (not built in slice 1). */
+const SECOND_APPROVER_AT = 4
+
+type Person = { id: string; name: string; email: string; twoFactorEnabled: boolean }
+
+export type SuperAdminTarget = { email: string } | { userId: string }
+
+async function findPerson(db: DbOrTx, target: SuperAdminTarget): Promise<Person> {
   const [row] = await db
-    .select({ id: users.id, name: users.name, twoFactorEnabled: users.twoFactorEnabled })
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      twoFactorEnabled: users.twoFactorEnabled,
+    })
     .from(users)
-    .where(eq(users.email, email.trim().toLowerCase()))
-  if (!row) throw new CommandError(`No Vento account uses ${email}.`)
+    .where(
+      'email' in target
+        ? eq(users.email, target.email.trim().toLowerCase())
+        : eq(users.id, target.userId),
+    )
+  if (!row) {
+    throw new PlatformError(
+      'email' in target
+        ? `No Vento account uses ${target.email}.`
+        : 'No Vento account has that id.',
+      'not_found',
+    )
+  }
   return row
+}
+
+async function isActive(db: DbOrTx, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: platformAdmins.id })
+    .from(platformAdmins)
+    .where(and(eq(platformAdmins.userId, userId), isNull(platformAdmins.revokedAt)))
+  return Boolean(row)
 }
 
 export async function listSuperAdmins(db: DbOrTx) {
@@ -21,6 +54,33 @@ export async function listSuperAdmins(db: DbOrTx) {
     .innerJoin(users, eq(users.id, platformAdmins.userId))
     .where(isNull(platformAdmins.revokedAt))
     .orderBy(platformAdmins.createdAt)
+}
+
+function needsTwoStep(person: Person) {
+  return new PlatformError(
+    `${person.name} needs two-step sign-in on before becoming a super-admin.`,
+  )
+}
+
+const alreadyOne = (person: Person) => new PlatformError(`${person.name} is already a super-admin.`)
+
+export async function previewGrant(
+  db: DbOrTx,
+  target: SuperAdminTarget,
+): Promise<Preview<Record<string, never>>> {
+  const person = await findPerson(db, target)
+  if (!person.twoFactorEnabled) throw needsTwoStep(person)
+  if (await isActive(db, person.id)) throw alreadyOne(person)
+  const lines: PreviewLine[] = [
+    { text: `${person.name} (${person.email}) will become a Vento super-admin.`, tone: 'info' },
+  ]
+  if ((await activeSuperAdminCount(db)) + 1 >= SECOND_APPROVER_AT) {
+    lines.push({
+      text: "This makes four or more super-admins. The owner asked for a second approver from four on; that's not built yet.",
+      tone: 'warning',
+    })
+  }
+  return { lines, expected: {} }
 }
 
 /**
@@ -36,26 +96,21 @@ export async function grantSuperAdmin(
     // Serialises grants, so two bootstraps can't both see "none".
     await tx.execute(`select pg_advisory_xact_lock(hashtext('platform_admins'))`)
     if (actor === 'bootstrap' && (await activeSuperAdminCount(tx)) > 0) {
-      throw new CommandError('Super-admins already exist. Use --by with one of them.')
+      throw new PlatformError('Super-admins already exist. Use --by with one of them.')
     }
-    const user = await userByEmail(tx, input.email)
-    if (!user.twoFactorEnabled) {
-      throw new CommandError(
-        `${user.name} needs two-step sign-in on before becoming a super-admin.`,
-      )
-    }
-    const [existing] = await tx
-      .select({ id: platformAdmins.id })
-      .from(platformAdmins)
-      .where(and(eq(platformAdmins.userId, user.id), isNull(platformAdmins.revokedAt)))
-    if (existing) throw new CommandError(`${user.name} is already a super-admin.`)
+    const user = await findPerson(tx, { email: input.email })
+    if (!user.twoFactorEnabled) throw needsTwoStep(user)
+    if (await isActive(tx, user.id)) throw alreadyOne(user)
     const by: PlatformActor =
-      actor === 'bootstrap' ? { userId: null, name: 'Bootstrap', operator: input.operator } : actor
+      actor === 'bootstrap'
+        ? { userId: null, name: 'Bootstrap', channel: 'command', operator: input.operator }
+        : actor
     await tx.insert(platformAdmins).values({
       userId: user.id,
       reason: input.reason,
       grantedByUserId: by.userId,
     })
+    const done = `${user.name} is now a Vento super-admin.`
     await recordPlatformAudit(tx, {
       actor: by,
       action: 'superadmin.granted',
@@ -63,26 +118,55 @@ export async function grantSuperAdmin(
       targetKey: user.id,
       after: { name: user.name },
       reason: input.reason,
+      done,
     })
-    return `${user.name} is now a Vento super-admin.`
+    return done
   })
 }
 
+const selfRemoval = () => new PlatformError("You can't remove yourself. Ask another super-admin.")
+const notOne = (person: Person) => new PlatformError(`${person.name} isn't a super-admin.`)
+
+export async function previewRevoke(
+  db: DbOrTx,
+  actor: Pick<PlatformActor, 'userId'>,
+  target: SuperAdminTarget,
+): Promise<Preview<Record<string, never>>> {
+  const person = await findPerson(db, target)
+  if (person.id === actor.userId) throw selfRemoval()
+  if (!(await isActive(db, person.id))) throw notOne(person)
+  return {
+    lines: [
+      { text: `${person.name} (${person.email}) will no longer be a super-admin.`, tone: 'info' },
+      {
+        text: 'Their console closes at once. Their access to customer organizations stays as it is.',
+        tone: 'info',
+      },
+    ],
+    expected: {},
+  }
+}
+
+/** Removes a super-admin and closes the console on every session they have, in one transaction. */
 export async function revokeSuperAdmin(
   db: DbOrTx,
   actor: PlatformActor,
-  input: { email: string; reason: string },
+  input: SuperAdminTarget & { reason: string },
 ): Promise<string> {
   return db.transaction(async (tx) => {
-    const user = await userByEmail(tx, input.email)
-    if (user.id === actor.userId)
-      throw new CommandError("You can't remove yourself. Ask another super-admin.")
+    const user = await findPerson(tx, input)
+    if (user.id === actor.userId) throw selfRemoval()
     const [revoked] = await tx
       .update(platformAdmins)
       .set({ revokedAt: new Date(), revokedByUserId: actor.userId })
       .where(and(eq(platformAdmins.userId, user.id), isNull(platformAdmins.revokedAt)))
       .returning({ id: platformAdmins.id })
-    if (!revoked) throw new CommandError(`${user.name} isn't a super-admin.`)
+    if (!revoked) throw notOne(user)
+    await tx
+      .update(sessions)
+      .set({ consoleOpenedAt: null, consoleActiveAt: null })
+      .where(eq(sessions.userId, user.id))
+    const done = `${user.name} is no longer a Vento super-admin.`
     await recordPlatformAudit(tx, {
       actor,
       action: 'superadmin.revoked',
@@ -90,7 +174,8 @@ export async function revokeSuperAdmin(
       targetKey: user.id,
       before: { name: user.name },
       reason: input.reason,
+      done,
     })
-    return `${user.name} is no longer a Vento super-admin.`
+    return done
   })
 }

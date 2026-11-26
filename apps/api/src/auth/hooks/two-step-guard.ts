@@ -1,5 +1,6 @@
 import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@vento/shared'
 import { eq } from 'drizzle-orm'
+import type { DbOrTx } from '@/db/client'
 import { twoFactors } from '@/db/schema'
 import { backupCodeUsedAlert } from '@/email/templates/security-alert'
 import { formatDate, formatTime } from '@/lib/format'
@@ -108,7 +109,11 @@ export async function afterTwoStepVerify(
   if (input.method === 'backup_code') await onBackupCodeUsed(deps, user)
 }
 
-async function onBackupCodeUsed(deps: AuthDeps, user: IdentityUser): Promise<void> {
+/** Audits a used backup code and emails how many are left (sign-in and the console). */
+export async function onBackupCodeUsed(
+  deps: Pick<AuthDeps, 'mailer' | 'api'> & { db: DbOrTx },
+  user: Pick<IdentityUser, 'id' | 'name' | 'email'>,
+): Promise<void> {
   const { backupCodes } = await deps.api().viewBackupCodes({ body: { userId: user.id } })
   const now = new Date()
   await recordAccountEvent(deps.db, {

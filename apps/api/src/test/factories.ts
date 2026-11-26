@@ -322,10 +322,14 @@ export async function reloadUser(db: DbOrTx, id: string) {
   return row
 }
 
-/** A Vento super-admin (two-step on), for the flag and plan commands. */
+/**
+ * A Vento super-admin (two-step on unless overridden). `revoked` leaves only a revoked row;
+ * `organization` also makes them a member there with the given role (a viewer by default).
+ */
 export async function createSuperAdmin(
   db: DbOrTx,
   overrides: Partial<typeof users.$inferInsert> = {},
+  options: { revoked?: boolean; organization?: TestOrg; role?: SystemRoleKey } = {},
 ): Promise<TestUser> {
   const user = await createUser(db, {
     name: 'Ada Okafor',
@@ -333,7 +337,14 @@ export async function createSuperAdmin(
     twoFactorEnabled: true,
     ...overrides,
   })
-  await db.insert(platformAdmins).values({ userId: user.id, reason: 'test' })
+  await db.insert(platformAdmins).values({
+    userId: user.id,
+    reason: 'test',
+    ...(options.revoked && { revokedAt: new Date() }),
+  })
+  if (options.organization) {
+    await createMember(db, options.organization, { role: options.role ?? 'viewer', user })
+  }
   return user
 }
 
