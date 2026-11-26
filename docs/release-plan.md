@@ -159,6 +159,8 @@ The build follows the dependencies, not the release grouping, and continues thro
 
 **Role homes grow with each module (owner's rule, 26 Nov 2026).** Every role lands on a home made for its job, with one anatomy (DESIGN-NOTES "Role homes"): four numbers for the role, a work queue sorted by due date then impact, and two job-specific panels. Each module brick adds its own numbers, queue items and panels to the role homes it serves (e.g. Sales adds overdue buyers to the Sales and MD homes; Projects adds today's diary and deliveries to the project manager and site homes). Everything on Home follows the location filter: **All entities** shows the group-wide view with a per-entity breakdown; choosing one entity shows only that entity's numbers, queue and panels; members limited to one entity see it automatically; Projects adds a project/site filter for project managers and site engineers. No separate dashboard project at the end.
 
+**Entities vs estates (owner's discussion, 26 Nov 2026; for the 3c spec).** An entity is a registered company (SPV); an estate or site is a project under one entity. 3c names the top-bar filter "Company" (not "location"), adds "+ Add entity" at the foot of the switcher for owners and admins, a setup step "Add your other companies (SPVs)", and one line on the Add entity form: "A separate registered company, like an SPV for one estate. To add another estate, create a project instead." The Projects brick adds the project filter beside it.
+
 ---
 
 ## 9. Owner's decisions (26 Nov 2026)
