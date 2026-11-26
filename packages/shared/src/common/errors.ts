@@ -13,6 +13,10 @@ export const badRequestReason = z.enum([
   'role_needs_two_step',
   /** "Confirm it's you" with the wrong password. */
   'wrong_password',
+  /** The console's "Confirm it's you" with a wrong code or backup code (counts towards the lock). */
+  'wrong_code',
+  /** The console's "Confirm it's you" with a passkey that didn't verify (never counts). */
+  'passkey_failed',
 ])
 export type BadRequestReason = z.infer<typeof badRequestReason>
 
@@ -72,6 +76,10 @@ export const conflictReason = z.enum([
    * shows the message; it reloads into the session's organization with a notice.
    */
   'organization_changed',
+  /** A Vento console change the platform operation refused; `message` is its own sentence. */
+  'platform_refused',
+  /** The console change was previewed against a state that has since moved; `changedByName` says who. */
+  'platform_stale',
 ])
 export type ConflictReason = z.infer<typeof conflictReason>
 
@@ -111,6 +119,13 @@ export const errorMap = {
   NOT_FOUND: {
     status: 404,
     message: "We couldn't find that. It may have been removed.",
+    /**
+     * Only ever set for an active Vento super-admin, so the console can open "Confirm it's you" or
+     * the two-step set-up in one round trip. Everyone else gets no data.
+     */
+    data: z
+      .object({ reason: z.enum(['console_window_closed', 'console_two_step_required']) })
+      .optional(),
   },
   CONFLICT: {
     status: 409,
@@ -128,12 +143,14 @@ export const errorMap = {
        * when it's archived. Only companies within the viewer's access are named.
        */
       entity: z.object({ id, name: z.string(), archived: z.boolean() }).optional(),
-      /** `role_changed`: who saved the role last, e.g. "Aisha Bello". */
+      /** `role_changed` / `platform_stale`: who saved it last, e.g. "Aisha Bello". */
       changedByName: z.string().optional(),
       /** `role_in_use`: active members and open invitations holding the role. */
       holders: z
         .object({ members: z.number().int().min(0), invited: z.number().int().min(0) })
         .optional(),
+      /** `platform_refused`: the console's next step, e.g. an **End trial** link. */
+      next: z.enum(['end_trial', 'change_ai_budget']).optional(),
     }),
   },
   TOO_MANY_REQUESTS: {
@@ -155,12 +172,16 @@ export type ForbiddenData = z.infer<(typeof errorMap)['FORBIDDEN']['data']>
 /** The data of a CONFLICT error, e.g. `{ reason: 'already_invited', alreadyInvited: [...] }`. */
 export type ConflictData = z.infer<(typeof errorMap)['CONFLICT']['data']>
 
+/** The data of a NOT_FOUND error; only the Vento console sends any. */
+export type NotFoundData = z.infer<(typeof errorMap)['NOT_FOUND']['data']>
+
 /**
  * Procedure metadata (decision 0016). `feature` is the catalog key the procedure belongs to, or
  * null for platform procedures with no flag. The server gates on it; a test checks every
- * procedure declares it.
+ * procedure declares it. `area: 'console'` marks Vento console procedures (decision 0021), and
+ * only those: a walk test checks both directions.
  */
-export type ProcedureMeta = { feature?: FeatureKey | null }
+export type ProcedureMeta = { feature?: FeatureKey | null; area?: 'console' }
 
 /** Base contract builder: the shared error map, no feature declared. Use `platform` or `forFeature`. */
 export const base = oc.$meta<ProcedureMeta>({}).errors(errorMap)

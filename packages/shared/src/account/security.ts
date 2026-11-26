@@ -31,11 +31,12 @@ export const passkeyName = z
 /**
  * Why two-step is required for this person. `role`: their role in `organizationName`;
  * `organization`: that organization requires it for everyone; `reset`: an owner or admin reset it
- * (applies everywhere; `organizationName` is the organization the reset came from, or the active one).
+ * (applies everywhere; `organizationName` is the organization the reset came from, or the active one);
+ * `super_admin`: they're a Vento super-admin (`organizationName` "Vento").
  */
 export const twoStepRequirement = z.object({
   organizationName: z.string(),
-  reason: z.enum(['role', 'organization', 'reset']),
+  reason: z.enum(['role', 'organization', 'reset', 'super_admin']),
   /** For "Required for your role (Finance)"; null unless `reason` is `role`. */
   roleName: z.string().nullable(),
 })

@@ -171,6 +171,8 @@ export async function getMe(
     twoStepRequiredBy: requiredBy,
     twoStepSetupBy: gate.kind === 'grace' ? gate.deadline.toISOString() : null,
     canAddCompany: membership ? canAddCompany(membership.member) : false,
+    // The super-admin lookup lands with the console's customer side (admin-console plan, B5).
+    console: null,
   }
 }
 

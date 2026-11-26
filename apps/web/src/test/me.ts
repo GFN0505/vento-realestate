@@ -51,6 +51,7 @@ export function testMe(roleKey: SystemRoleKey, overrides: Partial<Me> = {}): Me 
     twoStepSetupBy: null,
     // As the server computes it: settings create and all-companies access.
     canAddCompany: roleKey === 'owner' || roleKey === 'admin',
+    console: null,
     ...overrides,
   }
 }

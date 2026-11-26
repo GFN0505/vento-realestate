@@ -11,6 +11,8 @@ export const nextStep = z.enum([
   'onboarding_entity',
   'two_step_setup',
   'ready',
+  /** A Vento super-admin with no organization: the Vento console (`/console`). */
+  'console',
 ])
 export type NextStep = z.infer<typeof nextStep>
 
@@ -71,6 +73,11 @@ export const me = z.object({
    * web still ANDs it with the previewed role's permissions.
    */
   canAddCompany: z.boolean(),
+  /**
+   * Set only for an active Vento super-admin: show **Vento console** in the user menu and ⌘K.
+   * null for everyone else, revoked super-admins included.
+   */
+  console: z.object({ twoStepOn: z.boolean() }).nullable(),
 })
 export type Me = z.infer<typeof me>
 

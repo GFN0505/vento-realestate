@@ -7,6 +7,7 @@ const byOrg = {
   organizationName: 'Vento Homes Ltd',
   roleName: null,
 } as const
+const bySuperAdmin = { reason: 'super_admin', organizationName: 'Vento', roleName: null } as const
 
 describe('two-step copy', () => {
   it('names the role and organization in the refusal', () => {
@@ -21,5 +22,12 @@ describe('two-step copy', () => {
   it('gives My security a short line', () => {
     expect(twoStepRequiredLine(byRole)).toBe('Required for your role (Finance)')
     expect(twoStepRequiredLine(byOrg)).toBe('Required by Vento Homes Ltd')
+  })
+
+  it('says a Vento super-admin can never turn two-step off', () => {
+    expect(twoStepRefusal(bySuperAdmin)).toBe(
+      "Two-step is required because you're a Vento super-admin, so it can't be turned off.",
+    )
+    expect(twoStepRequiredLine(bySuperAdmin)).toBe("Required because you're a Vento super-admin")
   })
 })
