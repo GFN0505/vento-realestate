@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   AUTOMATED_RUN_PROBLEM,
+  allowListProblems,
   automationFlags,
   type EmailConfig,
   emailConfigProblems,
@@ -68,7 +69,7 @@ describe('email start-up guards: staging and production', () => {
   const staging = {
     ...postmark,
     APP_ENV: 'staging' as const,
-    EMAIL_ALLOWED_RECIPIENTS: '@ventohomes.ng',
+    EMAIL_ALLOWED_RECIPIENTS: 'you@example.com,@your-test-domain.com',
   }
   const production = { ...postmark, APP_ENV: 'production' as const }
 
@@ -149,6 +150,76 @@ describe('email start-up guards: development', () => {
     expect(emailConfigProblems({ ...realEmail, POSTMARK_SERVER_TOKEN: undefined }, none)).toEqual([
       'POSTMARK_SERVER_TOKEN: Required on development',
     ])
+  })
+})
+
+describe('the email allow-list at start-up', () => {
+  const staging: EmailConfig = {
+    ...postmark,
+    APP_ENV: 'staging',
+    EMAIL_ALLOWED_RECIPIENTS: 'you@example.com',
+  }
+  const development: EmailConfig = {
+    ...postmark,
+    NODE_ENV: 'development',
+    POSTMARK_WEBHOOK_SECRET: undefined,
+    EMAIL_ALLOWED_RECIPIENTS: 'you@example.com',
+  }
+
+  it.each([
+    ['you@example.com,@your-test-domain.com', []],
+    [' you@example.com , your-test-domain.com ,', []],
+    [',', ['EMAIL_ALLOWED_RECIPIENTS: List at least one domain or address, separated by commas']],
+    [
+      ' , ,',
+      ['EMAIL_ALLOWED_RECIPIENTS: List at least one domain or address, separated by commas'],
+    ],
+    [
+      '*@example.com',
+      [
+        "EMAIL_ALLOWED_RECIPIENTS: Wildcards and spaces aren't supported (*@example.com); list each domain (@example.com) or address",
+      ],
+    ],
+    [
+      'you@example.com,@*.example.com,first last@example.com',
+      [
+        "EMAIL_ALLOWED_RECIPIENTS: Wildcards and spaces aren't supported (@*.example.com, first last@example.com); list each domain (@example.com) or address",
+      ],
+    ],
+  ])('checks %j', (raw, problems) => {
+    expect(allowListProblems(raw)).toEqual(problems)
+  })
+
+  it.each([
+    '@ventohomes.ng',
+    'ventohomes.ng',
+    'Aisha@VentoHomes.ng',
+    '@lekkipartners.ng',
+    'tunde@lekkipartners.ng',
+    '@mail.ventohomes.ng',
+  ])('refuses the seed domain in %j, so seeded people never get real email', (entry) => {
+    const [problem] = allowListProblems(`you@example.com,${entry}`)
+    expect(problem).toBe(
+      `EMAIL_ALLOWED_RECIPIENTS: ${entry.trim().toLowerCase()} is seed or demo data (ventohomes.ng, lekkipartners.ng); seeded people must never get real email`,
+    )
+  })
+
+  it.each([
+    ['staging', staging],
+    ['development with Postmark', development],
+  ])('refuses to start %s with a list that is empty, a wildcard or a seed domain', (_, base) => {
+    expect(emailConfigProblems(base, none)).toEqual([])
+    for (const raw of [',', '*', '@ventohomes.ng']) {
+      const problems = emailConfigProblems({ ...base, EMAIL_ALLOWED_RECIPIENTS: raw }, none)
+      expect(problems).toHaveLength(1)
+      expect(problems[0]).toMatch(/^EMAIL_ALLOWED_RECIPIENTS: /)
+    }
+  })
+
+  it('ignores the list when development uses the dev transport', () => {
+    expect(
+      emailConfigProblems({ ...dev, EMAIL_ALLOWED_RECIPIENTS: '@ventohomes.ng' }, none),
+    ).toEqual([])
   })
 })
 

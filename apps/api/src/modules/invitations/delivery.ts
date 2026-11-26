@@ -21,8 +21,9 @@ function deliveryOf(result: SendResult): {
 /**
  * Writes what the mailer reported onto the invitation. A delivery fact, not a change by a
  * person, so it isn't audited. Only the send that queued it can settle it: the row must still be
- * pending, still queued (a bounce that got there first wins) and still on this send's time (a
- * later resend owns the row now). Never touches another organization's row.
+ * pending, still queued (settled once) and still on this send's time (a later resend owns the row
+ * now). A bounce can't arrive first: the webhook matches on `deliveryMessageId`, which this write
+ * is what stores. Never touches another organization's row.
  */
 export async function recordDelivery(
   db: DbOrTx,

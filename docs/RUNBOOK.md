@@ -42,13 +42,13 @@ Stream `platform_audit_events` (and ideally `audit_events`) to an external, appe
 **Postmark servers and secrets**
 - Two Postmark servers, "Vento staging" and "Vento production", each with its own server API token. Tokens and the webhook secret live in the secrets store only (never chat, email or the repo).
 - Per host: `APP_ENV` (`staging` or `production`), `EMAIL_TRANSPORT=postmark`, `POSTMARK_SERVER_TOKEN`, `EMAIL_FROM="Vento Real Estate <no-reply@mail.{Vento domain}>"`, `POSTMARK_MESSAGE_STREAM=outbound`, `POSTMARK_WEBHOOK_SECRET` (32+ random characters: `openssl rand -hex 32`).
-- Staging only: `EMAIL_ALLOWED_RECIPIENTS` (comma-separated domains like `@ventohomes.ng` and addresses). Anyone else is skipped and their invitation shows **Email not delivered**. Production must leave it empty; the API refuses to start otherwise.
+- Staging only: `EMAIL_ALLOWED_RECIPIENTS` (comma-separated domains and addresses, e.g. `you@example.com,@your-test-domain.com`; no wildcards or spaces). The seed and demo domains (`ventohomes.ng`, `lekkipartners.ng`) are refused at start-up, so seeded people never get real email. Anyone else is skipped and their invitation shows **Email not delivered**. Production must leave it empty; the API refuses to start otherwise.
 - The API refuses to start with `NODE_ENV=production` and no `APP_ENV`, and refuses Postmark whenever `NODE_ENV=test`, `CI` or `VENTO_E2E=1` is set.
 
 **Bounce webhook**
-- In each server's default transactional stream: Webhooks → Add webhook → URL `https://postmark:{POSTMARK_WEBHOOK_SECRET}@{api host}/webhooks/postmark/bounce`, events **Bounce** and **Spam complaint**. HTTPS only.
+- In each server's default transactional stream: Webhooks → Add webhook → URL `https://postmark:{POSTMARK_WEBHOOK_SECRET}@{api host}/webhooks/postmark/bounce`, events **Bounce** and **Spam complaint**. Leave **Include bounce content** off: it keeps payloads small (the route refuses bodies over 64 KB) and the bounced message's personal data out. HTTPS only.
 - Postmark doesn't sign webhooks; the Basic-auth secret is the check (compared in constant time). Optionally also allowlist Postmark's published webhook IPs at the proxy.
-- The route is rate-limited to 300 requests a minute per IP and exists only when Postmark is the transport and the secret is set. Rotate the secret if it leaks (worst case: someone marks pending invitations "Email not delivered").
+- Only requests with wrong credentials are rate-limited (30 a minute per IP), so callers without the secret can't use up Postmark's allowance; authenticated calls aren't limited. The route exists only when Postmark is the transport and the secret is set. Rotate the secret if it leaks (worst case: someone marks pending invitations "Email not delivered").
 - Check: Postmark's "Send test" on the webhook gets 200; a wrong password gets 401.
 
 **Account hygiene (Postmark's activity log holds live invitation and reset links)**

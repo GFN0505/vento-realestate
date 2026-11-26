@@ -172,6 +172,26 @@ describe('the Postmark transport', () => {
     expect(down.fetch).toHaveBeenCalledTimes(2)
   })
 
+  it('treats ErrorCode 100 (maintenance) as transient: retried once, then reported', async () => {
+    const maintenance = () => json({ ErrorCode: 100, Message: 'Maintenance' }, 503)
+    const recovered = transport(maintenance(), json({ ErrorCode: 0, MessageID: 'pm-5' }))
+    expect(await recovered.mailer.send(reset)).toEqual({ status: 'sent', messageId: 'pm-5' })
+    expect(recovered.fetch).toHaveBeenCalledTimes(2)
+
+    const down = transport(maintenance(), maintenance())
+    expect(await down.mailer.send(reset)).toEqual({
+      status: 'failed',
+      kind: 'transient',
+      code: 100,
+    })
+    expect(down.fetch).toHaveBeenCalledTimes(2)
+
+    const inBatch = transport(json([{ ErrorCode: 100 }]))
+    expect(await inBatch.mailer.sendBatch([reset])).toEqual([
+      { status: 'failed', kind: 'transient', code: 100 },
+    ])
+  })
+
   it('logs the tag, stream, kind and code, never the address, subject or link', async () => {
     const errors = vi.spyOn(logger, 'error').mockImplementation(() => {})
     const warnings = vi.spyOn(logger, 'warn').mockImplementation(() => {})

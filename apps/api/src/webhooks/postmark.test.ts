@@ -138,13 +138,51 @@ describe('the Postmark bounce webhook', () => {
       expect(await deliveryOf(tx, theirs.invitation.id)).toBe('sent')
     }))
 
-  it('rate-limits to 300 requests a minute per address', () =>
+  it('rate-limits only wrong credentials, never Postmark’s own calls', () =>
     withRollback(async (tx) => {
+      vi.spyOn(logger, 'warn').mockImplementation(() => {})
       const post = webhook(tx, createRateLimiter(true))
-      for (let i = 0; i < 300; i++) await post({ RecordType: 'Delivery' })
-      const limited = await post({ RecordType: 'Delivery' })
+      for (let i = 0; i < 400; i++) {
+        expect((await post({ RecordType: 'Delivery' })).status).toBe(200)
+      }
+      const wrong = basic('postmark', 'guess')
+      for (let i = 0; i < 30; i++) {
+        expect((await post({ RecordType: 'Delivery' }, wrong)).status).toBe(401)
+      }
+      const limited = await post({ RecordType: 'Delivery' }, wrong)
       expect(limited.status).toBe(429)
       expect(limited.headers.get('retry-after')).toMatch(/^\d+$/)
+      expect((await post({ RecordType: 'Delivery' })).status).toBe(200)
+    }))
+
+  it('refuses a body over 64 KB with 413 and changes nothing', () =>
+    withRollback(async (tx) => {
+      const { invitation } = await sentInvitation(tx, 'pm-big')
+      const big = bounce(invitation.id, 'pm-big', { Content: 'x'.repeat(64 * 1024) })
+      expect((await webhook(tx)(big)).status).toBe(413)
+      expect(await deliveryOf(tx, invitation.id)).toBe('sent')
+    }))
+
+  it('writes a replay once, and a later bounce never hides a complaint', () =>
+    withRollback(async (tx) => {
+      const { invitation } = await sentInvitation(tx, 'pm-9')
+      const post = webhook(tx)
+      const complaint = bounce(invitation.id, 'pm-9', { RecordType: 'SpamComplaint' })
+      await post(bounce(invitation.id, 'pm-9'))
+      await post(complaint)
+      const [first] = await tx
+        .select({ delivery: invitations.delivery, at: invitations.deliveryChangedAt })
+        .from(invitations)
+        .where(eq(invitations.id, invitation.id))
+      expect(first?.delivery).toBe('complained')
+
+      await post(complaint)
+      await post(bounce(invitation.id, 'pm-9'))
+      const [after] = await tx
+        .select({ delivery: invitations.delivery, at: invitations.deliveryChangedAt })
+        .from(invitations)
+        .where(eq(invitations.id, invitation.id))
+      expect(after).toEqual(first)
     }))
 
   it('never logs the address from the payload', () =>

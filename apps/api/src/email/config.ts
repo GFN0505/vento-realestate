@@ -24,6 +24,12 @@ export const AUTOMATED_RUN_PROBLEM =
 
 export const WEBHOOK_SECRET_MIN_LENGTH = 32
 
+/**
+ * Domains of the fictional seed and demo data. They may be real domains someone owns, so a
+ * seeded person must never get real email: these can't be allow-listed.
+ */
+export const SEED_DOMAINS = ['ventohomes.ng', 'lekkipartners.ng'] as const
+
 /** `CI=false` or `CI=0` is someone switching it off, not a CI run. */
 export function automationFlags(source: Record<string, string | undefined>): AutomationFlags {
   const ci = source.CI?.trim().toLowerCase()
@@ -68,6 +74,38 @@ function webhookSecretProblem(secret: string | undefined, required: boolean): st
     : []
 }
 
+const isSeedDomain = (domain: string): boolean =>
+  SEED_DOMAINS.some((seed) => domain === seed || domain.endsWith(`.${seed}`))
+
+/**
+ * Problems with a set `EMAIL_ALLOWED_RECIPIENTS`. The parser (`allow-list.ts`) skips empty entries,
+ * so a list like `","` would allow nobody while looking configured, and a `*` or a space would
+ * silently match nothing: both are refused here instead of failing quietly at send time.
+ */
+export function allowListProblems(raw: string): string[] {
+  const entries = raw
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+  if (!entries.length) {
+    return ['EMAIL_ALLOWED_RECIPIENTS: List at least one domain or address, separated by commas']
+  }
+  const problems: string[] = []
+  const unusable = entries.filter((entry) => /[\s*]/.test(entry))
+  if (unusable.length) {
+    problems.push(
+      `EMAIL_ALLOWED_RECIPIENTS: Wildcards and spaces aren't supported (${unusable.join(', ')}); list each domain (@example.com) or address`,
+    )
+  }
+  const seeded = entries.filter((entry) => isSeedDomain(entry.slice(entry.lastIndexOf('@') + 1)))
+  if (seeded.length) {
+    problems.push(
+      `EMAIL_ALLOWED_RECIPIENTS: ${seeded.join(', ')} is seed or demo data (${SEED_DOMAINS.join(', ')}); seeded people must never get real email`,
+    )
+  }
+  return problems
+}
+
 /** Every reason the email settings are unsafe to start with; empty when they're fine. */
 export function emailConfigProblems(config: EmailConfig, flags: AutomationFlags): string[] {
   // Automated runs first: whatever else is configured, they can never reach a real inbox.
@@ -99,7 +137,7 @@ export function emailConfigProblems(config: EmailConfig, flags: AutomationFlags)
       ...postmarkProblems(config, 'staging'),
       ...webhookSecretProblem(config.POSTMARK_WEBHOOK_SECRET, true),
       ...(allowList
-        ? []
+        ? allowListProblems(allowList)
         : ['EMAIL_ALLOWED_RECIPIENTS: Required on staging (domains or addresses)']),
     ]
   }
@@ -113,7 +151,7 @@ export function emailConfigProblems(config: EmailConfig, flags: AutomationFlags)
     ...postmarkProblems(config, 'development'),
     ...webhookSecretProblem(config.POSTMARK_WEBHOOK_SECRET, false),
     ...(allowList
-      ? []
+      ? allowListProblems(allowList)
       : [
           'EMAIL_ALLOWED_RECIPIENTS: Required to send real email in development (your own addresses)',
         ]),

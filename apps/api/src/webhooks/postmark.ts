@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { z } from 'zod'
@@ -10,7 +10,11 @@ import type { RateLimiter } from '@/lib/rate-limit'
 import { requestScope } from '@/lib/request-scope'
 
 export const POSTMARK_WEBHOOK_USER = 'postmark'
-const REQUESTS_PER_MINUTE = 300
+/**
+ * Wrong-credential attempts a minute per IP. Only failures count: Postmark's own (authenticated)
+ * calls are never limited, so nobody without the secret can use up its allowance.
+ */
+const FAILED_ATTEMPTS_PER_MINUTE = 30
 
 /**
  * The fields we read from Postmark's bounce and spam-complaint webhooks. Lenient: Postmark adds
@@ -51,15 +55,33 @@ export function hasValidCredentials(header: string | undefined, secret: string):
   return timingSafeEqual(digest(given), digest(`${POSTMARK_WEBHOOK_USER}:${secret}`))
 }
 
+type MarkedState = 'bounced' | 'complained'
+
+/**
+ * The states an event may replace. A complaint outranks a bounce (the person actively objected,
+ * and Postmark has suppressed the address either way), so a later or replayed bounce never hides
+ * a complaint. Neither state replaces itself: a replay writes nothing, and `deliveryChangedAt`
+ * keeps the time of the first event.
+ */
+const REPLACES: Record<MarkedState, ('sent' | 'bounced')[]> = {
+  bounced: ['sent'],
+  complained: ['sent', 'bounced'],
+}
+
 /**
  * Marks a pending invitation whose latest send this event is about. Matching on the message id
  * too means a stale bounce (for a send before a resend) changes nothing. Idempotent.
+ *
+ * Deliberately not filtered by `organizationId` (an exception to the isolation rule): a webhook
+ * has no auth context. The row is found only by our invitation UUID (from the message metadata)
+ * together with Postmark's MessageID for that exact send, which a caller can't guess, and the
+ * request must carry the webhook secret.
  */
 async function markInvitation(
   db: DbOrTx,
   id: string,
   messageId: string,
-  state: 'bounced' | 'complained',
+  state: MarkedState,
 ): Promise<boolean> {
   const rows = await db
     .update(invitations)
@@ -69,6 +91,7 @@ async function markInvitation(
         eq(invitations.id, id),
         eq(invitations.deliveryMessageId, messageId),
         eq(invitations.status, 'pending'),
+        inArray(invitations.delivery, REPLACES[state]),
       ),
     )
     .returning({ id: invitations.id })
@@ -86,49 +109,42 @@ export function postmarkWebhook(deps: {
   rateLimiter: RateLimiter
 }): Hono {
   const app = new Hono()
-  app.post(
-    '/bounce',
-    bodyLimit({ maxSize: 64 * 1024 }),
-    async (c, next) => {
+  app.post('/bounce', bodyLimit({ maxSize: 64 * 1024 }), async (c) => {
+    if (!hasValidCredentials(c.req.header('authorization'), deps.secret)) {
       const ip = requestScope().ip ?? 'unknown'
-      const wait = deps.rateLimiter.hit(`postmark-webhook:${ip}`, REQUESTS_PER_MINUTE)
+      const wait = deps.rateLimiter.hit(`postmark-webhook-failed:${ip}`, FAILED_ATTEMPTS_PER_MINUTE)
       if (wait > 0) {
         c.header('Retry-After', String(wait))
         return c.text('Too many requests', 429)
       }
-      await next()
-    },
-    async (c) => {
-      if (!hasValidCredentials(c.req.header('authorization'), deps.secret)) {
-        logger.warn('Postmark webhook refused: bad credentials', {
-          requestId: requestScope().requestId,
-        })
-        c.header('WWW-Authenticate', 'Basic realm="webhooks"')
-        return c.text('Unauthorized', 401)
-      }
-      let body: unknown
-      try {
-        body = await c.req.json()
-      } catch {
-        return c.text('Invalid JSON', 400)
-      }
-      const parsed = payload.safeParse(body)
-      const event: PostmarkEvent = parsed.success ? parsed.data : {}
-      const state = deliveryState(event)
-      const id = invitationId.safeParse(event.Metadata?.invitationId)
-      const matched =
-        state !== null && id.success && event.MessageID
-          ? await markInvitation(deps.db, id.data, event.MessageID, state)
-          : false
-      logger.info('Postmark webhook', {
+      logger.warn('Postmark webhook refused: bad credentials', {
         requestId: requestScope().requestId,
-        recordType: event.RecordType,
-        type: event.Type,
-        tag: event.Tag,
-        outcome: matched ? state : 'ignored',
       })
-      return c.json({ ok: true })
-    },
-  )
+      c.header('WWW-Authenticate', 'Basic realm="webhooks"')
+      return c.text('Unauthorized', 401)
+    }
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.text('Invalid JSON', 400)
+    }
+    const parsed = payload.safeParse(body)
+    const event: PostmarkEvent = parsed.success ? parsed.data : {}
+    const state = deliveryState(event)
+    const id = invitationId.safeParse(event.Metadata?.invitationId)
+    const matched =
+      state !== null && id.success && event.MessageID
+        ? await markInvitation(deps.db, id.data, event.MessageID, state)
+        : false
+    logger.info('Postmark webhook', {
+      requestId: requestScope().requestId,
+      recordType: event.RecordType,
+      type: event.Type,
+      tag: event.Tag,
+      outcome: matched ? state : 'ignored',
+    })
+    return c.json({ ok: true })
+  })
   return app
 }
