@@ -1,6 +1,6 @@
 # App shell (brick 3a)
 
-- **Status:** approved (26 Nov 2026), built on branch `brick/03-app-shell`, waiting for the owner's per-feature review
+- **Status:** shipped (merged in PR #3, 26 Nov 2026)
 - **Module:** Platform
 - **Journeys:** J-ONB-05 (new), J-ONB-01 (step 7 changed)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
