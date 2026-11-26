@@ -22,7 +22,7 @@ export function ThemeSegments() {
             aria-checked={checked}
             onClick={() => setTheme(option.value)}
             className={cn(
-              'flex min-h-11 items-center justify-center gap-2 rounded-lg font-semibold text-[13px] text-muted-foreground outline-hidden transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring',
+              'flex min-h-11 items-center justify-center gap-2 rounded-lg font-semibold text-[13px] text-foreground/80 outline-hidden transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring',
               checked && 'bg-card text-foreground shadow-sm',
             )}
           >

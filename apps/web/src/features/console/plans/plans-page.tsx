@@ -12,12 +12,14 @@ import { count, plural } from '../words'
 import { PublishSheet } from './publish/publish-sheet'
 import { plansQuery } from './queries'
 
-/** "v2 · 47 organizations · v1 · 3": who is on which version, newest first. */
+/** "Latest v2 · 47 on v2, 3 on v1": the latest version and who is on which, newest first. */
 export function versionsLine(plan: PlanRow): string {
-  return [...plan.versions]
-    .sort((a, b) => b.version - a.version)
-    .map((v) => `v${v.version} · ${plural(v.organizations, 'organization')}`)
-    .join(' · ')
+  const versions = [...plan.versions].sort((a, b) => b.version - a.version)
+  const total = versions.reduce((sum, v) => sum + v.organizations, 0)
+  if (versions.length <= 1)
+    return `Latest v${plan.latestVersion} · ${plural(total, 'organization')}`
+  const who = versions.map((v) => `${count(v.organizations)} on v${v.version}`).join(', ')
+  return `Latest v${plan.latestVersion} · ${who}`
 }
 
 /** Plans (pattern: list page): each plan, its latest version and who is on each version. */
@@ -63,9 +65,7 @@ export function PlansPage() {
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-[14px]">
-                      {plan.name} v{count(plan.latestVersion)}
-                    </span>
+                    <span className="font-semibold text-[14px]">{plan.name}</span>
                     {plan.defaultForNew && (
                       <Badge variant="brand">Default for new organizations</Badge>
                     )}

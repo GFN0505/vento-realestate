@@ -24,7 +24,7 @@ export function OverrideFields({ draft, errors, set, ids }: Props) {
   return (
     <>
       <ChoiceList
-        legend="Kind"
+        legend="What changes"
         columns={2}
         value={draft.kind}
         onChange={(kind) =>
@@ -33,10 +33,14 @@ export function OverrideFields({ draft, errors, set, ids }: Props) {
         choices={[
           {
             value: 'release',
-            label: 'Release',
-            note: 'Makes a feature available before its stage does',
+            label: 'Early access',
+            note: "Turns a feature on or off before it's released to them",
           },
-          { value: 'plan', label: 'Plan', note: 'A feature or a limit, beyond the plan' },
+          {
+            value: 'plan',
+            label: 'Their plan',
+            note: 'Adds or removes a feature, or changes a limit',
+          },
         ]}
       />
       <Field data-invalid={!!errors.target}>

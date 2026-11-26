@@ -94,16 +94,20 @@ export function StartTrialSheet({ org, onClose, onNext }: SheetProps) {
 /** End trial: no fields; the preview says which features stop. */
 export function EndTrialSheet({ org, onClose }: SheetProps) {
   const change = useChange(end, onClose)
-  const name = org.trial?.planName ?? 'the'
   return (
     <ChangeSheet
       open
       onClose={onClose}
       change={change}
-      title={`End the ${name} trial?`}
+      title={org.trial ? `End the ${org.trial.planName} trial?` : 'End trial'}
       description={org.name}
       confirmLabel="End trial"
       destructive
+      notice={
+        org.trial
+          ? undefined
+          : 'No trial is running. Start one from More changes (⋯) beside Change plan.'
+      }
       autoPreview={() => void change.preview({ organizationId: org.id })}
     />
   )

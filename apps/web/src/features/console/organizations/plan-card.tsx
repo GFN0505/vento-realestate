@@ -1,8 +1,8 @@
 import type { OrganizationDetail } from '@vento/shared/console'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CardNote, DetailCard, FactRow } from '../ui/detail-card'
-import { LIMIT_LABEL, limitState, limitText, SHOWN_LIMITS } from '../words'
+import { DetailCard, FactRow } from '../ui/detail-card'
+import { GROUP_NOTE, LIMIT_LABEL, limitState, limitText, planLabel, SHOWN_LIMITS } from '../words'
 import { useOrganizationSearch } from './use-organization-search'
 
 const REFUSED: Record<string, string> = {
@@ -18,12 +18,8 @@ export function PlanCard({ org }: { org: OrganizationDetail }) {
   const limits = org.limits.filter((l) => SHOWN_LIMITS.includes(l.key))
   return (
     <DetailCard title="Plan">
-      {internal ? (
-        <CardNote>Internal: every feature, no limits</CardNote>
-      ) : org.plan ? (
-        <FactRow label="Plan">
-          {org.plan.name} v{org.plan.version}
-        </FactRow>
+      {org.plan ? (
+        <FactRow label="Plan">{planLabel(org.plan)}</FactRow>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 py-1">
           <span className="font-semibold text-[13px] text-status-amber-fg">No plan</span>
@@ -32,7 +28,12 @@ export function PlanCard({ org }: { org: OrganizationDetail }) {
           </Button>
         </div>
       )}
-      {!internal && org.plan && org.plan.latestVersion > org.plan.version && (
+      {GROUP_NOTE[org.releaseGroup] && (
+        <p className="border-t py-2 text-[13px] text-muted-foreground">
+          {GROUP_NOTE[org.releaseGroup]}
+        </p>
+      )}
+      {org.plan && org.plan.latestVersion > org.plan.version && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t py-2 text-[13px]">
           <span className="text-status-blue-fg">
             {org.plan.name} v{org.plan.latestVersion} is available

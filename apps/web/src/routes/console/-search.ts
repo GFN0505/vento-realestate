@@ -62,8 +62,9 @@ export type OrganizationSearch = {
   /** Prefill for `override` / target of `clear-override`. */
   kind?: 'release' | 'feature' | 'limit'
   key?: string
-  /** Features card: available or not. */
+  /** Features card: available or not, and a name to find. */
   show?: 'available' | 'unavailable'
+  find?: string
   /** The "ended" overrides list is open, on this page. */
   ended?: number
 }
@@ -74,6 +75,7 @@ export const validateOrganizationSearch = (s: Raw): OrganizationSearch => {
     kind: oneOf(s.kind, ['release', 'feature', 'limit'] as const),
     key: key(s.key),
     show: oneOf(s.show, ['available', 'unavailable'] as const),
+    find: text(s.find, 60),
     ended: Number.isInteger(ended) && ended >= 1 && ended < 10_000 ? ended : undefined,
   }
 }

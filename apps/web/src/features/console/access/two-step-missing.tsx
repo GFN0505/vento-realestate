@@ -16,7 +16,7 @@ export function TwoStepMissing() {
     <ErrorState
       icon={SmartphoneIcon}
       tone="amber"
-      title="Set up two-step to use the Vento console."
+      title="Set up two-step to use the Vento console"
       actions={
         <Button asChild>
           {me.organization ? (

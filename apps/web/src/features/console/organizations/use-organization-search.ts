@@ -1,5 +1,6 @@
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import type { OrganizationSearch } from '@/routes/console/-search'
+import { rememberOpener } from '../changes/focus'
 
 /** The detail page's open sheet, features filter and ended list live in the address. */
 export function useOrganizationSearch() {
@@ -22,6 +23,7 @@ export function useOrganizationSearch() {
     change: OrganizationSearch['change'],
     prefill: Pick<OrganizationSearch, 'kind' | 'key'> = {},
   ) {
+    rememberOpener()
     update({ change, kind: prefill.kind, key: prefill.key })
   }
   const closeChange = () => update({ change: undefined, kind: undefined, key: undefined })

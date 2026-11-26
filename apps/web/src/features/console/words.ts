@@ -32,13 +32,16 @@ export const STAGE_LABEL: Record<ReleaseStage, string> = {
 }
 export const STAGE_TONE = { off: 'rose', internal: 'slate', pilot: 'blue', on: 'emerald' } as const
 
-/** Plan column: "Growth v2", "Internal · everything" or "No plan". */
-export function planLabel(
-  plan: { name: string; version: number } | null,
-  group: ReleaseGroup,
-): string {
-  if (group === 'internal') return 'Internal · everything'
+/** Plan column and Plan card: "Growth v2", or "No plan". The release group is its own fact. */
+export function planLabel(plan: { name: string; version: number } | null): string {
   return plan ? `${plan.name} v${plan.version}` : 'No plan'
+}
+
+/** What the group means, beside the plan (internal and pilot only; standard is the default). */
+export const GROUP_NOTE: Record<ReleaseGroup, string | null> = {
+  standard: null,
+  pilot: 'Pilot group: early access to features at pilot',
+  internal: 'Internal group: sees every feature, with no limits',
 }
 
 /** "9 days left", "1 day left", "ends today" (`endsOn` is the trial's last day, Lagos). */
@@ -86,6 +89,9 @@ export function listWords(words: readonly string[]): string {
   return `${words.slice(0, -1).join(', ')} and ${words.at(-1)}`
 }
 
-/** A catalog group: the module's own label, or "Platform". */
+/** A catalog group: the module's own label, "AI" for the add-on's features, else "Platform". */
 export const moduleLabel = (module: string) =>
-  isFeatureKey(module) ? featureLabel(module) : 'Platform'
+  module === 'ai' ? 'AI' : isFeatureKey(module) ? featureLabel(module) : 'Platform'
+
+/** The group a feature is shown under: AI add-on features get their own, not "Platform". */
+export const groupOf = (key: string, module: string) => (key.startsWith('ai.') ? 'ai' : module)

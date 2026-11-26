@@ -12,7 +12,7 @@ const INTERACTIVE = 'a, button'
 
 /**
  * Board AdminOrgs with the spec's columns (no Projects until the projects module counts them).
- * The row opens the detail page; the name is its keyboard target. Narrow tables drop Group.
+ * The row opens the detail page; the name is its keyboard target. Narrow tables put the group under the plan.
  */
 export function OrganizationsTable({ rows }: Props) {
   const navigate = useNavigate()
@@ -84,8 +84,9 @@ export function OrganizationsTable({ rows }: Props) {
               </td>
               <td className={td}>
                 <div className="flex min-w-0 flex-col items-start gap-1">
-                  <span className="max-w-full truncate">
-                    {planLabel(row.plan, row.releaseGroup)}
+                  <span className="max-w-full truncate">{planLabel(row.plan)}</span>
+                  <span className="text-muted-foreground text-xs @4xl:hidden">
+                    {GROUP_LABEL[row.releaseGroup]} group
                   </span>
                   <OverLimitBadge over={row.overLimit} />
                 </div>
@@ -129,7 +130,8 @@ export function OrganizationsCards({ rows }: Props) {
             </span>
             <span className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground text-xs tabular-nums">
-                {planLabel(row.plan, row.releaseGroup)} · {lastActiveLabel(row.lastActiveAt)}
+                {planLabel(row.plan)} · {GROUP_LABEL[row.releaseGroup]} ·{' '}
+                {lastActiveLabel(row.lastActiveAt)}
               </span>
               <span className="flex gap-1.5">
                 <OverLimitBadge over={row.overLimit} />

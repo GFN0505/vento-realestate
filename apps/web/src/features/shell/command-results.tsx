@@ -221,7 +221,7 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             onSelect={run(() => void router.navigate({ to: '/console' }))}
           >
             <GaugeIcon aria-hidden />
-            Open Vento console
+            Vento console
           </CommandItem>
         )}
         {canInvite && (

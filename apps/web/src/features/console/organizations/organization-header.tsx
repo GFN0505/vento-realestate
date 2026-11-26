@@ -13,12 +13,12 @@ import { BackLink } from '../ui/back-link'
 import { GROUP_LABEL, planLabel } from '../words'
 import { useOrganizationSearch } from './use-organization-search'
 
-/** "Growth v2 · Standard · owner Olumide Bankole (olumide@…) · customer since 3 Feb 2026". */
+/** "Growth v2 · Standard group · owner Olumide Bankole (olumide@…) · customer since 3 Feb 2026". */
 export function headerLine(org: OrganizationDetail): string {
   const owner = org.owner ? `owner ${org.owner.name} (${org.owner.email})` : 'no owner'
   return [
-    planLabel(org.plan, org.releaseGroup),
-    GROUP_LABEL[org.releaseGroup],
+    planLabel(org.plan),
+    `${GROUP_LABEL[org.releaseGroup]} group`,
     owner,
     `customer since ${formatDate(org.customerSince)}`,
   ].join(' · ')

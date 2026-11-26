@@ -1,9 +1,11 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { FormAlert } from '@/components/auth/form-alert'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Sheet } from '@/components/ui/sheet'
 import { SheetFrame } from '@/features/team/sheet-frame'
 import { ChangeBody, ChangeFooter } from './change-body'
 import type { ChangeNext } from './change-errors'
+import { focusFirstField, useReturnFocus } from './focus'
 import type { ChangeController } from './use-change'
 
 export type ChangeFrameProps = {
@@ -23,6 +25,8 @@ export type ChangeFrameProps = {
   destructive?: boolean
   /** The fields differ from their defaults. */
   fieldsDirty?: boolean
+  /** Nothing can be changed (e.g. no trial to end): this line and **Close**, no preview. */
+  notice?: ReactNode
   onNext?: (next: ChangeNext) => void
 }
 
@@ -80,7 +84,8 @@ export function ChangeSheet(props: ChangeFrameProps) {
   const { open, onClose, change, fields, fieldsDirty = false } = props
   const formId = useId()
   const guard = useCloseGuard(change, fieldsDirty, onClose)
-  useAutoPreview(open, fields ? undefined : props.autoPreview)
+  useAutoPreview(open, fields || props.notice ? undefined : props.autoPreview)
+  useReturnFocus()
   const review = change.step === 'review'
   return (
     <>
@@ -89,6 +94,7 @@ export function ChangeSheet(props: ChangeFrameProps) {
           title={review && props.reviewTitle ? props.reviewTitle : props.title}
           description={props.description}
           onInteractOutside={(event) => change.pending === 'apply' && event.preventDefault()}
+          onOpenAutoFocus={focusFirstField}
           footer={
             <ChangeFooter
               change={change}
@@ -100,13 +106,17 @@ export function ChangeSheet(props: ChangeFrameProps) {
             />
           }
         >
-          <ChangeBody
-            change={change}
-            formId={formId}
-            fields={fields}
-            onReview={props.onReview}
-            onNext={props.onNext}
-          />
+          {props.notice ? (
+            <FormAlert variant="info">{props.notice}</FormAlert>
+          ) : (
+            <ChangeBody
+              change={change}
+              formId={formId}
+              fields={fields}
+              onReview={props.onReview}
+              onNext={props.onNext}
+            />
+          )}
         </SheetFrame>
       </Sheet>
       <DiscardChange guard={guard} />

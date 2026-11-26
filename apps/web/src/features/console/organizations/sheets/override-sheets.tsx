@@ -79,8 +79,9 @@ export function ClearOverrideSheet({ org, onClose }: SheetProps) {
       description={org.name}
       confirmLabel="Clear override"
       destructive
+      notice={override ? undefined : 'This override has already ended. Nothing to clear.'}
       autoPreview={() => {
-        if (!override) return onClose()
+        if (!override) return
         void change.preview(
           override.kind === 'limit'
             ? { organizationId: org.id, kind: 'limit', key: override.key }

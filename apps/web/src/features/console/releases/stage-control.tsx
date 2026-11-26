@@ -31,7 +31,7 @@ export function StageControl({
               'flex min-h-11 items-center justify-center rounded-lg px-2 font-semibold text-[13px] outline-hidden transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring md:min-h-9',
               current
                 ? 'cursor-default bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
+                : 'text-foreground/80 hover:bg-card/60 hover:text-foreground',
             )}
           >
             {STAGE_LABEL[s]}

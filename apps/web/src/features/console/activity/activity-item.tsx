@@ -14,11 +14,40 @@ export function formatWhen(iso: string): string {
   return `${formatDate(iso)}, ${time.format(new Date(iso))}`
 }
 
-/** Break-glass entries are rose "Command line" (spec); console changes are slate "Console". */
-export function ChannelTag({ channel }: { channel: ActivityRow['channel'] }) {
-  if (channel === 'command') return <StatusBadge tone="rose">Command line</StatusBadge>
-  if (channel === 'scheduled') return <StatusBadge tone="slate">Scheduled</StatusBadge>
+/**
+ * Break-glass entries are rose "Command line" (spec). A command row with no person is Vento's own
+ * setup (bootstrap, seed), not break-glass, so it reads slate "Setup"; console changes are slate.
+ */
+export function ChannelTag({ row }: { row: Pick<ActivityRow, 'channel' | 'actorUserId'> }) {
+  if (row.channel === 'command' && row.actorUserId === null) {
+    return <StatusBadge tone="slate">Setup</StatusBadge>
+  }
+  if (row.channel === 'command') return <StatusBadge tone="rose">Command line</StatusBadge>
+  if (row.channel === 'scheduled') return <StatusBadge tone="slate">Scheduled</StatusBadge>
   return <StatusBadge tone="slate">Console</StatusBadge>
+}
+
+const WORDS: Record<string, string> = {
+  none: 'Not set',
+  null: 'Not set',
+  on: 'On',
+  off: 'Off',
+  internal: 'Internal',
+  pilot: 'Pilot',
+  standard: 'Standard',
+  unlimited: 'Unlimited',
+}
+
+/**
+ * "internal → pilot" → "Internal → Pilot"; "none → on" → "Not set → On". Nothing when the two
+ * sides read the same (no change worth showing). Other values (plan names, amounts) stay as sent.
+ */
+export function changeWords(change: string | null): string | null {
+  if (!change) return null
+  const sides = change.split(' → ')
+  if (sides.length !== 2) return change
+  const [before = '', after = ''] = sides.map((side) => WORDS[side.trim()] ?? side.trim())
+  return before === after ? null : `${before} → ${after}`
 }
 
 /**
@@ -41,9 +70,11 @@ export function ActivityItem({
             <span className="font-normal text-muted-foreground"> · {row.organization.name}</span>
           )}
         </p>
-        <ChannelTag channel={row.channel} />
+        <ChannelTag row={row} />
       </div>
-      {row.change && <p className="text-[13px] tabular-nums">{row.change}</p>}
+      {changeWords(row.change) && (
+        <p className="text-[13px] tabular-nums">{changeWords(row.change)}</p>
+      )}
       <p className="text-[13px] text-muted-foreground leading-relaxed">“{row.reason}”</p>
       <p className="text-muted-foreground text-xs tabular-nums">
         {row.actorName} · <time dateTime={row.at}>{formatWhen(row.at)}</time>

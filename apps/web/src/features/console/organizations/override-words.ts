@@ -14,7 +14,7 @@ export function overrideWhat(o: ConsoleOverride): string {
 }
 
 /** A release override changes availability; feature and limit overrides change the plan. */
-export const overrideKind = (o: ConsoleOverride) => (o.kind === 'release' ? 'Release' : 'Plan')
+export const overrideKind = (o: ConsoleOverride) => (o.kind === 'release' ? 'Early access' : 'Plan')
 
 export const overrideUntil = (o: ConsoleOverride) =>
   o.until ? `until ${formatDate(o.until)}` : 'no end date'

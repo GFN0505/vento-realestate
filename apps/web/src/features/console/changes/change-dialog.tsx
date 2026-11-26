@@ -7,6 +7,7 @@ import {
 } from '@/features/security/dialogs/dialog-frame'
 import { ChangeBody, ChangeFooter } from './change-body'
 import { type ChangeFrameProps, DiscardChange, useAutoPreview, useCloseGuard } from './change-sheet'
+import { focusFirstField, useReturnFocus } from './focus'
 
 /**
  * A change with no fields as a centred dialog (moving a stage, the kill switch): the preview
@@ -17,6 +18,7 @@ export function ChangeDialog(props: Omit<ChangeFrameProps, 'fields' | 'onReview'
   const formId = useId()
   const guard = useCloseGuard(change, false, onClose)
   useAutoPreview(open, props.autoPreview)
+  useReturnFocus()
   return (
     <>
       <DialogFrame
@@ -25,6 +27,7 @@ export function ChangeDialog(props: Omit<ChangeFrameProps, 'fields' | 'onReview'
         onClose={guard.request}
         title={props.title}
         description={props.description}
+        onOpenAutoFocus={focusFirstField}
       >
         <div className="flex min-h-0 flex-col max-md:h-full">
           <DialogBody className={`${dialogBodyClass} gap-4`}>

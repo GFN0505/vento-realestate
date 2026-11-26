@@ -32,8 +32,8 @@ export function ReleaseGroupSheet({ org, onClose, onNext }: SheetProps) {
       change={change}
       title="Change release group"
       description={org.name}
-      reviewTitle={`Move ${org.name} to ${label.toLowerCase()}?`}
-      confirmLabel={`Move to ${label.toLowerCase()}`}
+      reviewTitle={`Move ${org.name} to the ${label} group?`}
+      confirmLabel={`Move to ${label}`}
       fieldsDirty={group !== org.releaseGroup}
       onReview={() => void change.preview({ organizationId: org.id, group })}
       fields={

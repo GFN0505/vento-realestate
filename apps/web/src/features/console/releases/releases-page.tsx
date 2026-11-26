@@ -10,7 +10,7 @@ import type { ReleasesSearch } from '@/routes/console/-search'
 import { useConsoleTitle } from '../shell/use-console-title'
 import { cardRow, nameLink, td, th } from '../ui/back-link'
 import { FilteredEmpty, ListEmpty, ListError, ListSkeleton } from '../ui/list-states'
-import { count, moduleLabel, plural } from '../words'
+import { count, groupOf, moduleLabel, plural } from '../words'
 import { releasesQuery } from './queries'
 import { PlansText, StageBadge } from './release-cells'
 
@@ -130,7 +130,7 @@ function ReleasesTable({ rows }: { rows: readonly ReleaseRow[] }) {
                 </div>
               </td>
               <td className={`${td} hidden text-muted-foreground @3xl:table-cell`}>
-                {moduleLabel(row.module)}
+                {moduleLabel(groupOf(row.key, row.module))}
               </td>
               <td className={td}>
                 <StageBadge stage={row.stage} />

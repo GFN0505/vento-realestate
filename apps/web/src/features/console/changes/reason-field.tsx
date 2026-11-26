@@ -30,6 +30,7 @@ export function ReasonField({ value, onChange, onBlur, error, disabled, autoFocu
         value={value}
         rows={3}
         maxLength={500}
+        required
         ref={field}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}

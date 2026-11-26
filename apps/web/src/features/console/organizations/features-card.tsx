@@ -1,18 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import type { FeatureWhy } from '@vento/shared/console'
-import { EllipsisIcon } from 'lucide-react'
 import { FilterChips } from '@/components/filter-chips'
-import { StatusBadge } from '@/components/status-badge'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { SearchField } from '@/components/search-field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CardNote, DetailCard } from '../ui/detail-card'
-import { moduleLabel } from '../words'
+import { groupOf } from '../words'
+import { FeatureGroups } from './feature-groups'
 import { featuresQuery } from './queries'
 import { useOrganizationSearch } from './use-organization-search'
 
@@ -23,26 +16,34 @@ const CHIPS: { value: Show; label: string }[] = [
   { value: 'unavailable', label: 'Not available' },
 ]
 
-/** Groups rows by the catalog module, in catalog order (the server's order). */
+/** Groups rows by catalog module (AI add-on features apart), in the server's catalog order. */
 export function groupByModule(
   rows: readonly FeatureWhy[],
 ): { module: string; rows: FeatureWhy[] }[] {
   const groups = new Map<string, FeatureWhy[]>()
-  for (const row of rows) groups.set(row.module, [...(groups.get(row.module) ?? []), row])
+  for (const row of rows) {
+    const group = groupOf(row.key, row.module)
+    groups.set(group, [...(groups.get(group) ?? []), row])
+  }
   return [...groups].map(([module, items]) => ({ module, rows: items }))
 }
 
 /**
  * The "why" (spec): every feature, Available or Not available, and the one reason the
- * availability rule gives, in its order. Each row offers a release or plan override.
+ * availability rule gives, in its order. A name box and the chips narrow the list; each row
+ * offers an override.
  */
 export function FeaturesCard({ organizationId }: { organizationId: string }) {
-  const { search, update, openChange } = useOrganizationSearch()
+  const { search, update } = useOrganizationSearch()
   const features = useQuery(featuresQuery(organizationId))
   const show: Show = search.show ?? 'all'
+  const find = search.find?.toLowerCase()
   const rows = (features.data ?? []).filter(
-    (f) => show === 'all' || f.available === (show === 'available'),
+    (f) =>
+      (show === 'all' || f.available === (show === 'available')) &&
+      (!find || f.label.toLowerCase().includes(find) || f.key.includes(find)),
   )
+  const filtered = show !== 'all' || Boolean(find)
   return (
     <DetailCard
       title="Features"
@@ -57,6 +58,14 @@ export function FeaturesCard({ organizationId }: { organizationId: string }) {
         />
       }
     >
+      <SearchField
+        id="console-feature-find"
+        value={search.find}
+        onSearch={(text) => update({ find: text }, { replace: true })}
+        label="Find a feature"
+        placeholder="Find a feature"
+        className="pt-1 pb-2 sm:max-w-72"
+      />
       {!features.data ? (
         features.isError ? (
           <CardNote>Features couldn't load. Check your connection and reload the page.</CardNote>
@@ -69,59 +78,12 @@ export function FeaturesCard({ organizationId }: { organizationId: string }) {
         )
       ) : rows.length === 0 ? (
         <CardNote>
-          {show === 'available' ? 'Nothing is available yet.' : 'Every feature is available.'}
+          {filtered
+            ? 'No features match. Clear the name or choose All.'
+            : 'There are no features in the catalog.'}
         </CardNote>
       ) : (
-        groupByModule(rows).map((group) => (
-          <section key={group.module} aria-label={moduleLabel(group.module)} className="pt-2 pb-1">
-            <h3 className="pb-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em]">
-              {moduleLabel(group.module)}
-            </h3>
-            <ul>
-              {group.rows.map((row) => (
-                <li
-                  key={row.key}
-                  data-testid="feature-why"
-                  className="flex items-start gap-3 border-t py-2 first:border-t-0"
-                >
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-[13px]">{row.label}</span>
-                      <StatusBadge tone={row.available ? 'emerald' : 'slate'}>
-                        {row.available ? 'Available' : 'Not available'}
-                      </StatusBadge>
-                    </span>
-                    <span className="text-[13px] text-muted-foreground">{row.reason}</span>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Overrides for ${row.label}`}
-                        className="size-8 max-md:size-11"
-                      >
-                        <EllipsisIcon aria-hidden />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onSelect={() => openChange('override', { kind: 'release', key: row.key })}
-                      >
-                        Release override
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => openChange('override', { kind: 'feature', key: row.key })}
-                      >
-                        Plan override
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        <FeatureGroups groups={groupByModule(rows)} all={features.data} />
       )}
     </DetailCard>
   )

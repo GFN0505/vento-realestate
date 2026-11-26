@@ -3,6 +3,9 @@ import { useId } from 'react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
 
+/** A group's legend reads like every field label (ui/label): one label style across sheets. */
+export const fieldLegend = 'mb-2 font-semibold text-muted-foreground text-xs leading-none'
+
 type Choice<T extends string> = { value: T; label: ReactNode; note?: ReactNode }
 
 /**
@@ -25,7 +28,7 @@ export function ChoiceList<T extends string>({
   const id = useId()
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 font-medium text-sm">{legend}</legend>
+      <legend className={fieldLegend}>{legend}</legend>
       <RadioGroup
         value={value ?? ''}
         onValueChange={(next) => onChange(next as T)}

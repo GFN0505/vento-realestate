@@ -87,52 +87,58 @@ export function ConfirmItsYouForm({ passkey }: Props) {
         </>
       ) : (
         <>
-          <Field data-invalid={!!fieldError}>
-            <div className="flex items-baseline justify-between gap-3">
-              <FieldLabel htmlFor={ids.code}>
-                {mode === 'backup' ? 'Backup code' : 'Code from your authenticator app'}
-              </FieldLabel>
-              <button
-                type="button"
-                onClick={() => switchTo(mode === 'backup' ? 'code' : 'backup')}
-                className={linkButton}
-              >
-                {mode === 'backup' ? 'Use your authenticator app' : 'Use a backup code'}
-              </button>
+          {/* The switch sits beside the label from sm, and under the code boxes on phones. */}
+          <Field
+            data-invalid={!!fieldError}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1.5"
+          >
+            <FieldLabel htmlFor={ids.code} className="col-start-1 row-start-1">
+              {mode === 'backup' ? 'Backup code' : 'Code from your authenticator app'}
+            </FieldLabel>
+            <div className="col-span-2 row-start-2">
+              {mode === 'backup' ? (
+                <Input
+                  id={ids.code}
+                  name="backup-code"
+                  value={code}
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  autoFocus={hasFinePointer()}
+                  className="tabular-nums tracking-wider"
+                  onChange={(event) => setCode(event.target.value)}
+                  aria-invalid={!!fieldError}
+                  aria-describedby={fieldError ? `${ids.code}-error` : undefined}
+                />
+              ) : (
+                <CodeInput
+                  id={ids.code}
+                  size="compact"
+                  value={code}
+                  autoFocus={hasFinePointer()}
+                  disabled={busy}
+                  onChange={(value) => {
+                    setCode(value)
+                    if (missing) setMissing(null)
+                  }}
+                  onComplete={(value) => void send(value)}
+                  invalid={!!fieldError}
+                  aria-describedby={fieldError ? `${ids.code}-error` : undefined}
+                />
+              )}
             </div>
-            {mode === 'backup' ? (
-              <Input
-                id={ids.code}
-                name="backup-code"
-                value={code}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                autoFocus={hasFinePointer()}
-                className="tabular-nums tracking-wider"
-                onChange={(event) => setCode(event.target.value)}
-                aria-invalid={!!fieldError}
-                aria-describedby={fieldError ? `${ids.code}-error` : undefined}
-              />
-            ) : (
-              <CodeInput
-                id={ids.code}
-                size="compact"
-                value={code}
-                autoFocus={hasFinePointer()}
-                disabled={busy}
-                onChange={(value) => {
-                  setCode(value)
-                  if (missing) setMissing(null)
-                }}
-                onComplete={(value) => void send(value)}
-                invalid={!!fieldError}
-                aria-describedby={fieldError ? `${ids.code}-error` : undefined}
-              />
-            )}
-            <FieldError id={`${ids.code}-error`} role="alert">
-              {fieldError}
-            </FieldError>
+            <div className="col-span-2 row-start-3">
+              <FieldError id={`${ids.code}-error`} role="alert">
+                {fieldError}
+              </FieldError>
+            </div>
+            <button
+              type="button"
+              onClick={() => switchTo(mode === 'backup' ? 'code' : 'backup')}
+              className={`${linkButton} max-sm:col-span-2 max-sm:row-start-4 max-sm:justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end`}
+            >
+              {mode === 'backup' ? 'Use your authenticator app' : 'Use a backup code'}
+            </button>
           </Field>
           <Button type="submit" size="lg" disabled={busy} aria-busy={busy || undefined}>
             {busy && <LoaderCircleIcon aria-hidden className="animate-spin" />}

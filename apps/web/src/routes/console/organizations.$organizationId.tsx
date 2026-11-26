@@ -6,6 +6,7 @@ import {
   organizationActivityQuery,
   organizationQuery,
 } from '@/features/console/organizations/queries'
+import { plansQuery } from '@/features/console/plans/queries'
 import { ConsolePageError } from '@/features/console/shell/console-route-error'
 import { isOrganizationId, validateOrganizationSearch } from './-search'
 
@@ -19,6 +20,8 @@ export const Route = createFileRoute('/console/organizations/$organizationId')({
       organizationQuery(id),
       featuresQuery(id),
       organizationActivityQuery(id),
+      // Change plan and Start trial open on their options, not a skeleton.
+      plansQuery(),
     ]),
   component: OrganizationPage,
   errorComponent: ConsolePageError,

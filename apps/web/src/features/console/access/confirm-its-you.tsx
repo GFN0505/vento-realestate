@@ -1,6 +1,7 @@
 import { ShieldCheckIcon } from 'lucide-react'
 import { DialogBody } from '@/components/ui/dialog'
 import { DialogFrame, dialogBodyClass } from '@/features/security/dialogs/dialog-frame'
+import { focusIntoOpenChange } from '../changes/focus'
 import { consoleGate } from '../gate/console-gate'
 import { useConsoleTitle } from '../shell/use-console-title'
 import { ConfirmItsYouForm } from './confirm-its-you-form'
@@ -41,6 +42,7 @@ export function ConfirmItsYouDialog({ open, passkey }: { open: boolean; passkey:
       title="Confirm it's you"
       description={EXPIRED_LINE}
       className="z-[60]"
+      onCloseAutoFocus={focusIntoOpenChange}
     >
       <DialogBody className={`${dialogBodyClass} pb-5`}>
         <ConfirmItsYouForm passkey={passkey} />

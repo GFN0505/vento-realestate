@@ -4,10 +4,9 @@ import { limitState, limitText, listWords, naira, planLabel, trialLeft } from '.
 const now = new Date('2026-11-26T10:00:00+01:00')
 
 describe('console words', () => {
-  it('names the plan, internal organizations and no plan', () => {
-    expect(planLabel({ name: 'Growth', version: 2 }, 'standard')).toBe('Growth v2')
-    expect(planLabel({ name: 'Growth', version: 2 }, 'internal')).toBe('Internal · everything')
-    expect(planLabel(null, 'pilot')).toBe('No plan')
+  it('names the plan, whatever the release group, or no plan', () => {
+    expect(planLabel({ name: 'Growth', version: 2 })).toBe('Growth v2')
+    expect(planLabel(null)).toBe('No plan')
   })
 
   it('counts trial days left from its last day in Lagos', () => {

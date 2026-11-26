@@ -9,6 +9,7 @@ import { ConsoleNotFoundPage } from '../shell/console-not-found'
 import { useConsoleTitle } from '../shell/use-console-title'
 import { BackLink } from '../ui/back-link'
 import { ListError } from '../ui/list-states'
+import { plural } from '../words'
 import { PlanVersionCard } from './plan-version-card'
 import { PublishSheet } from './publish/publish-sheet'
 import { planQuery } from './queries'
@@ -65,20 +66,27 @@ function Plan({ planKey }: { planKey: string }) {
             </h1>
             {plan.defaultForNew && <Badge variant="brand">Default for new organizations</Badge>}
           </div>
-          <p className="mt-1 font-mono text-[12px] text-muted-foreground">{plan.key}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground tabular-nums">
+            <span className="font-mono text-[12px]">{plan.key}</span> ·{' '}
+            {plural(versions.length, 'version')} ·{' '}
+            {plural(
+              versions.reduce((sum, v) => sum + v.organizations, 0),
+              'organization',
+            )}
+          </p>
         </div>
         <Button onClick={() => setPublish(true)} className="max-md:h-11">
           Publish v{(latest?.version ?? 0) + 1}
         </Button>
       </div>
-      <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+      {/* Newest first; side by side from lg, stacked below. Nothing scrolls sideways. */}
+      <div className="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {versions.map((version, i) => (
           <PlanVersionCard
             key={version.id}
             version={version}
             latest={i === 0}
             planName={plan.name}
-            className="w-[min(85vw,360px)] shrink-0 snap-start"
           />
         ))}
       </div>

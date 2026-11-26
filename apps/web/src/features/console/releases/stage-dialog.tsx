@@ -29,19 +29,13 @@ export function StageDialog({
       open
       onClose={onClose}
       change={change}
-      title={
-        off
-          ? `Turn off ${name} for everyone?`
-          : `Move ${name} to ${STAGE_LABEL[stage].toLowerCase()}?`
-      }
+      title={off ? `Turn off ${name} for everyone?` : `Move ${name} to ${STAGE_LABEL[stage]}?`}
       description={
         off
           ? `It stops for all ${plural(holders, 'organization')}, including overrides and plans. Nothing is deleted.`
           : undefined
       }
-      confirmLabel={
-        off ? `Turn off ${name}` : `Move ${name} to ${STAGE_LABEL[stage].toLowerCase()}`
-      }
+      confirmLabel={off ? `Turn off ${name}` : `Move ${name} to ${STAGE_LABEL[stage]}`}
       destructive={off}
       autoPreview={() => void change.preview({ key: release.key, stage })}
     />

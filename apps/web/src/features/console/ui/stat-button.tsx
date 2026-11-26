@@ -27,7 +27,12 @@ export function StatButton({ label, value, note, tone = 'default', pressed, onCl
         pressed && 'border-selected-border bg-selected/40',
       )}
     >
-      <span className="font-semibold text-muted-foreground text-xs max-sm:text-[11px]">
+      <span
+        className={cn(
+          'font-semibold text-xs max-sm:text-[11px]',
+          pressed ? 'text-selected-foreground' : 'text-muted-foreground',
+        )}
+      >
         {label}
       </span>
       <span
@@ -40,7 +45,12 @@ export function StatButton({ label, value, note, tone = 'default', pressed, onCl
         {value}
       </span>
       {note && (
-        <span className="text-muted-foreground text-xs tabular-nums max-sm:text-[11px]">
+        <span
+          className={cn(
+            'text-xs tabular-nums max-sm:text-[11px]',
+            pressed ? 'text-selected-foreground' : 'text-muted-foreground',
+          )}
+        >
           {note}
         </span>
       )}

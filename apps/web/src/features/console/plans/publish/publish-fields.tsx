@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FieldError } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
+import { fieldLegend } from '../../changes/choice-list'
 import { NairaField } from '../../changes/naira-field'
 import { LIMIT_LABEL, moduleLabel } from '../../words'
 import { featureModule } from '../plan-version-card'
@@ -54,7 +55,7 @@ export function PublishFields({ draft, errors, isNew, set, ids }: Props) {
         className="flex flex-col gap-3 outline-none"
         aria-describedby={errors.features ? `${ids.features}-error` : undefined}
       >
-        <legend className="mb-1 font-medium text-sm">Features</legend>
+        <legend className={fieldLegend}>Features</legend>
         <p className="-mt-1 text-muted-foreground text-xs">
           Core features are in every plan and AI is an add-on, so neither is listed.
         </p>
@@ -84,7 +85,7 @@ export function PublishFields({ draft, errors, isNew, set, ids }: Props) {
         ))}
       </fieldset>
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 font-medium text-sm">Limits</legend>
+        <legend className={fieldLegend}>Limits</legend>
         <LimitField
           id={ids.entities}
           label={LIMIT_LABEL.entities}

@@ -7,7 +7,7 @@ import { hasFinePointer } from '@/lib/pointer'
 import type { ChangeNext } from './change-errors'
 import { PreviewLines } from './preview-lines'
 import { ReasonField } from './reason-field'
-import type { ChangeController } from './use-change'
+import { type ChangeController, reasonProblem } from './use-change'
 
 const NEXT_LABEL: Record<ChangeNext, string> = {
   end_trial: 'End trial',
@@ -118,8 +118,16 @@ export function ChangeFooter({
 }: FooterProps) {
   const review = change.step === 'review'
   const busy = change.pending !== null
+  // Nothing to confirm (no fields, and the preview was refused): the only way on is Close.
+  const nothingToDo = !review && !hasFields && !busy
+  const needsReason = review && !busy && reasonProblem(change.reason) !== null
   return (
-    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end [&>button]:max-sm:h-11">
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end [&>button]:max-sm:h-11">
+      {needsReason && (
+        <p className="text-muted-foreground text-xs max-sm:text-center sm:mr-auto">
+          Add a reason to continue.
+        </p>
+      )}
       {review && hasFields ? (
         <Button type="button" variant="ghost" disabled={busy} onClick={change.back}>
           Back
@@ -131,7 +139,7 @@ export function ChangeFooter({
           disabled={change.pending === 'apply'}
           onClick={onCancel}
         >
-          Cancel
+          {nothingToDo ? 'Close' : 'Cancel'}
         </Button>
       )}
       {review ? (
