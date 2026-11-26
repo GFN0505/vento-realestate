@@ -292,6 +292,20 @@ describe('accepting as a new person (HTTP)', () => {
     expect(user?.termsAcceptedAt).toBeInstanceOf(Date)
   })
 
+  it('remembers the browser without a "new sign-in" email on that first sign-in', async () => {
+    const { app, mailer } = testApp()
+    const { token, invitation } = await invite('viewer')
+    const b = browser(app)
+    await b.rpc('invitations/acceptAsNewUser', {
+      token,
+      name: 'Kunle Ojo',
+      password: TEST_PASSWORD,
+      termsVersion: CURRENT_TERMS_VERSION,
+    })
+    expect([...b.jar.keys()]).toContain('vento.device')
+    expect(mailer.to(invitation.email).filter((m) => m.subject.includes('new sign-in'))).toEqual([])
+  })
+
   it('answers account_exists when the email already has an account', async () => {
     const { app } = testApp()
     const { token, invitation } = await invite()
