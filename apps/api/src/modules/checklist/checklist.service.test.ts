@@ -56,6 +56,44 @@ describe('setup checklist', () => {
       expect((await getChecklist(ctx)).items.at(-1)?.detail).toBe('Aisha Bello joined')
     }))
 
+  it("names only an entity within a limited admin's access, and none when there is none", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      await createEntity(tx, org)
+      const lekki = await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
+      const archived = await createEntity(tx, org, {
+        name: 'Old SPV Ltd',
+        status: 'archived',
+        archivedAt: new Date(),
+      })
+      const lekkiAdmin = await createMember(tx, org, { role: 'admin', entityIds: [lekki.id] })
+      const oldAdmin = await createMember(tx, org, { role: 'admin', entityIds: [archived.id] })
+      const firstEntity = async (user: typeof lekkiAdmin.user) =>
+        (await getChecklist(await contextFor(tx, user, org))).items[1]
+      expect(await firstEntity(lekkiAdmin.user)).toEqual({
+        key: 'first_entity',
+        done: true,
+        detail: 'Lekki Pearl Estates Ltd',
+      })
+      expect(await firstEntity(oldAdmin.user)).toEqual({
+        key: 'first_entity',
+        done: true,
+        detail: null,
+      })
+    }))
+
+  it("doesn't count hiding or completing as a change to the member", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const ctx = await contextFor(tx, org.owner, org)
+      const updatedAt = async () =>
+        (await tx.select().from(members).where(eq(members.id, ctx.member.id)))[0]?.updatedAt
+      const before = await updatedAt()
+      await hideChecklist(ctx)
+      await getChecklist(ctx)
+      expect(await updatedAt()).toEqual(before)
+    }))
+
   it('hides for this person and comes back from ⌘K', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
@@ -107,6 +145,7 @@ describe('setup checklist', () => {
     const gated: ChecklistEntry = { ...alwaysOpen, feature: 'sales' }
     const facts = {
       organizationName: 'Vento Homes Ltd',
+      hasEntity: false,
       firstEntityName: null,
       viewerTwoStepOn: true,
       otherMembers: 0,

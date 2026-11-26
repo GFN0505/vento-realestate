@@ -40,18 +40,20 @@ async function team(tx: DbOrTx): Promise<TestOrg> {
 }
 
 describe('team.list', () => {
-  it('lists open invitations first, newest sent first, then members A–Z', () =>
+  it('lists owners first, then members A–Z, then open invitations newest sent first', () =>
     withRollback(async (tx) => {
       const org = await team(tx)
+      await createMember(tx, org, { role: 'owner', name: 'Zainab Yusuf' })
       const { items, total } = await list(await contextFor(tx, org.owner, org))
       expect(items.map((r) => (r.kind === 'invitation' ? r.email : r.name))).toEqual([
-        'newer@ventohomes.ng',
-        'older@ventohomes.ng',
+        'Olumide Bankole',
+        'Zainab Yusuf',
         'Bisi Lawal',
         'chidi Okafor',
-        'Olumide Bankole',
+        'newer@ventohomes.ng',
+        'older@ventohomes.ng',
       ])
-      expect(total).toBe(5)
+      expect(total).toBe(6)
     }))
 
   it('filters by chip, search and role, and keeps the counts organization-wide', () =>

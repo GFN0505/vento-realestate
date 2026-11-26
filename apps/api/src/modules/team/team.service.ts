@@ -83,7 +83,8 @@ function filterSql(f: Filters, columns: { role: SQL; id: SQL; search: SQL[] }): 
 // The three parts share one column list so they can be unioned; each fills only its own.
 function activeMembersSql(organizationId: string, f: Filters): SQL {
   return sql`
-    select 'member'::text as kind, 1 as rank, m.id, m.user_id, u.name, u.email,
+    select 'member'::text as kind, 0 as rank,
+      (case when r.key = 'owner' then 0 else 1 end) as owner_rank, m.id, m.user_id, u.name, u.email,
       r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
       u.two_factor_enabled, u.password_reset_required, u.two_step_setup_required,
       m.joined_at, m.last_active_at,
@@ -105,7 +106,8 @@ function activeMembersSql(organizationId: string, f: Filters): SQL {
 /** Open invitations: still pending, expired ones included until resent or withdrawn. */
 function openInvitationsSql(organizationId: string, f: Filters): SQL {
   return sql`
-    select 'invitation'::text as kind, 0 as rank, i.id, null::uuid as user_id, null::text as name,
+    select 'invitation'::text as kind, 1 as rank, 1 as owner_rank, i.id, null::uuid as user_id,
+      null::text as name,
       i.email, r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
       null::boolean as two_factor_enabled, null::boolean as password_reset_required,
       null::boolean as two_step_setup_required,
@@ -127,7 +129,8 @@ function openInvitationsSql(organizationId: string, f: Filters): SQL {
 function removedSql(organizationId: string, f: Filters): SQL {
   return sql`
     select * from (
-      select distinct on (m.user_id) 'removed'::text as kind, 2 as rank, m.id, m.user_id,
+      select distinct on (m.user_id) 'removed'::text as kind, 2 as rank, 1 as owner_rank, m.id,
+        m.user_id,
         u.name, u.email, r.id as role_id, r.key as role_key, r.name as role_name,
         null::boolean as requires_two_step, null::boolean as two_factor_enabled,
         null::boolean as password_reset_required, null::boolean as two_step_setup_required,
@@ -158,14 +161,17 @@ function setSql(input: z.output<typeof listTeamInput>, organizationId: string): 
   const f: Filters = { q: input.q || undefined, roleId: input.roleId }
   if (input.show === 'invited') return openInvitationsSql(organizationId, f)
   if (input.show === 'removed') return removedSql(organizationId, f)
-  return sql`${openInvitationsSql(organizationId, f)} union all ${activeMembersSql(organizationId, f)}`
+  return sql`${activeMembersSql(organizationId, f)} union all ${openInvitationsSql(organizationId, f)}`
 }
 
-/** Open invitations first (newest sent first), then members A–Z; removed people latest first. */
+/**
+ * Members first (owners, then everyone A–Z), then open invitations newest sent first (owner's
+ * decision, 26 Nov 2026); removed people latest first. `id` breaks ties.
+ */
 function orderSql(show: z.output<typeof listTeamInput>['show']): SQL {
   return show === 'removed'
     ? sql`order by removed_at desc, id desc`
-    : sql`order by rank, last_sent_at desc nulls last, sort_name, id`
+    : sql`order by rank, owner_rank, sort_name, last_sent_at desc nulls last, id`
 }
 
 type Counts = ListTeamOutput['counts'] & { total: number }

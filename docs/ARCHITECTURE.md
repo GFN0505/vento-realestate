@@ -13,7 +13,8 @@ apps/
       context.ts           BaseContext every procedure receives (db, headers, auth, mailer)
       orpc.ts              os = implement(contract); authed, member, memberPendingTwoStep builders
       access/              session → membership, tab guard, feature gate, requirePermission, who-can-grant, entity scope, system roles,
-                           manage-rules.ts (who may manage whom on Team: one source for the services and team.list's flags)
+                           manage-rules.ts (who may manage whom on Team: one source for the services and team.list's flags),
+                           grants.ts (which entities a granter may give), new-owner-alerts.ts
       platform/            feature flags and plans: availability resolver, in-memory snapshot store, plan limits,
                            operations (stage, group, overrides, plans, trials, add-ons), cli/ (pnpm flags|plans|superadmin)
       auth/                createAuth (Better Auth), hooks, session and password policy, security store

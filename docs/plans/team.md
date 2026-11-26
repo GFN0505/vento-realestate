@@ -239,7 +239,7 @@ Register both in `src/contract.ts`.
 | `members.remove`, `members.resetTwoStep` | NOT_FOUND; FORBIDDEN `own_access`, `owner_only`, `entity_limit`; CONFLICT `last_owner` (remove) |
 
 **`team.list` query** (`team.service.ts`)
-- **Everyone:** `UNION ALL` of active members and invitations with `status='pending'`, keeping expired-but-pending ones (shown as expired). Order: **open invitations first, by `last_sent_at desc`, then members by `lower(name), id`** (see section 15, question 1).
+- **Everyone:** `UNION ALL` of active members and invitations with `status='pending'`, keeping expired-but-pending ones (shown as expired). Order (owner's decision, 26 Nov 2026, replacing the recommendation in section 15, question 1): **members first, owners first, then by `lower(name)`; then open invitations by `last_sent_at desc`; `id` breaks ties**.
 - **Invited:** invitations only, ordered by `last_sent_at desc`.
 - **Removed:** `distinct on (user_id)` over removed members, latest first. It excludes users who are active members again.
 - **Filters:** `q` is `ILIKE` on name or email, with `%`/`_` escaped. `roleId` is equality.
@@ -472,7 +472,7 @@ export async function sendAll(mailer, messages): Promise<SendResult[]>   // neve
 
 **Service (Vitest, real Postgres, `withRollback`)**
 - `team.service.test.ts`:
-  - Ordering: invitations first, then A–Z.
+  - Ordering: owners, then members A–Z, then invitations newest sent first.
   - Each chip, `q` with `%`, and `roleId`.
   - Removed list excludes re-joined people and shows `removedByName`.
   - Expired-but-pending reads as `expired`; `queued` older than 10 minutes reads as `failed`.
@@ -746,7 +746,7 @@ All email goes through the existing Mailer interface, which now returns a result
 ## 15. Risks and open questions
 
 **Owner questions that change the build** (defaults in bold)
-1. **List order (a spec inconsistency).** The spec says the list is "sorted by name (invitations by email)" and also that new invitations "appear at the top of the list". **Recommended: open invitations first (newest sent first), then members A–Z.** It makes "who I've asked" a glance and needs no client-side tricks. The alternative is strict A–Z with the new rows pinned on the web until the next load, which is what the `invitations` array in the `create` output exists for (drop it if you choose this order).
+1. **List order (a spec inconsistency).** The spec says the list is "sorted by name (invitations by email)" and also that new invitations "appear at the top of the list". **Recommended: open invitations first (newest sent first), then members A–Z.** *Superseded by the owner: members first (owners, then A–Z), then open invitations newest sent first.* It makes "who I've asked" a glance and needs no client-side tricks. The alternative is strict A–Z with the new rows pinned on the web until the next load, which is what the `invitations` array in the `create` output exists for (drop it if you choose this order).
 2. **Open question 4, limited admins.** **Yes.** If no, remove `withinGranterAccess` from the manage rules. Names stay filtered either way.
 3. **Open question 5, new-owner alert.** **Yes, and also when someone accepts an owner invitation** (otherwise an owner could be added without any alert). If you prefer, only on role change.
 4. **Resending an owner-role invitation is for owners only** (new; it re-issues an owner grant). **Yes.**

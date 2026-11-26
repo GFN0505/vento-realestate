@@ -4,8 +4,8 @@ import { checklist, listTeamInput, listTeamOutput } from './schema'
 
 export const teamContract = {
   /**
-   * Members and open invitations in one list (open invitations first, newest sent first, then
-   * members A–Z), or invited only, or removed people. Entity names are limited to the viewer's
+   * Members and open invitations in one list (members first: owners, then A–Z by name; then
+   * open invitations, newest sent first), or invited only, or removed people. Entity names are limited to the viewer's
    * own access; every row says what the viewer may do with it.
    */
   list: platform.input(listTeamInput).output(listTeamOutput),

@@ -30,7 +30,7 @@ Spec: [team](../specs/team.md) (brick 3b, the screens and email delivery) on [ac
 1. *Team* → **Invite people** (1 click), or **Invite people** on the checklist (the same sheet opens over Home).
 2. *Invite people sheet:* paste or type up to 20 emails (lists copied from Excel, Gmail or Outlook work; duplicates merge; typos get "Did you mean…?"). Pick **Role** for everyone (2 clicks: open, choose); any row can take another role from its own menu. Roles show one line each; **Owner** is offered to owners only. A role that requires two-step or can approve says so under the menu.
 3. *Entity access:* "All entities" by default, or "Only some entities" with a tick list ("Kunle: Parkview Residences SPV Ltd only"). An admin limited to some entities sees only theirs, and never "All entities". It applies to the whole batch. Project limits arrive with the Projects brick.
-4. **Send 5 invitations** (1 click). Toast "Invitations sent to 5 people". They appear at the top of *Team* as "Invited · expires 3 Dec".
+4. **Send 5 invitations** (1 click). Toast "Invitations sent to 5 people". They appear on *Team* after the members (first under the *Invited* chip) as "Invited · expires 3 Dec".
 5. Invitee: *Invitation email* (from "Vento Homes Ltd via Vento", Reply-To the inviter) → *Accept invitation* (organization, who invited them, role, entities, what the role can approve, whether two-step is required) → name, password and confirm password, or sign in if they already use Vento → *Set up two-step* where the role requires it → lands on *Home* with their role's sidebar. On *Team* their row becomes a member with "Two-step on" and "Last active today".
 6. Later, on an invitation's ⋯ menu: **Resend** (new link, fresh 7 days) or **Withdraw** (2 clicks).
 

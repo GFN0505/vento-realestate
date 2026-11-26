@@ -6,7 +6,9 @@ import type { ChecklistItem, ChecklistItemKey, FeatureKey } from '@vento/shared'
  */
 export type ChecklistFacts = {
   organizationName: string
-  /** The oldest active entity's name, if any. */
+  /** Any active entity exists (organization-wide). */
+  hasEntity: boolean
+  /** The oldest active entity within the viewer's own limit, if any: never a name they can't see. */
   firstEntityName: string | null
   viewerTwoStepOn: boolean
   /** Active members other than the viewer, and the earliest one's name. */
@@ -35,7 +37,7 @@ export const CHECKLIST_ITEMS: readonly ChecklistEntry[] = [
   {
     key: 'first_entity',
     feature: null,
-    check: (f) => ({ done: f.firstEntityName !== null, detail: f.firstEntityName }),
+    check: (f) => ({ done: f.hasEntity, detail: f.hasEntity ? f.firstEntityName : null }),
   },
   {
     key: 'two_step',

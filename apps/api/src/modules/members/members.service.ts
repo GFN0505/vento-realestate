@@ -1,10 +1,11 @@
 import type { TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
-import { and, asc, count, eq, inArray, isNull, ne, or } from 'drizzle-orm'
+import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, type ServiceContext } from '@/access/context'
+import { assertGrantableEntities } from '@/access/grants'
 import { type MemberAction, memberRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
+import { newOwnerAlerts } from '@/access/new-owner-alerts'
 import { firstOwner } from '@/access/who-can-grant'
-import { webUrl } from '@/auth/hooks/deps'
 import type { DbOrTx } from '@/db/client'
 import {
   entities,
@@ -16,9 +17,8 @@ import {
   users,
 } from '@/db/schema'
 import type { EmailMessage } from '@/email/mailer'
-import { newOwnerAlert, twoStepResetAlert } from '@/email/templates/security-alert'
+import { twoStepResetAlert } from '@/email/templates/security-alert'
 import { conflict, forbidden, notFound } from '@/lib/errors'
-import { formatDate, formatTime } from '@/lib/format'
 import { recordAccountEvent, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
 import { memberRowById } from '@/modules/team/team.service'
@@ -126,77 +126,6 @@ async function currentLimits(tx: DbOrTx, ctx: ServiceContext, memberId: string) 
       ),
     )
     .orderBy(asc(entities.name))
-}
-
-const ENTITY_UNAVAILABLE = 'One of the entities you chose is no longer available. Choose again.'
-
-/**
- * Entities a granter may put in a limit (member update or invitation). They must be this
- * organization's and active, and a granter limited to some entities can only grant within them:
- * they can't give "all entities", and an entity outside their limit is not found, as everywhere.
- * An archived entity of this organization is `entity_unavailable` (the sheet refetches).
- */
-export async function assertGrantableEntities(
-  tx: DbOrTx,
-  ctx: Pick<ServiceContext, 'organizationId' | 'member'>,
-  entityIds: string[] | null,
-) {
-  const granterLimit = ctx.member.entityIds
-  if (granterLimit !== null) {
-    if (entityIds === null) {
-      throw forbidden(
-        'entity_limit',
-        'You can only give access to the entities you can see. Choose them instead of all entities.',
-      )
-    }
-    if (entityIds.some((id) => !granterLimit.includes(id))) throw notFound()
-  }
-  if (!entityIds) return []
-  const unique = [...new Set(entityIds)]
-  const rows = await tx
-    .select({ id: entities.id, name: entities.name, status: entities.status })
-    .from(entities)
-    .where(and(eq(entities.organizationId, ctx.organizationId), inArray(entities.id, unique)))
-  if (rows.length !== unique.length) throw notFound()
-  if (rows.some((r) => r.status !== 'active')) {
-    throw conflict('entity_unavailable', ENTITY_UNAVAILABLE)
-  }
-  return rows.map(({ id, name }) => ({ id, name }))
-}
-
-/**
- * The security alert to every active owner (the new one included) when someone becomes an
- * owner. `byName` is who made it happen: the person who changed the role, or who invited them.
- */
-export async function newOwnerAlerts(
-  tx: DbOrTx,
-  input: { organizationId: string; organizationName: string; byName: string; newOwnerName: string },
-): Promise<EmailMessage[]> {
-  const owners = await tx
-    .select({ email: users.email })
-    .from(members)
-    .innerJoin(users, eq(users.id, members.userId))
-    .innerJoin(
-      roles,
-      and(eq(roles.id, members.roleId), eq(roles.organizationId, members.organizationId)),
-    )
-    .where(
-      and(
-        eq(members.organizationId, input.organizationId),
-        eq(members.status, 'active'),
-        eq(roles.key, 'owner'),
-      ),
-    )
-  const now = new Date()
-  const alert = newOwnerAlert({
-    byName: input.byName,
-    newOwnerName: input.newOwnerName,
-    organizationName: input.organizationName,
-    at: formatTime(now),
-    on: formatDate(now),
-    teamUrl: webUrl('/settings/team'),
-  })
-  return owners.map((o) => ({ to: o.email, tag: 'security_alert' as const, ...alert }))
 }
 
 export async function updateMemberAccess(

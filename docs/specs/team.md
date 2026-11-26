@@ -42,7 +42,7 @@ Olumide has set up Vento Homes Ltd and its first entity, and nobody else can get
 **Invite the team (J-ONB-02): 3 clicks**
 1. *Team* (Settings in the sidebar, or **Invite people** on the Home checklist, or ⌘K "Invite") → **Invite people** (1).
 2. *Invite people* sheet: paste or type emails (a column from Excel, "Aisha Bello <aisha@ventohomes.ng>" lists from Gmail or Outlook, commas, spaces or new lines all work). Pick **Role** for everyone (2); any row can take a different role from its own menu. **Entity access** is "All entities" unless changed to "Only some entities".
-3. **Send 5 invitations** (3). Toast "Invitations sent to 5 people". The sheet closes and the five appear at the top of the list as *Invited*.
+3. **Send 5 invitations** (3). Toast "Invitations sent to 5 people". The sheet closes and the five appear in the list as *Invited*, after the members (and first under the *Invited* chip).
 
 **Change someone's role: 2 clicks**
 1. On their row, open the role menu (1) → pick **Finance** (2). Saved at once. Toast "Aisha Bello is now Finance · Undo".
@@ -68,7 +68,7 @@ Olumide has set up Vento Homes Ltd and its first entity, and nobody else can get
 - **Context line** (everyone who can view Team): "8 people · 3 invited". For **owners on a plan with a people limit** it reads "8 of 10 people on your Starter plan" (members plus open invitations, from `me.plan`). At the limit it adds **Talk to Vento**. Nobody else sees a plan name. Internal and unlimited organizations show the plain count.
 - **Primary action:** **Invite people** (top right; on phones, a sticky button above the tabs). Shown only with permission to invite.
 - **Toolbar:** search ("Search by name or email"), a **Role** filter, and three chips: **Everyone** (default) · **Invited** · **Removed**. All held in the address (`/settings/team?q=aisha&role=…&show=invited`) and remembered on this device.
-- **One list, people first.** Active members and open invitations (pending or expired) sit in one list, sorted by name (invitations by email), so "who's on my team, including who I've asked" is a single glance. Withdrawn, declined and accepted invitations aren't listed (accepted ones are members). Server-paginated, 50 per page.
+- **One list, people first.** Active members and open invitations (pending or expired) sit in one list, members first (owners first, then everyone A–Z by name), then open invitations (newest sent first), so "who's on my team, including who I've asked" is a single glance. Withdrawn, declined and accepted invitations aren't listed (accepted ones are members). Server-paginated, 50 per page.
 
 | Column | Member row | Invitation row |
 |---|---|---|
@@ -197,7 +197,7 @@ Olumide has set up Vento Homes Ltd and its first entity, and nobody else can get
 ## Behind the scenes
 - **Existing API (2a), used as is:** `roles.list`, `members.updateAccess`, `members.remove`, `members.resetTwoStep`, `invitations.create`, `invitations.resend`, `invitations.withdraw`, `entities.list`. All audited.
 - **API additions (small; for the architect):**
-  - `team.list({ q, roleId, show: 'everyone' | 'invited' | 'removed', page, pageSize })`: one paginated list of members and open invitations (or removed members), sorted by name/email, with entity names filtered to the viewer's own access limits and a `canManage` flag per row computed with the rules above. Replaces two calls and keeps one pagination.
+  - `team.list({ q, roleId, show: 'everyone' | 'invited' | 'removed', page, pageSize })`: one paginated list of members and open invitations (or removed members), members first (owners first, then everyone A–Z by name), then open invitations (newest sent first), with entity names filtered to the viewer's own access limits and a `canManage` flag per row computed with the rules above. Replaces two calls and keeps one pagination.
   - Member fields: `lastActiveAt` (updated at most once an hour per member per organization on any request) and `twoStep: 'on' | 'off' | 'setup_required' | 'reset_pending'`.
   - Invitation fields: `delivery: 'sent' | 'failed' | 'bounced' | 'complained'` and its time; Postmark's message ID or the metadata ID stored for the webhook.
   - Conflict data: `already_member` and `already_invited` carry `emails: string[]`.
@@ -292,7 +292,7 @@ To add to `docs/DOMAIN.md` once approved:
 - Billing: the usage line and limit messages only point to **Talk to Vento**.
 
 ## Owner's decisions (26 Nov 2026)
-All 12 recommendations below were approved, plus the plan's questions (open invitations first then members A–Z; new-owner alert also on accepting an owner invitation; only owners resend owner invitations; a skipped staging email shows "Email not delivered"; the old `members.list` / `invitations.list` endpoints are retired). Added by the owner: **real emails can be sent while testing manually in the browser** (development, through Postmark, only to addresses on an allow-list you set; automated tests, CI and e2e can never send real email).
+All 12 recommendations below were approved, plus the plan's questions (new-owner alert also on accepting an owner invitation; only owners resend owner invitations; a skipped staging email shows "Email not delivered"; the old `members.list` / `invitations.list` endpoints are retired). **List order (owner, 26 Nov 2026, replacing the plan's "open invitations first"):** members first (owners first, then everyone A–Z by name), then open invitations (newest sent first); `id` breaks ties. Added by the owner: **real emails can be sent while testing manually in the browser** (development, through Postmark, only to addresses on an allow-list you set; automated tests, CI and e2e can never send real email).
 
 ## Open questions (answered above; defaults in bold)
 1. **Two pull requests for 3b** (Team screens first, Postmark second) so DNS and Postmark approval don't block your review? **Yes.**

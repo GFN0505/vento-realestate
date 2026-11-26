@@ -1,5 +1,5 @@
 import type { Checklist } from '@vento/shared'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, type SQL, sql } from 'drizzle-orm'
 import type { ServiceContext } from '@/access/context'
 import { rawTimestamp } from '@/db/raw'
 import { members } from '@/db/schema'
@@ -12,6 +12,7 @@ import {
 } from './items'
 
 type FactsRow = {
+  has_entity: boolean | null
   first_entity_name: string | null
   other_members: number
   first_other_name: string | null
@@ -21,12 +22,25 @@ type FactsRow = {
   completed_at: Date | string | null
 }
 
+/** A viewer limited to some entities only ever reads names inside their limit. */
+function withinViewerLimit(ctx: ServiceContext): SQL {
+  const limit = ctx.member.entityIds
+  if (limit === null) return sql``
+  if (!limit.length) return sql` and false`
+  return sql` and id in (${sql.join(
+    limit.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  )})`
+}
+
 /** Everything the items read, counted in the active organization only, in one statement. */
 async function loadFacts(ctx: ServiceContext) {
   const org = ctx.organizationId
   const result = await ctx.db.execute<FactsRow>(sql`
     select
-      (select name from entities where organization_id = ${org} and status = 'active'
+      exists (select 1 from entities where organization_id = ${org} and status = 'active')
+        as has_entity,
+      (select name from entities where organization_id = ${org} and status = 'active'${withinViewerLimit(ctx)}
         order by created_at, id limit 1) as first_entity_name,
       (select count(*) from members where organization_id = ${org} and status = 'active'
         and user_id <> ${ctx.user.id})::int as other_members,
@@ -43,6 +57,7 @@ async function loadFacts(ctx: ServiceContext) {
   const row = result.rows[0]
   const facts: ChecklistFacts = {
     organizationName: ctx.organizationName,
+    hasEntity: Boolean(row?.has_entity),
     firstEntityName: row?.first_entity_name ?? null,
     viewerTwoStepOn: Boolean(row?.viewer_two_step_on),
     otherMembers: row?.other_members ?? 0,
@@ -58,6 +73,10 @@ async function loadFacts(ctx: ServiceContext) {
 
 const ownRow = (ctx: ServiceContext) =>
   and(eq(members.organizationId, ctx.organizationId), eq(members.id, ctx.member.id))
+
+// Checklist state is the person's view of Home, not a change to the member: updated_at stays
+// put, as for last active.
+const keepUpdatedAt = { updatedAt: sql`${members.updatedAt}` }
 
 /**
  * The Home card. When everything is done the card stays for the rest of that Lagos day, then
@@ -77,11 +96,14 @@ export async function getChecklist(
     completed = now
     await ctx.db
       .update(members)
-      .set({ checklistCompletedAt: now })
+      .set({ checklistCompletedAt: now, ...keepUpdatedAt })
       .where(and(ownRow(ctx), sql`${members.checklistCompletedAt} is null`))
   } else if (!allDone && completed) {
     completed = null
-    await ctx.db.update(members).set({ checklistCompletedAt: null }).where(ownRow(ctx))
+    await ctx.db
+      .update(members)
+      .set({ checklistCompletedAt: null, ...keepUpdatedAt })
+      .where(ownRow(ctx))
   }
   const doneBeforeToday = completed !== null && lagosIsoDate(completed) < lagosIsoDate(now)
   const hidden = hiddenAt !== null
@@ -90,11 +112,17 @@ export async function getChecklist(
 
 /** For this person on every device. Not audited: it changes how Home looks, not any data. */
 export async function hideChecklist(ctx: ServiceContext): Promise<{ notice: string }> {
-  await ctx.db.update(members).set({ checklistHiddenAt: new Date() }).where(ownRow(ctx))
+  await ctx.db
+    .update(members)
+    .set({ checklistHiddenAt: new Date(), ...keepUpdatedAt })
+    .where(ownRow(ctx))
   return { notice: 'Checklist hidden' }
 }
 
 export async function showChecklist(ctx: ServiceContext): Promise<{ notice: string }> {
-  await ctx.db.update(members).set({ checklistHiddenAt: null }).where(ownRow(ctx))
+  await ctx.db
+    .update(members)
+    .set({ checklistHiddenAt: null, ...keepUpdatedAt })
+    .where(ownRow(ctx))
   return { notice: 'Checklist shown' }
 }

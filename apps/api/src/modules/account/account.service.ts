@@ -85,12 +85,13 @@ export async function getMe(
   store: FeatureStore,
 ): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
-  if (membership) await touchMemberActivity(db, membership.member)
   const [nextStep, organizations, { features, plan }] = await runQueries(db, [
     () => nextStepFor(db, user, membership),
     () => listActiveMemberships(db, user.id),
     () => featuresAndPlan(db, membership, store),
   ])
+  // Only someone through every gate (onboarding, two-step) is using the organization.
+  if (membership && nextStep === 'ready') await touchMemberActivity(db, membership.member)
   return {
     user: {
       id: user.id,

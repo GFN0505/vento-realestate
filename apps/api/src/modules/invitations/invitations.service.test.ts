@@ -501,6 +501,36 @@ describe('invitations from the Team page', () => {
       await expect(withdrawInvitation(ctx, narrow.invitation.id)).resolves.toBeTruthy()
     }))
 
+  it('refuses to resend an old invitation to someone who has since joined', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const aisha = await createMember(tx, org, { role: 'finance' })
+      const old = await createInvitation(tx, org, {
+        role: 'finance',
+        email: aisha.user.email,
+        status: 'expired',
+      })
+      await expect(
+        resendInvitation(await contextFor(tx, org.owner, org), old.invitation.id),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: `${aisha.user.email} is already a member of Vento Homes Ltd.`,
+        data: { reason: 'already_member', alreadyMembers: [aisha.user.email] },
+      })
+    }))
+
+  it('answers not found for an invitation answered or withdrawn since the list loaded', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const ctx = await contextFor(tx, org.owner, org)
+      const accepted = await createInvitation(tx, org, { role: 'sales', status: 'accepted' })
+      const withdrawn = await createInvitation(tx, org, { role: 'sales', status: 'withdrawn' })
+      for (const id of [accepted.invitation.id, withdrawn.invitation.id]) {
+        await expect(resendInvitation(ctx, id)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+        await expect(withdrawInvitation(ctx, id)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+    }))
+
   it('withdraws an expired invitation so it leaves the list', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)

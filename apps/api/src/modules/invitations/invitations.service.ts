@@ -20,7 +20,9 @@ import {
   setActiveOrganization,
   twoStepRequired,
 } from '@/access/context'
+import { assertGrantableEntities } from '@/access/grants'
 import { invitationRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
+import { newOwnerAlerts } from '@/access/new-owner-alerts'
 import { firstOwner } from '@/access/who-can-grant'
 import { webUrl } from '@/auth/hooks/deps'
 import { checkPasswordPolicy } from '@/auth/password-policy'
@@ -43,7 +45,6 @@ import { invitationEmail } from '@/email/templates/invitation'
 import { conflict, forbidden, isUniqueViolation, notFound, tooManyRequests } from '@/lib/errors'
 import { formatDate, lagosIsoDate } from '@/lib/format'
 import { recordAudit } from '@/modules/audit/audit.service'
-import { assertGrantableEntities, newOwnerAlerts } from '@/modules/members/members.service'
 import { loadRoles } from '@/modules/roles/roles.service'
 import { invitationRowsById } from '@/modules/team/team.service'
 import { assertWithinLimit } from '@/platform/limits'
@@ -391,9 +392,9 @@ export async function resendInvitation(
   const now = new Date()
   return ctx.db.transaction(async (tx) => {
     const current = await lockInvitationById(tx, ctx, id)
-    if (current.status !== 'pending' && current.status !== 'expired') {
-      throw notPendingError(current, ctx.user.name)
-    }
+    // Accepted, declined or withdrawn since the list loaded: it's gone from Team, so "not found"
+    // (the web says the list is up to date). The invitee-facing copy would name the caller.
+    if (current.status !== 'pending' && current.status !== 'expired') throw notFound()
     await assertMayManageInvitation(tx, ctx, current, 'resend')
     const cutoff = new Date(now.getTime() - INVITATION_RESEND_INTERVAL_MS)
     if (current.lastSentAt > cutoff) {
@@ -416,6 +417,19 @@ export async function resendInvitation(
         ),
       )
     if (newer) throw alreadyInvited(current.email)
+    // They joined meanwhile (through a newer invitation, say): nothing to resend.
+    const [joined] = await tx
+      .select({ id: members.id })
+      .from(members)
+      .innerJoin(users, eq(users.id, members.userId))
+      .where(
+        and(
+          eq(members.organizationId, ctx.organizationId),
+          eq(members.status, 'active'),
+          eq(users.email, current.email),
+        ),
+      )
+    if (joined) throw clashError(ctx, [current.email], [])
     // An expired invitation stopped counting; bringing it back takes a place again.
     if (effectiveStatus(current, now) === 'expired') {
       await assertWithinLimit(tx, ctx, 'members', 1)
@@ -483,7 +497,8 @@ export async function withdrawInvitation(
 ): Promise<{ notice: string }> {
   return ctx.db.transaction(async (tx) => {
     const current = await lockInvitationById(tx, ctx, id)
-    if (current.status !== 'pending') throw notPendingError(current, ctx.user.name)
+    // Answered or withdrawn since the list loaded: gone from Team, so "not found".
+    if (current.status !== 'pending') throw notFound()
     await assertMayManageInvitation(tx, ctx, current, 'withdraw')
     await tx
       .update(invitations)

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { members } from '@/db/schema'
 import { withRollback } from '@/test/db'
-import { createMember, createOrganization } from '@/test/factories'
+import { createMember, createOrganization, createUser } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 import { throwingDb } from '@/test/throwing-db'
 import { touchMemberActivity } from './context'
@@ -32,6 +32,17 @@ describe('last active', () => {
 
       await client.team.list({})
       expect(await lastActive()).toEqual(first)
+    }))
+
+  it("doesn't count account.me while two-step setup is still pending", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const user = await createUser(tx, { name: 'Aisha Bello', twoFactorEnabled: false })
+      const aisha = await createMember(tx, org, { role: 'finance', user, lastActiveAt: null })
+      const me = await clientAs(tx, user).client.account.me()
+      expect(me.nextStep).toBe('two_step_setup')
+      const [row] = await tx.select().from(members).where(eq(members.id, aisha.member.id))
+      expect(row?.lastActiveAt).toBeNull()
     }))
 
   it('counts opening the app (account.me) as activity', () =>
