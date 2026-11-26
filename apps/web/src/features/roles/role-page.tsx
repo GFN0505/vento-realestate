@@ -141,7 +141,9 @@ function RoleEditor({ role }: { role: Role }) {
             save.clearError()
           }}
           onSave={submit}
-          onReload={() => void save.reload(role.id)}
+          onReload={() =>
+            save.accessChanged ? window.location.reload() : void save.reload(role.id)
+          }
         />
       )}
       <UnsavedChangesDialog guard={guard} title={`Discard changes to ${role.name}?`} />
@@ -162,12 +164,12 @@ function RoleSkeleton() {
       <div className="overflow-hidden rounded-[12px] border bg-card">
         <div className="h-11 border-b bg-muted/40" />
         {PERMISSION_MODULES.map((m) => (
-          <div key={m} className="flex h-[62px] items-center gap-4 border-b px-5 last:border-b-0">
+          <div key={m} className="flex h-16 items-center gap-4 border-b px-5 last:border-b-0">
             <div className="flex flex-1 flex-col gap-1.5">
               <Skeleton className="h-3.5 w-32" />
               <Skeleton className="h-3 w-52 max-w-full" />
             </div>
-            <Skeleton className="hidden h-5 w-[46%] md:block" />
+            <Skeleton className="hidden h-5 w-1/2 md:block" />
           </div>
         ))}
       </div>

@@ -14,7 +14,7 @@ export function TwoStepField({ checked, locked, onChange }: Props) {
   const id = useId()
   const disabled = onChange === null || locked
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[12px] border bg-card px-4 py-3.5 shadow-xs sm:px-5">
+    <div className="flex items-center justify-between gap-4 rounded-[12px] border bg-card px-4 py-3.5 sm:px-5">
       <div className="flex min-w-0 flex-col gap-0.5">
         <label htmlFor={id} className="font-semibold text-sm">
           Require two-step sign-in

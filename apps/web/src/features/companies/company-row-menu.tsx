@@ -41,7 +41,7 @@ export function CompanyRowMenu({
       <DropdownMenuTrigger aria-label={`Actions for ${company.name}`} className={trigger}>
         <EllipsisIcon aria-hidden className="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-auto max-w-72 min-w-48">
+      <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-56">
         {canEdit && (
           <DropdownMenuItem onSelect={onEdit}>
             <PencilIcon aria-hidden />

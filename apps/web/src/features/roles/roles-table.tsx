@@ -6,7 +6,7 @@ import { peopleLine } from './role-people'
 
 const th =
   'h-10 px-3 text-left align-middle font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em] first:pl-5'
-const td = 'h-[64px] px-3 align-middle first:pl-5'
+const td = 'h-16 px-3 align-middle first:pl-5'
 
 type Props = { roles: readonly Role[]; menu: (role: Role) => ReactNode }
 
@@ -15,12 +15,12 @@ export function RolesTable({ roles, menu }: Props) {
   const builtIn = roles.filter((r) => r.isSystem)
   const custom = roles.filter((r) => !r.isSystem)
   return (
-    <div className="@container overflow-hidden rounded-[12px] border bg-card shadow-xs">
+    <div className="@container overflow-hidden rounded-[12px] border bg-card">
       <table className="w-full table-fixed text-[13px]">
         <caption className="sr-only">Roles</caption>
         <colgroup>
-          <col className="w-[52%]" />
-          <col className="w-[24%]" />
+          <col className="w-1/2" />
+          <col className="w-1/4" />
           <col className="w-[16%]" />
           <col className="w-12" />
         </colgroup>
@@ -91,7 +91,7 @@ function RoleRow({ role, menu }: { role: Role; menu: ReactNode }) {
         <Link
           to="/settings/team"
           search={{ role: role.id }}
-          className="relative z-[1] rounded-sm text-foreground underline decoration-border underline-offset-4 outline-none hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          className="relative z-1 rounded-sm text-foreground underline decoration-border underline-offset-4 outline-none hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
         >
           {peopleLine(role)}
         </Link>
@@ -99,14 +99,14 @@ function RoleRow({ role, menu }: { role: Role; menu: ReactNode }) {
       <td className={`${td} text-muted-foreground`}>
         {role.requiresTwoStep ? <span className="text-foreground">Required</span> : '–'}
       </td>
-      <td className={`${td} relative z-[1] pr-3 text-right`}>{menu}</td>
+      <td className={`${td} relative z-1 pr-3 text-right`}>{menu}</td>
     </tr>
   )
 }
 
 export function CustomTag() {
   return (
-    <span className="shrink-0 rounded-full border border-selected-border/50 bg-selected px-1.5 py-px font-semibold text-[11px] text-selected-foreground leading-4">
+    <span className="shrink-0 rounded-full border border-selected-border bg-selected px-1.5 py-px font-semibold text-[11px] text-selected-foreground leading-4">
       Custom
     </span>
   )
@@ -146,7 +146,7 @@ function RoleCardList({
             <Link
               to="/settings/roles/$roleId"
               params={{ roleId: role.id }}
-              className="flex min-h-[76px] items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-none active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex min-h-[72px] items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-none active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-center gap-2">

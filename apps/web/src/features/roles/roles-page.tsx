@@ -136,7 +136,7 @@ function RolesSkeleton({ phone }: { phone: boolean }) {
         {rows.slice(0, 6).map((i) => (
           <div
             key={i}
-            className="flex h-[76px] flex-col justify-center gap-2 rounded-[14px] border bg-card px-3.5"
+            className="flex h-[88px] flex-col justify-center gap-2 rounded-[14px] border bg-card px-3.5"
           >
             <Skeleton className="h-3.5 w-32" />
             <Skeleton className="h-3 w-56" />
@@ -150,13 +150,13 @@ function RolesSkeleton({ phone }: { phone: boolean }) {
     <div aria-hidden className="overflow-hidden rounded-[12px] border bg-card">
       <div className="h-10 border-b bg-muted/40" />
       {rows.map((i) => (
-        <div key={i} className="flex h-[64px] items-center gap-3 border-b px-5 last:border-b-0">
-          <div className="flex w-[52%] flex-col gap-1.5">
+        <div key={i} className="flex h-16 items-center gap-3 border-b px-5 last:border-b-0">
+          <div className="flex w-1/2 flex-col gap-1.5">
             <Skeleton className="h-3.5 w-28" />
             <Skeleton className="h-3 w-64 max-w-full" />
           </div>
-          <Skeleton className="h-3.5 w-[14%]" />
-          <Skeleton className="ml-[8%] h-3.5 w-[8%]" />
+          <Skeleton className="h-3.5 w-[12%]" />
+          <Skeleton className="ml-[5%] h-3.5 w-[12%]" />
         </div>
       ))}
     </div>

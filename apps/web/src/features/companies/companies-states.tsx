@@ -14,7 +14,7 @@ export function CompaniesSkeleton({ phone }: { phone: boolean }) {
         {rows.map((i) => (
           <div
             key={i}
-            className="flex h-[80px] flex-col justify-center gap-2 rounded-[14px] border bg-card px-3.5"
+            className="flex h-[88px] flex-col justify-center gap-2 rounded-[14px] border bg-card px-3.5"
           >
             <Skeleton className="h-3.5 w-44" />
             <Skeleton className="h-3 w-32" />
@@ -29,13 +29,13 @@ export function CompaniesSkeleton({ phone }: { phone: boolean }) {
       <div className="h-10 border-b bg-muted/40" />
       {rows.map((i) => (
         <div key={i} className="flex h-[60px] items-center gap-3 border-b px-5 last:border-b-0">
-          <div className="flex w-[40%] flex-col gap-1.5">
+          <div className="flex w-2/5 flex-col gap-1.5">
             <Skeleton className="h-3.5 w-48" />
             <Skeleton className="h-3 w-32" />
           </div>
           <Skeleton className="h-3.5 w-[12%]" />
-          <Skeleton className="ml-[6%] h-3.5 w-[12%]" />
-          <Skeleton className="ml-[6%] h-5 w-24 rounded-full" />
+          <Skeleton className="ml-[5%] h-3.5 w-[12%]" />
+          <Skeleton className="ml-[5%] h-5 w-24 rounded-full" />
         </div>
       ))}
     </div>

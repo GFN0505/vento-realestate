@@ -37,7 +37,7 @@ export function PermissionCell({
   const name = `${moduleLabel}: ${ACTION_LABELS[action]}`
   if (!onChange) {
     return allowed ? (
-      <span className="inline-flex size-[18px] items-center justify-center rounded-[5px] bg-primary/90 text-primary-foreground">
+      <span className="inline-flex size-[18px] items-center justify-center rounded-[5px] bg-primary text-primary-foreground">
         <CheckIcon aria-hidden className="size-3.5" strokeWidth={3} />
         <span className="sr-only">Allowed</span>
       </span>
@@ -56,15 +56,12 @@ export function PermissionCell({
         checked={allowed}
         disabled={locked}
         onCheckedChange={(next) => onChange(next === true)}
-        className={cn(
-          'size-5 transition-transform active:scale-90',
-          locked && 'cursor-not-allowed',
-        )}
+        className={cn('size-5', locked && 'cursor-not-allowed')}
       />
       {changed && (
         <span
           aria-hidden
-          className="-top-1 -right-1 absolute size-2 rounded-full border-2 border-card bg-brand motion-safe:animate-in motion-safe:zoom-in-50"
+          className="-top-1 -right-1 absolute size-2 rounded-full border-2 border-card bg-brand"
         />
       )}
     </span>

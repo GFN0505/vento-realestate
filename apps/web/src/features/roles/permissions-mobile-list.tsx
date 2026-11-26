@@ -43,7 +43,7 @@ export function PermissionsMobileList({
                 <span
                   className={cn(
                     'text-[13px]',
-                    words === 'No access' ? 'text-muted-foreground' : 'text-foreground/80',
+                    words === 'No access' ? 'text-muted-foreground' : 'text-foreground',
                   )}
                 >
                   {words}

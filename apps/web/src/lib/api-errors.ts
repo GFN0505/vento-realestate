@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { toast } from 'sonner'
 import { connection } from '@/lib/connection'
 import { GENERIC_ERROR, NETWORK_ERROR } from '@/lib/error-copy'
-import { isOrganizationChanged } from '@/lib/error-data'
+import { errorReason, isOrganizationChanged } from '@/lib/error-data'
 
 export { errorReason, errorReference, isOrganizationChanged } from '@/lib/error-data'
 
@@ -16,7 +16,25 @@ export const OFFLINE_SAVE_ERROR =
  */
 export function toastApiError(error: unknown) {
   if (isHandledElsewhere(error)) return
+  if (isAccessChanged(error)) {
+    // Calm, not an error: their role changed under them; a reload shows what they may do now.
+    toast(apiErrorMessage(error), {
+      duration: Number.POSITIVE_INFINITY,
+      action: { label: 'Reload', onClick: () => window.location.reload() },
+    })
+    return
+  }
   toast.error(apiErrorMessage(error))
+}
+
+/** A write refused because the person's own access changed mid-action ("Reload the page…"). */
+export function isAccessChanged(error: unknown): boolean {
+  return (
+    error instanceof ORPCError &&
+    error.code === 'FORBIDDEN' &&
+    errorReason(error) === 'permission' &&
+    /reload the page/i.test(error.message)
+  )
 }
 
 /** A refused session or an out-of-date tab: the shell already says so; forms stay quiet. */

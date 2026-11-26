@@ -152,7 +152,7 @@ export function OrganizationForm({ org, editable, form, save, submit }: Props) {
               value="NGN · ₦"
               readOnly
               tabIndex={-1}
-              className="bg-muted/50 text-muted-foreground"
+              className="bg-muted text-muted-foreground"
               aria-describedby={`${ids.currency}-hint`}
             />
             <FieldDescription id={`${ids.currency}-hint`}>
@@ -175,7 +175,7 @@ function Section({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-[12px] border bg-card shadow-xs">
+    <section className="rounded-[12px] border bg-card">
       <header className="flex flex-col gap-0.5 border-b px-5 py-4 sm:px-6">
         <h2 className="font-heading font-semibold text-[15px] tracking-[-0.01em]">{title}</h2>
         <p className="text-[13px] text-muted-foreground">{description}</p>

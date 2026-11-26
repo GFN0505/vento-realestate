@@ -61,3 +61,17 @@ if (total > BUDGET_KB * 1000) {
   process.stderr.write(`\nbundle-check: ${kb(total)} KB is over the ${BUDGET_KB} KB budget.\n`)
   process.exit(1)
 }
+
+// The permission rules and the roles screens must never reach the first load (plan 3c §7): a
+// shell or Home import of them would pull them in. `permissionsBeyond` marks role-rules.ts.
+const leaked = rows.filter(
+  (row) =>
+    row.file.endsWith('.js') &&
+    readFileSync(join(dist, row.file), 'utf8').includes('permissionsBeyond'),
+)
+if (leaked.length > 0) {
+  process.stderr.write(
+    `\nbundle-check: the role rules reached Home's first load (${leaked.map((r) => r.file).join(', ')}).\n`,
+  )
+  process.exit(1)
+}

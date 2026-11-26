@@ -10,7 +10,7 @@ export function CompanyFacts({ company }: { company: Entity }) {
   return (
     <>
       {archived && (
-        <p className="flex items-center gap-2.5 rounded-lg border bg-muted/60 px-3.5 py-3 text-[13px]">
+        <p className="flex items-center gap-2.5 rounded-lg border bg-muted/40 px-3.5 py-3 text-[13px]">
           <ArchiveIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <span>
             Archived{company.archivedAt ? ` ${formatDate(company.archivedAt)}` : ''}

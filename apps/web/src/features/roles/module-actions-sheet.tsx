@@ -74,7 +74,7 @@ export function ModuleActionsSheet({
             )
           })}
         </ul>
-        <div className="px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="px-5 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
           <Button className="h-11 w-full" onClick={() => onOpenChange(false)}>
             Done
           </Button>

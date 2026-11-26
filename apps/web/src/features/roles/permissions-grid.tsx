@@ -37,13 +37,13 @@ export function PermissionsGrid({ roleName, permissions, saved, onToggle, ceilin
     PERMISSION_MODULES.some((m) => PERMISSION_ACTIONS.some((a) => !has(ceiling, m, a)))
 
   return (
-    <div className="overflow-hidden rounded-[12px] border bg-card shadow-xs">
+    <div className="overflow-hidden rounded-[12px] border bg-card">
       <table className="w-full table-fixed border-collapse text-[13px]">
         <caption className="sr-only">What {roleName} can do in each area</caption>
         <colgroup>
           <col />
           {PERMISSION_ACTIONS.map((a) => (
-            <col key={a} className="w-[9%] min-w-16 xl:w-[8.5%]" />
+            <col key={a} className="w-[9%]" />
           ))}
         </colgroup>
         <thead className="border-b bg-muted/40">
@@ -69,7 +69,7 @@ export function PermissionsGrid({ roleName, permissions, saved, onToggle, ceilin
           {PERMISSION_MODULES.map((module) => {
             const none = (permissions[module] ?? []).length === 0
             return (
-              <tr key={module} className="group transition-colors hover:bg-muted/40">
+              <tr key={module} className="group transition-colors hover:bg-muted/50">
                 <th scope="row" className="px-5 py-3 text-left align-middle font-normal">
                   <span className={cn('block font-semibold', none && 'text-muted-foreground')}>
                     {MODULE_LABELS[module]}
@@ -105,7 +105,7 @@ export function PermissionsGrid({ roleName, permissions, saved, onToggle, ceilin
         </tbody>
       </table>
       {lockedAny && (
-        <p className="flex items-center gap-2 border-t bg-muted/30 px-5 py-2.5 text-muted-foreground text-xs">
+        <p className="flex items-center gap-2 border-t bg-muted/40 px-5 py-2.5 text-muted-foreground text-xs">
           <InfoIcon aria-hidden className="size-3.5 shrink-0" />
           Greyed boxes are actions you don't have yourself. You can only give access you have.
         </p>

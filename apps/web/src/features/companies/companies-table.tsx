@@ -25,7 +25,7 @@ export function CompaniesTable({ rows, onOpen, menu }: Props) {
       <table className="w-full table-fixed text-[13px]">
         <caption className="sr-only">Companies</caption>
         <colgroup>
-          <col className="w-[40%]" />
+          <col className="w-2/5" />
           <col className="w-[19%]" />
           <col className="w-[19%]" />
           <col className="w-[22%] @3xl:w-[16%]" />

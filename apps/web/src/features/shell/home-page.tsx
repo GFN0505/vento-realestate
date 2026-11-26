@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { StatCard } from '@/components/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { canSeeChecklist } from '@/features/checklist/checklist-queries'
@@ -9,8 +10,13 @@ import { greeting, longDateInLagos } from './greeting'
 import { HomeHero } from './home-hero'
 import { homeKpis, kpiNote } from './home-kpis'
 import { navItemForModule, workspaceModules } from './nav'
-import { NoCompanyCard } from './no-company-card'
 import { usePageTitle } from './use-page-title'
+
+// Rare (every company of theirs archived): its code loads only then.
+const NoCompanyCard = lazy(() =>
+  import('./no-company-card').then((m) => ({ default: m.NoCompanyCard })),
+)
+
 import { WorkspaceGrid } from './workspace-grid'
 
 /**
@@ -47,7 +53,11 @@ export function HomePage() {
         }
       />
       <TrialLine />
-      {entity.noCompany && <NoCompanyCard />}
+      {entity.noCompany && (
+        <Suspense fallback={null}>
+          <NoCompanyCard />
+        </Suspense>
+      )}
       {canSeeChecklist(access) && <HomeChecklist />}
       {kpis.length > 0 && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">

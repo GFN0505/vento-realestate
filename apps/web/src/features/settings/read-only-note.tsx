@@ -11,7 +11,7 @@ export function ReadOnlyNote({ children, className }: { children: ReactNode; cla
   return (
     <p
       className={cn(
-        'flex gap-2.5 rounded-lg border bg-muted/60 px-3.5 py-3 text-[13px] leading-relaxed',
+        'flex gap-2.5 rounded-lg border bg-muted/40 px-3.5 py-3 text-[13px] leading-relaxed',
         className,
       )}
     >

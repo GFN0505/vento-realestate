@@ -18,7 +18,7 @@ type Props = {
 }
 
 const inPlace =
-  'min-w-0 rounded-md border border-transparent bg-transparent px-2 -mx-2 outline-none transition-[border-color,background-color,box-shadow] duration-150 hover:border-input focus-visible:border-ring focus-visible:bg-card focus-visible:ring-[3px] focus-visible:ring-ring/30 aria-invalid:border-destructive'
+  'min-w-0 rounded-md border border-transparent bg-transparent px-2 -mx-2 outline-none transition-[border-color,box-shadow] duration-150 hover:border-input focus-visible:border-ring focus-visible:bg-card focus-visible:ring-[3px] focus-visible:ring-ring/30 aria-invalid:border-destructive'
 
 /**
  * The role's name and what it's for (editable in place on custom roles), who holds it, and
@@ -52,10 +52,13 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
                   spellCheck={false}
                   aria-invalid={draft.name.length < 2 || undefined}
                   onChange={(event) => draft.setName(event.target.value)}
-                  // Grows with the name, so the Custom tag sits right beside it.
+                  // Sized to the name (plus room to type), so the Custom tag sits beside it.
+                  style={{
+                    width: `calc(${Math.max(6, draft.draft.name.length + 1) * 0.52}em + 1rem)`,
+                  }}
                   className={cn(
                     inPlace,
-                    'field-sizing-content h-10 min-w-[8ch] max-w-full font-heading font-semibold tracking-[-0.02em]',
+                    'h-10 max-w-full font-heading font-semibold tracking-[-0.02em]',
                   )}
                 />
               ) : (
@@ -68,7 +71,7 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
                 Built-in
               </span>
             ) : (
-              <span className="shrink-0 rounded-full border border-selected-border/50 bg-selected px-2 py-0.5 font-semibold text-[11px] text-selected-foreground">
+              <span className="shrink-0 rounded-full border border-selected-border bg-selected px-2 py-0.5 font-semibold text-[11px] text-selected-foreground">
                 Custom
               </span>
             )}
@@ -84,7 +87,7 @@ export function RoleHeader({ role, draft, onDuplicate, onPreview, menu }: Props)
               onChange={(event) => draft.setDescription(event.target.value)}
               className={cn(
                 inPlace,
-                'h-8 text-[13px] text-muted-foreground placeholder:text-muted-foreground/70 focus-visible:text-foreground',
+                'h-8 text-[13px] text-muted-foreground focus-visible:text-foreground',
               )}
             />
           ) : (

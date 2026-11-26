@@ -55,7 +55,7 @@ export function RoleRowMenu({ role, actions }: { role: Role; actions: RoleAction
       <DropdownMenuTrigger aria-label={`Actions for ${role.name}`} className={trigger}>
         <EllipsisIcon aria-hidden className="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-52">
+      <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-56">
         {actions.duplicate && (
           <DropdownMenuItem onSelect={actions.duplicate}>
             <CopyIcon aria-hidden />
@@ -83,7 +83,7 @@ export function RolePageMenu({ role, onDelete }: { role: Role; onDelete: () => v
       <DropdownMenuTrigger aria-label={`More actions for ${role.name}`} className={trigger}>
         <EllipsisIcon aria-hidden className="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-52">
+      <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-56">
         <DeleteItem role={role} onDelete={onDelete} />
       </DropdownMenuContent>
     </DropdownMenu>

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
 import { teamListKey } from '@/features/team/team-queries'
-import { errorReason, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
+import { errorReason, isAccessChanged, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { client } from '@/lib/orpc'
 import { roleQuery } from './role-queries'
@@ -77,7 +77,9 @@ export function useSaveRole() {
     pending,
     error,
     /** Someone else saved it first: Reload shows theirs (the draft is dropped). */
-    stale: errorReason(error) === 'role_changed',
+    stale: errorReason(error) === 'role_changed' || isAccessChanged(error),
+    /** Their own access changed: only a full reload shows what they may do now. */
+    accessChanged: isAccessChanged(error),
     reload: (id: string) => {
       setError(null)
       return queryClient.refetchQueries({ queryKey: roleQuery(id).queryKey })
