@@ -1,6 +1,6 @@
 # Approvals and audit (brick 4)
 
-- **Status:** draft
+- **Status:** approved (owner, 26 Nov 2026)
 - **Module:** Platform
 - **Journeys:** J-EXE-02 (rewritten: approve or reject from the inbox), J-ONB-11 (new: set approval rules), J-ONB-12 (new: find out who changed something), J-ONB-08 and J-ONB-06 (changed: a role change and making someone an owner can need approval)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
@@ -222,7 +222,10 @@ When a rule applies, the action's button opens **Send for approval**: one sheet 
 - Audit retention and deletion policy; the platform audit viewer (admin console); SIEM or log streaming.
 - An "All open requests" oversight view for the MD (the audit log shows requests).
 
-## Open questions
+## Owner's decisions (26 Nov 2026)
+All 8 recommendations below were approved as written.
+
+## Open questions (answered above; recommendations in bold)
 Each has a recommendation.
 
 1. **Who changes rules, and who reads the audit log.** *Recommended:* **owners only** change rules (they are the MD's controls, and admins are often the makers); admins and other Settings viewers see them read-only. Deleting or loosening a rule emails every other owner. **The audit log is for people who can edit Settings and have access to every company** (owners and admins by default), because it shows sign-ins and changes across companies.
