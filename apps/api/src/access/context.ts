@@ -97,8 +97,9 @@ export function toPermissionSet(pairs: readonly string[]): PermissionSet {
 /**
  * The person's active membership, in one query: the session's organization when they're
  * still a member there, otherwise their most recent one. Not cached, so a role or limit
- * change applies on the next request. The organization's release group and plan version come
- * along (left join, so an organization created by older code reads as standard with no plan).
+ * change applies on the next request; any cache of permissions added later must key on
+ * roles.version. The organization's release group and plan version come along (left join, so
+ * an organization created by older code reads as standard with no plan).
  */
 export async function loadMembership(
   db: DbOrTx,
@@ -110,6 +111,8 @@ export async function loadMembership(
       r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
       (select array_agg(rp.module || '.' || rp.action) from role_permissions rp
         where rp.role_id = r.id) as permissions,
+      -- Every limit row, archived entities included: a member limited only to archived
+      -- companies must read as that list ("No company"), never as null (all companies).
       (select array_agg(l.entity_id) from member_entity_limits l
         where l.member_id = m.id) as entity_ids,
       m.last_active_at, op.release_group, op.plan_version_id

@@ -4,7 +4,7 @@ import {
   type PermissionModule,
   SYSTEM_ROLE_KEYS,
 } from '@vento/shared'
-import { and, asc, eq, ne } from 'drizzle-orm'
+import { and, asc, eq, isNull, ne } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { members, rolePermissions, roles, users } from '@/db/schema'
 import { accessContacts } from './access-contacts'
@@ -44,6 +44,7 @@ export async function whoCanGrant(
     .where(
       and(
         eq(roles.organizationId, input.organizationId),
+        isNull(roles.archivedAt),
         eq(rolePermissions.module, input.module),
         eq(rolePermissions.action, input.action),
       ),

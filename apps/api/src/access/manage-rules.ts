@@ -4,6 +4,7 @@ import {
   type ReadOnly,
   type ReadOnlyReason,
   type TwoStepState,
+  withinPermissions,
 } from '@vento/shared'
 import type { ServiceContext } from './context'
 
@@ -13,6 +14,7 @@ import type { ServiceContext } from './context'
 
 export type ManageViewer = {
   userId: string
+  roleId: string
   roleKey: string | null
   permissions: PermissionSet
   /** null = all entities. */
@@ -23,6 +25,7 @@ export type ManageViewer = {
 export function viewerOf(ctx: Pick<ServiceContext, 'user' | 'member'>): ManageViewer {
   return {
     userId: ctx.user.id,
+    roleId: ctx.member.roleId,
     roleKey: ctx.member.roleKey,
     permissions: ctx.member.permissions,
     entityIds: ctx.member.entityIds,
@@ -33,12 +36,16 @@ export type MemberTarget = {
   userId: string
   name: string
   roleKey: string | null
+  /** What their role can do, for the permission ceiling. */
+  permissions: PermissionSet
   entityIds: readonly string[] | null
 }
 
 export type InvitationTarget = {
   email: string
   roleKey: string | null
+  /** What the invitation's role can do, for the permission ceiling. */
+  permissions: PermissionSet
   entityIds: readonly string[] | null
 }
 
@@ -46,9 +53,12 @@ export type MemberAction = 'change' | 'reset' | 'remove'
 export type InvitationAction = 'resend' | 'withdraw'
 
 export type Refusal = {
-  reason: 'own_access' | 'owner_only' | 'entity_limit'
+  reason: 'own_access' | 'owner_only' | 'wider_permissions' | 'entity_limit'
   message: string
 }
+
+/** Giving a role (invite, change role, saving a role) beyond the granter's own permissions. */
+export const GRANT_CEILING_MESSAGE = 'You can only give access you have yourself.'
 
 const isOwner = (roleKey: string | null) => roleKey === 'owner'
 
@@ -65,8 +75,23 @@ export function withinGranterAccess(
   return target.every((id) => granter.includes(id))
 }
 
-const askOwner = (ownerName: string | null) =>
+export const askOwner = (ownerName: string | null) =>
   ownerName ? `Ask ${ownerName} (owner) to change it.` : 'Ask an owner to change it.'
+
+/** The permission ceiling: a role the viewer could not hold everything of. */
+export function widerThan(viewer: Pick<ManageViewer, 'permissions'>, permissions: PermissionSet) {
+  return !withinPermissions(viewer.permissions, permissions)
+}
+
+/** Why the viewer may not give a role with these permissions, or null. */
+export function grantRefusal(
+  viewer: Pick<ManageViewer, 'permissions'>,
+  role: { permissions: PermissionSet },
+): Refusal | null {
+  return widerThan(viewer, role.permissions)
+    ? { reason: 'wider_permissions', message: GRANT_CEILING_MESSAGE }
+    : null
+}
 
 const SELF_MESSAGES: Record<MemberAction, string> = {
   change: "You can't change your own access. Ask another owner or admin.",
@@ -82,13 +107,18 @@ const OWNER_MESSAGES: Record<MemberAction, string> = {
 
 /**
  * Why the viewer may not do `action` to this member, or null. First match wins: self, owner
- * rules, wider access. `newRoleKey` is the role being given (change only).
+ * rules, the target's role wider than the viewer's, the new role wider (change only), wider
+ * company access. `newRoleKey` and `newRolePermissions` describe the role being given.
  */
 export function memberRefusal(
   viewer: ManageViewer,
   target: MemberTarget,
   action: MemberAction,
-  options: { newRoleKey?: string | null; ownerName: string | null },
+  options: {
+    newRoleKey?: string | null
+    newRolePermissions?: PermissionSet
+    ownerName: string | null
+  },
 ): Refusal | null {
   if (target.userId === viewer.userId) {
     return { reason: 'own_access', message: SELF_MESSAGES[action] }
@@ -99,10 +129,20 @@ export function memberRefusal(
       return { reason: 'owner_only', message: 'Only owners can make someone an owner.' }
     }
   }
+  if (widerThan(viewer, target.permissions)) {
+    return {
+      reason: 'wider_permissions',
+      message: `${target.name} can do things you can't. ${askOwner(options.ownerName)}`,
+    }
+  }
+  if (action === 'change' && options.newRolePermissions) {
+    const refusal = grantRefusal(viewer, { permissions: options.newRolePermissions })
+    if (refusal) return refusal
+  }
   if (!withinGranterAccess(viewer.entityIds, target.entityIds)) {
     return {
       reason: 'entity_limit',
-      message: `${target.name} has access to entities you can't see. ${askOwner(options.ownerName)}`,
+      message: `${target.name} has access to companies you can't see. ${askOwner(options.ownerName)}`,
     }
   }
   return null
@@ -119,10 +159,16 @@ export function invitationRefusal(
   if (action === 'resend' && isOwner(target.roleKey) && !isOwner(viewer.roleKey)) {
     return { reason: 'owner_only', message: 'Only owners can resend an owner invitation.' }
   }
+  if (widerThan(viewer, target.permissions)) {
+    return {
+      reason: 'wider_permissions',
+      message: `The invitation to ${target.email} gives access you don't have. ${askOwner(options.ownerName)}`,
+    }
+  }
   if (!withinGranterAccess(viewer.entityIds, target.entityIds)) {
     return {
       reason: 'entity_limit',
-      message: `The invitation to ${target.email} includes entities you can't see. ${askOwner(options.ownerName)}`,
+      message: `The invitation to ${target.email} includes companies you can't see. ${askOwner(options.ownerName)}`,
     }
   }
   return null
@@ -130,15 +176,19 @@ export function invitationRefusal(
 
 /** Whether a refusal message needs "Ask … (owner)", so callers look the name up only then. */
 export function needsOwnerName(
-  viewer: Pick<ManageViewer, 'entityIds'>,
-  target: Pick<MemberTarget, 'entityIds'>,
+  viewer: Pick<ManageViewer, 'entityIds' | 'permissions'>,
+  target: Pick<MemberTarget, 'entityIds' | 'permissions'>,
 ): boolean {
-  return !withinGranterAccess(viewer.entityIds, target.entityIds)
+  return (
+    widerThan(viewer, target.permissions) ||
+    !withinGranterAccess(viewer.entityIds, target.entityIds)
+  )
 }
 
 const READ_ONLY_REASON: Record<Refusal['reason'], ReadOnlyReason> = {
   own_access: 'self',
   owner_only: 'owner',
+  wider_permissions: 'wider_permissions',
   entity_limit: 'wider_access',
 }
 
@@ -172,8 +222,26 @@ export function memberRowRights(
         target.twoStep === 'on' && hasPermission(p, 'settings', 'edit') && allowed('reset'),
       remove: hasPermission(p, 'settings', 'delete') && allowed('remove'),
     },
-    readOnly: readOnlyFrom(memberRefusal(viewer, target, 'change', { ownerName })),
+    readOnly: quietFor(
+      viewer,
+      ['edit', 'delete'],
+      memberRefusal(viewer, target, 'change', { ownerName }),
+    ),
   }
+}
+
+/**
+ * A viewer who can't manage anyone (Settings: View only) sees no "can do things you can't" line
+ * on every row: it would only repeat what the page already shows.
+ */
+function quietFor(
+  viewer: ManageViewer,
+  actions: readonly ('create' | 'edit' | 'delete')[],
+  refusal: Refusal | null,
+): ReadOnly {
+  const managesSomeone = actions.some((a) => hasPermission(viewer.permissions, 'settings', a))
+  if (refusal?.reason === 'wider_permissions' && !managesSomeone) return null
+  return readOnlyFrom(refusal)
 }
 
 /** The invitation row's flags and read-only line for team.list. */
@@ -185,15 +253,22 @@ export function invitationRowRights(
   const allowed = (action: InvitationAction) =>
     invitationRefusal(viewer, target, action, { ownerName }) === null
   const p = viewer.permissions
-  const wider = !withinGranterAccess(viewer.entityIds, target.entityIds)
+  const wider =
+    widerThan(viewer, target.permissions) ||
+    !withinGranterAccess(viewer.entityIds, target.entityIds)
   return {
     can: {
       resend: hasPermission(p, 'settings', 'create') && allowed('resend'),
       withdraw: hasPermission(p, 'settings', 'delete') && allowed('withdraw'),
     },
-    // Only wider access makes the whole row read-only; an admin can still withdraw an owner invitation.
+    // Only wider access or permissions make the whole row read-only; an admin can still withdraw
+    // an owner invitation.
     readOnly: wider
-      ? readOnlyFrom(invitationRefusal(viewer, target, 'withdraw', { ownerName }))
+      ? quietFor(
+          viewer,
+          ['create', 'delete'],
+          invitationRefusal(viewer, target, 'withdraw', { ownerName }),
+        )
       : null,
   }
 }
