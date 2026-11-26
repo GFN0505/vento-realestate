@@ -4,3 +4,8 @@ import { orpc } from '@/lib/orpc'
 export function organizationQuery() {
   return orpc.organization.get.queryOptions({ staleTime: 60_000 })
 }
+
+/** The Security card: "Require two-step sign-in for everyone" and who has two-step. */
+export function organizationSecurityQuery() {
+  return orpc.organization.security.queryOptions({ staleTime: 30_000 })
+}

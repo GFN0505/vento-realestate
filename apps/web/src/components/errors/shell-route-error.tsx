@@ -33,7 +33,11 @@ export function ShellRouteError({ error, reset }: ErrorComponentProps) {
   }, [reset, router])
 
   useEffect(() => {
-    if (kind === 'two_step') {
+    if (kind === 'two_step' && inShell) {
+      // Fresh `me` says two-step is required: the setup opens over the page (3d), and finishing
+      // it reloads this route's data.
+      void queryClient.refetchQueries({ queryKey: meQuery().queryKey })
+    } else if (kind === 'two_step') {
       // Fresh `me` first, so the guard sees the new step and sends them to two-step setup.
       void queryClient
         .refetchQueries({ queryKey: meQuery().queryKey })
@@ -43,7 +47,7 @@ export function ShellRouteError({ error, reset }: ErrorComponentProps) {
     if (kind === 'toast') {
       void import('@/lib/api-errors').then((m) => m.toastApiError(error))
     }
-  }, [kind, staleAction, error, queryClient, router])
+  }, [kind, inShell, staleAction, error, queryClient, router])
 
   switch (kind) {
     case 'forbidden':

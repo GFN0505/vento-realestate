@@ -62,7 +62,7 @@ export function PermissionsMobileList({
                     setShown(module)
                     setOpen(module)
                   }}
-                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   {content}
                 </button>

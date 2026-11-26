@@ -34,6 +34,7 @@ import {
   organizationOverrides,
   organizationPlans,
   organizations,
+  passkeys,
   passwordHistories,
   platformAdmins,
   rolePermissions,
@@ -481,6 +482,7 @@ async function seed() {
       ownerId,
     })
     await upsertArchivedEntity(tx, organizationId, ownerId)
+    await upsertDisplayPasskey(tx)
     return upsertInvitations(tx, organizationId, roleIds, ownerId)
   })
 
@@ -504,20 +506,63 @@ async function seed() {
   }
 }
 
-/** Lekki Partners Ltd: standard, on Starter, at its entity limit, with Commissions released to it. */
+/**
+ * Aisha's passkey on My security and Team ("1 passkey", the reset copy). DISPLAY ONLY: no device
+ * holds its private key, so it can never sign in; the public key is a throwaway. For a real
+ * passkey sign-in in a demo, add one on your own device.
+ */
+async function upsertDisplayPasskey(tx: DbOrTx): Promise<void> {
+  const [aisha] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, 'aisha@ventohomes.ng'))
+  if (!aisha) return
+  await tx
+    .insert(passkeys)
+    .values({
+      userId: aisha.id,
+      name: 'iCloud Keychain · iPhone',
+      publicKey: 'c2VlZC1kaXNwbGF5LW9ubHktbm90LWEta2V5',
+      credentialID: 'seed-display-only-aisha-iphone',
+      counter: 0,
+      deviceType: 'multiDevice',
+      backedUp: true,
+      transports: 'internal',
+      createdAt: new Date(Date.now() - 20 * DAY_MS),
+      lastUsedAt: new Date(Date.now() - DAY_MS),
+    })
+    .onConflictDoNothing({ target: passkeys.credentialID })
+}
+
+/**
+ * Lekki Partners Ltd: standard, on Starter, at its entity limit, with Commissions released to
+ * it, and "Require two-step for everyone" turned on by Bisi Lawal 2 days ago: Femi Adeoye (sales,
+ * no two-step) sees the banner with 5 days left, and a new sign-in as Femi asks for setup first.
+ * Vento Homes Ltd stays off, so the golden-thread sign-ins aren't interrupted.
+ */
 async function seedLekki(passwordHash: string) {
   const organizationId = await db.transaction(async (tx) => {
     const id = await upsertOrganization(tx, LEKKI, 'standard')
     const roleIds = await syncSystemRoles(tx, id)
     await upsertEntities(tx, id, LEKKI_ENTITIES)
+    let bisiId: string | null = null
     for (const person of LEKKI_PEOPLE) {
       const userId = await upsertPerson(tx, person, passwordHash, LEKKI)
+      if (person.role === 'owner') bisiId = userId
       await upsertMembership(tx, {
         organizationId: id,
         userId,
         roleId: roleIds.get(person.role) ?? '',
       })
     }
+    await tx
+      .update(organizations)
+      .set({
+        twoStepRequiredForEveryone: true,
+        twoStepRequiredChangedAt: new Date(Date.now() - 2 * DAY_MS),
+        twoStepRequiredChangedByUserId: bisiId,
+      })
+      .where(and(eq(organizations.id, id), eq(organizations.twoStepRequiredForEveryone, false)))
     return id
   })
   const organization = { id: organizationId, name: LEKKI }

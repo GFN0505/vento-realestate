@@ -1,6 +1,6 @@
 # Roles and organization (brick 3c)
 
-- **Status:** approved (owner, 26 Nov 2026)
+- **Status:** shipped (PR #7, 26 Nov 2026)
 - **Module:** Platform
 - **Journeys:** J-ONB-07 (new: organization profile and companies), J-ONB-08 (new: make a custom role), J-ONB-01 (step 7: a new checklist item), J-ONB-05 (step 3: the switcher is labelled "Company" and gains **+ Add company**), J-ONB-02 and J-ONB-06 (copy only: "Company access")
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)

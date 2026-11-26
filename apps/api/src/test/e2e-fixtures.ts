@@ -25,6 +25,12 @@
  *   tsx src/test/e2e-fixtures.ts custom-role [name]     a custom role from Project manager held by one member, plus a viewer to give it to
  *   tsx src/test/e2e-fixtures.ts role-editor            an "Office manager" custom role (Settings, Sales; no Finance) with its holder, an admin and a sales member
  *   tsx src/test/e2e-fixtures.ts no-company             a member limited only to an archived company
+ *   tsx src/test/e2e-fixtures.ts security-team          owner, admin, finance (two-step on), sales and viewer (password only) in an internal organization (brick 3d)
+ *   tsx src/test/e2e-fixtures.ts fill-passkeys <email> <total>  adds stored passkeys until the person has `total` (limit tests)
+ *   tsx src/test/e2e-fixtures.ts expire-grace <email>   moves the organization's "require two-step" switch and that person's sessions 8 and 9 days back
+ *   tsx src/test/e2e-fixtures.ts age-reauth <email>     makes that person's password confirmations 10 minutes old ("Confirm it's you" asks again)
+ *   tsx src/test/e2e-fixtures.ts session-expiry <email> days until the person's longest-lived session expires, and whether it is persistent
+ *   tsx src/test/e2e-fixtures.ts force-reset <email>    marks a password reset as required without removing passkeys (the race path)
  *
  * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
  * every organization was before feature flags. Fixtures only change per-organization data, never
@@ -788,6 +794,140 @@ async function createNoCompany() {
   }
 }
 
+/**
+ * Brick 3d: an internal organization (passkeys available) with an owner, an admin and finance
+ * (two-step on, with secrets) and sales and viewer members who sign in with the password alone.
+ */
+async function createSecurityTeam() {
+  const { db } = await import('@/db/client')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.sec.owner')
+  const org = await createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  await createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const members: Record<string, { email: string; name: string; totpSecret?: string }> = {
+    owner: { email: owner.email, name: owner.name, totpSecret: await turnOnTwoStep(owner.email) },
+  }
+  const others = [
+    { role: 'admin', name: 'Ngozi Adeyemi', twoStep: true },
+    { role: 'finance', name: 'Aisha Bello', twoStep: true },
+    { role: 'sales', name: 'Grace Umeh', twoStep: false },
+    { role: 'viewer', name: 'Yusuf Ibrahim', twoStep: false },
+  ] as const
+  for (const { role, name, twoStep } of others) {
+    const user = await passwordUser(db, name, `e2e.sec.${role}`)
+    await addMember(db, org, { role, user })
+    const totpSecret = twoStep ? await turnOnTwoStep(user.email) : undefined
+    members[role] = { email: user.email, name, ...(totpSecret && { totpSecret }) }
+  }
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: TEST_PASSWORD,
+    members,
+  }
+}
+
+async function userByEmail(email: string | undefined) {
+  if (!email) throw new Error('needs an email')
+  const { db } = await import('@/db/client')
+  const { users } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()))
+  if (!user) throw new Error(`no user ${email}`)
+  return { db, user }
+}
+
+/** Stored passkeys (not usable to sign in) until the person has `total`: for the limit of 10. */
+async function fillPasskeys(email: string | undefined, total: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { passkeys } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const have = (
+    await db.select({ id: passkeys.id }).from(passkeys).where(eq(passkeys.userId, user.id))
+  ).length
+  const target = Number(total)
+  const stamp = Date.now().toString(36)
+  for (let n = have; n < target; n++) {
+    await db.insert(passkeys).values({
+      userId: user.id,
+      name: `Fixture passkey ${n + 1}`,
+      publicKey: 'AAAA',
+      credentialID: `fixture-${stamp}-${n}`,
+      counter: 0,
+      deviceType: 'multiDevice',
+      backedUp: true,
+    })
+  }
+  return { email, passkeys: Math.max(have, target) }
+}
+
+/**
+ * The organization's switch was turned on 8 days ago and this person's sessions entered it 9
+ * days ago: the 7 days have run out, so their next request needs two-step set up.
+ */
+async function expireGrace(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { organizations, sessions } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  if (!user.lastActiveOrganizationId) throw new Error('person has no current organization')
+  await db
+    .update(organizations)
+    .set({ twoStepRequiredChangedAt: sql`now() - interval '8 days'` })
+    .where(eq(organizations.id, user.lastActiveOrganizationId))
+  const moved = await db
+    .update(sessions)
+    .set({ organizationEnteredAt: sql`now() - interval '9 days'` })
+    .where(eq(sessions.userId, user.id))
+    .returning({ id: sessions.id })
+  return { email, sessions: moved.length }
+}
+
+/** The 5-minute "Confirm it's you" window has closed on every session of this person. */
+async function ageReauth(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { sessions } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(sessions)
+    .set({ reauthenticatedAt: sql`now() - interval '10 minutes'` })
+    .where(eq(sessions.userId, user.id))
+    .returning({ id: sessions.id })
+  return { email, sessions: aged.length }
+}
+
+/** How long the person's newest session lasts on the server, whatever the browser's cookie says. */
+async function sessionExpiry(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { sessions } = await import('@/db/schema')
+  const { desc, eq } = await import('drizzle-orm')
+  const [row] = await db
+    .select({ expiresAt: sessions.expiresAt, persistent: sessions.persistent })
+    .from(sessions)
+    .where(eq(sessions.userId, user.id))
+    .orderBy(desc(sessions.createdAt))
+    .limit(1)
+  if (!row) throw new Error(`no session for ${email}`)
+  return { days: (row.expiresAt.getTime() - Date.now()) / 86_400_000, persistent: row.persistent }
+}
+
+/** A reset that kept the passkey: only the race path can produce this in the real app. */
+async function forceReset(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { users } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  await db
+    .update(users)
+    .set({ twoFactorEnabled: false, twoStepSetupRequired: true, passwordResetRequired: true })
+    .where(eq(users.id, user.id))
+  return { email }
+}
+
 async function main() {
   const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
@@ -814,6 +954,12 @@ async function main() {
     'custom-role': () => createCustomRoleFixture(arg),
     'role-editor': createRoleEditor,
     'no-company': createNoCompany,
+    'security-team': createSecurityTeam,
+    'fill-passkeys': () => fillPasskeys(arg, arg2),
+    'expire-grace': () => expireGrace(arg),
+    'age-reauth': () => ageReauth(arg),
+    'session-expiry': () => sessionExpiry(arg),
+    'force-reset': () => forceReset(arg),
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

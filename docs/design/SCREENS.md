@@ -6,21 +6,21 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 175 rows · 137 designed (21 of them partly) · 38 without a design.
+**Coverage:** 178 rows · 137 designed (21 of them partly) · 41 without a design.
 
 
 
 ## 0. Foundation and account
 | Screen | Design | Status |
 |---|---|---|
-| Sign in, two-factor challenge | [SignIn](claude-design/SignIn.dc.html), [SignIn2FA](claude-design/SignIn2FA.dc.html) | built |
+| Sign in, two-factor challenge (brick 3d: **Sign in with a passkey**, passkeys offered in the email field's suggestions, passkey errors, new lost-phone line) | [SignIn](claude-design/SignIn.dc.html), [SignIn2FA](claude-design/SignIn2FA.dc.html) | built (passkey sign-in todo, brick 3d) |
 | Sign up, verify email | [SignUp](claude-design/SignUp.dc.html), [VerifyEmail](claude-design/VerifyEmail.dc.html) | built |
 | Forgot / reset password | [ForgotPassword](claude-design/ForgotPassword.dc.html), [ResetPassword](claude-design/ResetPassword.dc.html) | built |
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
-| Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
+| Set up two-step (forced at sign-in, after accepting an invitation, or when the organization requires it for everyone; brick 3d: also opened as a sheet from My security) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
 | Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K; brick 3c: "Add your first company" and "Add your other companies (SPVs)" with "We only have one company") | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | built |
-| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K; brick 3c: switcher labelled "Company", "+ Add company" for owners and admins, "No company" state) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
+| App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role; brick 3d: **My security** for everyone, also in More and ⌘K), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K; brick 3c: switcher labelled "Company", "+ Add company" for owners and admins, "No company" state) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
 | ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
 | Plan limit message (inline where a create is refused; owner version with **Talk to Vento**, member version naming whom to ask) (feature flags) | – | pattern (component built; first used in 3b) |
@@ -29,10 +29,13 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
 | Keyboard shortcuts help (`?`) (brick 3a) | – | pattern |
-| My security: two-step on/off, backup codes, active sessions, passkeys (brick 3d); my profile | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (security only; passkeys and profile not designed) | todo |
+| My security, every member, `/settings/security` (brick 3d): name edited in place; *Sign-in* card (password, two-step on/off and what requires it, backup codes left); *Passkeys* card (add, rename, remove, last used); *Where you're signed in* (device and browser, approximate place, masked IP, last active, This device, sign out one or all others). Phone, photo and email change out of scope | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (two-step and sessions only; one page instead of tabs; passkeys, name and password not designed) | built |
+| My security dialogs (brick 3d): Confirm it's you (password), Change password, Turn off two-step (password and code), New backup codes, Remove passkey, Sign out other devices | – | pattern |
+| Passkey offer after a password sign-in, once per device (brick 3d) | – | pattern |
+| Two-step required banner: "{Organization} now requires two-step sign-in" with **Set up two-step** (brick 3d; members without two-step when the organization requires it for everyone) | – | pattern |
 | 403 no access, 404 not found, 500 error, offline banner and page (brick 3a; Request access in brick 4) | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | built (Request access in brick 4) |
 | Maintenance page | – | todo |
-| Session expired / signed out elsewhere | [SessionExpired](claude-design/SessionExpired.dc.html) | built |
+| Session expired / signed out elsewhere (brick 3d: **Sign in with a passkey**) | [SessionExpired](claude-design/SessionExpired.dc.html) | built (passkey built, brick 3d) |
 | Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | built (tokens, fonts, form components) |
 
 ## 1. Home and analytics
@@ -189,17 +192,17 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 12. Settings and admin
 | Screen | Design | Status |
 |---|---|---|
-| Settings layout with left sub-navigation (brick 3b: only built sections the member can view; no sub-navigation while there's one section; Settings in the sidebar footer, user menu and More) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | built |
-| Organization profile: name, head office state, financial year; base currency shown (brick 3c; organization-wide, no company switcher) | [SetOrg](claude-design/SetOrg.dc.html) (Company and Defaults cards, partly) | built |
+| Settings layout with left sub-navigation (brick 3b: only built sections the member can view; no sub-navigation while there's one section; Settings in the sidebar footer, user menu and More; brick 3d: **My security** last after a divider, and `/settings` opens it for people without settings access) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | built (My security entry todo, brick 3d) |
+| Organization profile: name, head office state, financial year; base currency shown (brick 3c; organization-wide, no company switcher). Brick 3d: *Security* card with **Require two-step sign-in for everyone** (owners only; read-only for others), people-with-two-step count, turn-on and turn-off confirms | [SetOrg](claude-design/SetOrg.dc.html) (Company and Defaults cards, partly) | built (Security card todo, brick 3d) |
 | Companies (entities): Active and Archived chips, owner's plan usage line, edit, archive with Undo or a confirm naming people who'd lose access, restore (brick 3c; organization-wide) | [SetOrg](claude-design/SetOrg.dc.html) (entities table, partly) | built |
 | Add company / Company sheet: name, type, RC number, TIN, VAT registered, "create a project instead" line; archived read-only with Restore; owner's plan message at the limit (brick 3c; opens from Settings, the company switcher, the Home checklist and ⌘K) | – | pattern |
 | Branding: logo and colours on documents, emails and portals (proposed: with the first customer-facing document) | [SetBranding](claude-design/SetBranding.dc.html) | todo |
 | Team: one list of members and open invitations (role in place, entity access, two-step, last active, invitation and delivery state), search, role filter, Invited and Removed chips, owner's plan usage line, confirms for remove, reset two-step and make owner (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built |
 | Invite people sheet: up to 20 emails, role for everyone or per row, entity access, row problems, plan places (brick 3b; also opens from the Home checklist and ⌘K; follows the entity switcher) | – | pattern |
-| Member sheet: role, entity access with Save changes, two-step, reset two-step, make owner, remove; invitation sheet for open invitations (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built |
+| Member sheet: role, entity access with Save changes, two-step, reset two-step, make owner, remove; invitation sheet for open invitations (brick 3b; brick 3d: "2 passkeys" fact, Reset two-step also offered when someone has passkeys, confirm says their passkeys are removed) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built (passkey changes todo, brick 3d) |
 | Member and invitation sheets: facts, change role and entity access, reset two-step, remove; resend, withdraw (brick 3b) | – | todo |
 | Roles & permissions list: built-in and custom roles, people and invited counts (link to Team), two-step, row menu (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html) (partly) | built |
-| Role page: module × action grid (read-only for built-in roles, editable for custom), two-step switch with lock, save bar, Duplicate role, Preview this role, Delete role (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | built |
+| Role page: module × action grid (read-only for built-in roles, editable for custom), two-step switch with lock, save bar, Duplicate role, Preview this role, Delete role (brick 3c; brick 3d: roles list reads "Required" and the switch is locked on with its reason while the organization requires two-step for everyone) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | built (organization lock todo, brick 3d) |
 | New role dialog (name, start from) and delete role confirm (brick 3c) | – | pattern |
 | Approval rules | [SetApprovalRules](claude-design/SetApprovalRules.dc.html) | todo |
 | Fee and sales defaults, grace periods | – | todo |
@@ -236,7 +239,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Purchase order PDF | [DocPO](claude-design/DocPO.dc.html) | todo |
 | WHT credit note | [WHTCreditNote](claude-design/WHTCreditNote.dc.html) | todo |
 | Emails: invite, verify, reset, receipt, reminder, approval request, digest | [EmailInvite](claude-design/EmailInvite.dc.html), [EmailVerify](claude-design/EmailVerify.dc.html), [EmailReset](claude-design/EmailReset.dc.html), [EmailReceipt](claude-design/EmailReceipt.dc.html), [EmailReminder](claude-design/EmailReminder.dc.html), [EmailApproval](claude-design/EmailApproval.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
-| Email: security alert (sign-in locked, password changed, two-step reset, backup code used; brick 3b adds "someone is now an owner") | – | pattern, needs-design |
+| Email: security alert (sign-in locked, password changed, two-step reset, backup code used; brick 3b adds "someone is now an owner"; brick 3d adds new sign-in from an unrecognised browser, passkey added, passkey removed, and "two-step no longer required for everyone" to owners) | – | pattern, needs-design (3d alerts todo) |
 | WhatsApp templates: reminder, overdue, receipt, construction update | [WAReminder](claude-design/WAReminder.dc.html), [WAOverdue](claude-design/WAOverdue.dc.html), [WAReceipt](claude-design/WAReceipt.dc.html), [WAConstruction](claude-design/WAConstruction.dc.html) | todo |
 | SMS templates | – | todo |
 

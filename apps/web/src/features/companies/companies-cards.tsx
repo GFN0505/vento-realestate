@@ -18,7 +18,7 @@ export function CompaniesCards({ rows, onOpen }: Props) {
             type="button"
             data-company-row={company.id}
             onClick={() => onOpen(company)}
-            className="flex min-h-[72px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+            className="flex min-h-[72px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-hidden transition-colors active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
           >
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate font-semibold text-[14px]">{company.name}</span>

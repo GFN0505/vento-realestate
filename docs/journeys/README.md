@@ -29,11 +29,13 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-01 | Set up a new organization | MD / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (steps 1–2) |
 | J-ONB-02 | Invite the team and set roles | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built for accepting; screens and delivery in brick 3b (draft) |
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
-| J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built (passkey sign-in and new-device email: draft, brick 3d) |
 | J-ONB-05 | Find your way around the workspace | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-06 | Change someone's access, reset their two-step, remove a leaver | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-ONB-07 | Set up the organization and its companies | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-08 | Make a role that fits the job | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-09 | Secure your own account (My security, passkeys, sessions) | Every member | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-10 | Require two-step for everyone | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -133,3 +135,15 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - An owner at the company limit gets the **plan message instead of the form**.
 - The checklist item "Add your other companies (SPVs)" can be closed with **We only have one company**.
 - Organization profile is **name, head office state and financial year** only.
+
+**Still need the owner's yes (brick 3d, [my-security](../specs/my-security.md) open questions)**
+- A **passkey counts as two-step** at sign-in (Face ID, fingerprint or device PIN always checked); where two-step is required, the **authenticator app stays as the fallback**.
+- *My security* is at **`/settings/security` for every member**, in the user menu, More and ⌘K; `/settings` opens it for people without settings access.
+- **Require two-step for everyone** sits on *Settings → Organization*, **owners only**, no maker-checker; turning it off **emails every owner**. People without two-step get a banner and set it up at their **next sign-in, or within 7 days** at the latest.
+- Adding a passkey, new backup codes and turning two-step on ask for the **password, remembered for 5 minutes**.
+- An admin's **two-step reset also removes the person's passkeys**.
+- **Passkeys work during a sign-in lock**, never while a password reset is required.
+- **New sign-in emails** only for a browser not seen on the account in **90 days**.
+- Sessions show a **city and country from an offline lookup** (no outside service, full IP never stored); no "unusual location" warning.
+- **My profile is the name only**; phone with the WhatsApp digest, no photos, email change later.
+- A **passkey offer once per device** after a password sign-in; up to **10 passkeys** each.

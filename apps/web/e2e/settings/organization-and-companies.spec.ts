@@ -55,7 +55,7 @@ test.describe('on a laptop', () => {
   })
 
   test.describe('the organization profile', () => {
-    test('Settings opens on Organization with four sections and no company switcher', async ({
+    test('Settings opens on Organization with four sections, then My security, and no company switcher', async ({
       page,
     }) => {
       const fixture = createCompaniesFixture()
@@ -72,6 +72,7 @@ test.describe('on a laptop', () => {
         'Companies',
         'Team',
         'Roles & permissions',
+        'My security',
       ])
       await expect(switcher(page)).toHaveCount(0)
     })

@@ -28,6 +28,8 @@
   --input-hover: #c4c8e2;
   /* The edge of a checkbox or radio: 3.4:1 on cards, 3.2:1 on the page (WCAG 1.4.11). */
   --control-border: #8489ad;
+  /* A card's outer edge against the page (the hairline inside cards stays --border). */
+  --card-border: #e3e5f3;
 
   /* Action fill: white on #5B5CE0 is 5.2:1; on the lighter brand violet it fails. */
   --primary: #5b5ce0;
@@ -147,6 +149,8 @@
   --input-hover: #3b4170;
   /* 3.7:1 on cards, 3.3:1 on muted surfaces. */
   --control-border: #6a6fa3;
+  /* Near-black page, navy card: a firmer edge so cards don't melt into the page. */
+  --card-border: #343a66;
 
   --primary: #5b5ce0;
   --primary-foreground: #ffffff;
@@ -229,6 +233,7 @@
   --color-input: var(--input);
   --color-input-hover: var(--input-hover);
   --color-control-border: var(--control-border);
+  --color-card-border: var(--card-border);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --shadow-button-primary:

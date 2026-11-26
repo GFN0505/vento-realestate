@@ -26,6 +26,7 @@ const aisha: TeamMemberRow = {
   role: sales,
   access: { kind: 'all' },
   twoStep: 'on',
+  passkeyCount: 0,
   joinedAt: '2026-11-20T09:00:00Z',
   lastActiveAt: null,
   can: { changeAccess: true, resetTwoStep: true, remove: true },

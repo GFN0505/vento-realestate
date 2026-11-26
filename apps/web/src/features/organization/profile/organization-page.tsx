@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Organization } from '@vento/shared'
 import { CloudOffIcon, LoaderCircleIcon } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,11 @@ import { usePageTitle } from '@/features/shell/use-page-title'
 import { useSaveShortcut, useUnsavedGuard } from '@/lib/use-unsaved-guard'
 import { ORGANIZATION_FORM_ID, OrganizationForm, useOrganizationForm } from './organization-form'
 import { organizationQuery } from './organization-queries'
+
+// Its own chunk: the switch, the confirms and the count load beside the form, never before it.
+const SecurityCard = lazy(() =>
+  import('./security-card').then((m) => ({ default: m.SecurityCard })),
+)
 
 const DESCRIPTION = 'Your developer group. Each company inside it is set up under Companies.'
 
@@ -86,6 +92,9 @@ function LoadedOrganization({ org }: { org: Organization }) {
       />
       {refusal && <OrgWideReadOnlyNote refusal={refusal} />}
       <OrganizationForm org={org} editable={editable} {...state} />
+      <Suspense fallback={<div aria-hidden className="h-44 rounded-[12px] border bg-card" />}>
+        <SecurityCard />
+      </Suspense>
       {editable && (
         // Phones: the save button sits above the tabs and the home indicator.
         <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-4 pb-2 md:hidden">

@@ -44,8 +44,8 @@ export type EntityAccess = z.infer<typeof entityAccess>
 
 /**
  * Derived from the person, not stored: `on` · `reset_pending` (an owner or admin reset it and
- * they haven't set a new password yet) · `setup_required` (the role needs it, or after a reset)
- * · `off`. The same in every organization the person belongs to.
+ * they haven't set a new password yet) · `setup_required` (the role or the organization's
+ * "Require two-step for everyone" needs it, or after a reset) · `off`.
  */
 export const twoStepState = z.enum(['on', 'off', 'setup_required', 'reset_pending'])
 export type TwoStepState = z.infer<typeof twoStepState>
@@ -81,13 +81,15 @@ export const teamMemberRow = z.object({
   role: roleRef,
   access: entityAccess,
   twoStep: twoStepState,
+  /** Their passkeys (every organization: passkeys belong to the person). "2 passkeys". */
+  passkeyCount: z.number().int().min(0),
   joinedAt: datetime,
   /** Updated at most hourly; shown by day. */
   lastActiveAt: datetime.nullable(),
   /** Computed on the server from the viewer's permissions and the manage rules. */
   can: z.object({
     changeAccess: z.boolean(),
-    /** Only when two-step is on. */
+    /** Only when two-step is on or they have a passkey. */
     resetTwoStep: z.boolean(),
     remove: z.boolean(),
   }),

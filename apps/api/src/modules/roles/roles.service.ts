@@ -8,6 +8,8 @@ import {
   type PermissionSet,
   permissionChanges,
   type Role,
+  type RoleDetail,
+  type RoleList,
   roleNeedsTwoStep,
   SYSTEM_ROLE_KEYS,
   type SystemRoleKey,
@@ -191,9 +193,21 @@ async function viewRoles(
 }
 
 /** One page: the list is bounded (9 built-ins plus at most 50 custom roles). */
-export async function listRoles(ctx: ServiceContext) {
+export async function listRoles(ctx: ServiceContext): Promise<RoleList> {
   const items = await viewRoles(ctx.db, ctx, undefined)
-  return { items, page: 1, pageSize: Math.max(items.length, 1), total: items.length }
+  return {
+    items,
+    page: 1,
+    pageSize: Math.max(items.length, 1),
+    total: items.length,
+    requiredForEveryone: ctx.member.organizationTwoStep.required,
+  }
+}
+
+/** The role page: the role plus the organization's "Require two-step for everyone". */
+export async function getRoleDetail(ctx: ServiceContext, id: string): Promise<RoleDetail> {
+  const role = await getRole(ctx, id)
+  return { ...role, requiredForEveryone: ctx.member.organizationTwoStep.required }
 }
 
 export async function getRole(ctx: ServiceContext, id: string, db: DbOrTx = ctx.db) {

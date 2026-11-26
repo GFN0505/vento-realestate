@@ -3,7 +3,11 @@ import { invitationEmail } from './invitation'
 import {
   backupCodeUsedAlert,
   newOwnerAlert,
+  newSignInAlert,
+  passkeyAddedAlert,
+  passkeyRemovedAlert,
   signInLockedAlert,
+  twoStepNoLongerRequiredAlert,
   twoStepResetAlert,
 } from './security-alert'
 import { trialEndingEmail } from './trial-ending'
@@ -117,5 +121,45 @@ describe('email templates', () => {
     expect(email.text).toContain(
       "If this wasn't expected, sign in and check Team: http://localhost/settings/team",
     )
+  })
+
+  describe('brick 3d security alerts', () => {
+    const at = { at: '08:12', on: '26 Nov 2026' }
+    const urls = {
+      securityUrl: 'http://localhost/settings/security',
+      resetUrl: 'http://localhost/forgot-password',
+    }
+    const alerts = [
+      newSignInAlert({ device: 'Chrome on Mac', place: 'Lekki, Lagos', ...at, ...urls }),
+      passkeyAddedAlert({ name: 'iCloud Keychain · iPhone', ...at, ...urls }),
+      passkeyRemovedAlert({ name: 'iCloud Keychain · iPhone', ...at, ...urls }),
+      twoStepNoLongerRequiredAlert({
+        byName: 'Aisha Bello',
+        organizationName: 'Vento Homes Ltd',
+        ...at,
+        organizationUrl: 'http://localhost/settings/organization',
+      }),
+    ]
+
+    it('uses the spec subjects', () => {
+      expect(alerts.map((a) => a.subject)).toEqual([
+        'Vento: new sign-in on Chrome on Mac',
+        'Vento: a passkey was added to your account',
+        'Vento: a passkey was removed from your account',
+        'Vento: two-step is no longer required for everyone in Vento Homes Ltd',
+      ])
+    })
+
+    it('writes the new sign-in body from the spec, with the place but no IP address', () => {
+      expect(alerts[0]?.text).toContain(
+        'Your Vento account was signed in to at 08:12 on 26 Nov 2026 from Chrome on Mac, near Lekki, Lagos.',
+      )
+      for (const alert of alerts) expect(alert.text).not.toMatch(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\b/)
+    })
+
+    it('leaves the place out when it is unknown', () => {
+      const alert = newSignInAlert({ device: 'Safari on iPhone', place: null, ...at, ...urls })
+      expect(alert.text).toContain('from Safari on iPhone. If this was you')
+    })
   })
 })

@@ -1,6 +1,6 @@
 # Team (brick 3b)
 
-- **Status:** approved (26 Nov 2026), in build
+- **Status:** shipped (PR #5, 26 Nov 2026)
 - **Module:** Platform
 - **Journeys:** J-ONB-02 (now the full screen flow), J-ONB-06 (new: change access, reset two-step, remove a leaver), J-ONB-01 (step 7: the setup checklist)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)

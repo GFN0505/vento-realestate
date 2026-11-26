@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { resetForNewSession } from '@/features/account/api'
+import { offerPasskeyAfterSignIn } from '@/features/auth/passkey-offer-flag'
 import { PasswordStep } from '@/features/auth/password-step'
 import { TwoStepCheck } from '@/features/auth/two-step-check'
 import { readRememberedEmail, rememberEmail } from '@/lib/remembered-email'
@@ -30,8 +31,14 @@ function SignInPage() {
   const [lastEmail, setLastEmail] = useState(search.email ?? remembered)
   const [keepSignedIn, setKeepSignedIn] = useState(false)
 
-  function finish(email = lastEmail, keep = keepSignedIn) {
+  function finish(
+    email = lastEmail,
+    keep = keepSignedIn,
+    method: 'password' | 'passkey' = 'password',
+  ) {
     if (email) rememberEmail(email, keep)
+    // Just typed a password (and maybe a code): the moment a passkey helps most (spec).
+    if (method === 'password') offerPasskeyAfterSignIn()
     resetForNewSession(queryClient)
     void navigate({ href: safeRedirect(search.redirect), replace: true })
   }
@@ -65,6 +72,7 @@ function SignInPage() {
             }
             finish(email, keep)
           }}
+          onPasskeySignedIn={(keep) => finish('', keep, 'passkey')}
         />
       )}
     </AuthLayout>

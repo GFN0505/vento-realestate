@@ -29,11 +29,50 @@ export const createOrganizationInput = z.strictObject({
 })
 export type CreateOrganizationInput = z.input<typeof createOrganizationInput>
 
+// Strict on purpose: "Require two-step for everyone" is owners-only and has its own procedure,
+// so it can never ride along on an admin's profile edit.
 export const updateOrganizationInput = z.strictObject({
   name: organizationName.optional(),
   headOfficeState: nigerianState.optional(),
   financialYearStartMonth: monthNumber.optional(),
 })
+
+/** The Organization page's Security card. Counts are active members only. */
+export const organizationSecurity = z.object({
+  /** "Require two-step sign-in for everyone". */
+  required: z.boolean(),
+  changedAt: z.iso.datetime().nullable(),
+  /** "Olumide Bankole changed this…"; null when never changed or the person was deleted. */
+  changedByName: z.string().nullable(),
+  /** "9 of 12 people have two-step on". */
+  withTwoStep: z.number().int().min(0),
+  people: z.number().int().min(0),
+  /** For the turn-on confirm: up to 3 names A–Z, plus how many others. */
+  withoutTwoStep: z.object({
+    names: z.array(z.string()).max(3),
+    others: z.number().int().min(0),
+  }),
+  /** Owners only; everyone else sees it read-only with "Only owners can change this." */
+  canChange: z.boolean(),
+})
+export type OrganizationSecurity = z.infer<typeof organizationSecurity>
+
+export const setTwoStepRequiredInput = z.strictObject({
+  required: z.boolean(),
+  /** `changedAt` as the page loaded it, to tell the owner someone else changed it meanwhile. */
+  seenChangedAt: z.iso.datetime().nullable(),
+})
+export type SetTwoStepRequiredInput = z.infer<typeof setTwoStepRequiredInput>
+
+export const setTwoStepRequiredOutput = organizationSecurity.extend({
+  notice: z.string(),
+  /**
+   * Someone else changed it since the page loaded and it already had the asked-for value:
+   * "Olumide Bankole changed this a moment ago." null otherwise.
+   */
+  changedByOther: z.string().nullable(),
+})
+export type SetTwoStepRequiredOutput = z.infer<typeof setTwoStepRequiredOutput>
 
 export const entityType = z.enum(['holding', 'spv'])
 export type EntityType = z.infer<typeof entityType>

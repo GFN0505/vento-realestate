@@ -1,5 +1,12 @@
 import { Link } from '@tanstack/react-router'
-import { CheckIcon, ChevronRightIcon, EyeIcon, KeyboardIcon, LogOutIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  EyeIcon,
+  KeyboardIcon,
+  LockKeyholeIcon,
+  LogOutIcon,
+} from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Avatar } from '@/components/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +29,7 @@ import { ThemeSegments } from './theme-segments'
 type Props = { open: boolean; onOpenChange: (open: boolean) => void }
 
 export const sheetRow =
-  'flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] outline-hidden transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
+  'flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] outline-hidden transition-colors active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
 
 /** Phones: the rest of the role's modules and the account menu (spec "More"). */
 export function MoreSheet({ open, onOpenChange }: Props) {
@@ -65,6 +72,11 @@ export function MoreSheet({ open, onOpenChange }: Props) {
                 </p>
               </div>
             </div>
+            <Link to="/settings/security" onClick={close} className={cn(sheetRow, 'mb-1')}>
+              <LockKeyholeIcon aria-hidden />
+              <span className="flex-1">My security</span>
+              <ChevronRightIcon aria-hidden />
+            </Link>
             {modules.length > 0 && (
               <Section title="Modules">
                 {modules.map((item) => (

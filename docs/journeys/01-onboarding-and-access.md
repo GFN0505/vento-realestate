@@ -49,7 +49,7 @@ Spec: [team](../specs/team.md) (brick 3b) on [accounts-and-access](../specs/acco
 1. *Team* → search "aisha" (the search and filters stay in the address). The list follows the top-bar entity switcher: picking Parkview shows "People who can work in Parkview Residences SPV Ltd" (owners, everyone with all entities, and those limited to Parkview) with **Show all entities**.
 2. **Change role:** the role menu on Aisha's row → **Finance** (2 clicks). Saved at once; toast "Aisha Bello is now Finance · Undo". Making someone an **Owner** asks to confirm first and emails every owner.
 3. **Change entity access:** click the row → *Member sheet* → "Only some entities" → tick **Parkview Residences SPV Ltd** → **Save changes** (4 clicks). Toast "Access updated for Kunle Ojo".
-4. **Reset two-step** (lost phone and backup codes): ⋯ → **Reset two-step** → confirm (3 clicks). The badge becomes "Reset, waiting for new password"; they get a security alert and a link to set a new password, then set up two-step again at sign-in (J-ONB-04).
+4. **Reset two-step** (lost phone and backup codes): ⋯ → **Reset two-step** → confirm (3 clicks). The badge becomes "Reset, waiting for new password"; they get a security alert and a link to set a new password, then set up two-step again at sign-in (J-ONB-04). *(Brick 3d, draft, [my-security](../specs/my-security.md): the reset also removes all their passkeys, the confirm says how many, and **Reset two-step** is also offered to someone with passkeys but two-step off; the member sheet shows "2 passkeys".)*
 5. **Remove a leaver:** ⋯ → **Remove from team** → **Remove Grace Umeh** (the confirm names Vento Homes Ltd) (3 clicks). Toast "Grace Umeh removed. History kept." The row moves to the *Removed* chip with **Invite again**.
 
 **Behind the scenes:** each change is one transaction and an audit event (`member.access_changed`, `two_step.reset`, `member.removed`, `session.revoked_by_removal`); an Undo is a second audited change. A change applies on the member's next request; removal ends their sessions in this organization at once; a two-step reset ends all their sessions everywhere. The removed member's place frees up on the plan.
@@ -114,17 +114,58 @@ Spec: [roles-and-organization](../specs/roles-and-organization.md) (brick 3c).
 ## J-ONB-04 · Sign in with two-factor, recover access
 **Who / how often:** Everyone, daily.
 
-Spec: [accounts-and-access](../specs/accounts-and-access.md).
+Spec: [accounts-and-access](../specs/accounts-and-access.md); passkeys and the new-device email: [my-security](../specs/my-security.md) (brick 3d, draft).
 
 **Steps**
-1. *Sign in:* email, password, optional "Keep me signed in on this device" (30 days) → **Sign in** → *Two-step check* (authenticator code, or "Use a backup code") → **Verify**. If the role requires two-step and it isn't set up, *Set up two-step* comes first.
-2. Forgot password: *Forgot password* → email link (30 minutes, works once) → *Reset password* (new password and confirm password, not one of the last 5) → signed in after the two-step check; every other session ends.
-3. Lost authenticator: a backup code, or an owner (for anyone) or admin (for non-owners) resets their two-step (audit event, security alert to the member); they set it up again at next sign-in.
+1. *Sign in:* email, password, optional "Keep me signed in on this device" (30 days) → **Sign in** → *Two-step check* (authenticator code, or "Use a backup code") → **Verify**. If the role (or, from 3d, the organization) requires two-step and it isn't set up, *Set up two-step* comes first.
+2. *(Brick 3d, draft)* **With a passkey:** tap the email field and pick the passkey the browser offers, or **Sign in with a passkey** under the form (1 tap) → Face ID, fingerprint or Windows Hello → Home. No code is asked: a passkey counts as two-step. "Keep me signed in" applies too. Where two-step is required and the authenticator app isn't set up yet, *Set up two-step* still comes first.
+3. Forgot password: *Forgot password* → email link (30 minutes, works once) → *Reset password* (new password and confirm password, not one of the last 5) → signed in after the two-step check; every other session ends.
+4. Lost authenticator: a passkey on another device (3d), a backup code, or an owner (for anyone) or admin (for non-owners) resets their two-step (audit event, security alert to the member; from 3d the reset also removes their passkeys); they set a new password from the emailed link and set two-step up again at next sign-in.
+5. *(Brick 3d)* A sign-in from a browser that hasn't signed in to the account in 90 days emails "Vento: new sign-in on Chrome on Mac" with a link to *My security*.
 
-**Behind the scenes:** sign-ins, failures, lockouts, password and two-step changes are audit events visible to the owners of every organization the person belongs to; security alerts can't be muted.
+**Behind the scenes:** sign-ins (method password or passkey), failures, lockouts, password and two-step changes are audit events visible to the owners of every organization the person belongs to; security alerts can't be muted. The rule that applies at sign-in is the one of the organization the session opens in (the last used, or the invitation's).
 **Done when:** the member is signed in on their page.
-**Watch for:** five wrong two-step or backup codes lock sign-in for 15 minutes and email the user (10 wrong passwords in 15 minutes do the same); the code boxes turn rose with a message saying what to do; the same message for a wrong email or a wrong password; forgot-password never reveals whether an account exists; session expired mid-form (input kept on the device, signing in again returns them to the page); *Session expired / signed out elsewhere* screen; a member who requires two-step can't turn it off; the only owner losing their phone and codes needs Vento support.
-**Target:** under 20 seconds and 2 clicks for a daily sign-in. **Test:** `e2e/auth/sign-in.spec.ts` **Status:** built
+**Watch for:** five wrong two-step or backup codes lock sign-in for 15 minutes and email the user (10 wrong passwords in 15 minutes do the same); a passkey still works during a lock (3d, open question 8) but never while a password reset is required; the code boxes turn rose with a message saying what to do; the same message for a wrong email or a wrong password; forgot-password never reveals whether an account exists; an unknown or removed passkey ("That passkey isn't recognised. Sign in with your password."); passkeys not available to any of the person's organizations; the person cancels the Face ID prompt (nothing happens, try again); a browser without passkey support (button hidden); session expired mid-form (input kept on the device, signing in again, by password or passkey, returns them to the page); *Session expired / signed out elsewhere* screen; a member who requires two-step can't turn it off; the only owner losing their phone and codes needs Vento support (or a passkey on another device).
+**Target:** under 20 seconds and 2 clicks for a daily sign-in; with a passkey, 1 tap plus Face ID and under 5 seconds. **Test:** `e2e/auth/sign-in.spec.ts`, `e2e/auth/passkeys.spec.ts` (3d) **Status:** built
+
+## J-ONB-09 · Secure your own account
+**Who / how often:** Every member. Adding a passkey: once per device. Sessions: the day a phone is lost or a shared laptop was used. Password and backup codes: a few times a year.
+**Starts from:** User menu (or More on a phone) → **My security**; ⌘K "Add a passkey", "Change password", "Turn on two-step"; the passkey offer after a password sign-in; a "new sign-in" email.
+
+Spec: [my-security](../specs/my-security.md) (brick 3d).
+
+**Steps**
+1. User menu → **My security** (2 clicks; anyone, whatever their role, including roles with no Settings access). The page shows four cards: your name and email; *Sign-in* (password, two-step, backup codes); *Passkeys*; *Where you're signed in*.
+2. **Add a passkey** (1) → *Confirm it's you* (password; skipped if confirmed in the last 5 minutes) → **Continue** (2) → Face ID. Toast "Passkey added · iCloud Keychain · iPhone" with **Rename**. Next sign-in on this phone is one tap.
+3. **Turn on two-step** (if off): **Turn on** → *Set up two-step* sheet: scan, enter code, **Verify** → save 10 backup codes, tick, **Done** (4 clicks).
+4. Backup codes running low ("3 left", amber) → **Make new codes** → confirm → tick saved → **Done** (3 clicks). Old codes stop working.
+5. **Change password** → current, new, confirm → **Change password** (2 clicks). Other devices are signed out; this one stays.
+6. Lost phone: on the laptop, *Where you're signed in* → **Sign out** on "Safari on iPhone" (1 click), then ⋯ → **Remove** on the phone's passkey → **Remove passkey** (3 clicks). Or **Sign out other devices** → **Sign out 2 devices**.
+7. Fix a misspelt name: click the name → type → Enter.
+8. Turn two-step off (only when no organization of theirs requires it): **Turn off** → password and code → **Turn off two-step**.
+
+**Behind the scenes:** every change is audited once per organization the person belongs to (`passkey.added`, `passkey.renamed`, `passkey.removed`, `two_step.enabled`, `two_step.disabled`, `two_step.backup_codes_regenerated`, `account.password_changed`, `session.revoked`, `account.name_changed`). Alerts emailed (can't be muted): passkey added or removed, two-step turned off, password changed. Sessions and passkeys belong to the person, so signing out other devices covers every organization. No procedure takes a person's ID.
+**Done when:** the card shows the new state (passkey listed, two-step on, device gone from the list, new name).
+**Watch for:** two-step required by role or by the organization (no **Turn off**, the row says which); in two organizations, a requirement in either blocks turning it off; a wrong password or code (counts towards the 2a locks); a browser that can't make passkeys (message instead of the button); the device already has a passkey for this account; 10 passkeys (limit); cancelling Face ID (nothing saved); the backup codes dialog closed before ticking (new codes already in force); a session already signed out from another device ("The list is up to date."); two tabs (stale action refused, page refreshes); previewing as another role (My security still shows your own account); offline (nothing changes, typing kept); session expired with a dialog open; passkeys not yet available to the organization (card hidden); 375 px.
+**Target:** add a passkey in 2 clicks plus Face ID; turn on two-step in 4 clicks and under 90 seconds; end a lost phone's session in 3 clicks from any page. **Test:** `e2e/settings/my-security.spec.ts`, `e2e/auth/passkeys.spec.ts` **Status:** built
+
+## J-ONB-10 · Require two-step for everyone
+**Who / how often:** Owner, once (rarely turned off).
+**Starts from:** *Settings → Organization*, or a board or auditor asking "does everyone use two-step?".
+
+Spec: [my-security](../specs/my-security.md) (brick 3d; owner's decision of 26 Nov 2026).
+
+**Steps**
+1. *Settings → Organization* (1) → *Security* card: "9 of 12 people have two-step on" → switch **Require two-step sign-in for everyone** (2).
+2. Confirm: "3 people haven't set it up: Grace Umeh, Kunle Ojo and 1 other. They'll set it up at their next sign-in, or within 7 days." → **Require two-step** (3). Toast "Two-step is now required for everyone in Vento Homes Ltd".
+3. Those three see a banner on every page, "Vento Homes Ltd now requires two-step sign-in…" with **Set up two-step**; on *Team* their badge reads "Set up at next sign-in"; every role reads "Required".
+4. Grace signs in the next morning → *Set up two-step* comes first → Home. Her badge turns **On**.
+5. Later, turning it off: switch → "Stop requiring two-step for everyone?" → **Stop requiring**. Every owner is emailed. Nobody's two-step is switched off.
+
+**Behind the scenes:** `organization.updated` (two-step required off → on) with who and when. The requirement applies to this organization only; a person's two-step is personal, so a requirement in any of their organizations stops them turning it off. Roles keep their own two-step values, which apply again when the setting is off. New invitations say two-step is required.
+**Done when:** everyone in the organization has two-step on (the card reads "12 of 12").
+**Watch for:** an admin or a read-only settings viewer (switch read-only: "Only owners can change this."); everyone already on ("Everyone already has two-step on."); someone with "Keep me signed in" who doesn't sign in for days (required after 7 days, setup opens over their page and keeps their work); a person in two organizations (asked only when they're in this one); two owners changing it at once (later wins, both audited); a passkey-only member (still sets up the authenticator app); custom role two-step switch (on and locked with the reason); organization switched in another tab (tab guard).
+**Target:** 3 clicks. **Test:** `e2e/settings/require-two-step.spec.ts` **Status:** built
 
 ## J-ONB-05 · Find your way around the workspace
 **Who / how often:** Every member, many times a day. Admins previewing roles: at setup and when roles change.

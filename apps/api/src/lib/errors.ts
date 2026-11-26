@@ -9,8 +9,10 @@ import type {
 
 // Services throw these; oRPC formats them. Messages are end-user copy.
 
-export function notFound(): ORPCError<'NOT_FOUND', undefined> {
-  return new ORPCError('NOT_FOUND', { message: "We couldn't find that. It may have been removed." })
+export function notFound(
+  message = "We couldn't find that. It may have been removed.",
+): ORPCError<'NOT_FOUND', undefined> {
+  return new ORPCError('NOT_FOUND', { message })
 }
 
 /** A rule zod can't check (it needs the stored row), with the reason the web maps to a field. */

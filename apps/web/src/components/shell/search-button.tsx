@@ -21,7 +21,7 @@ export function SearchButton({ variant }: { variant: 'bar' | 'icon' }) {
       <button
         {...shared}
         aria-label={LABEL}
-        className="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] bg-muted text-foreground outline-hidden transition-colors active:bg-border focus-visible:outline-2 focus-visible:outline-ring"
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] bg-muted text-foreground outline-hidden transition-colors active:bg-border focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
       >
         <SearchIcon aria-hidden className="size-5" strokeWidth={1.8} />
       </button>
@@ -32,7 +32,7 @@ export function SearchButton({ variant }: { variant: 'bar' | 'icon' }) {
       {...shared}
       aria-keyshortcuts="Meta+K Control+K"
       className={cn(
-        'flex h-9 min-w-0 flex-[1_1_220px] items-center gap-2.5 rounded-lg border bg-background px-3.5 text-left text-[13px] text-muted-foreground outline-hidden transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring lg:max-w-[400px]',
+        'flex h-9 min-w-0 flex-[1_1_220px] items-center gap-2.5 rounded-lg border bg-background px-3.5 text-left text-[13px] text-muted-foreground outline-hidden transition-colors hover:border-input-hover focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring lg:max-w-[400px]',
       )}
     >
       <SearchIcon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.8} />

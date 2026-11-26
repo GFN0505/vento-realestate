@@ -60,7 +60,7 @@ export function AccessText({ access, className }: { access: EntityAccess; classN
         <button
           type="button"
           className={cn(
-            'max-w-full cursor-default rounded-sm text-left underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-2 focus-visible:outline-ring',
+            'max-w-full cursor-default rounded-sm text-left underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring',
             className,
           )}
         >

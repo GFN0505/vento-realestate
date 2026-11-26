@@ -1,4 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
+import { passkey } from '@better-auth/passkey'
 import {
   AUTH_BASE_PATH,
   AUTH_ERROR_CODES,
@@ -7,25 +8,37 @@ import {
   authUserFields,
   MIN_PASSWORD_LENGTH,
   PASSWORD_MAX_LENGTH,
+  REMEMBER_ME_HEADER,
 } from '@vento/shared'
 import { betterAuth } from 'better-auth'
 import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { deleteSessionCookie, setSessionCookie } from 'better-auth/cookies'
 import { emailOTP, twoFactor } from 'better-auth/plugins'
 import { eq } from 'drizzle-orm'
 import type { Db } from '@/db/client'
-import { accounts, sessions, twoFactors, users, verifications } from '@/db/schema'
+import { accounts, passkeys, sessions, twoFactors, users, verifications } from '@/db/schema'
 import type { Mailer } from '@/email/mailer'
 import { env } from '@/env'
 import { CLIENT_IP_HEADER, maskIp } from '@/lib/client-ip'
 import { logger } from '@/lib/logger'
+import { lookupPlace } from '@/lib/place'
+import { requestScope } from '@/lib/request-scope'
+import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
+import { checkDevice } from './hooks/after-sign-in'
 import { onBackupCodesRegenerated, onPasswordChanged, onTwoStepDisabled } from './hooks/audit-hooks'
+import { type AuthDeps, type AuthServerApi, errorCode, errorResponse } from './hooks/deps'
 import {
-  type AuthDeps,
-  type AuthServerApi,
-  authError,
-  errorCode,
-  errorResponse,
-} from './hooks/deps'
+  afterPasskeyRegistration,
+  afterPasskeySignIn,
+  beforePasskeyAuthenticateOptions,
+  beforePasskeyRegistration,
+  type ChallengeContext,
+  type HookSession,
+  type PasskeySignInContext,
+  readRememberMe,
+  rememberChallenge,
+  type SessionCookies,
+} from './hooks/passkey-hooks'
 import { assertPasswordAllowed, assertTermsAccepted } from './hooks/password-history'
 import {
   assertNotLocked,
@@ -33,6 +46,7 @@ import {
   onPasswordFailure,
   onPasswordSuccess,
 } from './hooks/sign-in-guard'
+import { guardTurnOff } from './hooks/turn-off-guard'
 import { afterTwoStepVerify, beforeTwoStepVerify } from './hooks/two-step-guard'
 import {
   assertCanResendVerification,
@@ -40,6 +54,7 @@ import {
   sendResetPasswordEmail,
   sendVerificationEmail,
 } from './hooks/verification'
+import { defaultPasskeyName } from './passkey-names'
 import {
   PERSISTENT_SESSION_SECONDS,
   PERSISTENT_THRESHOLD_MS,
@@ -51,7 +66,6 @@ import {
   clearPasswordResetRequired,
   findUserById,
   rememberPasswordHash,
-  roleRequiresTwoStep,
   userIdForResetToken,
 } from './security-store'
 
@@ -76,13 +90,61 @@ export const DISABLED_AUTH_PATHS = [
   '/revoke-other-sessions',
   '/two-factor/send-otp',
   '/two-factor/verify-otp',
+  // Our audited oRPC procedures replace these (plan question 2).
+  '/passkey/list-user-passkeys',
+  '/passkey/update-passkey',
+  '/passkey/delete-passkey',
+  // Names change through account.updateName, audited; nothing else here may be changed by the
+  // person (image, company name) (plan question 1).
+  '/update-user',
+  // Unused, and dangerous while reachable: a signed-in guesser could try passwords without
+  // counting towards the lock (/verify-password), and the right one shows the authenticator
+  // secret (/two-factor/get-totp-uri). The secret is shown once, by /two-factor/enable.
+  '/verify-password',
+  '/two-factor/get-totp-uri',
+  // Unused: sessions change only through our hooks and procedures; no social sign-in or linked
+  // accounts (decision 0010).
+  '/update-session',
+  '/list-accounts',
+  '/unlink-account',
+  '/account-info',
+  '/link-social',
+  '/sign-in/social',
+  '/get-access-token',
+  '/refresh-token',
 ]
+
+/** The passkey plugin's live endpoints, each limited to 10 a minute per IP. */
+const PASSKEY_PATHS = [
+  '/passkey/generate-register-options',
+  '/passkey/verify-registration',
+  '/passkey/generate-authenticate-options',
+  '/passkey/verify-authentication',
+] as const
 
 /** Paths where a new session means someone just signed in and chose whether to be remembered. */
 const SIGN_IN_PATHS = new Set([
   '/sign-in/email',
   '/two-factor/verify-totp',
   '/two-factor/verify-backup-code',
+  '/passkey/verify-authentication',
+])
+
+/**
+ * Sign-ins where a password was just typed: the session starts "confirmed" (5 minutes), so the
+ * passkey offer right after doesn't ask again. Never a passkey sign-in: confirming is by password.
+ */
+const PASSWORD_SIGN_IN_PATHS = new Set([
+  '/sign-in/email',
+  '/two-factor/verify-totp',
+  '/two-factor/verify-backup-code',
+])
+
+/** Signed-in endpoints that check the password in the body: wrong ones count towards the lock. */
+const PASSWORD_CHECKED_PATHS = new Set([
+  '/change-password',
+  '/two-factor/enable',
+  '/two-factor/generate-backup-codes',
 ])
 
 export type CreateAuthOptions = {
@@ -90,6 +152,8 @@ export type CreateAuthOptions = {
   mailer: Mailer
   /** Defaults to AUTH_RATE_LIMIT. */
   rateLimit?: boolean
+  /** Availability for `platform.passkeys`; defaults to reading the database on every call. */
+  features?: FeatureStore
 }
 
 function bodyField(body: unknown, key: string): unknown {
@@ -99,6 +163,52 @@ function bodyField(body: unknown, key: string): unknown {
 function bodyEmail(body: unknown): string | null {
   const value = bodyField(body, 'email')
   return typeof value === 'string' ? value.trim().toLowerCase() : null
+}
+
+function optionalDate(value: unknown): Date | null {
+  return value instanceof Date || typeof value === 'string' ? new Date(value) : null
+}
+
+type HookContext = Parameters<typeof deleteSessionCookie>[0]
+
+/** Drops a cookie already set on this response (Better Auth keeps them in two scopes). */
+function dropPendingCookie(ctx: HookContext, name: string): void {
+  const scoped = ctx as unknown as {
+    responseHeaders?: Headers
+    context: { responseHeaders?: Headers }
+  }
+  for (const headers of new Set([scoped.responseHeaders, scoped.context.responseHeaders])) {
+    if (!headers) continue
+    const kept = headers.getSetCookie().filter((c) => !c.startsWith(`${name}=`))
+    headers.delete('set-cookie')
+    for (const cookie of kept) headers.append('set-cookie', cookie)
+  }
+}
+
+/** Better Auth's own cookie helpers for the passkey sign-in after-hook. */
+function sessionCookies(ctx: HookContext): SessionCookies {
+  return {
+    drop: () => deleteSessionCookie(ctx),
+    forBrowserSession: async () => {
+      const created = ctx.context.newSession
+      if (!created) return
+      dropPendingCookie(ctx, ctx.context.authCookies.sessionToken.name)
+      await setSessionCookie(ctx, created, true)
+    },
+  }
+}
+
+/** The session fields the passkey hooks read, from Better Auth's loosely typed session. */
+function hookSession(
+  found: { session: Record<string, unknown>; user: { id: string } } | null,
+): HookSession | null {
+  if (!found) return null
+  const active = found.session.activeOrganizationId
+  return {
+    userId: found.user.id,
+    activeOrganizationId: typeof active === 'string' ? active : null,
+    reauthenticatedAt: optionalDate(found.session.reauthenticatedAt),
+  }
 }
 
 export function createAuth(options: CreateAuthOptions) {
@@ -111,6 +221,7 @@ export function createAuth(options: CreateAuthOptions) {
       if (!api) throw new Error('Auth is not ready yet')
       return api
     },
+    features: options.features ?? liveFeatureStore(db),
   }
 
   const auth = betterAuth({
@@ -121,7 +232,7 @@ export function createAuth(options: CreateAuthOptions) {
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, {
       provider: 'pg',
-      schema: { users, sessions, accounts, verifications, twoFactors },
+      schema: { users, sessions, accounts, verifications, twoFactors, passkeys },
       usePlural: true,
       transaction: true,
     }),
@@ -165,6 +276,10 @@ export function createAuth(options: CreateAuthOptions) {
       disableSessionRefresh: true,
       // Off so a revoked or expired session fails on its very next request.
       cookieCache: { enabled: false },
+      // Our own 5-minute "Confirm it's you" replaces it. With the default (1 day) the passkey
+      // plugin's freshness check would stop anyone with an older "Keep me signed in" session
+      // from adding a passkey. Otherwise it's read only by /delete-user, which is switched off.
+      freshAge: 0,
       additionalFields: authSessionFields,
     },
     rateLimit: {
@@ -177,6 +292,7 @@ export function createAuth(options: CreateAuthOptions) {
         '/sign-up/email': { window: 60, max: 5 },
         '/request-password-reset': { window: 60, max: 3 },
         '/send-verification-email': { window: 60, max: 3 },
+        ...Object.fromEntries(PASSKEY_PATHS.map((path) => [path, { window: 60, max: 10 }])),
       },
     },
     databaseHooks: {
@@ -201,12 +317,17 @@ export function createAuth(options: CreateAuthOptions) {
         create: {
           before: async (session, ctx) => {
             const now = Date.now()
-            // A rotated session (two-step turned on or off) carries its old kind over.
+            const path = ctx?.path ?? ''
+            // A rotated session (two-step turned on or off, a password change) carries its old
+            // kind over, with its place, entry time and confirmation.
             const rotated = typeof session.persistent === 'boolean'
             const persistent = rotated
               ? Boolean(session.persistent)
-              : SIGN_IN_PATHS.has(ctx?.path ?? '') &&
-                session.expiresAt.getTime() - now > PERSISTENT_THRESHOLD_MS
+              : path === '/passkey/verify-authentication'
+                ? // The plugin ignores "Keep me signed in"; the web sends it as a header.
+                  requestScope().auth.rememberMe === true
+                : SIGN_IN_PATHS.has(path) &&
+                  session.expiresAt.getTime() - now > PERSISTENT_THRESHOLD_MS
             let activeOrganizationId = session.activeOrganizationId ?? null
             if (!rotated) {
               const [user] = await db
@@ -223,6 +344,14 @@ export function createAuth(options: CreateAuthOptions) {
                 lastActiveAt: new Date(now),
                 activeOrganizationId,
                 ipAddress: rotated ? session.ipAddress : maskIp(session.ipAddress),
+                ...(rotated
+                  ? {}
+                  : {
+                      // Looked up from the full address held in memory for this request only.
+                      place: lookupPlace(requestScope().ip),
+                      organizationEnteredAt: new Date(now),
+                      reauthenticatedAt: PASSWORD_SIGN_IN_PATHS.has(path) ? new Date(now) : null,
+                    }),
               },
             }
           },
@@ -247,6 +376,7 @@ export function createAuth(options: CreateAuthOptions) {
           }
           case '/change-password': {
             const session = await getSessionFromCtx(ctx)
+            if (session) await assertNotLocked(deps, session.user.email)
             await assertPasswordAllowed(
               deps,
               bodyField(ctx.body, 'newPassword'),
@@ -257,15 +387,40 @@ export function createAuth(options: CreateAuthOptions) {
             // A changed password always signs out every other device, whatever the client asks.
             return { context: { body: { ...(ctx.body as object), revokeOtherSessions: true } } }
           }
-          case '/update-user':
-            // Terms are accepted once, at sign-up, where the time is recorded.
-            if (bodyField(ctx.body, 'termsVersion') !== undefined) {
-              throw authError(
-                'BAD_REQUEST',
-                'FIELD_NOT_ALLOWED',
-                'The terms version is set at sign-up',
-              )
+          case '/two-factor/enable':
+          case '/two-factor/generate-backup-codes': {
+            // A locked account can't confirm anything with a password (plan question 11).
+            const session = await getSessionFromCtx(ctx)
+            if (session) await assertNotLocked(deps, session.user.email)
+            return
+          }
+          case '/passkey/generate-register-options':
+            await beforePasskeyRegistration(
+              deps,
+              hookSession(await getSessionFromCtx(ctx)),
+              'options',
+            )
+            return
+          case '/passkey/verify-registration': {
+            await beforePasskeyRegistration(
+              deps,
+              hookSession(await getSessionFromCtx(ctx)),
+              'verify',
+            )
+            // A client-chosen name would win over ours; it's renamed afterwards if wanted. Blank,
+            // not removed: Better Auth merges hook changes into the body and skips undefined.
+            // Never a second session: one made here would skip our sign-in checks and audit.
+            return {
+              context: { body: { ...(ctx.body as object), name: '', createSession: false } },
             }
+          }
+          case '/passkey/generate-authenticate-options':
+            await beforePasskeyAuthenticateOptions(deps)
+            return
+          case '/passkey/verify-authentication':
+            // No lock check: a passkey can't be guessed (spec decision 8).
+            readRememberMe(ctx.headers?.get(REMEMBER_ME_HEADER))
+            await rememberChallenge(ctx as unknown as ChallengeContext)
             return
           case '/sign-in/email': {
             const email = bodyEmail(ctx.body)
@@ -277,17 +432,21 @@ export function createAuth(options: CreateAuthOptions) {
             return
           case '/two-factor/disable': {
             const session = await getSessionFromCtx(ctx)
-            if (session && (await roleRequiresTwoStep(db, session.user.id))) {
-              throw authError(
-                'FORBIDDEN',
-                AUTH_ERROR_CODES.TWO_STEP_REQUIRED_BY_ROLE,
-                AUTH_ERROR_MESSAGES.TWO_STEP_REQUIRED_BY_ROLE,
-              )
-            }
+            const user = session ? await findUserById(db, session.user.id) : null
+            if (!user) return
+            await assertNotLocked(deps, user.email)
+            await guardTurnOff(deps, {
+              user,
+              body: ctx.body,
+              headers: ctx.headers ?? new Headers(),
+              verify: ctx.context.password.verify,
+            })
             return
           }
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code': {
+            // Our turn-off guard is calling the verifier itself and keeps the books.
+            if (requestScope().auth.twoStepMode === 'turn_off') return
             const session = await getSessionFromCtx(ctx)
             const sessionUser = session ? await findUserById(db, session.user.id) : null
             let pendingUserId: string | null = null
@@ -329,18 +488,54 @@ export function createAuth(options: CreateAuthOptions) {
                 message: AUTH_ERROR_MESSAGES.PASSWORD_RESET_REQUIRED,
               })
             }
-            await onPasswordSuccess(deps, user)
+            await onPasswordSuccess(deps, ctx, user)
             return
           }
           case '/two-factor/verify-totp':
-            return afterTwoStepVerify(deps, { method: 'totp', returned })
           case '/two-factor/verify-backup-code':
-            return afterTwoStepVerify(deps, { method: 'backup_code', returned })
+            if (requestScope().auth.twoStepMode === 'turn_off') return
+            return afterTwoStepVerify(deps, ctx, {
+              method: ctx.path === '/two-factor/verify-totp' ? 'totp' : 'backup_code',
+              returned,
+            })
+          case '/passkey/verify-authentication':
+            return afterPasskeySignIn(
+              deps,
+              ctx as unknown as PasskeySignInContext,
+              sessionCookies(ctx),
+              bodyField(ctx.body, 'response'),
+            )
+          case '/passkey/verify-registration':
+            return afterPasskeyRegistration(deps, ctx.context.session?.user.id, returned)
+          case '/verify-email':
+          case '/email-otp/verify-email': {
+            // Sign-up's automatic sign-in: remember the browser, but nothing to announce.
+            const signedIn = ctx.context.newSession
+            const user = !code && signedIn ? await findUserById(db, signedIn.user.id) : null
+            if (user) await checkDevice(deps, ctx, user, { alert: false })
+            return
+          }
         }
-        if (code) return
+        if (!PASSWORD_CHECKED_PATHS.has(ctx.path) && ctx.path !== '/two-factor/disable') return
         const sessionUserId = ctx.context.session?.user.id ?? ctx.context.newSession?.user.id
         const user = sessionUserId ? await findUserById(db, sessionUserId) : null
         if (!user) return
+        if (code === AUTH_ERROR_CODES.INVALID_PASSWORD && PASSWORD_CHECKED_PATHS.has(ctx.path)) {
+          // Counts towards the 10-in-15-minutes lock; this session carries on (plan question 11).
+          const lockedUntil = await onPasswordFailure(deps, user.email)
+          return lockedUntil ? lockedResponse(lockedUntil) : undefined
+        }
+        if (code) return
+        if (PASSWORD_CHECKED_PATHS.has(ctx.path)) {
+          // The password was just proven: the 5-minute "Confirm it's you" window opens.
+          const current = ctx.context.newSession?.session.id ?? ctx.context.session?.session.id
+          if (current) {
+            await db
+              .update(sessions)
+              .set({ reauthenticatedAt: new Date() })
+              .where(eq(sessions.id, current))
+          }
+        }
         switch (ctx.path) {
           case '/change-password':
             await onPasswordChanged(deps, user, 'change')
@@ -371,6 +566,24 @@ export function createAuth(options: CreateAuthOptions) {
         backupCodeOptions: { amount: 10, length: 10 },
         accountLockout: { maxFailedAttempts: 5, durationSeconds: 900 },
         twoFactorCookieMaxAge: 600,
+      }),
+      // Decision 0019: bound to the web app's own host; every passkey must check the person
+      // (user verification) and be findable without an email (resident key).
+      passkey({
+        rpID: new URL(env.WEB_ORIGIN).hostname,
+        rpName: 'Vento',
+        origin: new URL(env.WEB_ORIGIN).origin,
+        authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+        registration: {
+          requireSession: true,
+          afterVerification: ({ verification }) => ({
+            name: defaultPasskeyName(
+              verification.registrationInfo?.aaguid,
+              requestScope().userAgent,
+            ),
+          }),
+        },
+        advanced: { webAuthnChallengeCookie: 'passkey_challenge' },
       }),
     ],
   })

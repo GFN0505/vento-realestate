@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { Role } from '@vento/shared'
 import { ChevronRightIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { splitRoles } from '@/features/team/role-notes'
 import { peopleLine } from './role-people'
 
@@ -9,10 +10,15 @@ const th =
   'h-10 px-3 text-left align-middle font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em] first:pl-5'
 const td = 'h-16 px-3 align-middle first:pl-5'
 
-type Props = { roles: readonly Role[]; menu: (role: Role) => ReactNode }
+type Props = {
+  roles: readonly Role[]
+  menu: (role: Role) => ReactNode
+  /** The organization's name when it requires two-step for everyone (3d), else null. */
+  requiredForEveryone?: string | null
+}
 
 /** Built-in roles in the default order, then custom roles A–Z under a quiet divider. */
-export function RolesTable({ roles, menu }: Props) {
+export function RolesTable({ roles, menu, requiredForEveryone = null }: Props) {
   const { builtIn, custom } = splitRoles(roles)
   return (
     <div className="@container overflow-hidden rounded-[12px] border bg-card">
@@ -42,7 +48,7 @@ export function RolesTable({ roles, menu }: Props) {
         </thead>
         <tbody className="divide-y">
           {builtIn.map((role) => (
-            <RoleRow key={role.id} role={role} menu={menu(role)} />
+            <RoleRow key={role.id} role={role} menu={menu(role)} everyone={requiredForEveryone} />
           ))}
         </tbody>
         {custom.length > 0 && (
@@ -57,7 +63,7 @@ export function RolesTable({ roles, menu }: Props) {
               </th>
             </tr>
             {custom.map((role) => (
-              <RoleRow key={role.id} role={role} menu={menu(role)} />
+              <RoleRow key={role.id} role={role} menu={menu(role)} everyone={requiredForEveryone} />
             ))}
           </tbody>
         )}
@@ -66,7 +72,15 @@ export function RolesTable({ roles, menu }: Props) {
   )
 }
 
-function RoleRow({ role, menu }: { role: Role; menu: ReactNode }) {
+function RoleRow({
+  role,
+  menu,
+  everyone,
+}: {
+  role: Role
+  menu: ReactNode
+  everyone: string | null
+}) {
   return (
     <tr className="group relative transition-colors hover:bg-muted/50">
       <td className={td}>
@@ -76,7 +90,7 @@ function RoleRow({ role, menu }: { role: Role; menu: ReactNode }) {
             <Link
               to="/settings/roles/$roleId"
               params={{ roleId: role.id }}
-              className="truncate rounded-sm font-semibold outline-hidden after:absolute after:inset-0 hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="truncate rounded-sm font-semibold outline-hidden after:absolute after:inset-0 hover:underline hover:underline-offset-4 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {role.name}
             </Link>
@@ -91,13 +105,30 @@ function RoleRow({ role, menu }: { role: Role; menu: ReactNode }) {
         <Link
           to="/settings/team"
           search={{ role: role.id }}
-          className="relative z-1 rounded-sm text-foreground underline decoration-border underline-offset-4 outline-hidden hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          className="relative z-1 rounded-sm text-foreground underline decoration-border underline-offset-4 outline-hidden hover:decoration-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
         >
           {peopleLine(role)}
         </Link>
       </td>
       <td className={`${td} text-muted-foreground`}>
-        {role.requiresTwoStep ? <span className="text-foreground">Required</span> : '–'}
+        {everyone !== null ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: the tooltip says why.
+                tabIndex={0}
+                className="relative z-1 rounded-sm text-foreground underline decoration-border decoration-dotted underline-offset-4 outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                Required
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Required for everyone in {everyone}</TooltipContent>
+          </Tooltip>
+        ) : role.requiresTwoStep ? (
+          <span className="text-foreground">Required</span>
+        ) : (
+          '–'
+        )}
       </td>
       <td className={`${td} relative z-1 pr-3 text-right`}>{menu}</td>
     </tr>
@@ -113,12 +144,20 @@ export function CustomTag() {
 }
 
 /** Phones: one card per role (name, description, "3 people · Two-step required"). */
-export function RolesCards({ roles }: { roles: readonly Role[] }) {
+export function RolesCards({
+  roles,
+  requiredForEveryone = null,
+}: {
+  roles: readonly Role[]
+  requiredForEveryone?: string | null
+}) {
   const { builtIn, custom } = splitRoles(roles)
   return (
     <div className="flex flex-col gap-4">
-      <RoleCardList label="Built-in roles" roles={builtIn} />
-      {custom.length > 0 && <RoleCardList label="Custom roles" roles={custom} heading />}
+      <RoleCardList label="Built-in roles" roles={builtIn} everyone={requiredForEveryone} />
+      {custom.length > 0 && (
+        <RoleCardList label="Custom roles" roles={custom} everyone={requiredForEveryone} heading />
+      )}
     </div>
   )
 }
@@ -126,10 +165,12 @@ export function RolesCards({ roles }: { roles: readonly Role[] }) {
 function RoleCardList({
   label,
   roles,
+  everyone,
   heading,
 }: {
   label: string
   roles: readonly Role[]
+  everyone: string | null
   heading?: boolean
 }) {
   return (
@@ -145,7 +186,7 @@ function RoleCardList({
             <Link
               to="/settings/roles/$roleId"
               params={{ roleId: role.id }}
-              className="flex min-h-[72px] items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex min-h-[72px] items-center gap-3 rounded-[14px] border bg-card px-3.5 py-3 outline-hidden active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-center gap-2">
@@ -156,7 +197,7 @@ function RoleCardList({
                 </span>
                 <span className="text-muted-foreground text-xs">
                   {peopleLine(role)}
-                  {role.requiresTwoStep ? ' · Two-step required' : ''}
+                  {role.requiresTwoStep || everyone !== null ? ' · Two-step required' : ''}
                 </span>
               </span>
               <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />

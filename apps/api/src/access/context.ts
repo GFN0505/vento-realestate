@@ -31,6 +31,10 @@ export type AuthSession = {
   persistent: boolean
   createdAt: Date
   lastActiveAt: Date
+  /** When the session last moved into its active organization (created_at for older rows). */
+  organizationEnteredAt: Date
+  /** "Confirm it's you": when the password was last proven on this session. */
+  reauthenticatedAt: Date | null
 }
 
 export type MemberContext = {
@@ -41,7 +45,10 @@ export type MemberContext = {
   permissions: PermissionSet
   /** null = all entities. */
   entityIds: string[] | null
+  /** The role's own value (roles and the manage rules use it). */
   requiresTwoStep: boolean
+  /** The organization's "Require two-step for everyone" and when it was last changed. */
+  organizationTwoStep: { required: boolean; since: Date | null }
   /** As read with the membership, so the hourly activity write needs no extra read. */
   lastActiveAt: Date | null
 }
@@ -79,6 +86,8 @@ type MembershipRow = {
   role_key: string | null
   role_name: string
   requires_two_step: boolean
+  organization_two_step_required: boolean
+  organization_two_step_since: Date | string | null
   permissions: string[] | null
   entity_ids: string[] | null
   last_active_at: Date | string | null
@@ -110,6 +119,8 @@ export async function loadMembership(
   const result = await db.execute<MembershipRow>(sql`
     select m.id as member_id, m.organization_id, o.name as organization_name,
       r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
+      o.two_step_required_for_everyone as organization_two_step_required,
+      o.two_step_required_changed_at as organization_two_step_since,
       (select array_agg(rp.module || '.' || rp.action) from role_permissions rp
         where rp.role_id = r.id) as permissions,
       -- Every limit row, archived entities included: a member limited only to archived
@@ -138,6 +149,7 @@ export async function loadMembership(
       permissions: toPermissionSet(row.permissions ?? []),
       entityIds: row.entity_ids,
       requiresTwoStep: row.requires_two_step,
+      organizationTwoStep: organizationTwoStepOf(row),
       lastActiveAt: rawTimestamp(row.last_active_at),
     },
     plan: {
@@ -147,7 +159,21 @@ export async function loadMembership(
   }
 }
 
-/** Points the session (and the person's default for new sessions) at an organization. */
+function organizationTwoStepOf(row: {
+  organization_two_step_required: boolean
+  organization_two_step_since: Date | string | null
+}): MemberContext['organizationTwoStep'] {
+  return {
+    required: row.organization_two_step_required,
+    since: rawTimestamp(row.organization_two_step_since),
+  }
+}
+
+/**
+ * Points the session (and the person's default for new sessions) at an organization. Moving the
+ * session to a different organization stamps when it entered: the two-step gate tells "next
+ * switch in" from "already there" by it.
+ */
 export async function setActiveOrganization(
   db: DbOrTx,
   input: { userId: string; sessionId: string | null; organizationId: string },
@@ -155,7 +181,10 @@ export async function setActiveOrganization(
   if (input.sessionId) {
     await db
       .update(sessions)
-      .set({ activeOrganizationId: input.organizationId })
+      .set({
+        activeOrganizationId: input.organizationId,
+        organizationEnteredAt: sql`case when ${sessions.activeOrganizationId} is distinct from ${input.organizationId}::uuid then now() else ${sessions.organizationEnteredAt} end`,
+      })
       .where(eq(sessions.id, input.sessionId))
   }
   await db
@@ -210,12 +239,20 @@ export async function listActiveMemberships(
     .orderBy(asc(organizations.name), asc(organizations.id))
 }
 
-/** Two-step is required by the role, or because an owner or admin reset it. */
+/**
+ * Two-step is required here, whether or not it's set up: an owner or admin reset it, the role
+ * requires it, or the organization requires it for everyone. Whether it blocks now is the gate's
+ * call (two-step-gate.ts).
+ */
 export function twoStepRequired(
   user: Pick<AuthUser, 'twoStepSetupRequired'>,
-  member: Pick<MemberContext, 'requiresTwoStep'> | null,
+  member: Pick<MemberContext, 'requiresTwoStep' | 'organizationTwoStep'> | null,
 ): boolean {
-  return user.twoStepSetupRequired || Boolean(member?.requiresTwoStep)
+  return (
+    user.twoStepSetupRequired ||
+    Boolean(member?.requiresTwoStep) ||
+    Boolean(member?.organizationTwoStep.required)
+  )
 }
 
 /**
@@ -246,6 +283,8 @@ type ViewerRow = {
   role_key: string | null
   role_name: string
   requires_two_step: boolean
+  organization_two_step_required: boolean
+  organization_two_step_since: Date | string | null
   permissions: string[] | null
   entity_ids: string[] | null
 }
@@ -264,12 +303,15 @@ export async function lockViewer<T extends Pick<ServiceContext, 'organizationId'
 ): Promise<T> {
   const result = await tx.execute<ViewerRow>(sql`
     select r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
+      o.two_step_required_for_everyone as organization_two_step_required,
+      o.two_step_required_changed_at as organization_two_step_since,
       (select array_agg(rp.module || '.' || rp.action) from role_permissions rp
         where rp.role_id = r.id) as permissions,
       (select array_agg(l.entity_id) from member_entity_limits l
         where l.member_id = m.id) as entity_ids
     from members m
     join roles r on r.id = m.role_id and r.organization_id = m.organization_id
+    join organizations o on o.id = m.organization_id
     where m.id = ${ctx.member.id} and m.organization_id = ${ctx.organizationId}
       and m.status = 'active'
     for share of m, r
@@ -291,6 +333,7 @@ export async function lockViewer<T extends Pick<ServiceContext, 'organizationId'
       permissions: toPermissionSet(row.permissions ?? []),
       entityIds: row.entity_ids,
       requiresTwoStep: row.requires_two_step,
+      organizationTwoStep: organizationTwoStepOf(row),
     },
   }
 }

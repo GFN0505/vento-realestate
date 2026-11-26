@@ -9,6 +9,9 @@ import {
   listEntitiesInput,
   listEntitiesOutput,
   organization,
+  organizationSecurity,
+  setTwoStepRequiredInput,
+  setTwoStepRequiredOutput,
   updateEntityInput,
   updateOrganizationInput,
 } from './schema'
@@ -25,6 +28,14 @@ export const onboardingContract = {
 export const organizationContract = {
   get: platform.output(organization),
   update: platform.input(updateOrganizationInput).output(organization),
+  /** The Security card (settings view). */
+  security: platform.output(organizationSecurity),
+  /**
+   * "Require two-step sign-in for everyone". Owners only (FORBIDDEN `owner_only`, "Only owners
+   * can change this."). Asking for the value it already has writes nothing and may return
+   * `changedByOther`.
+   */
+  setTwoStepRequired: platform.input(setTwoStepRequiredInput).output(setTwoStepRequiredOutput),
 }
 
 export const entitiesContract = {

@@ -64,6 +64,20 @@
       "when": 1795692207872,
       "tag": "0008_roles_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795708571875,
+      "tag": "0009_my_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795708579441,
+      "tag": "0010_passkey_guards",
+      "breakpoints": true
     }
   ]
 }

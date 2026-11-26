@@ -187,7 +187,7 @@ export function InviteSheet() {
               <button
                 type="button"
                 onClick={() => inviteDraft.setPerRow(!draft.perRow)}
-                className="self-start rounded-sm font-semibold text-link text-xs underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+                className="self-start rounded-sm font-semibold text-link text-xs underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
               >
                 {draft.perRow ? 'Same role for everyone' : 'Give people different roles'}
               </button>

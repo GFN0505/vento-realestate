@@ -4,6 +4,8 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 
 ## [Unreleased]
 ### Added
+- My security, for everyone: turn on two-step sign-in, see and renew backup codes, change your password, see where you're signed in and sign out a lost phone, and add a passkey to sign in with your face or fingerprint (early access). Emails tell you about a new sign-in, a passkey added or removed, and two-step turned off.
+- Require two-step for everyone: owners can make two-step sign-in required for the whole organization, with 7 days for people to set it up.
 - Companies: add, edit, archive and restore your companies (SPVs) with their RC number, TIN and VAT status, from Settings, the Company menu at the top or the setup checklist. A duplicate RC number is refused; archived companies can be restored within your plan.
 - Roles & permissions: see exactly what each role can do, and make your own role (for example Site engineer) by duplicating one and ticking what it needs. Nobody can give more access than they have themselves; changes reach people on their next click, with Undo.
 - Organization details: name, head office state and financial year.
@@ -20,3 +22,7 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 
 ### Changed
 - "Entity" is now "Company" everywhere you read it.
+
+### Security
+- Unused sign-in endpoints are switched off, and wrong two-step codes are counted everywhere.
+- Keyboard focus is visible on every button again.

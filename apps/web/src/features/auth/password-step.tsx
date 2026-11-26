@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { FingerprintIcon, LoaderCircleIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { AuthFootnote, AuthHeader } from '@/components/auth/auth-layout'
@@ -14,6 +15,7 @@ import { AuthFailureText } from './auth-failure-text'
 import { useAuthFailure } from './use-auth-failure'
 import { formatCountdown } from './use-countdown'
 import { useDesktopAutofocus } from './use-desktop-autofocus'
+import { usePasskeySignIn } from './use-passkey-sign-in'
 import { type SignInResult, signInWithPassword } from './use-sign-in'
 
 type Values = { email: string; password: string; keepSignedIn: boolean }
@@ -27,10 +29,17 @@ type Props = {
     email: string,
     keepSignedIn: boolean,
   ) => void
+  /** Signed in with a passkey: no email typed, no two-step code (decision 0019). */
+  onPasskeySignedIn: (keepSignedIn: boolean) => void
 }
 
 /** Board SignIn: work email, password, "Keep me signed in". No Google/Microsoft (CHANGES.md). */
-export function PasswordStep({ defaultEmail = '', remembered = false, onResult }: Props) {
+export function PasswordStep({
+  defaultEmail = '',
+  remembered = false,
+  onResult,
+  onPasskeySignedIn,
+}: Props) {
   const ids = { email: useId(), password: useId(), keep: useId(), error: useId() }
   const { failure, setFailure, secondsLeft, waiting } = useAuthFailure()
   const form = useForm<Values>({
@@ -43,6 +52,11 @@ export function PasswordStep({ defaultEmail = '', remembered = false, onResult }
     form.setValue('email', email, { shouldDirty: true, shouldValidate: !!errors.email }),
   )
   useDesktopAutofocus(() => form.setFocus(defaultEmail ? 'password' : 'email'))
+  const passkey = usePasskeySignIn({
+    autoFill: true,
+    keepSignedIn: () => form.getValues('keepSignedIn'),
+    onSignedIn: () => onPasskeySignedIn(form.getValues('keepSignedIn')),
+  })
 
   function notYou() {
     forgetRememberedEmail()
@@ -54,8 +68,11 @@ export function PasswordStep({ defaultEmail = '', remembered = false, onResult }
   const submit = form.handleSubmit(async (values) => {
     if (waiting) return
     setFailure(null)
+    passkey.clear()
+    passkey.pause()
     const result = await signInWithPassword(values)
     if (result.status === 'error') {
+      passkey.resume()
       setFailure(result.failure)
       form.setValue('password', '')
       form.setFocus('password')
@@ -67,10 +84,12 @@ export function PasswordStep({ defaultEmail = '', remembered = false, onResult }
   return (
     <form method="post" onSubmit={submit} noValidate className="flex flex-col gap-[18px]">
       <AuthHeader title="Sign in" />
-      {failure && (
+      {failure ? (
         <FormAlert variant="error">
           <AuthFailureText failure={failure} secondsLeft={secondsLeft} />
         </FormAlert>
+      ) : (
+        passkey.message && <FormAlert variant="error">{passkey.message}</FormAlert>
       )}
       <Field data-invalid={!!errors.email}>
         <div className="flex items-baseline justify-between gap-3">
@@ -88,7 +107,8 @@ export function PasswordStep({ defaultEmail = '', remembered = false, onResult }
         <Input
           id={ids.email}
           type="email"
-          autoComplete="username"
+          // "webauthn": the browser offers saved passkeys among the email suggestions.
+          autoComplete="username webauthn"
           inputMode="email"
           aria-invalid={!!errors.email}
           aria-describedby={errors.email ? `${ids.email}-error` : undefined}
@@ -129,6 +149,35 @@ export function PasswordStep({ defaultEmail = '', remembered = false, onResult }
             ? 'Signing in…'
             : 'Sign in'}
       </Button>
+      {passkey.available && (
+        <div className="-mt-1.5 flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full"
+            disabled={passkey.pending}
+            aria-busy={passkey.pending || undefined}
+            onClick={() => {
+              setFailure(null)
+              void passkey.start()
+            }}
+          >
+            {passkey.pending ? (
+              <LoaderCircleIcon aria-hidden className="animate-spin" />
+            ) : (
+              <FingerprintIcon aria-hidden />
+            )}
+            Sign in with a passkey
+          </Button>
+          <p
+            aria-live="polite"
+            className="min-h-0 text-center text-muted-foreground text-xs empty:hidden"
+          >
+            {passkey.note}
+          </p>
+        </div>
+      )}
       <AuthFootnote>
         New to Vento? <Link to="/sign-up">Create an account</Link>
       </AuthFootnote>
@@ -139,10 +188,7 @@ export function PasswordStep({ defaultEmail = '', remembered = false, onResult }
 function KeepSignedIn({ id, form }: { id: string; form: ReturnType<typeof useForm<Values>> }) {
   const checked = form.watch('keepSignedIn')
   return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-center gap-2.5 text-[13px] max-lg:min-h-11"
-    >
+    <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[13px]">
       <Checkbox
         id={id}
         checked={checked}

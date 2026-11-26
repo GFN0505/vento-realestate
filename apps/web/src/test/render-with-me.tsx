@@ -24,6 +24,7 @@ export function renderWithMe(
       page: 1,
       pageSize: roles.length,
       total: roles.length,
+      requiredForEveryone: false,
     })
   }
   seed?.(queryClient)

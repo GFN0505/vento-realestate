@@ -36,9 +36,7 @@ export function TeamConfirms() {
         pending={actions.resetTwoStep.isPending}
         onConfirm={() => confirm?.kind === 'reset' && actions.resetTwoStep.mutate(confirm.row)}
       >
-        Use this when they've lost their phone and backup codes. They'll be signed out everywhere
-        and must set a new password from the link we email them, then set up two-step again. This
-        applies in every organization they belong to.
+        {confirm?.kind === 'reset' && resetConsequences(confirm.row.passkeyCount)}
       </ConfirmDialog>
       <ConfirmDialog
         open={open === 'owner'}
@@ -52,4 +50,13 @@ export function TeamConfirms() {
       </ConfirmDialog>
     </>
   )
+}
+
+/** The reset confirm's body (spec 3d): the passkeys go too, so a lost phone can't sign in. */
+export function resetConsequences(passkeys: number): string {
+  const signedOut =
+    passkeys > 0
+      ? `They'll be signed out everywhere, their ${passkeys} ${passkeys === 1 ? 'passkey' : 'passkeys'} will be removed, and they must`
+      : "They'll be signed out everywhere and must"
+  return `Use this when they've lost their phone and backup codes. ${signedOut} set a new password from the link we email them, then set up two-step again. This applies in every organization they belong to.`
 }

@@ -1,5 +1,5 @@
 import type { PermissionSet, TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
-import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
+import { and, asc, count, eq, isNull, ne, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, lockViewer, type ServiceContext } from '@/access/context'
 import { assertGrantableEntities } from '@/access/grants'
@@ -11,6 +11,7 @@ import {
   entities,
   memberEntityLimits,
   members,
+  passkeys,
   roles,
   sessions,
   twoFactors,
@@ -272,7 +273,16 @@ export async function resetMemberTwoStep(
     const live = await lockViewer(tx, ctx)
     const target = await lockTarget(tx, live, memberId)
     await assertMayManage(tx, live, target, 'reset')
+    // The same per-person lock the passkeys insert trigger takes (migration 0010): a registration
+    // in flight either lands first and is deleted below, or waits and is refused as reset-pending.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${target.userId}::text, 0))`)
     await tx.delete(twoFactors).where(eq(twoFactors.userId, target.userId))
+    // A lost phone's passkey must stop working too (spec 3d). Before the sessions go, in the
+    // same transaction: registration needs a session, so none can be added meanwhile.
+    const removedPasskeys = await tx
+      .delete(passkeys)
+      .where(eq(passkeys.userId, target.userId))
+      .returning({ id: passkeys.id })
     await tx
       .update(users)
       .set({ twoFactorEnabled: false, twoStepSetupRequired: true, passwordResetRequired: true })
@@ -286,7 +296,11 @@ export async function resetMemberTwoStep(
       action: 'two_step.reset',
       actor: actorOf(live),
       target: { type: 'user', id: target.userId, label: target.name },
-      metadata: { resetFrom: live.organizationName, sessionsEnded: ended.length },
+      metadata: {
+        resetFrom: live.organizationName,
+        sessionsEnded: ended.length,
+        passkeysRemoved: removedPasskeys.length,
+      },
     })
     const alert = twoStepResetAlert({ byName: live.user.name })
     return {

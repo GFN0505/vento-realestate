@@ -27,7 +27,7 @@ type Props = {
 }
 
 const link =
-  'rounded-sm font-semibold underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-1'
+  'rounded-sm font-semibold underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-1'
 
 export function InviteRows({
   rows,
@@ -113,7 +113,7 @@ export function InviteRows({
               type="button"
               aria-label={`Remove ${row.email}`}
               onClick={() => inviteDraft.remove(row.email)}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring max-md:size-11"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:size-11"
             >
               <XIcon aria-hidden className="size-4" />
             </button>

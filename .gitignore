@@ -33,3 +33,6 @@ apps/web/e2e/.auth/
 
 # local demo logins written by hand from pnpm db:seed (never commit)
 .seed-logins.txt
+
+# IP geolocation database (DB-IP, decision 0020): downloaded at deploy, never committed
+*.mmdb

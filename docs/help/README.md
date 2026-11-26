@@ -36,5 +36,6 @@ docs/help/
 | [Manage your team](getting-started/manage-your-team.md) | J-ONB-06 | written |
 | [Set up your organization and companies](getting-started/set-up-your-companies.md) | J-ONB-07 | written |
 | [Make a role that fits the job](getting-started/make-a-role.md) | J-ONB-08 | written |
+| [Keep your account secure](getting-started/keep-your-account-secure.md) | J-ONB-09, J-ONB-10 | written |
 
 Status: `todo` · `written` · `published`

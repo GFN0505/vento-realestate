@@ -62,7 +62,7 @@ export function CommandPalette() {
             >
               <DialogPrimitive.Close
                 aria-label="Close"
-                className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-ring sm:hidden"
+                className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring sm:hidden"
               >
                 <XIcon aria-hidden className="size-5" />
               </DialogPrimitive.Close>

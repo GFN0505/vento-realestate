@@ -4,12 +4,14 @@ import { createAuth } from '@/auth/auth'
 import { db } from '@/db/client'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { env } from '@/env'
+import type { FeatureStore } from '@/platform/feature-store'
 
 /** A real app (Better Auth included) with emails kept in memory. */
-export function testApp(options: { rateLimit?: boolean } = {}) {
+export function testApp(options: { rateLimit?: boolean; features?: FeatureStore } = {}) {
   const mailer = createMemoryTransport()
-  const auth = createAuth({ db, mailer, rateLimit: options.rateLimit ?? false })
-  const app = createApp({ db, mailer, auth })
+  const { features } = options
+  const auth = createAuth({ db, mailer, rateLimit: options.rateLimit ?? false, features })
+  const app = createApp({ db, mailer, auth, features })
   return { app, mailer, auth }
 }
 
@@ -23,7 +25,10 @@ export function browser(
   const jar = new Map<string, string>()
   const cookieHeader = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ')
 
-  async function request(path: string, init: { method?: string; body?: unknown } = {}) {
+  async function request(
+    path: string,
+    init: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+  ) {
     const res = await app.request(path, {
       method: init.method ?? 'POST',
       headers: {
@@ -31,6 +36,7 @@ export function browser(
         origin: env.WEB_ORIGIN,
         'user-agent': userAgent,
         cookie: cookieHeader(),
+        ...init.headers,
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     })
@@ -60,7 +66,8 @@ export function browser(
   return {
     jar,
     /** Better Auth endpoint under /api/auth. */
-    auth: (path: string, body?: unknown) => request(`/api/auth${path}`, { body: body ?? {} }),
+    auth: (path: string, body?: unknown, headers?: Record<string, string>) =>
+      request(`/api/auth${path}`, { body: body ?? {}, headers }),
     /** GET on a Better Auth endpoint, e.g. /get-session. */
     authGet: (path: string) => request(`/api/auth${path}`, { method: 'GET' }),
     /** oRPC procedure, e.g. rpc('account/me'). Returns the unwrapped `json` payload. */

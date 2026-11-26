@@ -1,5 +1,5 @@
 import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Role, UpdateRoleInput } from '@vento/shared'
+import type { Role, RoleList, UpdateRoleInput } from '@vento/shared'
 import { type RefObject, useState } from 'react'
 import { toast } from 'sonner'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
@@ -19,12 +19,22 @@ import { draftFrom, updateFrom } from './use-role-draft'
 /** Undo stays on screen this long (spec: 8 seconds). */
 export const UNDO_MS = 8000
 
-type Roles = { items: Role[]; page: number; pageSize: number; total: number }
+/**
+ * Caches a role the server returned as a role page. Mutations return the role alone; whether the
+ * organization requires two-step for everyone comes from the copy already cached (or the list).
+ */
+export function cacheRoleDetail(queryClient: QueryClient, role: Role) {
+  const list = queryClient.getQueryData<RoleList>(rolesQuery().queryKey)
+  queryClient.setQueryData(roleQuery(role.id).queryKey, (cached) => ({
+    ...role,
+    requiredForEveryone: cached?.requiredForEveryone ?? list?.requiredForEveryone ?? false,
+  }))
+}
 
 /** A saved role replaces its cached copies; Team and the role menus catch up. */
 export function putRole(queryClient: QueryClient, saved: Role) {
-  queryClient.setQueryData(roleQuery(saved.id).queryKey, saved)
-  queryClient.setQueryData<Roles>(rolesQuery().queryKey, (list) =>
+  cacheRoleDetail(queryClient, saved)
+  queryClient.setQueryData<RoleList>(rolesQuery().queryKey, (list) =>
     list ? { ...list, items: list.items.map((r) => (r.id === saved.id ? saved : r)) } : list,
   )
   void queryClient.invalidateQueries({ queryKey: teamListKey() })

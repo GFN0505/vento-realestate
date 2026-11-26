@@ -30,7 +30,7 @@ export function FilterChips<T extends string>({
             aria-pressed={on}
             onClick={() => onChange(chip.value)}
             className={cn(
-              'inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3.5 font-semibold text-[13px] outline-hidden transition-colors focus-visible:outline-2 focus-visible:outline-ring md:h-8',
+              'inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3.5 font-semibold text-[13px] outline-hidden transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring md:h-8',
               on
                 ? 'border-selected-border bg-selected text-selected-foreground'
                 : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground',

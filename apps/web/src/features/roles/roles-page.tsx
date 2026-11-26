@@ -7,7 +7,8 @@ import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { rolesQuery } from '@/features/preview/use-effective-permissions'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { rolesQuery, useMe } from '@/features/preview/use-effective-permissions'
 import { PAGE_SHORTCUT_EVENT } from '@/features/shell/shortcuts'
 import { usePageTitle } from '@/features/shell/use-page-title'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
@@ -26,70 +27,76 @@ export function RolesPage() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
   const roles = useQuery(rolesQuery())
+  const me = useMe()
   const rights = useRoleRights()
   const phone = useMediaQuery(PHONE_QUERY)
   const [deleting, setDeleting] = useState<Role | null>(null)
   const items = roles.data?.items
+  // "Require two-step for everyone" is on: every role reads Required (3d).
+  const everyone = roles.data?.requiredForEveryone ? (me.organization?.name ?? '') : null
   const hasCustom = items?.some((r) => !r.isSystem) ?? false
   const newRole = (from?: string) => void navigate({ search: { new: true, from } })
   useNewRoleShortcut(rights.create, () => newRole())
 
   return (
-    <div className={cn('flex flex-col gap-5', rights.create && 'pb-20 md:pb-0')}>
-      <PageHeader
-        title="Roles & permissions"
-        description="What each role can do. Give roles to people on Team."
-        actions={rights.create && <NewRoleButton onClick={() => newRole()} />}
-        className="[&>div:last-child]:max-md:hidden"
-      />
-      {roles.isError && !items ? (
-        <EmptyState
-          icon={CloudOffIcon}
-          action={
-            <Button
-              variant="outline"
-              onClick={() => void roles.refetch()}
-              disabled={roles.isFetching}
-              className="max-md:h-11"
-            >
-              Try again
-            </Button>
-          }
-        >
-          <span role="alert">Roles couldn't load. Check your connection and try again.</span>
-        </EmptyState>
-      ) : !items ? (
-        <RolesSkeleton phone={phone} />
-      ) : phone ? (
-        <RolesCards roles={items} />
-      ) : (
-        <RolesTable
-          roles={items}
-          menu={(role) => (
-            <RoleRowMenu
-              role={role}
-              actions={{
-                duplicate: rights.canDuplicate(role) ? () => newRole(role.id) : null,
-                preview: rights.preview && (() => rights.preview?.(role)),
-                delete: () => setDeleting(role),
-              }}
-            />
-          )}
+    <TooltipProvider>
+      <div className={cn('flex flex-col gap-5', rights.create && 'pb-20 md:pb-0')}>
+        <PageHeader
+          title="Roles & permissions"
+          description="What each role can do. Give roles to people on Team."
+          actions={rights.create && <NewRoleButton onClick={() => newRole()} />}
+          className="[&>div:last-child]:max-md:hidden"
         />
-      )}
-      {items && !hasCustom && <NoCustomRoles canCreate={rights.create} onNew={() => newRole()} />}
-      {rights.create && phone && (
-        <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-4 pb-2 md:hidden">
-          <NewRoleButton onClick={() => newRole()} className="h-11 w-full shadow-lg" />
-        </div>
-      )}
-      <NewRoleDialog
-        open={search.new === true && rights.create}
-        from={search.from}
-        onClose={() => void navigate({ search: {}, replace: true })}
-      />
-      <DeleteRoleConfirm role={deleting} onOpenChange={(open) => !open && setDeleting(null)} />
-    </div>
+        {roles.isError && !items ? (
+          <EmptyState
+            icon={CloudOffIcon}
+            action={
+              <Button
+                variant="outline"
+                onClick={() => void roles.refetch()}
+                disabled={roles.isFetching}
+                className="max-md:h-11"
+              >
+                Try again
+              </Button>
+            }
+          >
+            <span role="alert">Roles couldn't load. Check your connection and try again.</span>
+          </EmptyState>
+        ) : !items ? (
+          <RolesSkeleton phone={phone} />
+        ) : phone ? (
+          <RolesCards roles={items} requiredForEveryone={everyone} />
+        ) : (
+          <RolesTable
+            roles={items}
+            requiredForEveryone={everyone}
+            menu={(role) => (
+              <RoleRowMenu
+                role={role}
+                actions={{
+                  duplicate: rights.canDuplicate(role) ? () => newRole(role.id) : null,
+                  preview: rights.preview && (() => rights.preview?.(role)),
+                  delete: () => setDeleting(role),
+                }}
+              />
+            )}
+          />
+        )}
+        {items && !hasCustom && <NoCustomRoles canCreate={rights.create} onNew={() => newRole()} />}
+        {rights.create && phone && (
+          <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-4 pb-2 md:hidden">
+            <NewRoleButton onClick={() => newRole()} className="h-11 w-full shadow-lg" />
+          </div>
+        )}
+        <NewRoleDialog
+          open={search.new === true && rights.create}
+          from={search.from}
+          onClose={() => void navigate({ search: {}, replace: true })}
+        />
+        <DeleteRoleConfirm role={deleting} onOpenChange={(open) => !open && setDeleting(null)} />
+      </div>
+    </TooltipProvider>
   )
 }
 
