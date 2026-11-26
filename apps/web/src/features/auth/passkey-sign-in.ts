@@ -1,5 +1,6 @@
 import { AUTH_ERROR_MESSAGES, AUTH_ERROR_CODES as C, REMEMBER_ME_HEADER } from '@vento/shared'
 import { COPY, NETWORK_ERROR } from '@/lib/auth-errors'
+import { connection } from '@/lib/connection'
 
 /*
  * Sign in with a passkey (spec J-ONB-04), for the sign-in page and the Session expired dialog.
@@ -22,7 +23,7 @@ type Options = {
   keepSignedIn: () => boolean
 }
 
-export function passkeySignInMessage(error: { code?: string; status: number }): string {
+export function passkeySignInMessage(error: { code?: string | undefined; status: number }): string {
   if (!error.status) return NETWORK_ERROR
   switch (error.code) {
     case C.PASSKEY_NOT_FOUND:
@@ -38,6 +39,25 @@ export function passkeySignInMessage(error: { code?: string; status: number }): 
   }
   if (error.status === 429) return COPY.tooManyRequests
   return AUTH_ERROR_MESSAGES.PASSKEY_NOT_RECOGNISED
+}
+
+/** The connection dropped: the plugin reports a failed fetch as a cancelled sign-in. */
+export function isOffline(): boolean {
+  return !connection.isOnline() || (typeof navigator !== 'undefined' && navigator.onLine === false)
+}
+
+/** Turns the plugin's answer into ours; a network failure is never "cancelled". */
+export function passkeySignInResult(
+  error: { code?: string | undefined; status: number } | null,
+  isCancel: (code?: string) => boolean,
+  offline: boolean = isOffline(),
+): PasskeySignInResult {
+  if (!error) return { status: 'signed-in' }
+  if (error.code === 'AUTH_CANCELLED' && offline) {
+    return { status: 'error', message: NETWORK_ERROR, code: error.code }
+  }
+  if (isCancel(error.code)) return { status: 'cancelled' }
+  return { status: 'error', message: passkeySignInMessage(error), code: error.code }
 }
 
 const codeOf = (error: object): string | undefined =>
@@ -58,10 +78,10 @@ export async function signInWithPasskey({
         },
       },
     })
-    if (!error) return { status: 'signed-in' }
-    const code = codeOf(error)
-    if (isPasskeyCancel(code)) return { status: 'cancelled' }
-    return { status: 'error', message: passkeySignInMessage({ code, status: error.status }), code }
+    return passkeySignInResult(
+      error ? { code: codeOf(error), status: error.status } : null,
+      isPasskeyCancel,
+    )
   } catch {
     return { status: 'error', message: NETWORK_ERROR, code: undefined }
   }

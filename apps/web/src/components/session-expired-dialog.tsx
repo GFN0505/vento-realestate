@@ -22,8 +22,11 @@ import { useAuthFailure } from '@/features/auth/use-auth-failure'
 import { formatCountdown } from '@/features/auth/use-countdown'
 import { usePasskeySignIn } from '@/features/auth/use-passkey-sign-in'
 import { signInWithPassword } from '@/features/auth/use-sign-in'
+import { whoSignedIn } from '@/features/auth/who-signed-in'
+import { NETWORK_ERROR } from '@/lib/error-copy'
 import { orpc } from '@/lib/orpc'
 import { sessionExpired, useSessionExpired } from '@/lib/session-expired'
+import { forgetTabOrganization } from '@/lib/tab-organization'
 
 /**
  * Board SessionExpired: a dialog over the page (full screen on phones), so whatever the person
@@ -60,14 +63,17 @@ function ExpiredDialog({ email }: { email: string }) {
     onSignedIn: () => void afterPasskey(),
   })
 
-  // A passkey can belong to someone else on a shared computer: then this page isn't theirs.
+  // A passkey can belong to someone else on a shared computer: then nothing on this page (its
+  // data, what was typed, the tab's stores) is theirs, so the whole app loads afresh.
   async function afterPasskey() {
     const before = queryClient.getQueryData<Me>(orpc.account.me.queryKey())?.user.id
-    const now = await queryClient.fetchQuery(orpc.account.me.queryOptions()).catch(() => null)
-    if (now && now.user.id === before) return done()
-    sessionExpired.close()
-    queryClient.removeQueries()
-    void navigate({ to: '/', replace: true })
+    const who = await whoSignedIn(before, () =>
+      queryClient.fetchQuery({ ...orpc.account.me.queryOptions(), staleTime: 0 }),
+    )
+    if (who === 'same') return done()
+    if (who === 'unknown') return setError(NETWORK_ERROR)
+    forgetTabOrganization()
+    window.location.replace('/')
   }
 
   async function submit(event: FormEvent) {

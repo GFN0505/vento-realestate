@@ -20,6 +20,7 @@ import { sessionExpired } from '@/lib/session-expired'
 import { devicesWords } from '../security-words'
 import { CLEARED_NOTE, useClearedOnExpiry } from '../use-cleared-on-expiry'
 import { DialogFrame, dialogBodyClass, dialogFooterClass, dialogFormClass } from './dialog-frame'
+import { safeAuth } from './safe-auth'
 
 type Values = { current: string; password: string; confirm: string }
 const EMPTY: Values = { current: '', password: '', confirm: '' }
@@ -71,12 +72,14 @@ function ChangePasswordForm({
     setOffline(false)
     if (!connection.isOnline()) return setOffline(true)
     onBusy(true)
-    const { error } = await authClient.changePassword({
-      currentPassword: current,
-      newPassword: password,
-      // The server ends every other session whatever is sent (2a); asking keeps the toast true.
-      revokeOtherSessions: true,
-    })
+    const { error } = await safeAuth(() =>
+      authClient.changePassword({
+        currentPassword: current,
+        newPassword: password,
+        // The server ends every other session whatever is sent (2a); asking keeps the toast true.
+        revokeOtherSessions: true,
+      }),
+    )
     onBusy(false)
     if (error) {
       if (error.status === 401) return sessionExpired.open()

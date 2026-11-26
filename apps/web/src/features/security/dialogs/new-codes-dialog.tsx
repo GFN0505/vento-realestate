@@ -19,6 +19,7 @@ import { hasFinePointer } from '@/lib/pointer'
 import { sessionExpired } from '@/lib/session-expired'
 import { CLEARED_NOTE, useClearedOnExpiry } from '../use-cleared-on-expiry'
 import { DialogFrame, dialogBodyClass, dialogFooterClass, dialogFormClass } from './dialog-frame'
+import { safeAuth } from './safe-auth'
 
 type Props = { open: boolean; onClose: () => void; email: string | undefined }
 
@@ -80,7 +81,9 @@ function PasswordStep({
     setFormError(null)
     setPending(true)
     onBusy(true)
-    const { data, error } = await authClient.twoFactor.generateBackupCodes({ password })
+    const { data, error } = await safeAuth(() =>
+      authClient.twoFactor.generateBackupCodes({ password }),
+    )
     setPending(false)
     onBusy(false)
     if (data?.backupCodes) {

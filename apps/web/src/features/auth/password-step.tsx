@@ -69,8 +69,10 @@ export function PasswordStep({
     if (waiting) return
     setFailure(null)
     passkey.clear()
+    passkey.pause()
     const result = await signInWithPassword(values)
     if (result.status === 'error') {
+      passkey.resume()
       setFailure(result.failure)
       form.setValue('password', '')
       form.setFocus('password')

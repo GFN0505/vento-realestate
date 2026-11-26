@@ -22,7 +22,9 @@ describe('Where you are signed in', () => {
     expect(rows[0]).toHaveTextContent('Chrome on Mac')
     expect(rows[0]).toHaveTextContent('This device')
     expect(within(rows[0] as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^Sign out Safari on iPhone, signed in / })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^Sign out Safari on iPhone, signed in / }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Signed in on 2 devices')).toBeInTheDocument()
   })
 

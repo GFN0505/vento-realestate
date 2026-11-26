@@ -5,7 +5,7 @@ import { lazy, Suspense, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/preview/use-effective-permissions'
 import { daysAgoInLagos } from '@/lib/format'
-import { twoStepSetupUi, useTwoStepSetupMode } from '@/lib/two-step-setup-ui'
+import { twoStepSetupUi, useTwoStepSetupOffered } from '@/lib/two-step-setup-ui'
 
 const TurnOnSheet = lazy(() =>
   import('@/features/security/dialogs/turn-on-sheet').then((m) => ({ default: m.TurnOnSheet })),
@@ -44,7 +44,7 @@ export function TwoStepBanner() {
         size="sm"
         variant="outline"
         className="shrink-0 max-md:h-9"
-        onClick={() => twoStepSetupUi.open('offer')}
+        onClick={twoStepSetupUi.open}
       >
         Set up two-step
       </Button>
@@ -52,21 +52,29 @@ export function TwoStepBanner() {
   )
 }
 
-/** The setup sheet over the page, mounted on first open and kept to animate out. */
+/**
+ * The setup sheet over the page, mounted on first open and kept to animate out. Required (and
+ * not closable) exactly while `me.nextStep` says so: the 7 days ran out, or a request was
+ * refused and `me` was refetched. It closes by itself once `me` is ready again.
+ */
 export function TwoStepSetupHost() {
-  const mode = useTwoStepSetupMode()
+  const me = useMe()
+  const offered = useTwoStepSetupOffered()
+  const required = me.nextStep === 'two_step_setup'
   const router = useRouter()
   const queryClient = useQueryClient()
   const [used, setUsed] = useState(false)
-  if (mode && !used) setUsed(true)
+  const open = offered || required
+  if (open && !used) setUsed(true)
   if (!used) return null
   return (
     <Suspense fallback={null}>
       <TurnOnSheet
-        open={mode !== null}
-        required={mode === 'required'}
+        open={open}
+        required={required}
         onClose={twoStepSetupUi.close}
         onDone={() => {
+          twoStepSetupUi.close()
           // Whatever was refused while two-step was missing loads now.
           void router.invalidate()
           void queryClient.invalidateQueries()

@@ -1,5 +1,5 @@
 import { useMatches } from '@tanstack/react-router'
-import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react'
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from 'react'
 import { InShellContext } from '@/components/errors/error-state'
 import { LazyForbiddenPage } from '@/components/errors/lazy-pages'
 import { passkeyOfferPending } from '@/features/auth/passkey-offer-flag'
@@ -144,11 +144,12 @@ function ShellOverlays() {
 
 /** "Sign in faster next time", considered once after a password sign-in (3d). */
 function PasskeyOfferHost() {
-  const [pending] = useState(passkeyOfferPending)
+  const [pending, setPending] = useState(passkeyOfferPending)
+  const done = useCallback(() => setPending(false), [])
   if (!pending) return null
   return (
     <Suspense fallback={null}>
-      <PasskeyOffer />
+      <PasskeyOffer onDone={done} />
     </Suspense>
   )
 }

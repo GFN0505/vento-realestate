@@ -23,4 +23,34 @@ export function isPasskeyCancel(code: string | undefined): boolean {
   )
 }
 
-export const PREVIOUSLY_REGISTERED = 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED'
+/*
+ * The WebAuthn library aborts a ceremony only when another starts, and it isn't ours to import.
+ * So every `navigator.credentials.get` also listens to a controller of ours, and
+ * `cancelPasskeyCeremony()` ends the email field's waiting passkey suggestions (leaving the
+ * sign-in page, or signing in with a password instead).
+ */
+let current: AbortController | null = null
+
+function makeCancellable() {
+  const credentials = typeof navigator === 'undefined' ? undefined : navigator.credentials
+  if (!credentials || cancellable.has(credentials)) return
+  cancellable.add(credentials)
+  const get = credentials.get.bind(credentials)
+  credentials.get = (options?: CredentialRequestOptions) => {
+    const ours = new AbortController()
+    current = ours
+    const theirs = options?.signal
+    if (theirs?.aborted) ours.abort(theirs.reason)
+    else theirs?.addEventListener('abort', () => ours.abort(theirs.reason), { once: true })
+    return get({ ...options, signal: ours.signal }).finally(() => {
+      if (current === ours) current = null
+    })
+  }
+}
+const cancellable = new WeakSet<CredentialsContainer>()
+makeCancellable()
+
+export function cancelPasskeyCeremony(): void {
+  current?.abort(new DOMException('The passkey request was cancelled.', 'AbortError'))
+  current = null
+}

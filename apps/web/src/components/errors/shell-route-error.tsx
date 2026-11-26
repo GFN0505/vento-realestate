@@ -6,7 +6,6 @@ import { routeModule } from '@/features/shell/route-module'
 import { chunkFailureAction, lastChunkReloadAt, reloadForNewVersion } from '@/lib/chunk-errors'
 import { connection } from '@/lib/connection'
 import { errorReference } from '@/lib/error-data'
-import { twoStepSetupUi } from '@/lib/two-step-setup-ui'
 import { useInShell } from './error-state'
 import { LazyForbiddenPage, LazyNotFoundPage, LazyServerErrorPage } from './lazy-pages'
 import { OfflinePage } from './offline-page'
@@ -35,8 +34,9 @@ export function ShellRouteError({ error, reset }: ErrorComponentProps) {
 
   useEffect(() => {
     if (kind === 'two_step' && inShell) {
-      // The setup opens over the page (3d); finishing it reloads this route's data.
-      twoStepSetupUi.open('required')
+      // Fresh `me` says two-step is required: the setup opens over the page (3d), and finishing
+      // it reloads this route's data.
+      void queryClient.refetchQueries({ queryKey: meQuery().queryKey })
     } else if (kind === 'two_step') {
       // Fresh `me` first, so the guard sees the new step and sends them to two-step setup.
       void queryClient

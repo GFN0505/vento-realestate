@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocation } from '@tanstack/react-router'
 import { FingerprintIcon, LoaderCircleIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DialogBody, DialogFooter } from '@/components/ui/dialog'
 import { clearPasskeyOffer, offerSeenKey } from '@/features/auth/passkey-offer-flag'
@@ -19,12 +19,13 @@ import { thisDeviceKind } from './security-words'
  * a password sign-in, when this device has Face ID, Touch ID, a fingerprint or Windows Hello and
  * none of the person's passkeys is named for this kind of device.
  */
-export function PasskeyOffer() {
+export function PasskeyOffer({ onDone }: { onDone: () => void }) {
   const me = useMe()
   const onSecurityPage = useLocation({ select: (l) => l.pathname === '/settings/security' })
   const security = useQuery(securityQuery())
   const [platform, setPlatform] = useState<boolean | null>(null)
   const [open, setOpen] = useState(false)
+  const decided = useRef(false)
   const passkeys = useAddPasskey()
   const seenKey = offerSeenKey(me.user.id)
 
@@ -34,8 +35,9 @@ export function PasskeyOffer() {
 
   useEffect(() => {
     const data = security.data
-    if (platform === null || (!data && !security.isError)) return
-    // Decided once per sign-in, whatever the answer.
+    if (decided.current || platform === null || (!data && !security.isError)) return
+    // Decided once per sign-in, whatever the answer: landing on My security first means no offer.
+    decided.current = true
     clearPasskeyOffer()
     const kind = thisDeviceKind()
     const hasOneHere = !!kind && !!data?.passkeys.items.some((p) => p.name.includes(kind))
@@ -46,11 +48,18 @@ export function PasskeyOffer() {
       !onSecurityPage &&
       readItem(seenKey) === null
     if (offer) setOpen(true)
-  }, [platform, security.data, security.isError, onSecurityPage, seenKey])
+    else onDone()
+  }, [platform, security.data, security.isError, onSecurityPage, seenKey, onDone])
+
+  function close() {
+    setOpen(false)
+    // After the dialog animates out, the offer (and its code) leaves the page.
+    window.setTimeout(onDone, 250)
+  }
 
   function answer() {
     writeItem(seenKey, '1')
-    setOpen(false)
+    close()
   }
 
   return (
@@ -91,7 +100,7 @@ export function PasskeyOffer() {
             onClick={async () => {
               writeItem(seenKey, '1')
               await passkeys.add()
-              setOpen(false)
+              close()
             }}
           >
             {passkeys.pending ? (
@@ -103,7 +112,8 @@ export function PasskeyOffer() {
           </Button>
         </DialogFooter>
       </DialogFrame>
-      <ConfirmPasswordDialog />
+      {/* Only while the offer is open, so it never stacks with My security's own. */}
+      {open && <ConfirmPasswordDialog />}
     </>
   )
 }

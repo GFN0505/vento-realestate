@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { AUTH_ERROR_MESSAGES, AUTH_ERROR_CODES as C, type SecurityOverview } from '@vento/shared'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { isOffline } from '@/features/auth/passkey-sign-in'
 import { securityQuery } from '@/features/settings/security-queries'
 import { OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
@@ -68,6 +69,8 @@ export function useAddPasskey() {
       if (error) {
         if (error.status === 401) return sessionExpired.open()
         const code = codeOf(error)
+        // A dropped connection surfaces as a failed (or "cancelled") ceremony: say offline.
+        if (isOffline()) return void toast.error(OFFLINE_SAVE_ERROR)
         const message = addPasskeyError({ status: error.status, code }, isPasskeyCancel)
         if (message) toast.error(message)
         if (code === C.PASSKEYS_UNAVAILABLE || code === C.PASSKEY_LIMIT) {
@@ -85,7 +88,7 @@ export function useAddPasskey() {
         action: added ? { label: 'Rename', onClick: () => securityUi.rename(added.id) } : undefined,
       })
     } catch {
-      toast.error(ADD_FAILED)
+      toast.error(isOffline() ? OFFLINE_SAVE_ERROR : ADD_FAILED)
     } finally {
       setPending(false)
     }

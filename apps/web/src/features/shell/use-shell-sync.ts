@@ -3,7 +3,6 @@ import { useEffect } from 'react'
 import { useMe } from '@/features/preview/use-effective-permissions'
 import { notify } from '@/lib/notify'
 import { syncTabOrganization, takeOrganizationNotice } from '@/lib/tab-organization'
-import { twoStepSetupUi } from '@/lib/two-step-setup-ui'
 
 /**
  * Keeps the open shell honest when `me` changes underneath it (tab focus refetches it):
@@ -22,7 +21,7 @@ export function useShellSync() {
 
   useEffect(() => {
     if (syncTabOrganization(me) === 'reload') return
-    if (me.nextStep === 'two_step_setup') twoStepSetupUi.open('required')
-    else if (me.nextStep !== 'ready') void router.invalidate()
+    // Two-step required: TwoStepSetupHost opens the setup over the page from `me` itself.
+    if (me.nextStep !== 'ready' && me.nextStep !== 'two_step_setup') void router.invalidate()
   }, [me, router])
 }

@@ -10,9 +10,20 @@ type Options = {
   onSignedIn: () => void
 }
 
+// A challenge lives 5 minutes on the server: ask for a fresh one a little before.
+const REFRESH_MS = 4.5 * 60_000
+// After an error, wait a moment before listening again, so a dead network can't spin.
+const REARM_DELAY_MS = 2_000
+
+/** Ends a waiting passkey request, if the library was ever loaded. */
+function cancelCeremony() {
+  void import('@/lib/passkey-client').then((m) => m.cancelPasskeyCeremony())
+}
+
 /**
  * The passkey half of signing in: the button, and (where the browser supports it) passkeys in
- * the email field's suggestions. A failed passkey never counts towards a sign-in lock.
+ * the email field's suggestions, kept listening with a fresh challenge until someone signs in.
+ * A failed passkey never counts towards a sign-in lock.
  */
 export function usePasskeySignIn({ autoFill, keepSignedIn, onSignedIn }: Options) {
   const [supported] = useState(browserSupportsPasskeys)
@@ -23,6 +34,10 @@ export function usePasskeySignIn({ autoFill, keepSignedIn, onSignedIn }: Options
   const latest = useRef({ keepSignedIn, onSignedIn })
   latest.current = { keepSignedIn, onSignedIn }
   const alive = useRef(true)
+  // Each autofill listen has a number; only the latest may re-arm itself.
+  const generation = useRef(0)
+  const started = useRef(false)
+  const stopped = useRef(false)
 
   function settle(result: PasskeySignInResult, fromAutofill: boolean) {
     if (!alive.current) return
@@ -37,21 +52,43 @@ export function usePasskeySignIn({ autoFill, keepSignedIn, onSignedIn }: Options
     setMessage(result.message)
   }
 
-  async function listenForAutofill() {
-    if (!autoFill || !supported || !(await supportsPasskeyAutofill())) return
+  async function listen() {
+    if (!autoFill || !supported || stopped.current || !(await supportsPasskeyAutofill())) return
+    const mine = ++generation.current
+    started.current = true
     const result = await signInWithPasskey({
       autoFill: true,
       keepSignedIn: () => latest.current.keepSignedIn(),
     })
+    // Replaced by the button, a refresh or a password submit: the newer listen carries on.
+    if (mine !== generation.current || !alive.current) return
     settle(result, true)
+    if (result.status === 'signed-in' || stopped.current) return
+    if (result.status === 'error' && result.code === C.PASSKEYS_UNAVAILABLE) return
+    window.setTimeout(
+      () => mine === generation.current && void listen(),
+      result.status === 'error' ? REARM_DELAY_MS : 0,
+    )
+  }
+
+  function restartListening() {
+    if (!started.current) return void listen()
+    generation.current++
+    cancelCeremony()
+    void listen()
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: start listening once, on mount.
   useEffect(() => {
     alive.current = true
-    void listenForAutofill()
+    stopped.current = false
+    void listen()
+    const refresh = autoFill ? window.setInterval(restartListening, REFRESH_MS) : undefined
     return () => {
       alive.current = false
+      stopped.current = true
+      window.clearInterval(refresh)
+      if (started.current) cancelCeremony()
     }
   }, [])
 
@@ -60,12 +97,14 @@ export function usePasskeySignIn({ autoFill, keepSignedIn, onSignedIn }: Options
     setPending(true)
     setMessage(null)
     setNote(null)
+    // The button's prompt replaces the suggestions (the library aborts them).
+    generation.current++
+    started.current = true
     const result = await signInWithPasskey({ keepSignedIn: () => latest.current.keepSignedIn() })
     if (!alive.current) return
     setPending(false)
     settle(result, false)
-    // The button's prompt replaced the suggestions; offer them again.
-    if (result.status !== 'signed-in') void listenForAutofill()
+    if (result.status !== 'signed-in') void listen()
   }
 
   return {
@@ -78,5 +117,11 @@ export function usePasskeySignIn({ autoFill, keepSignedIn, onSignedIn }: Options
       setMessage(null)
       setNote(null)
     },
+    /** Signing in with a password: stop offering passkeys until it fails. */
+    pause() {
+      generation.current++
+      if (started.current) cancelCeremony()
+    },
+    resume: () => void listen(),
   }
 }

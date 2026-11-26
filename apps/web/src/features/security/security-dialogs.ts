@@ -51,6 +51,7 @@ export const securityUi = {
     update({ confirm: null })
     resolve?.(confirmed)
   },
+  confirmOpen: () => state.confirm !== null,
   /** Tests start clean. */
   reset: () => update({ dialog: null, renaming: null, confirm: null }),
 }

@@ -23,6 +23,7 @@ import { hasFinePointer } from '@/lib/pointer'
 import { sessionExpired } from '@/lib/session-expired'
 import { CLEARED_NOTE, useClearedOnExpiry } from '../use-cleared-on-expiry'
 import { DialogFrame, dialogBodyClass, dialogFooterClass, dialogFormClass } from './dialog-frame'
+import { safeAuth } from './safe-auth'
 
 type Props = { open: boolean; onClose: () => void }
 type Refusal = AuthClientError & { requiredBy?: TwoStepRequirement }
@@ -69,10 +70,12 @@ function TurnOffForm({ onClose, onBusy }: { onClose: () => void; onBusy: (b: boo
     setErrors({})
     setPending(true)
     onBusy(true)
-    const { error } = await authClient.$fetch<{ status: boolean }>('/two-factor/disable', {
-      method: 'POST',
-      body: backup ? { password, backupCode: code.trim() } : { password, code },
-    })
+    const { error } = await safeAuth(() =>
+      authClient.$fetch<{ status: boolean }>('/two-factor/disable', {
+        method: 'POST',
+        body: backup ? { password, backupCode: code.trim() } : { password, code },
+      }),
+    )
     setPending(false)
     onBusy(false)
     if (!error) {

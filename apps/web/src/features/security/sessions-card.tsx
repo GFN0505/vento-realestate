@@ -128,7 +128,12 @@ function SessionRow({ session }: { session: SessionItem }) {
         <span className={session.isCurrent ? 'font-medium text-status-emerald-fg' : undefined}>
           {session.isCurrent ? 'Active now' : lastActiveWords(session.lastActiveAt)}
         </span>
-        {signedIn && <span> · {signedIn}</span>}
+        {signedIn && (
+          <>
+            <span className="max-sm:hidden"> · </span>
+            <span className="max-sm:block">{signedIn}</span>
+          </>
+        )}
       </p>
     </SecurityRow>
   )
