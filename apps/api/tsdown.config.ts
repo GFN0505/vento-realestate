@@ -7,7 +7,7 @@ export default defineConfig({
   format: 'esm',
   deps: {
     // Bundle the workspace package (and what it imports) so production doesn't need its TypeScript source.
-    alwaysBundle: ['@vento/shared'],
+    alwaysBundle: ['@vento/shared', '@vento/shared/console'],
     onlyBundle: false,
   },
 })
