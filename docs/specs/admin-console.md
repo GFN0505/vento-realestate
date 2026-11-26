@@ -612,8 +612,8 @@ AI table and `docs/PRODUCT.md`: "Ask Vento" → "Ask" only if short form (c) is 
 - **0023 · Staff accounts are separate from customer accounts and join by invitation:** amends 0021 (the no-organization passkey consequence is replaced by My account; the user-menu entry and **Back to {organization}** go) and 0015 (a super-admin is a staff account, not a role on any account). Covers the staff sign-up, 48-hour invitations, `superadmin invite` (bootstrap prints, break-glass emails), removal closing the account, and the deploy rule.
 - Still saying `app.ventoerp.com` (outside product docs): `docs/ARCHITECTURE.md`, `docs/plans/admin-console.md`, decisions 0019 and 0021 (records are amended by the new records, not edited).
 
-### Open questions (1b)
-Short, with the recommended default.
+### Owner's decisions (1b, 27 Nov 2026)
+The owner approved every recommended default below (questions 1–4 answered directly; 5 follows the same rule as 1).
 1. **Internal organizations:** keep staff accounts out of Vento Real Estate's own internal organizations too? *Recommended: yes, out of every organization.* Staff use a separate customer account (different email) to try the product as a customer.
 2. **Existing super-admins at deploy:** anyone who is a super-admin and a member of an organization (possibly your own account) stops being a super-admin and re-joins by invitation with a staff email. *Recommended: yes.*
 3. **Staff invitation lifetime:** *Recommended: 48 hours* (customers get 7 days).
