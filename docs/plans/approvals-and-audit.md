@@ -272,6 +272,14 @@ Brick 4 works only on the organization audit (`audit_events`) and the approvals 
 
 If the console adds organization-side audit actions (for example "Vento viewed your data" for read-only support access), `labels.ts` needs a label for each one. The labels test will flag any that are missing after the rebase.
 
+**The console's shared-file list** (from the coordinating session, 26 Nov 2026), and what to do after rebasing on it:
+- **`audit/actions.ts`:** the console appends `plan.add_on_changed` and `console.opened`. Give both plain-words labels and modules in `labels.ts`.
+- **`account/schema.ts`:** the console adds `me.console` and a `console` next step. Keep both alongside `approvalsWaiting` and `canSeeApprovals`.
+- **`access/middleware.ts`:** the console changes about 3 lines in `authenticate()`. `requireOwner()` is separate, so only the file is shared.
+- **`router.ts`:** the console adds a `console` key, and its new `apps/api/src/api-contract.ts` composes the customer and console contracts. Mount `approvals`, `approvalRules` and `audit` in the **customer** contract.
+- **Migrations:** the console takes `0011_console`. Brick 4 merges second, so its migrations are regenerated after it.
+- **Unchanged by the console:** `contract.ts`, `role-rules.ts`, `platform/cli/main.ts` and `modules/audit`.
+
 ## 9. Tests
 - **Shared unit tests:**
   - `match.test.ts`: company beats all; highest threshold wins; equal to the threshold isn't "over"; foreign amount uses `ngnAmount`; "any" fallback; no rule.
