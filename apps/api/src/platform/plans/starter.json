@@ -1,0 +1,23 @@
+{
+  "key": "starter",
+  "name": "Starter",
+  "sortOrder": 1,
+  "defaultForNew": true,
+  "features": [
+    "land",
+    "projects",
+    "projects.costs",
+    "projects.procurement",
+    "projects.site_diary",
+    "sales",
+    "finance",
+    "finance.paystack",
+    "finance.bank_import",
+    "finance.vendor_bills",
+    "documents",
+    "analytics",
+    "buyer_portal",
+    "platform.import"
+  ],
+  "limits": { "projects": 1, "entities": 2, "members": 10, "ai_budget": "0" }
+}

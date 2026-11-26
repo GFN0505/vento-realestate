@@ -4,11 +4,12 @@ import type { z } from 'zod'
 import { type AuthUser, type ServiceContext, setActiveOrganization } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import type { DbOrTx } from '@/db/client'
-import { entities, members, organizations, users } from '@/db/schema'
+import { entities, members, organizationPlans, organizations, users } from '@/db/schema'
 import { conflict } from '@/lib/errors'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { insertEntity } from '@/modules/entities/entities.service'
 import { lockOrganization, toOrganization } from '@/modules/organization/organization.service'
+import { defaultPlanVersionId } from '@/platform/seed-plans'
 
 /**
  * Step 1: the organization, its nine built-in roles and the person as owner, all or nothing.
@@ -32,6 +33,14 @@ export async function createOrganization(
     }
     const [org] = await tx.insert(organizations).values(input).returning()
     if (!org) throw new Error('Organization insert returned nothing')
+    // A self-signed-up organization is standard on the default plan (owner's answer: Starter).
+    const planVersionId = await defaultPlanVersionId(tx)
+    await tx.insert(organizationPlans).values({
+      organizationId: org.id,
+      releaseGroup: 'standard',
+      planVersionId,
+      planAssignedAt: planVersionId ? new Date() : null,
+    })
     const roleIds = await syncSystemRoles(tx, org.id)
     const ownerRoleId = roleIds.get('owner')
     if (!ownerRoleId) throw new Error('Owner role missing')

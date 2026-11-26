@@ -1,4 +1,5 @@
 import type { BaseContext } from '@/context'
+import type { OrganizationAvailability } from '@/platform/availability'
 import type { AuthSession, AuthUser, MemberContext, ServiceContext } from './context'
 
 type MemberRequestContext = BaseContext & {
@@ -7,6 +8,7 @@ type MemberRequestContext = BaseContext & {
   organizationId: string
   organizationName: string
   member: MemberContext
+  features: OrganizationAvailability
 }
 
 /** Narrows the request context to what services may use. */
@@ -18,5 +20,6 @@ export function serviceContext(context: MemberRequestContext): ServiceContext {
     user: { id: context.user.id, name: context.user.name, email: context.user.email },
     member: context.member,
     sessionId: context.session.id,
+    features: context.features,
   }
 }

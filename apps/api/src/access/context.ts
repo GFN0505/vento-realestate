@@ -8,6 +8,7 @@ import {
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { members, organizations, roles, sessions, users } from '@/db/schema'
+import type { OrganizationAvailability } from '@/platform/availability'
 
 /** The signed-in person, from Better Auth's user row. */
 export type AuthUser = {
@@ -44,6 +45,8 @@ export type Membership = {
   organizationId: string
   organizationName: string
   member: MemberContext
+  /** Release group and plan version; standard with no plan when the row is missing. */
+  plan: { releaseGroup: 'standard' | 'pilot' | 'internal'; planVersionId: string | null }
 }
 
 /** What services receive. Organization and member come from the session, never from input. */
@@ -54,6 +57,8 @@ export type ServiceContext = {
   user: Pick<AuthUser, 'id' | 'name' | 'email'>
   member: MemberContext
   sessionId: string | null
+  /** What's available to the organization (and its limits), from the in-memory snapshot. */
+  features: OrganizationAvailability
 }
 
 /** The audit actor for a service call: the signed-in person, by id and name at the time. */
@@ -71,6 +76,8 @@ type MembershipRow = {
   requires_two_step: boolean
   permissions: string[] | null
   entity_ids: string[] | null
+  release_group: 'standard' | 'pilot' | 'internal' | null
+  plan_version_id: string | null
 }
 
 export function toPermissionSet(pairs: readonly string[]): PermissionSet {
@@ -85,7 +92,8 @@ export function toPermissionSet(pairs: readonly string[]): PermissionSet {
 /**
  * The person's active membership, in one query: the session's organization when they're
  * still a member there, otherwise their most recent one. Not cached, so a role or limit
- * change applies on the next request.
+ * change applies on the next request. The organization's release group and plan version come
+ * along (left join, so an organization created by older code reads as standard with no plan).
  */
 export async function loadMembership(
   db: DbOrTx,
@@ -98,10 +106,12 @@ export async function loadMembership(
       (select array_agg(rp.module || '.' || rp.action) from role_permissions rp
         where rp.role_id = r.id) as permissions,
       (select array_agg(l.entity_id) from member_entity_limits l
-        where l.member_id = m.id) as entity_ids
+        where l.member_id = m.id) as entity_ids,
+      op.release_group, op.plan_version_id
     from members m
     join roles r on r.id = m.role_id and r.organization_id = m.organization_id
     join organizations o on o.id = m.organization_id
+    left join organization_plans op on op.organization_id = m.organization_id
     where m.user_id = ${userId} and m.status = 'active'
     order by (m.organization_id = ${preferredOrganizationId}::uuid) is true desc, m.joined_at desc, m.id desc
     limit 1
@@ -119,6 +129,10 @@ export async function loadMembership(
       permissions: toPermissionSet(row.permissions ?? []),
       entityIds: row.entity_ids,
       requiresTwoStep: row.requires_two_step,
+    },
+    plan: {
+      releaseGroup: row.release_group ?? 'standard',
+      planVersionId: row.plan_version_id,
     },
   }
 }

@@ -2,25 +2,34 @@ import {
   defaultPermissions,
   defaultRole,
   defaultRoleAllows,
+  FEATURES,
   PERMISSION_MODULES,
   type PermissionSet,
   SYSTEM_ROLE_KEYS,
   type SystemRoleKey,
 } from '@vento/shared'
 import { describe, expect, it } from 'vitest'
+import { NAV_FLAGS, navAccess } from '@/test/nav-access'
 import {
   canView,
   footerNav,
+  isAvailable,
   mobileTabs,
   moreItems,
   NAV,
+  type NavItem,
+  navItem,
+  navTag,
   sidebarSections,
   visibleNav,
   workspaceModules,
 } from './nav'
 import { NAV_PATHS } from './nav-paths'
 
-const perms = (key: SystemRoleKey) => defaultPermissions(defaultRole(key))
+// The 3a tables: an internal organization with every module available.
+const perms = (key: SystemRoleKey) => navAccess(defaultPermissions(defaultRole(key)))
+const permsOf = (permissions: PermissionSet | null) => navAccess(permissions)
+const rolePerms = (key: SystemRoleKey) => defaultPermissions(defaultRole(key))
 const labels = (items: { label: string }[]) => items.map((i) => i.label)
 
 describe('sidebar', () => {
@@ -47,7 +56,7 @@ describe('sidebar', () => {
   })
 
   it('shows only Home to someone with no permissions', () => {
-    expect(labels(visibleNav(null))).toEqual(['Home'])
+    expect(labels(visibleNav(permsOf(null)))).toEqual(['Home'])
   })
 })
 
@@ -69,13 +78,22 @@ describe('mobile tabs', () => {
   })
 
   it('gives a custom role its first three modules in sidebar order', () => {
-    const custom = { ...perms('viewer'), land: [] } satisfies PermissionSet
-    expect(labels(mobileTabs(custom, null))).toEqual(['Home', 'Projects', 'Estates', 'Sales'])
+    const custom = { ...rolePerms('viewer'), land: [] } satisfies PermissionSet
+    expect(labels(mobileTabs(permsOf(custom), null))).toEqual([
+      'Home',
+      'Projects',
+      'Estates',
+      'Sales',
+    ])
   })
 
   it('drops a priority module the role cannot view', () => {
-    const noSales = { ...perms('sales'), sales: [] } satisfies PermissionSet
-    expect(labels(mobileTabs(noSales, 'sales'))).toEqual(['Home', 'Documents', 'Compliance'])
+    const noSales = { ...rolePerms('sales'), sales: [] } satisfies PermissionSet
+    expect(labels(mobileTabs(permsOf(noSales), 'sales'))).toEqual([
+      'Home',
+      'Documents',
+      'Compliance',
+    ])
   })
 
   it('puts every other viewable module in More, and nothing twice', () => {
@@ -97,16 +115,69 @@ describe('sidebar footer', () => {
   })
 })
 
-describe('hidden modules', () => {
-  it('hides a module everywhere when its status is hidden', () => {
-    const sales = NAV.find((i) => i.key === 'sales')
-    if (!sales) throw new Error('Sales must be in the registry')
-    expect(canView(perms('owner'), { ...sales, status: 'hidden' })).toBe(false)
-  })
-
+describe('registry', () => {
   it('maps every permission module to exactly one entry', () => {
     const modules = NAV.flatMap((i) => (i.module ? [i.module] : []))
     expect(modules.sort()).toEqual([...PERMISSION_MODULES].sort())
+  })
+
+  it('uses only feature keys the catalog knows', () => {
+    for (const flag of NAV_FLAGS) expect(Object.keys(FEATURES)).toContain(flag)
+  })
+})
+
+const owner = rolePerms('owner')
+const built = (item: NavItem): NavItem => ({ ...item, built: true })
+const shownEverywhere = (access: ReturnType<typeof navAccess>) => [
+  ...labels(sidebarSections(access).flatMap((s) => s.items)),
+  ...labels(mobileTabs(access, 'owner')),
+  ...labels(moreItems(access, 'owner')),
+  ...labels(workspaceModules(access)),
+]
+
+describe('availability', () => {
+  it('hides a module the organization does not have everywhere, even from an owner', () => {
+    const access = navAccess(owner, { features: NAV_FLAGS.filter((f) => f !== 'sales') })
+    expect(shownEverywhere(access)).not.toContain('Sales')
+    expect(canView(access, navItem('sales'))).toBe(false)
+    expect(isAvailable(access, navItem('sales'))).toBe(false)
+  })
+
+  it('shows only Home to an organization with nothing available', () => {
+    expect(labels(visibleNav(navAccess(owner, { features: [] })))).toEqual(['Home'])
+  })
+
+  it('shows unbuilt modules only to internal organizations', () => {
+    expect(labels(visibleNav(navAccess(owner, { internal: false })))).toEqual(['Home'])
+    expect(canView(navAccess(owner, { internal: false }), built(navItem('sales')))).toBe(true)
+  })
+
+  it('keeps unbuilt core entries hidden, even in internal organizations', () => {
+    expect(isAvailable(navAccess(owner), navItem('settings'))).toBe(false)
+    expect(isAvailable(navAccess(owner), navItem('help'))).toBe(false)
+  })
+
+  it('still hides an available module the role cannot view', () => {
+    const access = navAccess(rolePerms('hr'), { internal: false })
+    expect(isAvailable(access, built(navItem('sales')))).toBe(true)
+    expect(canView(access, built(navItem('sales')))).toBe(false)
+  })
+})
+
+describe('tags', () => {
+  it('tags an unbuilt module Soon, ahead of early access', () => {
+    const access = navAccess(owner, { earlyAccess: ['sales'] })
+    expect(navTag(access, navItem('sales'))).toBe('soon')
+  })
+
+  it('tags a built module reached early as Early access', () => {
+    const access = navAccess(owner, { earlyAccess: ['sales'] })
+    expect(navTag(access, built(navItem('sales')))).toBe('early_access')
+  })
+
+  it('gives a released built module and Home no tag', () => {
+    expect(navTag(navAccess(owner), built(navItem('sales')))).toBeNull()
+    expect(navTag(navAccess(owner), navItem('home'))).toBeNull()
   })
 })
 

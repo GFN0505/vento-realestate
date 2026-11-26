@@ -46,6 +46,7 @@ import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { assertGrantableEntities } from '@/modules/members/members.service'
 import { loadRoles } from '@/modules/roles/roles.service'
+import { assertWithinLimit } from '@/platform/limits'
 import { hashInvitationToken, newInvitationToken } from './invitation-token'
 
 type InvitationRow = typeof invitations.$inferSelect
@@ -241,6 +242,8 @@ export async function createInvitations(
     if (live) {
       throw alreadyInvited(live.email)
     }
+    // Members plus live invitations count against the plan; expired ones don't.
+    await assertWithinLimit(tx, ctx, 'members', input.items.length)
     // Expired-but-pending rows would block the "one pending per email" index: mark them first.
     if (pending.length) {
       await tx
@@ -374,6 +377,10 @@ export async function resendInvitation(
         ),
       )
     if (newer) throw alreadyInvited(current.email)
+    // An expired invitation stopped counting; bringing it back takes a place again.
+    if (effectiveStatus(current, now) === 'expired') {
+      await assertWithinLimit(tx, ctx, 'members', 1)
+    }
     // A newer one that has lapsed but still reads 'pending' would trip the unique index.
     await tx
       .update(invitations)

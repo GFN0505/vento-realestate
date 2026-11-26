@@ -8,6 +8,6 @@ A spec links to the journeys it adds or changes (`docs/journeys/`), the screens 
 |---|---|---|---|
 | [Accounts and access (brick 2a)](accounts-and-access.md) | Platform | J-ONB-01, J-ONB-02, J-ONB-04 | shipped |
 | [App shell (brick 3a)](app-shell.md) | Platform | J-ONB-05, J-ONB-01 | draft |
-| [Feature flags and plan entitlements](feature-flags.md) | Platform | J-ADM-01, J-ADM-02, J-ONB-05, J-AI-04 | approved |
+| [Feature flags and plan entitlements](feature-flags.md) | Platform | J-ADM-01, J-ADM-02, J-ONB-05, J-AI-04 | in build |
 
 Status: `draft` · `approved` (owner agreed, ready to plan) · `in build` · `shipped` · `dropped`

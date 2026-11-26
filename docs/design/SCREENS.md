@@ -240,5 +240,5 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | AI usage and cost by organization and feature | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
 | Feature flags: stage per flag, who has it, plans that include it (console in R2) | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
 | Plans: contents, limits, versions (console in R2) | – | todo |
-| Flag and plan commands (`pnpm flags …`, `pnpm plans …`; text output, used until the console ships) | – | todo |
+| Flag and plan commands (`pnpm flags …`, `pnpm plans …`, `pnpm superadmin …`; text output, used until the console ships) | – | built |
 | System health and failed jobs | [AdminJobs](claude-design/AdminJobs.dc.html) (failed jobs only) | todo |

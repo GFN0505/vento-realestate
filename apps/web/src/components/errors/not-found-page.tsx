@@ -17,13 +17,13 @@ const LINE = 'The link may be old, or the record may have been archived. Try sea
 /** Board Error404 inside the shell: Search (⌘K), the last three pages opened here, Home. */
 export function NotFoundPage() {
   const me = useMe()
-  const { permissions } = useEffectiveAccess()
+  const access = useEffectiveAccess()
   usePageTitle('Page not found', { recent: false })
   const recent = me.organization
     ? readRecentPages(me.user.id, me.organization.id)
         .filter((p) => {
           const item = p.module ? navItemForModule(p.module) : undefined
-          return !item || canView(permissions, item)
+          return !item || canView(access, item)
         })
         .slice(0, 3)
     : []

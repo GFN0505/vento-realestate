@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { auditEvents, members, organizations, roles } from '@/db/schema'
+import { auditEvents, members, organizationPlans, organizations, roles } from '@/db/schema'
+import { findPlanVersion } from '@/platform/operations/common'
+import { seedPlans } from '@/platform/seed-plans'
 import { withRollback } from '@/test/db'
 import { contextFor, createUser } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
@@ -25,6 +27,20 @@ describe('onboarding', () => {
         .from(auditEvents)
         .where(eq(auditEvents.organizationId, org.id))
       expect(events.map((e) => e.action)).toEqual(['organization.created'])
+    }))
+
+  it('starts a new organization as standard on the default plan (Starter), in the same transaction', () =>
+    withRollback(async (tx) => {
+      await seedPlans(tx)
+      const starter = await findPlanVersion(tx, 'starter')
+      const user = await createUser(tx)
+      const org = await createOrganization(tx, { user, sessionId: null }, input)
+      const [row] = await tx
+        .select()
+        .from(organizationPlans)
+        .where(eq(organizationPlans.organizationId, org.id))
+      expect(row).toMatchObject({ releaseGroup: 'standard', planVersionId: starter.versionId })
+      expect(row?.planAssignedAt).toBeInstanceOf(Date)
     }))
 
   it('leaves nothing behind when a step fails', () =>

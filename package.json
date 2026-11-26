@@ -20,7 +20,10 @@
     "db:migrate": "pnpm --filter @vento/api db:migrate",
     "db:seed": "pnpm --filter @vento/api db:seed",
     "db:studio": "pnpm --filter @vento/api db:studio",
-    "mail": "pnpm --silent --filter @vento/api mail"
+    "mail": "pnpm --silent --filter @vento/api mail",
+    "flags": "pnpm --silent --filter @vento/api flags",
+    "plans": "pnpm --silent --filter @vento/api plans",
+    "superadmin": "pnpm --silent --filter @vento/api superadmin"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",

@@ -1,6 +1,20 @@
 export { Decimal, MONEY_LIMIT, toMoneyString } from './decimal'
-export type { ConflictReason, ForbiddenReason, UnauthorizedReason } from './errors'
-export { base, conflictReason, errorMap, forbiddenReason, unauthorizedReason } from './errors'
+export type {
+  ConflictReason,
+  ForbiddenData,
+  ForbiddenReason,
+  ProcedureMeta,
+  UnauthorizedReason,
+} from './errors'
+export {
+  base,
+  conflictReason,
+  errorMap,
+  forbiddenReason,
+  forFeature,
+  platform,
+  unauthorizedReason,
+} from './errors'
 export { ORGANIZATION_HEADER } from './http'
 export { money, signedMoney } from './money'
 export type { NigerianState } from './nigeria'

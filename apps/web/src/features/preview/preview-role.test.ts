@@ -1,5 +1,6 @@
-import { DEFAULT_ROLES, defaultPermissions, defaultRole, type Me, type Role } from '@vento/shared'
+import { DEFAULT_ROLES, defaultPermissions, type Role } from '@vento/shared'
 import { afterEach, describe, expect, it } from 'vitest'
+import { testMe } from '@/test/me'
 import { clearPreview, getPreview, resetPreviewForTests, startPreview } from './preview-role'
 import { effectiveAccess } from './use-effective-permissions'
 
@@ -15,27 +16,7 @@ const roles: Role[] = DEFAULT_ROLES.map((r) => ({
   canApprove: [],
 }))
 
-function me(roleKey: 'admin' | 'sales'): Me {
-  return {
-    user: {
-      id: 'u',
-      name: 'Olumide Bankole',
-      email: 'o@v.ng',
-      twoFactorEnabled: true,
-      companyName: null,
-    },
-    organization: { id: 'org-a', name: 'Vento Homes Ltd' },
-    organizations: [{ id: 'org-a', name: 'Vento Homes Ltd', roleName: 'Admin' }],
-    member: {
-      id: 'm',
-      role: { id: `role-${roleKey}`, key: roleKey, name: defaultRole(roleKey).name },
-      entityIds: null,
-      permissions: defaultPermissions(defaultRole(roleKey)),
-    },
-    nextStep: 'ready',
-    twoStepRequired: false,
-  }
-}
+const me = testMe
 
 afterEach(() => {
   clearPreview()
@@ -75,5 +56,33 @@ describe('preview as role', () => {
     clearPreview()
     expect(getPreview('org-a')).toBeNull()
     expect(sessionStorage.getItem('vento-preview')).toBeNull()
+  })
+})
+
+describe('availability in effective access', () => {
+  it("carries the organization's features and internal flag, also while previewing", () => {
+    const owner = testMe('owner', {
+      features: [{ key: 'sales', earlyAccess: true }],
+      organization: { id: 'org-a', name: 'Lekki Partners Ltd', internal: true },
+    })
+    const access = effectiveAccess(owner, roles, { organizationId: 'org-a', roleId: 'role-sales' })
+    expect(access.features.get('sales')).toEqual({ earlyAccess: true })
+    expect(access.features.has('finance')).toBe(false)
+    expect(access.internal).toBe(true)
+  })
+
+  it('offers upgrade hints to an owner', () => {
+    expect(effectiveAccess(testMe('owner'), roles, null).showUpgradeHints).toBe(true)
+  })
+
+  it('offers none to other roles, even with a plan block', () => {
+    const admin = testMe('admin', { plan: testMe('owner').plan })
+    expect(effectiveAccess(admin, roles, null).showUpgradeHints).toBe(false)
+    expect(effectiveAccess(testMe('sales'), roles, null).showUpgradeHints).toBe(false)
+  })
+
+  it('offers none while an owner previews another role', () => {
+    const preview = { organizationId: 'org-a', roleId: 'role-sales' }
+    expect(effectiveAccess(testMe('owner'), roles, preview).showUpgradeHints).toBe(false)
   })
 })

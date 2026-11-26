@@ -26,6 +26,16 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT: onOff.default('on'),
   TRUSTED_IP_HEADER: optionalText.transform((v) => v?.toLowerCase()),
   SEED_PASSWORD: optionalText,
+  /** Seconds between reloads of the feature snapshot; changes reach every server within this. */
+  FEATURE_SNAPSHOT_REFRESH_SECONDS: z.coerce.number().int().min(1).max(30).default(10),
+  /** "Talk to Vento" for owners. Required in production. */
+  SUPPORT_EMAIL: optionalText.pipe(z.email().optional()),
+  SUPPORT_WHATSAPP: optionalText.pipe(
+    z
+      .string()
+      .regex(/^\+[1-9]\d{7,14}$/, { message: 'Use E.164, e.g. +2348012345678' })
+      .optional(),
+  ),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -38,4 +48,14 @@ if (!parsed.success) {
   process.exit(1)
 }
 
+if (parsed.data.NODE_ENV === 'production' && !parsed.data.SUPPORT_EMAIL) {
+  console.error('Invalid environment variables (see .env.example):\n  - SUPPORT_EMAIL: Required')
+  process.exit(1)
+}
+
 export const env: Env = parsed.data
+
+/** Where "Talk to Vento" goes. */
+export function supportContact(): { email: string; whatsapp: string | null } {
+  return { email: env.SUPPORT_EMAIL ?? 'support@localhost', whatsapp: env.SUPPORT_WHATSAPP ?? null }
+}

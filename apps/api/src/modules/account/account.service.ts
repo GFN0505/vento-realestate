@@ -23,6 +23,9 @@ import { summariseUserAgent } from '@/lib/client-ip'
 import { notFound } from '@/lib/errors'
 import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
+import { organizationAvailability } from '@/platform/availability'
+import type { FeatureStore } from '@/platform/feature-store'
+import { planSummary } from '@/platform/plan-summary'
 
 async function hasEntity(db: DbOrTx, organizationId: string): Promise<boolean> {
   const [row] = await db
@@ -48,12 +51,42 @@ async function nextStepFor(
   return 'ready'
 }
 
+/**
+ * Available features for the organization and, for owners only, the plan block. Unavailable
+ * keys, stages and other plans' contents never leave the server.
+ */
+async function featuresAndPlan(
+  db: DbOrTx,
+  membership: Membership | null,
+  store: FeatureStore,
+): Promise<Pick<Me, 'features' | 'plan'>> {
+  if (!membership) return { features: [], plan: null }
+  const now = new Date()
+  const snapshot = await store.get()
+  const availability = organizationAvailability(
+    snapshot,
+    { organizationId: membership.organizationId, ...membership.plan },
+    now,
+  )
+  const isOwner = membership.member.roleKey === 'owner'
+  return {
+    features: availability.list(),
+    plan: isOwner ? await planSummary(db, availability, snapshot, now) : null,
+  }
+}
+
 /** The single source of truth for the web's guards: who, where, and what to do next. */
-export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): Promise<Me> {
+export async function getMe(
+  db: DbOrTx,
+  user: AuthUser,
+  session: AuthSession,
+  store: FeatureStore,
+): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
-  const [nextStep, organizations] = await Promise.all([
+  const [nextStep, organizations, { features, plan }] = await Promise.all([
     nextStepFor(db, user, membership),
     listActiveMemberships(db, user.id),
+    featuresAndPlan(db, membership, store),
   ])
   return {
     user: {
@@ -64,8 +97,14 @@ export async function getMe(db: DbOrTx, user: AuthUser, session: AuthSession): P
       companyName: user.companyName,
     },
     organization: membership
-      ? { id: membership.organizationId, name: membership.organizationName }
+      ? {
+          id: membership.organizationId,
+          name: membership.organizationName,
+          internal: membership.plan.releaseGroup === 'internal',
+        }
       : null,
+    features,
+    plan,
     organizations,
     member: membership
       ? {

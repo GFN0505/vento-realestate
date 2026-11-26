@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { invitationEmail } from './invitation'
 import { backupCodeUsedAlert, signInLockedAlert, twoStepResetAlert } from './security-alert'
+import { trialEndingEmail } from './trial-ending'
 import { verifyEmail } from './verify-email'
 
 describe('email templates', () => {
@@ -76,5 +77,19 @@ describe('email templates', () => {
     expect(email.text).toContain(
       "Someone entered 5 wrong codes for your Vento account at 10:30 on 25 Nov 2026. Sign-in is locked until 10:45. If this wasn't you, reset your password now: http://localhost/forgot-password",
     )
+  })
+
+  it('writes the trial-ending email from the spec, with Talk to Vento', () => {
+    const email = trialEndingEmail({
+      planName: 'Enterprise',
+      endsOn: '2 Jan 2027',
+      losing: ['Board pack'],
+      talkUrl: 'mailto:support@vento.ng',
+    })
+    expect(email.subject).toBe('Your Enterprise trial ends on 2 Jan 2027')
+    expect(email.text).toContain(
+      'Your Enterprise trial ends on 2 Jan 2027. After that, the board pack is no longer available. Your data stays.',
+    )
+    expect(email.text).toContain('Talk to Vento: mailto:support@vento.ng')
   })
 })

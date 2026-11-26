@@ -1,6 +1,6 @@
 import { PASSWORD_RULE_LABELS, type SystemRoleKey, unmetPasswordRules } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import { setActiveOrganization } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import { webUrl } from '@/auth/hooks/deps'
@@ -8,6 +8,10 @@ import { INVITATION_TTL_MS } from '@/auth/policy'
 import { env } from '@/env'
 import { logger } from '@/lib/logger'
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
+import { findPlanVersion } from '@/platform/operations/common'
+import { assignPlan } from '@/platform/operations/plans'
+import { setReleaseOverride } from '@/platform/operations/release'
+import { bootstrapStartingData, SETUP_ACTOR } from '@/platform/seed-plans'
 import { type DbOrTx, db, pool } from './client'
 import {
   accounts,
@@ -15,8 +19,11 @@ import {
   invitations,
   memberEntityLimits,
   members,
+  organizationOverrides,
+  organizationPlans,
   organizations,
   passwordHistories,
+  platformAdmins,
   users,
 } from './schema'
 
@@ -60,23 +67,55 @@ const INVITES = [
   { email: 'segun.adeleke@ventohomes.ng', role: 'sales', expired: true },
 ] as const
 
-async function upsertOrganization(tx: DbOrTx): Promise<string> {
+async function upsertOrganization(
+  tx: DbOrTx,
+  name: string = ORGANIZATION,
+  releaseGroup: 'standard' | 'internal' = 'internal',
+): Promise<string> {
   const [existing] = await tx
     .select({ id: organizations.id })
     .from(organizations)
-    .where(eq(organizations.name, ORGANIZATION))
-  if (existing) return existing.id
-  const [created] = await tx
-    .insert(organizations)
-    .values({ name: ORGANIZATION, headOfficeState: 'Lagos', financialYearStartMonth: 1 })
-    .returning({ id: organizations.id })
-  if (!created) throw new Error('Organization insert failed')
-  return created.id
+    .where(eq(organizations.name, name))
+  const id =
+    existing?.id ??
+    (
+      await tx
+        .insert(organizations)
+        .values({ name, headOfficeState: 'Lagos', financialYearStartMonth: 1 })
+        .returning({ id: organizations.id })
+    )[0]?.id
+  if (!id) throw new Error('Organization insert failed')
+  await tx
+    .insert(organizationPlans)
+    .values({ organizationId: id, releaseGroup })
+    .onConflictDoUpdate({ target: organizationPlans.organizationId, set: { releaseGroup } })
+  return id
 }
 
-async function upsertEntities(tx: DbOrTx, organizationId: string): Promise<Map<string, string>> {
+// A second developer on Starter, so plan behaviour shows locally (spec: development and tests).
+const LEKKI = 'Lekki Partners Ltd'
+const LEKKI_ENTITIES = [
+  { name: 'Lekki Partners Holdings Ltd', type: 'holding', rcNumber: 'RC 2011458', tin: null },
+  { name: 'Lekki Pearl Residences SPV Ltd', type: 'spv', rcNumber: 'RC 2011459', tin: null },
+] as const
+const LEKKI_PEOPLE: Person[] = [
+  { name: 'Bisi Lawal', email: 'bisi@lekkipartners.ng', role: 'owner' },
+  { name: 'Femi Adeoye', email: 'femi@lekkipartners.ng', role: 'sales' },
+]
+const SUPER_ADMIN = { name: 'Ada Okafor', email: 'ada@vento.ng', role: 'viewer' as const }
+
+async function upsertEntities(
+  tx: DbOrTx,
+  organizationId: string,
+  list: readonly {
+    name: string
+    type: 'holding' | 'spv'
+    rcNumber: string
+    tin: string | null
+  }[] = ENTITIES,
+): Promise<Map<string, string>> {
   const ids = new Map<string, string>()
-  for (const e of ENTITIES) {
+  for (const e of list) {
     const [row] = await tx
       .insert(entities)
       .values({ ...e, organizationId, vatRegistered: e.type === 'spv' })
@@ -91,14 +130,19 @@ async function upsertEntities(tx: DbOrTx, organizationId: string): Promise<Map<s
   return ids
 }
 
-async function upsertPerson(tx: DbOrTx, person: Person, passwordHash: string): Promise<string> {
+async function upsertPerson(
+  tx: DbOrTx,
+  person: Pick<Person, 'name' | 'email'>,
+  passwordHash: string,
+  companyName: string = ORGANIZATION,
+): Promise<string> {
   const [user] = await tx
     .insert(users)
     .values({
       name: person.name,
       email: person.email,
       emailVerified: true,
-      companyName: ORGANIZATION,
+      companyName,
     })
     .onConflictDoUpdate({ target: users.email, set: { name: person.name, emailVerified: true } })
     .returning({ id: users.id })
@@ -230,10 +274,96 @@ async function seed() {
     return upsertInvitations(tx, organizationId, roleIds, ownerId)
   })
 
-  logger.info('Seeded Vento Homes Ltd', { people: PEOPLE.length, entities: ENTITIES.length })
+  await bootstrapStartingData(db)
+  await seedLekki(passwordHash)
+  const adminSecret = await seedSuperAdmin(passwordHash, password)
+
+  logger.info('Seeded Vento Homes Ltd and Lekki Partners Ltd', {
+    people: PEOPLE.length + LEKKI_PEOPLE.length,
+  })
+  const everyone = [...PEOPLE, ...LEKKI_PEOPLE, SUPER_ADMIN].map((p) => p.email)
   process.stdout.write(
-    `\nSign in as any of: ${PEOPLE.map((p) => p.email).join(', ')}\n(password: SEED_PASSWORD from .env)\n\nInvitation links:\n  ${links.join('\n  ')}\n\n`,
+    `\nSign in as any of: ${everyone.join(', ')}\n(password: SEED_PASSWORD from .env)\n\nInvitation links:\n  ${links.join('\n  ')}\n\n`,
   )
+  if (adminSecret) {
+    process.stdout.write(
+      `Super-admin ${SUPER_ADMIN.email}: two-step is on. Add this secret to an authenticator app now; it isn't shown again:\n  ${adminSecret}\n\n`,
+    )
+  }
+}
+
+/** Lekki Partners Ltd: standard, on Starter, at its entity limit, with Commissions released to it. */
+async function seedLekki(passwordHash: string) {
+  const organizationId = await db.transaction(async (tx) => {
+    const id = await upsertOrganization(tx, LEKKI, 'standard')
+    const roleIds = await syncSystemRoles(tx, id)
+    await upsertEntities(tx, id, LEKKI_ENTITIES)
+    for (const person of LEKKI_PEOPLE) {
+      const userId = await upsertPerson(tx, person, passwordHash, LEKKI)
+      await upsertMembership(tx, {
+        organizationId: id,
+        userId,
+        roleId: roleIds.get(person.role) ?? '',
+      })
+    }
+    return id
+  })
+  const organization = { id: organizationId, name: LEKKI }
+  const [plan] = await db
+    .select({ planVersionId: organizationPlans.planVersionId })
+    .from(organizationPlans)
+    .where(eq(organizationPlans.organizationId, organizationId))
+  const starter = await findPlanVersion(db, 'starter')
+  if (plan?.planVersionId !== starter.versionId) {
+    await assignPlan(db, SETUP_ACTOR, { organization, target: starter, reason: 'Demo data' })
+  }
+  // Shows the owner's "Commissions · Available on Growth" hint locally.
+  const [override] = await db
+    .select({ id: organizationOverrides.id })
+    .from(organizationOverrides)
+    .where(
+      and(
+        eq(organizationOverrides.organizationId, organizationId),
+        eq(organizationOverrides.key, 'sales.commissions'),
+        isNull(organizationOverrides.clearedAt),
+      ),
+    )
+  if (!override) {
+    await setReleaseOverride(db, SETUP_ACTOR, {
+      organization,
+      key: 'sales.commissions',
+      value: 'on',
+      reason: 'Demo data',
+    })
+  }
+}
+
+/**
+ * ada@vento.ng, a Vento super-admin. Two-step is switched on through Better Auth the way the
+ * e2e fixtures do it; returns the authenticator secret the first time only.
+ */
+async function seedSuperAdmin(passwordHash: string, password: string): Promise<string | null> {
+  const userId = await db.transaction((tx) => upsertPerson(tx, SUPER_ADMIN, passwordHash, 'Vento'))
+  const [user] = await db
+    .select({ twoFactorEnabled: users.twoFactorEnabled })
+    .from(users)
+    .where(eq(users.id, userId))
+  let secret: string | null = null
+  if (!user?.twoFactorEnabled) {
+    const { testApp, browser } = await import('@/test/auth-client')
+    const { setUpTwoStep, signIn } = await import('@/test/flows')
+    const b = browser(testApp().app)
+    const res = await signIn(b, SUPER_ADMIN.email, password)
+    if (res.status !== 200) throw new Error('Super-admin sign-in failed')
+    const { totpURI } = await setUpTwoStep(b, password)
+    secret = new URL(totpURI).searchParams.get('secret')
+  }
+  const [admin] = await db
+    .select({ id: platformAdmins.id })
+    .from(platformAdmins)
+    .where(and(eq(platformAdmins.userId, userId), isNull(platformAdmins.revokedAt)))
+  if (!admin) await db.insert(platformAdmins).values({ userId, reason: 'Demo super-admin' })
+  return secret
 }
 
 try {

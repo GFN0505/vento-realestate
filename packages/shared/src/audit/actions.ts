@@ -28,6 +28,19 @@ export const AUDIT_ACTIONS = [
   'session.revoked',
   'session.revoked_others',
   'session.revoked_by_removal',
+  // Written by Vento's platform operations (feature flags and plans), actor "Vento".
+  'plan.assigned',
+  'plan.trial_started',
+  'plan.trial_ended',
+  'plan.trial_cancelled',
+  'plan.add_on_added',
+  'plan.add_on_removed',
+  'plan.feature_overridden',
+  'plan.limit_overridden',
+  'plan.override_cleared',
+  'release.group_changed',
+  'release.override_set',
+  'release.override_cleared',
 ] as const
 export const auditAction = z.enum(AUDIT_ACTIONS)
 export type AuditAction = z.infer<typeof auditAction>

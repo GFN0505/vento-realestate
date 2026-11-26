@@ -1,4 +1,4 @@
-import type { PermissionModule, PermissionSet, SystemRoleKey } from '@vento/shared'
+import type { FeatureKey, PermissionModule, PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
   Building,
   Building2,
@@ -20,9 +20,11 @@ import type { NavPath } from './nav-paths'
 export type { NavPath }
 
 /*
- * The one navigation registry (plan 6.2). The sidebar, phone tabs, More sheet, ⌘K and the 403
- * guard all read it, so a module can never show in one place and not another. Decision 12: a
- * module the role can't view appears nowhere; only a typed or pasted link reaches its 403.
+ * The one navigation registry (plan 6.2). The sidebar, phone tabs, More sheet, ⌘K, Home and the
+ * 404/403 guards all read it, so a module can never show in one place and not another.
+ * An entry shows when it's available to the organization (released and in its plan, from `me`)
+ * and the role can view it (decision 12). Anything else appears nowhere: a typed link to an
+ * unavailable module is a 404, to one the role can't view a 403.
  */
 
 export type NavKey =
@@ -42,18 +44,21 @@ export type NavKey =
 /** `footer` items sit at the bottom of the sidebar (Settings, Help); `main` is Home and modules. */
 type NavGroup = 'main' | 'footer'
 
-/** `soon` is a quieter sidebar entry and a Coming soon page; `hidden` is the one-switch hide. */
-export type NavStatus = 'built' | 'soon' | 'hidden'
-
 export type NavItem = {
   key: NavKey
   /** null = Home, which every member sees. */
   module: PermissionModule | null
+  /** The feature catalog key that releases and sells it; null = core (in every plan). */
+  flag: FeatureKey | null
+  /**
+   * A code fact: the real page exists. Unbuilt modules show "Soon" and the Coming soon page,
+   * to internal organizations only; unbuilt core entries (Settings, Help) show to nobody.
+   */
+  built: boolean
   label: string
   to: NavPath
   icon: LucideIcon
   group: NavGroup
-  status: NavStatus
   /** The Coming soon page's one line (spec UI copy). */
   comingSoon?: string
   /** A few words for Home's workspace grid. */
@@ -65,144 +70,156 @@ export type NavItem = {
 export const NAV: readonly NavItem[] = [
   {
     key: 'home',
+    flag: null,
+    built: true,
     module: null,
     label: 'Home',
     to: '/',
     icon: House,
     group: 'main',
-    status: 'built',
     keywords: ['dashboard', 'start'],
   },
   {
     key: 'land',
+    flag: 'land',
+    built: false,
     module: 'land',
     label: 'Land & title',
     to: '/land',
     summary: 'Parcels, titles and encumbrances',
     icon: MapPin,
     group: 'main',
-    status: 'soon',
     keywords: ['parcels', 'plots', 'c of o', 'consent', 'survey', 'encumbrances'],
     comingSoon:
       "Track parcels from purchase to perfected title: survey plans, C of O, governor's consent and encumbrances.",
   },
   {
     key: 'projects',
+    flag: 'projects',
+    built: false,
     module: 'projects',
     label: 'Projects',
     to: '/projects',
     summary: 'Phases, budgets and the site diary',
     icon: Building2,
     group: 'main',
-    status: 'soon',
     keywords: ['construction', 'phases', 'site', 'diary', 'boq', 'contractors', 'purchase orders'],
     comingSoon: 'Run phases, budgets, BoQs, contractors, purchase orders and the site diary.',
   },
   {
     key: 'estates',
+    flag: 'facility',
+    built: false,
     module: 'facility',
     label: 'Estates',
     to: '/estates',
     summary: 'Service charge and maintenance',
     icon: Building,
     group: 'main',
-    status: 'soon',
     keywords: ['facility', 'service charge', 'maintenance', 'residents'],
     comingSoon: 'Manage handed-over estates: service charge, utilities and maintenance.',
   },
   {
     key: 'sales',
+    flag: 'sales',
+    built: false,
     module: 'sales',
     label: 'Sales',
     to: '/sales',
     summary: 'Leads, units and subscriptions',
     icon: Tag,
     group: 'main',
-    status: 'soon',
     keywords: ['leads', 'buyers', 'units', 'subscriptions', 'payment plans', 'commissions', 'crm'],
     comingSoon: 'Sell off-plan: leads, units, subscriptions, payment plans and commissions.',
   },
   {
     key: 'finance',
+    flag: 'finance',
+    built: false,
     module: 'finance',
     label: 'Finance',
     to: '/finance',
     summary: 'Receipts, ledgers and tax',
     icon: Wallet,
     group: 'main',
-    status: 'soon',
     keywords: ['receipts', 'ledger', 'fx', 'tax', 'vat', 'wht', 'banks'],
     comingSoon: 'Receipts, ledgers per entity, FX, construction finance and tax.',
   },
   {
     key: 'hr',
+    flag: 'hr',
+    built: false,
     module: 'hr',
     label: 'HR & payroll',
     to: '/hr',
     summary: 'Staff and payroll',
     icon: Users,
     group: 'main',
-    status: 'soon',
     keywords: ['staff', 'payroll', 'paye', 'pension', 'nhf', 'leave'],
     comingSoon: 'Staff, site workers and payroll with PAYE, pension and NHF.',
   },
   {
     key: 'compliance',
+    flag: 'compliance',
+    built: false,
     module: 'compliance',
     label: 'Compliance',
     to: '/compliance',
     summary: 'Permits, buyer KYC and AML',
     icon: ShieldCheck,
     group: 'main',
-    status: 'soon',
     keywords: ['permits', 'kyc', 'aml', 'ubo', 'scuml'],
     comingSoon: 'Permits, buyer KYC, AML reviews and the UBO register.',
   },
   {
     key: 'documents',
+    flag: 'documents',
+    built: false,
     module: 'documents',
     label: 'Documents',
     to: '/documents',
     summary: 'Contracts and letters',
     icon: FileText,
     group: 'main',
-    status: 'soon',
     keywords: ['contracts', 'letters', 'templates', 'e-signature', 'offer', 'allocation'],
     comingSoon: 'Contracts and letters from templates, with approvals and e-signature.',
   },
   {
     key: 'reports',
+    flag: 'analytics',
+    built: false,
     module: 'analytics',
     label: 'Reports',
     to: '/reports',
     summary: 'Dashboards and board packs',
     icon: ChartColumn,
     group: 'main',
-    status: 'soon',
     keywords: ['analytics', 'dashboards', 'board pack', 'returns'],
     comingSoon: 'Dashboards, project returns and board packs.',
   },
   {
-    // Hidden until Team settings (3b) give it something real to open; then 'soon' or 'built'.
+    // Hidden until Team settings (3b) give it something real to open.
     key: 'settings',
+    flag: null,
+    built: false,
     module: 'settings',
     label: 'Settings',
     to: '/settings',
     icon: Settings,
     group: 'footer',
-    status: 'hidden',
     keywords: ['team', 'members', 'roles', 'permissions', 'entities', 'organization', 'security'],
     comingSoon: 'Your team, roles and permissions, entities and your own security.',
   },
   {
     // Hidden until the help centre exists.
     key: 'help',
+    flag: null,
+    built: false,
     module: null,
     label: 'Help',
     to: '/help',
     icon: LifeBuoy,
     group: 'footer',
-    status: 'hidden',
     keywords: ['support', 'guides', 'how to', 'help centre'],
     comingSoon: 'Short guides for each task, written for your role. They arrive with each module.',
   },
@@ -223,25 +240,48 @@ export const MOBILE_TAB_PRIORITY: Record<SystemRoleKey, readonly NavKey[]> = {
 
 const MAX_MODULE_TABS = 3
 
-export function canView(permissions: PermissionSet | null, item: NavItem): boolean {
-  if (item.status === 'hidden') return false
-  if (item.module === null) return true
-  return can(permissions, item.module, 'view')
+/** What navigation is derived from: the role's permissions and the organization's features. */
+export type NavAccess = {
+  permissions: PermissionSet | null
+  /** Features available to the organization (released and entitled), from `me`. */
+  features: ReadonlyMap<FeatureKey, { earlyAccess: boolean }>
+  /** Vento's own organizations: they also see unbuilt modules, tagged "Soon". */
+  internal: boolean
 }
 
-/** Home plus every module the role can view, in sidebar order. */
-export function visibleNav(permissions: PermissionSet | null): NavItem[] {
-  return NAV.filter((item) => canView(permissions, item))
+/** The organization has it: a typed link to anything else is a 404, whatever the role. */
+export function isAvailable(access: NavAccess, item: NavItem): boolean {
+  if (item.flag === null) return item.built
+  if (!access.features.has(item.flag)) return false
+  return item.built || access.internal
+}
+
+/** Available, and the role can view it (decision 12). */
+export function canView(access: NavAccess, item: NavItem): boolean {
+  if (!isAvailable(access, item)) return false
+  return item.module === null || can(access.permissions, item.module, 'view')
+}
+
+export type NavTag = 'soon' | 'early_access'
+
+/** "Soon" wins: an unbuilt page has nothing to try early. A trial carries no tag (spec). */
+export function navTag(access: NavAccess, item: NavItem): NavTag | null {
+  if (!item.built) return 'soon'
+  if (item.flag && access.features.get(item.flag)?.earlyAccess) return 'early_access'
+  return null
+}
+
+/** Home plus every module the organization has and the role can view, in sidebar order. */
+export function visibleNav(access: NavAccess): NavItem[] {
+  return NAV.filter((item) => canView(access, item))
 }
 
 /**
  * Home, then the role's modules after a gap. No group headings: even an owner's ten entries
  * read at a glance, and headings were noise (UI review). The labels stay for screen readers.
  */
-export function sidebarSections(
-  permissions: PermissionSet | null,
-): { heading: string; items: NavItem[] }[] {
-  const items = visibleNav(permissions).filter((i) => i.group !== 'footer')
+export function sidebarSections(access: NavAccess): { heading: string; items: NavItem[] }[] {
+  const items = visibleNav(access).filter((i) => i.group !== 'footer')
   return [
     { heading: 'Overview', items: items.filter((i) => i.key === 'home') },
     { heading: 'Modules', items: items.filter((i) => i.key !== 'home') },
@@ -249,11 +289,8 @@ export function sidebarSections(
 }
 
 /** Home plus up to three modules; custom roles get their first three in sidebar order. */
-export function mobileTabs(
-  permissions: PermissionSet | null,
-  roleKey: SystemRoleKey | null,
-): NavItem[] {
-  const viewable = visibleNav(permissions)
+export function mobileTabs(access: NavAccess, roleKey: SystemRoleKey | null): NavItem[] {
+  const viewable = visibleNav(access)
   const modules = viewable.filter((item) => item.module !== null && item.group !== 'footer')
   const priority = roleKey ? MOBILE_TAB_PRIORITY[roleKey] : null
   const picked = priority
@@ -264,22 +301,25 @@ export function mobileTabs(
 }
 
 /** Settings (owners and admins by default) and Help, at the bottom of the sidebar. */
-export function footerNav(permissions: PermissionSet | null): NavItem[] {
-  return visibleNav(permissions).filter((item) => item.group === 'footer')
+export function footerNav(access: NavAccess): NavItem[] {
+  return visibleNav(access).filter((item) => item.group === 'footer')
 }
 
 /** The modules for Home's "Your workspace" grid: the sidebar's entries, without Home. */
-export function workspaceModules(permissions: PermissionSet | null): NavItem[] {
-  return visibleNav(permissions).filter((item) => item.group !== 'footer' && item.key !== 'home')
+export function workspaceModules(access: NavAccess): NavItem[] {
+  return visibleNav(access).filter((item) => item.group !== 'footer' && item.key !== 'home')
 }
 
 /** The role's modules that didn't fit in the tabs, for the More sheet. */
-export function moreItems(
-  permissions: PermissionSet | null,
-  roleKey: SystemRoleKey | null,
-): NavItem[] {
-  const tabs = new Set(mobileTabs(permissions, roleKey).map((item) => item.key))
-  return visibleNav(permissions).filter((item) => !tabs.has(item.key))
+export function moreItems(access: NavAccess, roleKey: SystemRoleKey | null): NavItem[] {
+  const tabs = new Set(mobileTabs(access, roleKey).map((item) => item.key))
+  return visibleNav(access).filter((item) => !tabs.has(item.key))
+}
+
+/** For things tied to a module (Home numbers, recent pages): shown only where its entry is. */
+export function canViewModule(access: NavAccess, module: PermissionModule): boolean {
+  const item = navItemForModule(module)
+  return item ? canView(access, item) : can(access.permissions, module, 'view')
 }
 
 export function navItemForModule(module: PermissionModule): NavItem | undefined {

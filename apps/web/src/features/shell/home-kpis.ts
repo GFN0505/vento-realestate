@@ -1,4 +1,4 @@
-import type { PermissionModule, PermissionSet, SystemRoleKey } from '@vento/shared'
+import type { PermissionModule, SystemRoleKey } from '@vento/shared'
 import {
   ArrowLeftRight,
   BadgePercent,
@@ -27,13 +27,13 @@ import {
   TriangleAlert,
   Wrench,
 } from 'lucide-react'
-import { can } from '@/lib/permissions'
+import { canViewModule, type NavAccess } from './nav'
 
 /*
  * Home's four numbers per role, from the role-home boards (ExecutiveHome, HomeLand, HomePM,
  * HomeSales, HomeFinance, HomeHR, HomeFM). Each belongs to the module that will feed it; until
- * that module ships the tile shows "—" and says which module brings it. Decision 12: a tile
- * whose module the role can't view never shows.
+ * that module ships the tile shows "—" and says which module brings it. A tile shows only where
+ * its module's entry does: the organization has it and the role can view it (decision 12).
  */
 
 export type HomeKpi = { label: string; icon: LucideIcon; module: PermissionModule }
@@ -90,20 +90,17 @@ export const HOME_KPIS: Record<SystemRoleKey, readonly HomeKpi[]> = {
 const TILES = 4
 
 /**
- * The role's four tiles. Any its role can't view are dropped (decision 12) and the row is
+ * The role's four tiles. Any whose module isn't shown are dropped and the row is
  * topped up from the other role sets it can view, so every Home reads the same way: four tiles.
  * Custom roles start from the executive set.
  */
-export function homeKpis(
-  permissions: PermissionSet | null,
-  roleKey: SystemRoleKey | null,
-): HomeKpi[] {
+export function homeKpis(access: NavAccess, roleKey: SystemRoleKey | null): HomeKpi[] {
   const own = roleKey ? HOME_KPIS[roleKey] : EXECUTIVE
   const candidates = [own, EXECUTIVE, ...Object.values(HOME_KPIS)].flat()
   const picked: HomeKpi[] = []
   for (const kpi of candidates) {
     if (picked.length === TILES) break
-    if (!can(permissions, kpi.module, 'view')) continue
+    if (!canViewModule(access, kpi.module)) continue
     if (picked.some((p) => p.label === kpi.label)) continue
     picked.push(kpi)
   }

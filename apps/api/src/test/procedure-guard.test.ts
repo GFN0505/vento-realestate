@@ -1,8 +1,15 @@
+import type { ProcedureMeta } from '@vento/shared'
+import { isFeatureKey } from '@vento/shared'
 import { describe, expect, it } from 'vitest'
+import { staticFeatureStore } from '@/platform/feature-store'
+import { loadSnapshot } from '@/platform/snapshot'
 import { PUBLIC_PROCEDURES, router } from '@/router'
 import { testApp } from './auth-client'
-import type { TestUser } from './factories'
-import { clientAs } from './router-client'
+import { countingDb } from './counting-db'
+import { withRollback } from './db'
+import { createMember, createOrganization, setStage, type TestUser } from './factories'
+import { probeClient, probeRouter } from './feature-probe'
+import { clientAs, testContext } from './router-client'
 import { throwingDb } from './throwing-db'
 
 /** Every procedure path in the router, e.g. "account.sessions.list". */
@@ -80,4 +87,106 @@ describe('organization guard walk', () => {
       data: { reason: 'organization_changed' },
     })
   })
+})
+
+type ProcedureNode = { '~orpc': { meta: ProcedureMeta } }
+
+function metaAt(root: object, path: string): ProcedureMeta {
+  const node = path
+    .split('.')
+    .reduce<unknown>((n, key) => (n as Record<string, unknown>)[key], root) as ProcedureNode
+  return node['~orpc'].meta
+}
+
+describe('feature declaration walk (decision 0016)', () => {
+  const paths = procedurePaths(router)
+
+  // A procedure with no declaration can't be gated: the contract must say `platform` or `forFeature`.
+  it.each(paths)('%s declares its feature', (path) => {
+    const meta = metaAt(router, path)
+    expect(Object.hasOwn(meta, 'feature'), path).toBe(true)
+    expect(meta.feature === null || isFeatureKey(meta.feature ?? '')).toBe(true)
+  })
+
+  it('never gates a public or personal procedure', () => {
+    for (const path of paths.filter((p) => isPublic(p) || isPersonal(p))) {
+      expect(metaAt(router, path).feature, path).toBeNull()
+    }
+  })
+
+  it('carries the contract meta through implement() to the procedure', () => {
+    expect(metaAt(probeRouter, 'sales.list').feature).toBe('sales')
+    expect(metaAt(probeRouter, 'commissions.list').feature).toBe('sales.commissions')
+  })
+})
+
+describe('feature gate walk', () => {
+  const probePaths = procedurePaths(probeRouter)
+  const routerGated = procedurePaths(router).filter((p) => metaAt(router, p).feature)
+
+  // Today only the probe has a feature; every module procedure joins this list as it ships.
+  it.each(routerGated)('%s answers NOT_FOUND where its feature is unavailable', (path) =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { releaseGroup: 'standard', planKey: 'enterprise' })
+      const { client } = clientAs(tx, org.owner, { activeOrganizationId: org.id })
+      await expect(procedureAt(client, path)({})).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    }),
+  )
+
+  it.each(probePaths)(
+    '%s: an owner where it is not released gets NOT_FOUND after only the membership query',
+    (path) =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx, {
+          releaseGroup: 'standard',
+          planKey: 'enterprise',
+        })
+        const store = staticFeatureStore(await loadSnapshot(tx))
+        const { db, calls } = countingDb(tx)
+        const client = probeClient(
+          testContext(db, org.owner, { activeOrganizationId: org.id, features: store }),
+        )
+        await expect(procedureAt(client, path)({})).rejects.toMatchObject({
+          code: 'NOT_FOUND',
+          message: "We couldn't find that. It may have been removed.",
+        })
+        expect(calls).toEqual(['execute'])
+      }),
+  )
+
+  it('checks availability before permission: a viewer without Sales gets FORBIDDEN only once Sales is available', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { releaseGroup: 'standard', planKey: 'enterprise' })
+      const { user } = await createMember(tx, org, { role: 'hr' })
+      const client = () => probeClient(testContext(tx, user, { activeOrganizationId: org.id }))
+      await expect(client().sales.list()).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await setStage(tx, 'projects', 'on')
+      await setStage(tx, 'sales', 'on')
+      await expect(client().sales.list()).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        data: { reason: 'permission' },
+      })
+      await expect(
+        probeClient(testContext(tx, org.owner, { activeOrganizationId: org.id })).sales.list(),
+      ).resolves.toEqual({ ok: true })
+    }))
+
+  it('needs every prerequisite: Commissions stays NOT_FOUND while Sales is off', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { releaseGroup: 'internal' })
+      await setStage(tx, 'sales', 'off')
+      const client = probeClient(testContext(tx, org.owner, { activeOrganizationId: org.id }))
+      await expect(client.commissions.list()).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    }))
+
+  it('adds no query for an available feature compared with a platform procedure', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { releaseGroup: 'internal' })
+      const store = staticFeatureStore(await loadSnapshot(tx))
+      const probe = countingDb(tx)
+      await probeClient(
+        testContext(probe.db, org.owner, { activeOrganizationId: org.id, features: store }),
+      ).sales.list()
+      expect(probe.calls).toEqual(['execute'])
+    }))
 })

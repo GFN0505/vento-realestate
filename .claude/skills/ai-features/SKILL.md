@@ -97,3 +97,6 @@ Each feature has a small test set in `ai/evals/` (real-looking, anonymised examp
 
 ## Testing
 Unit tests mock the gateway. Tests cover: feature off → manual path; budget reached → clear error and no API call; suggestion not applied until accepted; redaction removes fields; usage recorded with correct cost; cross-organization isolation in Ask Vento tools.
+
+## Availability (feature flags and plans)
+An AI feature is usable only when it's available to the organization (the `ai` add-on active, its flag released, its prerequisites available), the owner has switched it on in Settings → AI, and it's under budget. The monthly budget is the plan's `ai_budget` (0 in every starting plan) plus the add-on's increase: `ctx.features.limit('ai_budget')`, and `me.plan.aiBudget` for owners. Internal organizations have no budget limit, so the owner-set budget in Settings → AI is their only cap.

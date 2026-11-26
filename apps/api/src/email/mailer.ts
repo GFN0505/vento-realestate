@@ -9,6 +9,7 @@ export type EmailTag =
   | 'reset_password'
   | 'invitation'
   | 'security_alert'
+  | 'trial_ending'
 
 export type EmailMessage = {
   to: string

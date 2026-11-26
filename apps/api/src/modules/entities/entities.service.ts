@@ -16,6 +16,7 @@ import { conflict, isUniqueViolation, notFound } from '@/lib/errors'
 import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { diff, lockOrganization } from '@/modules/organization/organization.service'
+import { assertWithinLimit } from '@/platform/limits'
 
 type EntityRow = typeof entities.$inferSelect
 
@@ -90,7 +91,7 @@ async function assertRcFree(tx: DbOrTx, ctx: ServiceContext, rc: string | null, 
   if (taken) throw conflict('rc_number_taken', `${taken.name} already uses ${rc}.`)
 }
 
-/** Insert + audit; the caller owns the transaction. */
+/** Insert + audit; the caller owns the transaction. Checks the plan's entity limit. */
 export async function insertEntity(
   tx: DbOrTx,
   ctx: ServiceContext,
@@ -98,6 +99,7 @@ export async function insertEntity(
 ): Promise<Entity> {
   const rcNumber = input.rcNumber ? normaliseRcNumber(input.rcNumber) : null
   const tin = input.tin ? normaliseTin(input.tin) : null
+  await assertWithinLimit(tx, ctx, 'entities', 1)
   await assertRcFree(tx, ctx, rcNumber)
   try {
     const [row] = await tx

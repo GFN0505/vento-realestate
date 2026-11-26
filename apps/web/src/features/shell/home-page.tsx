@@ -1,6 +1,7 @@
 import { StatCard } from '@/components/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
+import { TrialLine } from '@/features/plan/trial-line'
 import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
 import { greeting, longDateInLagos } from './greeting'
 import { HomeHero } from './home-hero'
@@ -20,9 +21,9 @@ export function HomePage() {
   const entity = useCurrentEntity()
   usePageTitle('Home')
 
-  const kpis = homeKpis(access.permissions, access.roleKey)
+  const kpis = homeKpis(access, access.roleKey)
   const note = kpiNote(kpis, (m) => navItemForModule(m)?.label ?? m)
-  const modules = workspaceModules(access.permissions)
+  const modules = workspaceModules(access)
 
   const entityLabel =
     entity.status === 'pending' && !entity.locked ? (
@@ -42,6 +43,7 @@ export function HomePage() {
           </>
         }
       />
+      <TrialLine />
       {kpis.length > 0 && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -52,7 +54,7 @@ export function HomePage() {
           {note && <p className="text-muted-foreground text-xs">{note}</p>}
         </section>
       )}
-      <WorkspaceGrid modules={modules} />
+      <WorkspaceGrid modules={modules} access={access} />
     </div>
   )
 }

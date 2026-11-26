@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server'
-import type { ConflictReason, ForbiddenReason } from '@vento/shared'
+import type { ConflictReason, CountLimitKey, ForbiddenReason } from '@vento/shared'
 
 // Services throw these; oRPC formats them. Messages are end-user copy.
 
@@ -25,6 +25,17 @@ export function forbidden(
   ask?: { askName: string; askRole: string },
 ) {
   return new ORPCError('FORBIDDEN', { message, data: { reason, ...ask } })
+}
+
+/**
+ * A create would go over the plan's limit. The message is built for the caller's role
+ * (owners get what to do; others get who to ask) and never names a price.
+ */
+export function planLimit(
+  message: string,
+  data: { limit: CountLimitKey; included: number; askName?: string; askRole?: string },
+) {
+  return new ORPCError('FORBIDDEN', { message, data: { reason: 'plan_limit' as const, ...data } })
 }
 
 /** Postgres unique_violation, optionally on a named constraint or index. */
