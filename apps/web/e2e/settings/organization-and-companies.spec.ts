@@ -289,6 +289,20 @@ test.describe('on a laptop', () => {
     test('archiving a company nobody depends on shows Undo, and Undo brings it back', async ({
       page,
     }) => {
+      const fixture = createCompaniesFixture('starter')
+      const parkview = fixture.entities.parkview.name
+      await signInOn(page, person(fixture, 'owner'), fixture.password, '/settings/companies')
+
+      await page.getByRole('button', { name: `Actions for ${parkview}` }).click()
+      await page.getByRole('menuitem', { name: 'Archive' }).click()
+
+      await expect(page.getByText(`${parkview} archived`)).toBeVisible()
+      await expect(companyRow(page, parkview)).toHaveCount(0)
+      await page.getByRole('button', { name: 'Undo' }).click()
+      await expect(companyRow(page, parkview)).toBeVisible()
+    })
+
+    test('archiving the holding company asks first and Cancel keeps it', async ({ page }) => {
       const fixture = createCompaniesFixture()
       const holding = fixture.entities.holding.name
       await signInOn(page, person(fixture, 'owner'), fixture.password, '/settings/companies')
@@ -296,9 +310,9 @@ test.describe('on a laptop', () => {
       await page.getByRole('button', { name: `Actions for ${holding}` }).click()
       await page.getByRole('menuitem', { name: 'Archive' }).click()
 
-      await expect(page.getByText(`${holding} archived`)).toBeVisible()
-      await expect(companyRow(page, holding)).toHaveCount(0)
-      await page.getByRole('button', { name: 'Undo' }).click()
+      const confirm = page.getByRole('alertdialog', { name: `Archive ${holding}?` })
+      await expect(confirm).toContainText("It's your holding company")
+      await confirm.getByRole('button', { name: 'Cancel' }).click()
       await expect(companyRow(page, holding)).toBeVisible()
     })
 
@@ -460,10 +474,10 @@ test.describe('on a laptop', () => {
 
       await page.getByRole('button', { name: 'Active', exact: true }).click()
       await page
-        .getByRole('button', { name: `Actions for ${fixture.entities.holding.name}` })
+        .getByRole('button', { name: `Actions for ${fixture.entities.parkview.name}` })
         .click()
       await page.getByRole('menuitem', { name: 'Archive' }).click()
-      await expect(page.getByText(`${fixture.entities.holding.name} archived`)).toBeVisible()
+      await expect(page.getByText(`${fixture.entities.parkview.name} archived`)).toBeVisible()
       await page.getByRole('button', { name: 'Archived', exact: true }).click()
       await page.getByRole('button', { name: 'Actions for Ikoyi Crest SPV Ltd' }).click()
       await page.getByRole('menuitem', { name: 'Restore' }).click()

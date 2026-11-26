@@ -24,6 +24,22 @@ async function expectNoSeriousViolations(page: Page) {
 
 test.describe.configure({ timeout: 90_000 })
 
+/** The grid where it fits; below that, the module list and its sheet of switches. */
+async function tickDocumentsCreate(page: Page) {
+  const box = page.getByRole('checkbox', { name: 'Documents & contracts: Create' })
+  await expect(
+    box.or(page.getByRole('button', { name: /^Documents & contracts: .* Change$/ })),
+  ).toBeVisible()
+  if (await box.isVisible()) {
+    await box.click()
+    return
+  }
+  await page.getByRole('button', { name: /^Documents & contracts: .* Change$/ }).click()
+  const sheet = page.getByRole('dialog', { name: 'Documents & contracts' })
+  await sheet.getByRole('switch', { name: 'Documents & contracts: Create' }).click()
+  await sheet.getByRole('button', { name: 'Done' }).click()
+}
+
 // null = the project's own size (a laptop, or a phone); 1024 is the narrowest laptop layout.
 for (const width of [null, 1024] as const) {
   for (const theme of ['light', 'dark'] as const) {
@@ -61,7 +77,7 @@ for (const width of [null, 1024] as const) {
         await ownerPage(page)
         await page.goto('/settings/companies')
         await expect(page.getByRole('heading', { name: 'Companies', level: 1 })).toBeVisible()
-        await expect(page.getByRole('table')).toBeVisible()
+        await expect(page.getByText(/^Vento Homes .* Ltd$/).first()).toBeVisible()
         await expectNoSeriousViolations(page)
 
         await page.getByRole('button', { name: 'Add company' }).first().click()
@@ -74,7 +90,7 @@ for (const width of [null, 1024] as const) {
       }) => {
         await ownerPage(page)
         await page.goto('/settings/roles')
-        await expect(page.getByRole('link', { name: 'Site engineer', exact: true })).toBeVisible()
+        await expect(page.getByText('Site engineer', { exact: true }).first()).toBeVisible()
         await expectNoSeriousViolations(page)
 
         await page.getByRole('button', { name: 'New role' }).first().click()
@@ -87,7 +103,7 @@ for (const width of [null, 1024] as const) {
       }) => {
         const fixture = await ownerPage(page)
         await page.goto(`/settings/roles/${fixture.role.id}`)
-        await page.getByRole('checkbox', { name: 'Documents & contracts: Create' }).click()
+        await tickDocumentsCreate(page)
         await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible()
 
         await expectNoSeriousViolations(page)
@@ -98,7 +114,7 @@ for (const width of [null, 1024] as const) {
       }) => {
         await ownerPage(page)
         await page.goto('/settings/roles')
-        await page.getByRole('link', { name: 'Project manager', exact: true }).click()
+        await page.getByText('Project manager', { exact: true }).first().click()
         await expect(page.getByRole('heading', { name: 'Project manager', level: 1 })).toBeVisible()
 
         await expectNoSeriousViolations(page)

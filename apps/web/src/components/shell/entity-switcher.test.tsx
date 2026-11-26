@@ -55,7 +55,7 @@ async function openSwitcher() {
 }
 
 afterEach(() => {
-  clearPreview('org-a')
+  clearPreview()
   vi.clearAllMocks()
 })
 

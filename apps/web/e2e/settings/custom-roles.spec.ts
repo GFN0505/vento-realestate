@@ -259,6 +259,32 @@ test.describe('on a laptop', () => {
       await expect(cell(page, 'Sales & CRM: View')).toBeChecked()
     })
 
+    test('Discard puts the ticks back and its toast offers Undo to bring them again', async ({
+      page,
+    }) => {
+      const fixture = createCustomRoleFixture('Site engineer')
+      await ownerOnRole(page, fixture)
+      await makeThreeChanges(page)
+
+      await saveBar(page).getByRole('button', { name: 'Discard' }).click()
+      await expect(cell(page, 'Sales & CRM: View')).toBeChecked()
+      await page.getByRole('button', { name: 'Undo' }).click()
+
+      await expect(cell(page, 'Sales & CRM: View')).not.toBeChecked()
+      await expect(saveBar(page)).toContainText('3 changes')
+    })
+
+    test('arrow keys move between boxes like a spreadsheet', async ({ page }) => {
+      const fixture = createCustomRoleFixture('Site engineer')
+      await ownerOnRole(page, fixture)
+
+      await cell(page, 'Projects & construction: View').focus()
+      await page.keyboard.press('ArrowRight')
+      await expect(cell(page, 'Projects & construction: Create')).toBeFocused()
+      await page.keyboard.press('ArrowDown')
+      await expect(cell(page, 'Sales & CRM: Create')).toBeFocused()
+    })
+
     test('leaving with unsaved ticks asks first', async ({ page }) => {
       const fixture = createCustomRoleFixture('Site engineer')
       await ownerOnRole(page, fixture)
@@ -525,7 +551,10 @@ test.describe('on a laptop', () => {
       await page.goto('/settings/roles')
 
       await page.getByRole('button', { name: 'Actions for Site engineer' }).click()
-      await page.getByRole('menuitem', { name: 'Move 1 person to another role first' }).click()
+      const held = page.getByRole('menuitem', { name: /^Delete role/ })
+      await expect(held).toBeDisabled()
+      await expect(held).toContainText('Move 1 person to another role first')
+      await page.getByRole('menuitem', { name: 'Show who has it' }).click()
 
       await expect(page).toHaveURL(new RegExp(`/settings/team\\?.*role=${fixture.role.id}`))
       const bayo = personRow(page, fixture.holder.name)
@@ -627,9 +656,7 @@ test.describe('on a laptop', () => {
       await expect(cell(page, 'Finance: Create')).toBeDisabled()
       await expect(cell(page, 'HR & payroll: View')).toBeDisabled()
       await expect(cell(page, 'Settings: Create')).toBeEnabled()
-      await expect(
-        page.getByText("Greyed boxes are actions you don't have yourself."),
-      ).toBeVisible()
+      await expect(page.getByText("Boxes with a lock are actions you don't have.")).toBeVisible()
     })
 
     test('nobody edits their own role: it opens read-only with who to ask', async ({ page }) => {
