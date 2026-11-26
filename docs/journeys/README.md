@@ -34,8 +34,8 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-06 | Change someone's access, reset their two-step, remove a leaver | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-ONB-07 | Set up the organization and its companies | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-08 | Make a role that fits the job | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
-| J-ONB-09 | Secure your own account (My security, passkeys, sessions) | Every member | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
-| J-ONB-10 | Require two-step for everyone | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
+| J-ONB-09 | Secure your own account (My security, passkeys, sessions) | Every member | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
+| J-ONB-10 | Require two-step for everyone | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |

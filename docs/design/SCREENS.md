@@ -29,13 +29,13 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Approvals inbox | [Approvals](claude-design/Approvals.dc.html) | todo |
 | Global search results page | – | todo |
 | Keyboard shortcuts help (`?`) (brick 3a) | – | pattern |
-| My security, every member, `/settings/security` (brick 3d): name edited in place; *Sign-in* card (password, two-step on/off and what requires it, backup codes left); *Passkeys* card (add, rename, remove, last used); *Where you're signed in* (device and browser, approximate place, masked IP, last active, This device, sign out one or all others). Phone, photo and email change out of scope | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (two-step and sessions only; one page instead of tabs; passkeys, name and password not designed) | todo |
-| My security dialogs (brick 3d): Confirm it's you (password), Change password, Turn off two-step (password and code), New backup codes, Remove passkey, Sign out other devices | – | todo |
-| Passkey offer after a password sign-in, once per device (brick 3d) | – | todo |
-| Two-step required banner: "{Organization} now requires two-step sign-in" with **Set up two-step** (brick 3d; members without two-step when the organization requires it for everyone) | – | todo |
+| My security, every member, `/settings/security` (brick 3d): name edited in place; *Sign-in* card (password, two-step on/off and what requires it, backup codes left); *Passkeys* card (add, rename, remove, last used); *Where you're signed in* (device and browser, approximate place, masked IP, last active, This device, sign out one or all others). Phone, photo and email change out of scope | [SecuritySettings](claude-design/SecuritySettings.dc.html), [SecurityMobile](claude-design/SecurityMobile.dc.html) (two-step and sessions only; one page instead of tabs; passkeys, name and password not designed) | built |
+| My security dialogs (brick 3d): Confirm it's you (password), Change password, Turn off two-step (password and code), New backup codes, Remove passkey, Sign out other devices | – | pattern |
+| Passkey offer after a password sign-in, once per device (brick 3d) | – | pattern |
+| Two-step required banner: "{Organization} now requires two-step sign-in" with **Set up two-step** (brick 3d; members without two-step when the organization requires it for everyone) | – | pattern |
 | 403 no access, 404 not found, 500 error, offline banner and page (brick 3a; Request access in brick 4) | [Error403](claude-design/Error403.dc.html), [Error404](claude-design/Error404.dc.html), [Error500](claude-design/Error500.dc.html), [OfflineBanner](claude-design/OfflineBanner.dc.html), [OfflinePage](claude-design/OfflinePage.dc.html) | built (Request access in brick 4) |
 | Maintenance page | – | todo |
-| Session expired / signed out elsewhere (brick 3d: **Sign in with a passkey**) | [SessionExpired](claude-design/SessionExpired.dc.html) | built (passkey todo, brick 3d) |
+| Session expired / signed out elsewhere (brick 3d: **Sign in with a passkey**) | [SessionExpired](claude-design/SessionExpired.dc.html) | built (passkey built, brick 3d) |
 | Design system, screen states, new components | [Main](claude-design/Main.dc.html), [States](claude-design/States.dc.html), [DSExtensions](claude-design/DSExtensions.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) | built (tokens, fonts, form components) |
 
 ## 1. Home and analytics
