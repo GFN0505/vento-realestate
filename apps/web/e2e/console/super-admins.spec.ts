@@ -43,6 +43,7 @@ test.describe('the super-admins list', () => {
     await dialog(page)
       .getByLabel('Email')
       .fill(sales?.email ?? '')
+    await expect(dialog(page).getByLabel('Email')).toHaveValue(sales?.email ?? '')
     await dialog(page).getByRole('button', { name: 'Review' }).click()
 
     await expect(dialog(page).getByRole('alert')).toContainText(/two-step/i)

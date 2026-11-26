@@ -281,7 +281,9 @@ test.describe('trials, overrides and AI', () => {
     await openOrganization(page, org)
 
     await openMoreChange(page, 'Add override')
-    await sheet(page).getByRole('radio', { name: /^Plan/ }).click()
+    await sheet(page)
+      .getByRole('radio', { name: /^Their plan/ })
+      .click()
     await sheet(page).getByLabel('Feature or limit').selectOption({ label: 'Companies limit' })
     await sheet(page).getByLabel('Limit', { exact: true }).fill('8')
     await sheet(page).getByRole('button', { name: 'Review' }).click()

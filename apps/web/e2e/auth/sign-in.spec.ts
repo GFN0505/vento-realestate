@@ -13,7 +13,7 @@ import {
   runCommand,
   signInWithTotp,
 } from '../support/sign-in'
-import { totpCode } from '../support/totp'
+import { nextTotpCode, totpCode } from '../support/totp'
 
 // J-ONB-04: password, then the two-step check, then signed in; then sign out everywhere.
 test('a member with two-step signs in, is refused a wrong code, then gets in with the right one', async ({
@@ -166,7 +166,8 @@ test('an expired session shows the sign-in-again dialog and keeps the page', asy
   await expect(page.getByRole('heading', { name: 'Your session has ended' })).toBeVisible()
   await page.getByLabel(`Password for ${member.email}`).fill(member.password)
   await page.getByRole('button', { name: 'Sign in again' }).click()
-  await page.getByLabel('6-digit code').fill(totpCode(member.totpSecret))
+  // The sign-in above used this window's code, and a code works once: use the next window's.
+  await page.getByLabel('6-digit code').fill(nextTotpCode(member.totpSecret))
   await expect(page.getByRole('heading', { name: 'Your session has ended' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
 })

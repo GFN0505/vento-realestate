@@ -100,25 +100,12 @@ const SCREENS: Screen[] = [
   },
 ]
 
-// KNOWN APP BUGS (reported, not fixed here). Each is marked test.fail so the suite stays green
-// and starts failing, loudly, the day it is fixed: remove the entry then.
-const KNOWN: Record<string, string> = {
-  'light:Organizations':
-    'Selected stat tile (bg-selected/40) has small text that fails color-contrast in light mode',
-  'width:Releases':
-    'The Stage chips (a fieldset with -mx-4 overflow-x-auto) push the page 23 px wider than 375 px',
-  'phone-axe:Organizations':
-    'Selected stat tile (bg-selected/40) has small text that fails color-contrast in light mode',
-}
-
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`${theme} mode`, () => {
     for (const screen of SCREENS) {
       test(`${screen.name} has no serious accessibility violations in ${theme} mode`, async ({
         page,
       }) => {
-        const known = KNOWN[`${theme}:${screen.name}`]
-        test.fail(Boolean(known), known ?? '')
         const org = createStarterOrgFixture()
         await useTheme(page, theme)
         await signInToConsole(page, createSuperAdminFixture('member'))
@@ -136,8 +123,6 @@ test.describe('on a 375 px phone', () => {
 
   for (const screen of SCREENS) {
     test(`${screen.name} does not scroll sideways at 375 px`, async ({ page }) => {
-      const known = KNOWN[`width:${screen.name}`]
-      test.fail(Boolean(known), known ?? '')
       const org = createStarterOrgFixture()
       await signInToConsole(page, createSuperAdminFixture('member'))
       await screen.open(page, org)
@@ -150,8 +135,6 @@ test.describe('on a 375 px phone', () => {
     })
 
     test(`${screen.name} has no serious accessibility violations at 375 px`, async ({ page }) => {
-      const known = KNOWN[`phone-axe:${screen.name}`]
-      test.fail(Boolean(known), known ?? '')
       const org = createStarterOrgFixture()
       await signInToConsole(page, createSuperAdminFixture('member'))
       await screen.open(page, org)

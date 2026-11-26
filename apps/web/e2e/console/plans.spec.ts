@@ -129,8 +129,8 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
-// KNOWN APP BUG (reported, not fixed here): with several versions the plan page's strip of version
-// cards is a horizontal scroller (-mx-4 overflow-x-auto) that keyboard users can't focus
+// With several versions the plan page's strip of version
+// cards is a horizontal scroller (-mx-4 overflow-x-auto) that must stay keyboard focusable
 // (axe scrollable-region-focusable). Needs two or more Growth versions, so it skips on a fresh DB.
 test('the strip of version cards on a plan with several versions is keyboard focusable', async ({
   page,
@@ -139,7 +139,6 @@ test('the strip of version cards on a plan with several versions is keyboard foc
   await expect(page.getByRole('heading', { name: 'Growth', level: 1 })).toBeVisible()
   const versions = await page.getByText('Published ').count()
   test.skip(versions < 2, 'Growth has one version here; the strip does not scroll')
-  test.fail(true, 'Version strip is a scroll region that is not keyboard focusable')
 
   await expectNoSeriousViolations(page)
 })

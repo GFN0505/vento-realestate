@@ -218,7 +218,7 @@ test.describe('a super-admin entering', () => {
     await page.goto('/console')
 
     await expect(
-      page.getByRole('heading', { name: 'Set up two-step to use the Vento console.' }),
+      page.getByRole('heading', { name: 'Set up two-step to use the Vento console' }),
     ).toBeVisible()
     await expect(page.getByRole('link', { name: 'Set up two-step' })).toBeVisible()
   })
@@ -358,11 +358,7 @@ test.describe('the window running out mid-task', () => {
     await expect(sheet.getByLabel('Reason')).toHaveValue('Keep this reason')
   })
 
-  // KNOWN APP BUG (reported, not fixed here): when the dialog closes, focus falls to <body>
-  // instead of returning inside the sheet. The button that opened the dialog is disabled while
-  // the change is applying, so Radix's return-focus has nowhere to go. Remove test.fail() once fixed.
   test('focus returns inside the sheet when the dialog is closed with Escape', async ({ page }) => {
-    test.fail(true, 'Focus is lost to <body> after the dialog closes over the sheet')
     const org = createStarterOrgFixture()
     const admin = createSuperAdminFixture('member')
     await signInToConsole(page, admin)
@@ -371,9 +367,12 @@ test.describe('the window running out mid-task', () => {
     await sheet.getByRole('button', { name: 'Start 30-day trial' }).click()
     await expect(proofDialog(page)).toBeVisible()
 
-    await page.keyboard.press('Escape')
-
-    await expect(proofDialog(page)).toBeHidden()
+    // The dialog can ask again when another console request finds the window still closed, so
+    // Escape is pressed until it stays closed.
+    await expect(async () => {
+      if (await proofDialog(page).isVisible()) await page.keyboard.press('Escape')
+      await expect(proofDialog(page)).toBeHidden({ timeout: 1_000 })
+    }).toPass({ timeout: 10_000 })
     await expect.poll(() => sheet.evaluate((el) => el.contains(document.activeElement))).toBe(true)
   })
 })

@@ -54,17 +54,17 @@ test.describe('moving a feature through its stages (desktop)', () => {
 
     await page.getByRole('group', { name: 'Stage' }).getByRole('button', { name: 'Pilot' }).click()
 
-    await expect(dialog(page)).toContainText('Move Board pack to pilot?')
+    await expect(dialog(page)).toContainText('Move Board pack to Pilot?')
     await expect(
       dialog(page)
         .getByText(/organization/)
         .first(),
     ).toBeVisible()
     await expect(
-      dialog(page).getByRole('button', { name: 'Move Board pack to pilot' }),
+      dialog(page).getByRole('button', { name: 'Move Board pack to Pilot' }),
     ).toBeDisabled()
     await dialog(page).getByLabel('Reason').fill('Release 1 pilot')
-    await dialog(page).getByRole('button', { name: 'Move Board pack to pilot' }).click()
+    await dialog(page).getByRole('button', { name: 'Move Board pack to Pilot' }).click()
 
     await expect(dialog(page)).toBeHidden()
     await expect(page.getByRole('button', { name: /^Pilot/, pressed: true })).toBeVisible()
@@ -91,7 +91,7 @@ test.describe('moving a feature through its stages (desktop)', () => {
     flagStage(BOARD_PACK, 'on')
 
     await dialog(page).getByLabel('Reason').fill('Second opinion')
-    await dialog(page).getByRole('button', { name: 'Move Board pack to pilot' }).click()
+    await dialog(page).getByRole('button', { name: 'Move Board pack to Pilot' }).click()
 
     await expect(dialog(page).getByRole('alert')).toContainText(/changed|since|already/i)
     await expect(dialog(page).getByLabel('Reason')).toHaveValue('Second opinion')
@@ -168,12 +168,6 @@ for (const theme of ['light', 'dark'] as const) {
   test(`Feature page has no serious accessibility violations in ${theme} mode`, async ({
     page,
   }) => {
-    // KNOWN APP BUG in light mode (reported, not fixed here): the unselected stage buttons
-    // (muted text on the muted track) fail color-contrast. Remove this line once fixed.
-    test.fail(
-      theme === 'light',
-      'Stage control: unselected buttons fail color-contrast in light mode',
-    )
     await useTheme(page, theme)
     await signInToConsole(page, createSuperAdminFixture('member'), '/console/releases')
     await page
