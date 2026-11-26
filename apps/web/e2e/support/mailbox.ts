@@ -6,7 +6,15 @@ const repoRoot = join(import.meta.dirname, '..', '..', '..', '..')
 const mailDir = process.env.EMAIL_DEV_DIR ?? '.mail'
 const folder = isAbsolute(mailDir) ? mailDir : join(repoRoot, mailDir)
 
-type Mail = { to: string; subject: string; text: string; tag: string; sentAt: string }
+export type Mail = {
+  to: string
+  subject: string
+  text: string
+  tag: string
+  sentAt: string
+  fromName?: string
+  replyTo?: { name: string; email: string }
+}
 
 async function mailsFor(email: string): Promise<Mail[]> {
   const safe = email.replace(/[^a-z0-9@._-]/gi, '_')
@@ -38,4 +46,14 @@ export async function verificationCode(email: string): Promise<string> {
   const code = mail.text.match(/\b\d{6}\b/)?.[0]
   if (!code) throw new Error(`No 6-digit code in the email to ${email}`)
   return code
+}
+
+/** Every email to `email` so far, oldest first (no waiting). */
+export const allEmails = mailsFor
+
+/** The path of the invitation link in an invitation email, e.g. `/accept-invitation/abc`. */
+export function invitationPath(mail: Mail): string {
+  const path = mail.text.match(/\/accept-invitation\/[\w-]+/)?.[0]
+  if (!path) throw new Error(`No invitation link in the email to ${mail.to}`)
+  return path
 }

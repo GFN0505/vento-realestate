@@ -11,6 +11,9 @@
  *   tsx src/test/e2e-fixtures.ts multi-org              Tunde in two organizations, plus one whose second role needs two-step
  *   tsx src/test/e2e-fixtures.ts set-role <email> <role>  changes that person's role in their current organization
  *   tsx src/test/e2e-fixtures.ts remove-member <email>  removes that person from their current organization (ends those sessions)
+ *   tsx src/test/e2e-fixtures.ts team-scoped            owner, an admin limited to Parkview, and members with narrower and wider entity access
+ *   tsx src/test/e2e-fixtures.ts starter-team [places]  Starter org (owner, admin, sales) with `places` people places left (default 2)
+ *   tsx src/test/e2e-fixtures.ts team-invitation <orgId> <pending|expired|failed|bounced|complained> [email]  an open invitation with that state
  *   tsx src/test/e2e-fixtures.ts plans                  publishes the starting plans (Starter, Growth, Enterprise) if missing
  *   tsx src/test/e2e-fixtures.ts starter-org            standard organization on Starter: owner (two-step on), a sales member, one entity
  *   tsx src/test/e2e-fixtures.ts org-group <orgId> <standard|pilot|internal>
@@ -491,6 +494,148 @@ async function removeMemberFixture(email: string | undefined) {
   return { email, organizationName: membership.organizationName }
 }
 
+/**
+ * "Vento Homes" for the Team screens' entity-scope rules. Ibrahim (admin) is limited to Parkview;
+ * Kunle is Parkview only (within his reach), Tayo has Parkview and Lekki, and Grace and Aisha have
+ * every entity (beyond his reach).
+ */
+async function createTeamScoped() {
+  const { db } = await import('@/db/client')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.scoped.owner')
+  const org = await createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  await createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const parkview = await createEntity(db, org, { name: 'Parkview Residences SPV Ltd' })
+  const lekki = await createEntity(db, org, { name: 'Lekki Gardens SPV Ltd' })
+
+  const people = [
+    { key: 'limitedAdmin', role: 'admin', name: 'Ibrahim Sule', entityIds: [parkview.id] },
+    { key: 'facility', role: 'facility', name: 'Kunle Balogun', entityIds: [parkview.id] },
+    { key: 'both', role: 'sales', name: 'Tayo Adeleke', entityIds: [parkview.id, lekki.id] },
+    { key: 'sales', role: 'sales', name: 'Grace Umeh', entityIds: undefined },
+    { key: 'finance', role: 'finance', name: 'Aisha Bello', entityIds: undefined },
+  ] as const
+  const members: Record<string, { email: string; name: string; totpSecret?: string }> = {
+    owner: {
+      email: owner.email,
+      name: owner.name,
+      totpSecret: await turnOnTwoStep(owner.email),
+    },
+  }
+  for (const p of people) {
+    const user = await passwordUser(db, p.name, `e2e.scoped.${p.key.toLowerCase()}`)
+    await addMember(db, org, {
+      role: p.role,
+      user,
+      ...(p.entityIds && { entityIds: [...p.entityIds] }),
+    })
+    const needsTwoStep = p.role === 'admin' || p.role === 'finance'
+    members[p.key] = {
+      email: user.email,
+      name: p.name,
+      ...(needsTwoStep && { totpSecret: await turnOnTwoStep(user.email) }),
+    }
+  }
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: TEST_PASSWORD,
+    entities: {
+      parkview: { id: parkview.id, name: parkview.name },
+      lekki: { id: lekki.id, name: lekki.name },
+    },
+    members,
+  }
+}
+
+/** A Starter organization with `places` people places left, so a batch can be too big for it. */
+async function createStarterTeam(places: string | undefined) {
+  const { db } = await import('@/db/client')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+  await publishPlans()
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Bisi Lawal', 'e2e.limit.owner')
+  const org = await createOrganization(db, {
+    name: `Lekki Partners ${suffix}`,
+    owner,
+    planKey: 'starter',
+  })
+  await createEntity(db, org, { name: `Lekki Partners ${suffix} Ltd`, type: 'holding' })
+  const admin = await passwordUser(db, 'Ngozi Adeyemi', 'e2e.limit.admin')
+  await addMember(db, org, { role: 'admin', user: admin })
+  const sales = await passwordUser(db, 'Grace Umeh', 'e2e.limit.sales')
+  await addMember(db, org, { role: 'sales', user: sales })
+  // Owner, admin and sales fill three places.
+  const limit = 3 + Number(places ?? '2')
+  await orgOverride([org.id, 'limit', 'members', String(limit)])
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: TEST_PASSWORD,
+    limit,
+    owner: { email: owner.email, name: owner.name, totpSecret: await turnOnTwoStep(owner.email) },
+    admin: { email: admin.email, name: admin.name, totpSecret: await turnOnTwoStep(admin.email) },
+    sales: { email: sales.email, name: sales.name },
+  }
+}
+
+/** An open invitation in an existing organization, in the given delivery or expiry state. */
+async function createTeamInvitation(
+  orgId: string | undefined,
+  state: string | undefined,
+  email: string | undefined,
+) {
+  const { db } = await import('@/db/client')
+  const { members, organizations, roles, users } = await import('@/db/schema')
+  const { syncSystemRoles } = await import('@/access/system-roles')
+  const { and, eq } = await import('drizzle-orm')
+  const { createInvitation } = await import('./factories')
+  const { uniqueEmail } = await import('./db')
+  if (!orgId) throw new Error('team-invitation needs an organization id')
+
+  const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId))
+  const [owner] = await db
+    .select({ user: users, memberId: members.id })
+    .from(members)
+    .innerJoin(users, eq(users.id, members.userId))
+    .innerJoin(roles, eq(roles.id, members.roleId))
+    .where(and(eq(members.organizationId, orgId), eq(roles.key, 'owner')))
+    .limit(1)
+  if (!org || !owner) throw new Error(`no organization or owner for ${orgId}`)
+  const roleIds = await syncSystemRoles(db, orgId)
+  const testOrg = {
+    id: org.id,
+    name: org.name,
+    roleIds,
+    owner: owner.user,
+    ownerMemberId: owner.memberId,
+  }
+
+  const delivery = ['failed', 'bounced', 'complained'].includes(state ?? '') ? state : 'sent'
+  const expired = state === 'expired'
+  const address = email ?? uniqueEmail('e2e.invited')
+  const { invitation } = await createInvitation(db, testOrg, {
+    role: 'sales',
+    email: address,
+    status: 'pending', // past its date, an open invitation reads as expired
+    ...(expired && { expiresAt: new Date(Date.now() - 24 * 3600_000) }),
+    delivery: delivery as 'sent' | 'failed' | 'bounced' | 'complained',
+  })
+  return { id: invitation.id, email: address, state }
+}
+
 async function main() {
   const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
@@ -504,6 +649,9 @@ async function main() {
     'multi-org': createMultiOrg,
     'set-role': () => setRole(arg, arg2),
     'remove-member': () => removeMemberFixture(arg),
+    'team-scoped': createTeamScoped,
+    'starter-team': () => createStarterTeam(arg),
+    'team-invitation': () => createTeamInvitation(arg, arg2, arg3),
     plans: publishPlans,
     'starter-org': createStarterOrg,
     'org-group': () => orgGroup(arg, arg2),
