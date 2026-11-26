@@ -4,33 +4,34 @@ import { sendAll } from '@/email/mailer'
 import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
 import { authed, member, os } from '@/orpc'
+import { deliverInvitations } from './delivery'
 import {
   acceptInvitation,
   acceptInvitationAsNewUser,
   createInvitations,
   declineInvitation,
-  listInvitations,
   previewInvitation,
   resendInvitation,
   withdrawInvitation,
 } from './invitations.service'
 
+// Listing invitations is team.list.
 export const invitationsRouter = {
-  list: member.invitations.list
-    .use(requirePermission('settings', 'view', 'see invitations'))
-    .handler(({ context, input }) => listInvitations(serviceContext(context), input)),
   create: member.invitations.create
     .use(requirePermission('settings', 'create', 'invite people'))
     .handler(async ({ context, input }) => {
-      const { emails, ...result } = await createInvitations(serviceContext(context), input)
-      await sendAll(context.mailer, emails)
-      return result
+      const { emails, sentAt, ...result } = await createInvitations(serviceContext(context), input)
+      const delivered = await deliverInvitations(context, emails, sentAt)
+      return {
+        ...result,
+        invitations: result.invitations.map((row) => ({ ...row, ...delivered.get(row.id) })),
+      }
     }),
   resend: member.invitations.resend
     .use(requirePermission('settings', 'create', 'invite people'))
     .handler(async ({ context, input }) => {
-      const { emails, notice } = await resendInvitation(serviceContext(context), input.id)
-      await sendAll(context.mailer, emails)
+      const { emails, sentAt, notice } = await resendInvitation(serviceContext(context), input.id)
+      await deliverInvitations(context, emails, sentAt)
       return { notice }
     }),
   withdraw: member.invitations.withdraw
@@ -39,13 +40,21 @@ export const invitationsRouter = {
   preview: os.invitations.preview
     .use(publicRateLimit('invitationPreview', 30))
     .handler(({ context, input }) => previewInvitation(context.db, input.token)),
-  accept: authed.invitations.accept.handler(({ context, input }) =>
-    acceptInvitation(context.db, { user: context.user, session: context.session }, input.token),
-  ),
+  accept: authed.invitations.accept.handler(async ({ context, input }) => {
+    const { emails, nextStep } = await acceptInvitation(
+      context.db,
+      { user: context.user, session: context.session },
+      input.token,
+    )
+    // Joining as an owner alerts every owner.
+    await sendAll(context.mailer, emails)
+    return { nextStep }
+  }),
   acceptAsNewUser: os.invitations.acceptAsNewUser
     .use(publicRateLimit('invitationAccept', 10))
     .handler(async ({ context, input }) => {
-      const { email, nextStep } = await acceptInvitationAsNewUser(context.db, input)
+      const { email, nextStep, emails } = await acceptInvitationAsNewUser(context.db, input)
+      await sendAll(context.mailer, emails)
       // Sign in through Better Auth so the session, cookie and audit go through one path.
       try {
         const { headers } = await context.auth.api.signInEmail({

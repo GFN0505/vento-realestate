@@ -36,6 +36,20 @@
       "when": 1795660931267,
       "tag": "0004_platform_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795683636088,
+      "tag": "0005_team",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795683655895,
+      "tag": "0006_team_backfill",
+      "breakpoints": true
     }
   ]
 }

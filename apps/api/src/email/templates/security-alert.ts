@@ -80,3 +80,26 @@ export function backupCodeUsedAlert(p: {
     { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
   ])
 }
+
+/** To every owner, the new one included, whenever someone becomes an owner. Can't be muted. */
+export function newOwnerAlert(p: {
+  byName: string
+  newOwnerName: string
+  organizationName: string
+  at: string
+  on: string
+  teamUrl: string
+}): RenderedEmail {
+  return renderEmail(
+    `Vento: ${p.newOwnerName} is now an owner of ${p.organizationName}`,
+    `${p.newOwnerName} is now an owner`,
+    [
+      {
+        kind: 'p',
+        text: `${p.byName} made ${p.newOwnerName} an owner of ${p.organizationName} at ${p.at} on ${p.on}. Owners can do everything, including changing who has access.`,
+      },
+      { kind: 'p', text: `If this wasn't expected, sign in and check Team: ${p.teamUrl}` },
+      { kind: 'button', label: 'Check Team', url: p.teamUrl },
+    ],
+  )
+}

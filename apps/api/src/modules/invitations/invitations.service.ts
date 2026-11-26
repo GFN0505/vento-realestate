@@ -3,16 +3,14 @@ import {
   AUTH_ERROR_MESSAGES,
   type acceptInvitationAsNewUserInput,
   type createInvitationsInput,
-  type Invitation,
   type InvitationPreview,
   type InvitationStatus,
-  type listInvitationsInput,
   MODULE_LABELS,
   type NextStep,
-  type SystemRoleKey,
+  type TeamInvitationRow,
 } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { and, asc, count, desc, eq, gt, inArray, lte, ne, or } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, lte, ne } from 'drizzle-orm'
 import type { z } from 'zod'
 import {
   type AuthSession,
@@ -22,9 +20,11 @@ import {
   setActiveOrganization,
   twoStepRequired,
 } from '@/access/context'
+import { invitationRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
+import { firstOwner } from '@/access/who-can-grant'
 import { webUrl } from '@/auth/hooks/deps'
 import { checkPasswordPolicy } from '@/auth/password-policy'
-import { INVITATION_TTL_MS } from '@/auth/policy'
+import { INVITATION_RESEND_INTERVAL_MS, INVITATION_TTL_MS } from '@/auth/policy'
 import { rememberPasswordHash } from '@/auth/security-store'
 import type { DbOrTx } from '@/db/client'
 import {
@@ -40,12 +40,12 @@ import {
 } from '@/db/schema'
 import type { EmailMessage } from '@/email/mailer'
 import { invitationEmail } from '@/email/templates/invitation'
-import { conflict, forbidden, isUniqueViolation, notFound } from '@/lib/errors'
+import { conflict, forbidden, isUniqueViolation, notFound, tooManyRequests } from '@/lib/errors'
 import { formatDate, lagosIsoDate } from '@/lib/format'
-import { pageOffset, toPage } from '@/lib/paginate'
 import { recordAudit } from '@/modules/audit/audit.service'
-import { assertGrantableEntities } from '@/modules/members/members.service'
+import { assertGrantableEntities, newOwnerAlerts } from '@/modules/members/members.service'
 import { loadRoles } from '@/modules/roles/roles.service'
+import { invitationRowsById } from '@/modules/team/team.service'
 import { assertWithinLimit } from '@/platform/limits'
 import { hashInvitationToken, newInvitationToken } from './invitation-token'
 
@@ -82,72 +82,6 @@ async function limitsByInvitation(db: DbOrTx, organizationId: string, ids: strin
   return map
 }
 
-export async function listInvitations(
-  ctx: ServiceContext,
-  input: z.output<typeof listInvitationsInput>,
-) {
-  const now = new Date()
-  // Status filters use the effective status: "pending" excludes expired ones, "expired" includes them.
-  const statusFilter =
-    input.status === 'pending'
-      ? and(eq(invitations.status, 'pending'), gtNow(now))
-      : input.status === 'expired'
-        ? inArrayExpired(now)
-        : input.status
-          ? eq(invitations.status, input.status)
-          : undefined
-  const where = and(eq(invitations.organizationId, ctx.organizationId), statusFilter)
-  const { limit, offset } = pageOffset(input)
-  const [rows, [total]] = await Promise.all([
-    ctx.db
-      .select({
-        invitation: invitations,
-        roleKey: roles.key,
-        roleName: roles.name,
-        invitedByName: users.name,
-      })
-      .from(invitations)
-      .innerJoin(
-        roles,
-        and(eq(roles.id, invitations.roleId), eq(roles.organizationId, invitations.organizationId)),
-      )
-      .innerJoin(users, eq(users.id, invitations.invitedByUserId))
-      .where(where)
-      .orderBy(desc(invitations.createdAt))
-      .limit(limit)
-      .offset(offset),
-    ctx.db.select({ n: count() }).from(invitations).where(where),
-  ])
-  const limits = await limitsByInvitation(
-    ctx.db,
-    ctx.organizationId,
-    rows.map((r) => r.invitation.id),
-  )
-  const items: Invitation[] = rows.map(({ invitation: i, roleKey, roleName, invitedByName }) => ({
-    id: i.id,
-    email: i.email,
-    role: { id: i.roleId, key: roleKey as SystemRoleKey | null, name: roleName },
-    entities: limits.get(i.id) ?? null,
-    status: effectiveStatus(i, now),
-    invitedByName,
-    expiresAt: i.expiresAt.toISOString(),
-    lastSentAt: i.lastSentAt.toISOString(),
-    respondedAt: i.respondedAt?.toISOString() ?? null,
-    createdAt: i.createdAt.toISOString(),
-  }))
-  return toPage(items, input, total?.n ?? 0)
-}
-
-function gtNow(now: Date) {
-  return gt(invitations.expiresAt, now)
-}
-function inArrayExpired(now: Date) {
-  return or(
-    eq(invitations.status, 'expired'),
-    and(eq(invitations.status, 'pending'), lte(invitations.expiresAt, now)),
-  )
-}
-
 type InvitationDetails = {
   organizationName: string
   inviterName: string
@@ -178,10 +112,30 @@ async function details(db: DbOrTx, row: InvitationRow): Promise<InvitationDetail
   }
 }
 
-function invitationMessage(row: InvitationRow, token: string, d: InvitationDetails): EmailMessage {
+/** Safe inside a quoted display name: no quotes, backslashes, line breaks or control characters. */
+export function displayName(value: string): string {
+  const safe = [...value.replace(/\s+/g, ' ')]
+    .filter((c) => c !== '"' && c !== '\\' && c.charCodeAt(0) > 0x1f && c.charCodeAt(0) !== 0x7f)
+    .join('')
+  return safe.trim().slice(0, 60)
+}
+
+/**
+ * "Vento Homes Ltd via Vento", replies to the person who sent it (a colleague, not a no-reply
+ * box), and the invitation's id for the bounce webhook (ids only, never personal data).
+ */
+function invitationMessage(
+  row: InvitationRow,
+  token: string,
+  d: InvitationDetails,
+  sender: { name: string; email: string },
+): EmailMessage {
   return {
     to: row.email,
     tag: 'invitation',
+    fromName: displayName(`${d.organizationName} via Vento`),
+    replyTo: { name: displayName(sender.name), email: sender.email },
+    metadata: { invitationId: row.id },
     ...invitationEmail({
       ...d,
       expiresOn: formatDate(row.expiresAt),
@@ -190,12 +144,41 @@ function invitationMessage(row: InvitationRow, token: string, d: InvitationDetai
   }
 }
 
+/**
+ * Everyone in the batch who is already a member, or already has a live invitation, in one
+ * refusal: the sheet marks every such row at once. Nothing is sent.
+ */
+function clashError(
+  ctx: ServiceContext,
+  alreadyMembers: string[],
+  alreadyInvited: { email: string; id: string }[],
+) {
+  const n = alreadyMembers.length + alreadyInvited.length
+  const reason = alreadyMembers.length ? 'already_member' : 'already_invited'
+  const [member] = alreadyMembers
+  const [invited] = alreadyInvited
+  const message =
+    n > 1
+      ? `${n} of these people are already in or invited. Nothing was sent.`
+      : member
+        ? `${member} is already a member of ${ctx.organizationName}.`
+        : `${invited?.email} already has an invitation. Resend it instead.`
+  return conflict(reason, message, { alreadyMembers, alreadyInvited })
+}
+
 /** Up to 20 at once, all or nothing. Emails go out after commit (the router sends them). */
 export async function createInvitations(
   ctx: ServiceContext,
   input: z.output<typeof createInvitationsInput>,
-): Promise<{ sent: number; notice: string; emails: EmailMessage[] }> {
-  return ctx.db.transaction(async (tx) => {
+): Promise<{
+  sent: number
+  notice: string
+  invitations: TeamInvitationRow[]
+  emails: EmailMessage[]
+  sentAt: Date
+}> {
+  const now = new Date()
+  const created = await ctx.db.transaction(async (tx) => {
     const roleIds = [...new Set(input.items.map((i) => i.roleId))]
     const roleRows = await tx
       .select({ id: roles.id, key: roles.key })
@@ -208,7 +191,7 @@ export async function createInvitations(
     const limitEntities = await assertGrantableEntities(tx, ctx, input.entityIds)
     const emails = input.items.map((i) => i.email)
 
-    const [alreadyMember] = await tx
+    const alreadyMembers = await tx
       .select({ email: users.email })
       .from(members)
       .innerJoin(users, eq(users.id, members.userId))
@@ -219,14 +202,6 @@ export async function createInvitations(
           inArray(users.email, emails),
         ),
       )
-      .limit(1)
-    if (alreadyMember) {
-      throw conflict(
-        'already_member',
-        `${alreadyMember.email} is already a member of ${ctx.organizationName}.`,
-      )
-    }
-    const now = new Date()
     const pending = await tx
       .select({ id: invitations.id, email: invitations.email, expiresAt: invitations.expiresAt })
       .from(invitations)
@@ -238,9 +213,14 @@ export async function createInvitations(
         ),
       )
       .for('update')
-    const live = pending.find((p) => p.expiresAt > now)
-    if (live) {
-      throw alreadyInvited(live.email)
+    const memberEmails = new Set(alreadyMembers.map((m) => m.email))
+    const live = pending.filter((p) => p.expiresAt > now && !memberEmails.has(p.email))
+    if (memberEmails.size || live.length) {
+      throw clashError(
+        ctx,
+        emails.filter((e) => memberEmails.has(e)),
+        live.map(({ email, id }) => ({ email, id })),
+      )
     }
     // Members plus live invitations count against the plan; expired ones don't.
     await assertWithinLimit(tx, ctx, 'members', input.items.length)
@@ -258,6 +238,7 @@ export async function createInvitations(
     }
 
     const messages: EmailMessage[] = []
+    const ids: string[] = []
     for (const item of input.items) {
       const { token, tokenHash } = newInvitationToken()
       const [row] = await alreadyInvitedOnRace(
@@ -272,6 +253,8 @@ export async function createInvitations(
             tokenHash,
             expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
             lastSentAt: now,
+            delivery: 'queued',
+            deliveryChangedAt: now,
           })
           .returning(),
       )
@@ -298,16 +281,20 @@ export async function createInvitations(
           expiresAt: row.expiresAt.toISOString(),
         },
       })
-      messages.push(invitationMessage(row, token, d))
+      messages.push(invitationMessage(row, token, d, ctx.user))
+      ids.push(row.id)
     }
-    const n = input.items.length
-    return {
-      sent: n,
-      notice:
-        n === 1 ? `Invitation sent to ${input.items[0]?.email}` : `Invitations sent to ${n} people`,
-      emails: messages,
-    }
+    return { messages, ids }
   })
+  const n = input.items.length
+  return {
+    sent: n,
+    notice:
+      n === 1 ? `Invitation sent to ${input.items[0]?.email}` : `Invitations sent to ${n} people`,
+    invitations: await invitationRowsById(ctx, created.ids),
+    emails: created.messages,
+    sentAt: now,
+  }
 }
 
 function alreadyInvited(email: string) {
@@ -352,17 +339,69 @@ function notPendingError(row: InvitationRow, inviterName: string) {
   return conflict('invitation_not_pending', 'This invitation has already been used.')
 }
 
-/** New link, fresh 7 days; the old link stops working. Works for expired invitations too. */
+/** The invitation's entity limit (null = all) and role key, for the manage rules. */
+async function invitationScope(tx: DbOrTx, row: InvitationRow) {
+  const [role] = await tx
+    .select({ key: roles.key })
+    .from(roles)
+    .where(and(eq(roles.organizationId, row.organizationId), eq(roles.id, row.roleId)))
+  const limits = await tx
+    .select({ entityId: invitationEntityLimits.entityId })
+    .from(invitationEntityLimits)
+    .where(
+      and(
+        eq(invitationEntityLimits.organizationId, row.organizationId),
+        eq(invitationEntityLimits.invitationId, row.id),
+      ),
+    )
+  return {
+    email: row.email,
+    roleKey: role?.key ?? null,
+    entityIds: limits.length ? limits.map((l) => l.entityId) : null,
+  }
+}
+
+/** Throws the manage rules' refusal for resending or withdrawing this invitation, if any. */
+async function assertMayManageInvitation(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  row: InvitationRow,
+  action: 'resend' | 'withdraw',
+): Promise<void> {
+  const viewer = viewerOf(ctx)
+  const target = await invitationScope(tx, row)
+  const ownerName = needsOwnerName(viewer, target)
+    ? ((await firstOwner(tx, ctx.organizationId, ctx.user.id))?.name ?? null)
+    : null
+  const refusal = invitationRefusal(viewer, target, action, { ownerName })
+  if (refusal) throw forbidden(refusal.reason, refusal.message)
+}
+
+const RESEND_TOO_SOON = 'We sent it less than a minute ago. Try again shortly.'
+
+/**
+ * New link, fresh 7 days; the old link stops working. Works for expired invitations too. Once a
+ * minute per invitation: checked on the locked row and again in the update itself, so it holds
+ * across API instances.
+ */
 export async function resendInvitation(
   ctx: ServiceContext,
   id: string,
-): Promise<{ notice: string; emails: EmailMessage[] }> {
+): Promise<{ notice: string; emails: EmailMessage[]; sentAt: Date }> {
+  const now = new Date()
   return ctx.db.transaction(async (tx) => {
     const current = await lockInvitationById(tx, ctx, id)
     if (current.status !== 'pending' && current.status !== 'expired') {
       throw notPendingError(current, ctx.user.name)
     }
-    const now = new Date()
+    await assertMayManageInvitation(tx, ctx, current, 'resend')
+    const cutoff = new Date(now.getTime() - INVITATION_RESEND_INTERVAL_MS)
+    if (current.lastSentAt > cutoff) {
+      throw tooManyRequests(
+        RESEND_TOO_SOON,
+        (current.lastSentAt.getTime() - cutoff.getTime()) / 1000,
+      )
+    }
     // An old invitation can't come back while a newer one for the same email is live.
     const [newer] = await tx
       .select({ id: invitations.id })
@@ -403,11 +442,20 @@ export async function resendInvitation(
           tokenHash,
           expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
           lastSentAt: now,
+          delivery: 'queued',
+          deliveryChangedAt: now,
+          deliveryMessageId: null,
         })
-        .where(eq(invitations.id, id))
+        .where(
+          and(
+            eq(invitations.organizationId, ctx.organizationId),
+            eq(invitations.id, id),
+            lte(invitations.lastSentAt, cutoff),
+          ),
+        )
         .returning(),
     )
-    if (!row) throw notFound()
+    if (!row) throw tooManyRequests(RESEND_TOO_SOON, INVITATION_RESEND_INTERVAL_MS / 1000)
     await recordAudit(tx, {
       organizationId: ctx.organizationId,
       action: 'invitation.resent',
@@ -419,18 +467,24 @@ export async function resendInvitation(
     const d = await details(tx, row)
     return {
       notice: `Invitation sent again to ${row.email}`,
-      emails: [invitationMessage(row, token, d)],
+      emails: [invitationMessage(row, token, d, ctx.user)],
+      sentAt: now,
     }
   })
 }
 
+/**
+ * Takes back an open invitation, expired ones included: otherwise an expired invitation would
+ * sit on the Team list with no way to clear it except resending.
+ */
 export async function withdrawInvitation(
   ctx: ServiceContext,
   id: string,
 ): Promise<{ notice: string }> {
   return ctx.db.transaction(async (tx) => {
     const current = await lockInvitationById(tx, ctx, id)
-    if (effectiveStatus(current) !== 'pending') throw notPendingError(current, ctx.user.name)
+    if (current.status !== 'pending') throw notPendingError(current, ctx.user.name)
+    await assertMayManageInvitation(tx, ctx, current, 'withdraw')
     await tx
       .update(invitations)
       .set({ status: 'withdrawn', respondedAt: new Date() })
@@ -440,10 +494,10 @@ export async function withdrawInvitation(
       action: 'invitation.withdrawn',
       actor: actorOf(ctx),
       target: { type: 'invitation', id, label: current.email },
-      before: { status: 'pending' },
+      before: { status: effectiveStatus(current) },
       after: { status: 'withdrawn' },
     })
-    return { notice: 'Invitation withdrawn' }
+    return { notice: `Invitation to ${current.email} withdrawn` }
   })
 }
 
@@ -479,12 +533,15 @@ async function assertAcceptable(db: DbOrTx, row: InvitationRow) {
   throw notPendingError(row, inviter?.name ?? 'the person who invited you')
 }
 
-/** Membership plus the invitation's entity limits; marks the invitation accepted. */
+/**
+ * Membership plus the invitation's entity limits; marks the invitation accepted. Joining as an
+ * owner returns the "is now an owner" alert for every owner (sent after commit).
+ */
 async function joinOrganization(
   tx: DbOrTx,
   row: InvitationRow,
   user: { id: string; name: string },
-) {
+): Promise<EmailMessage[]> {
   const [existing] = await tx
     .select({ id: members.id })
     .from(members)
@@ -534,6 +591,18 @@ async function joinOrganization(
     before: { status: 'pending' },
     after: { status: 'accepted' },
   })
+  const [role] = await tx
+    .select({ key: roles.key })
+    .from(roles)
+    .where(and(eq(roles.organizationId, row.organizationId), eq(roles.id, row.roleId)))
+  if (role?.key !== 'owner') return []
+  const d = await details(tx, row)
+  return newOwnerAlerts(tx, {
+    organizationId: row.organizationId,
+    organizationName: d.organizationName,
+    byName: d.inviterName,
+    newOwnerName: user.name,
+  })
 }
 
 /** Where the person goes after joining: two-step setup when the role needs it. */
@@ -562,20 +631,20 @@ export async function acceptInvitation(
   db: DbOrTx,
   actor: { user: Pick<AuthUser, 'id' | 'name' | 'email'>; session: Pick<AuthSession, 'id'> },
   token: string,
-): Promise<{ nextStep: NextStep }> {
+): Promise<{ nextStep: NextStep; emails: EmailMessage[] }> {
   return db.transaction(async (tx) => {
     const row = await findByToken(tx, token, true)
     if (row.email !== actor.user.email.toLowerCase()) {
       throw forbidden('invitation_email_mismatch', `This invitation is for ${row.email}`)
     }
     await assertAcceptable(tx, row)
-    await joinOrganization(tx, row, actor.user)
+    const emails = await joinOrganization(tx, row, actor.user)
     await setActiveOrganization(tx, {
       userId: actor.user.id,
       sessionId: actor.session.id,
       organizationId: row.organizationId,
     })
-    return { nextStep: await nextStepAfterJoin(tx, row, actor.user.id) }
+    return { nextStep: await nextStepAfterJoin(tx, row, actor.user.id), emails }
   })
 }
 
@@ -586,7 +655,7 @@ export async function acceptInvitation(
 export async function acceptInvitationAsNewUser(
   db: DbOrTx,
   input: z.output<typeof acceptInvitationAsNewUserInput>,
-): Promise<{ email: string; nextStep: NextStep }> {
+): Promise<{ email: string; nextStep: NextStep; emails: EmailMessage[] }> {
   const failure = checkPasswordPolicy(input.password)
   if (failure) {
     throw new ORPCError('BAD_REQUEST', {
@@ -623,8 +692,8 @@ export async function acceptInvitationAsNewUser(
       password: passwordHash,
     })
     await rememberPasswordHash(tx, user.id, passwordHash)
-    await joinOrganization(tx, row, user)
-    return { email: row.email, nextStep: await nextStepAfterJoin(tx, row, user.id) }
+    const emails = await joinOrganization(tx, row, user)
+    return { email: row.email, nextStep: await nextStepAfterJoin(tx, row, user.id), emails }
   })
 }
 

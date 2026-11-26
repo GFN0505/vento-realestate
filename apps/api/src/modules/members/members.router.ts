@@ -4,20 +4,18 @@ import { sendAll } from '@/email/mailer'
 import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
 import { member } from '@/orpc'
-import {
-  listMembers,
-  removeMember,
-  resetMemberTwoStep,
-  updateMemberAccess,
-} from './members.service'
+import { removeMember, resetMemberTwoStep, updateMemberAccess } from './members.service'
 
+// Listing people is team.list.
 export const membersRouter = {
-  list: member.members.list
-    .use(requirePermission('settings', 'view', 'see the team'))
-    .handler(({ context, input }) => listMembers(serviceContext(context), input)),
   updateAccess: member.members.updateAccess
     .use(requirePermission('settings', 'edit', "change people's access"))
-    .handler(({ context, input }) => updateMemberAccess(serviceContext(context), input)),
+    .handler(async ({ context, input }) => {
+      const { emails, ...result } = await updateMemberAccess(serviceContext(context), input)
+      // "X is now an owner" to every owner, after commit.
+      await sendAll(context.mailer, emails)
+      return result
+    }),
   remove: member.members.remove
     .use(requirePermission('settings', 'delete', 'remove people'))
     .handler(({ context, input }) => removeMember(serviceContext(context), input.memberId)),

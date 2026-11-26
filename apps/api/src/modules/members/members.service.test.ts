@@ -1,8 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { db } from '@/db/client'
 import { auditEvents, members, sessions, twoFactors, users } from '@/db/schema'
 import { createInvitations } from '@/modules/invitations/invitations.service'
-import { withRollback } from '@/test/db'
+import { uniqueEmail, withRollback } from '@/test/db'
 import {
   contextFor,
   createEntity,
@@ -222,7 +223,10 @@ describe('members', () => {
       const parkview = await createEntity(tx, org)
       const victoria = await createEntity(tx, org, { name: 'Victoria Gardens Dev. Ltd' })
       const admin = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
-      const kunle = await createMember(tx, org, { role: 'project_manager' })
+      const kunle = await createMember(tx, org, {
+        role: 'project_manager',
+        entityIds: [parkview.id],
+      })
       const ctx = await contextFor(tx, admin.user, org)
       const change = (entityIds: string[] | null) =>
         updateMemberAccess(ctx, {
@@ -236,7 +240,13 @@ describe('members', () => {
       })
       await expect(change([parkview.id, victoria.id])).rejects.toMatchObject({ code: 'NOT_FOUND' })
       await expect(change([parkview.id])).resolves.toMatchObject({
-        member: { entities: [{ id: parkview.id, name: 'Parkview Residences SPV Ltd' }] },
+        row: {
+          access: {
+            kind: 'some',
+            entities: [{ id: parkview.id, name: 'Parkview Residences SPV Ltd' }],
+            hiddenCount: 0,
+          },
+        },
       })
     }))
 
@@ -255,4 +265,130 @@ describe('members', () => {
         data: { reason: 'own_access' },
       })
     }))
+})
+
+describe('members from the Team page', () => {
+  it("won't let a limited admin reset or remove someone with wider access", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const parkview = await createEntity(tx, org)
+      const lekki = await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
+      const admin = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+      const aisha = await createMember(tx, org, {
+        role: 'finance',
+        name: 'Aisha Bello',
+        entityIds: [parkview.id, lekki.id],
+      })
+      const ctx = await contextFor(tx, admin.user, org)
+      const refusal = {
+        code: 'FORBIDDEN',
+        message:
+          "Aisha Bello has access to entities you can't see. Ask Olumide Bankole (owner) to change it.",
+        data: { reason: 'entity_limit' },
+      }
+      await expect(resetMemberTwoStep(ctx, aisha.member.id)).rejects.toMatchObject(refusal)
+      await expect(removeMember(ctx, aisha.member.id)).rejects.toMatchObject(refusal)
+    }))
+
+  it('remembers who removed someone', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const grace = await createMember(tx, org, { role: 'sales' })
+      await removeMember(await contextFor(tx, org.owner, org), grace.member.id)
+      const [row] = await tx.select().from(members).where(eq(members.id, grace.member.id))
+      expect(row?.removedByUserId).toBe(org.owner.id)
+    }))
+
+  it('emails every owner, the new one included, when someone is made an owner', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const second = await createMember(tx, org, { role: 'owner', name: 'Ngozi Adeyemi' })
+      const aisha = await createMember(tx, org, { role: 'finance', name: 'Aisha Bello' })
+      const { client, mailer } = clientAs(tx, org.owner)
+      const result = await client.members.updateAccess({
+        memberId: aisha.member.id,
+        roleId: org.roleIds.get('owner') ?? '',
+        entityIds: null,
+      })
+      expect(result.row).toMatchObject({ id: aisha.member.id, role: { key: 'owner' } })
+      const subject = 'Vento: Aisha Bello is now an owner of Vento Homes Ltd'
+      for (const person of [org.owner, second.user, aisha.user]) {
+        expect(mailer.to(person.email).map((m) => m.subject)).toEqual([subject])
+      }
+      expect(mailer.to(aisha.user.email)[0]?.text).toMatch(
+        /^Olumide Bankole made Aisha Bello an owner of Vento Homes Ltd at \d{2}:\d{2} on /m,
+      )
+    }))
+
+  it('records an undo as a second access change', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const aisha = await createMember(tx, org, { role: 'finance', name: 'Aisha Bello' })
+      const ctx = await contextFor(tx, org.owner, org)
+      const change = (role: 'sales' | 'finance') =>
+        updateMemberAccess(ctx, {
+          memberId: aisha.member.id,
+          roleId: org.roleIds.get(role) ?? '',
+          entityIds: null,
+        })
+      expect((await change('sales')).notice).toBe('Aisha Bello is now Sales')
+      expect((await change('finance')).row.role.name).toBe('Finance')
+      const events = await tx
+        .select()
+        .from(auditEvents)
+        .where(
+          and(
+            eq(auditEvents.targetId, aisha.member.id),
+            eq(auditEvents.action, 'member.access_changed'),
+          ),
+        )
+      expect(events.map((e) => e.after)).toEqual([
+        { role: 'Sales', entities: 'all' },
+        { role: 'Finance', entities: 'all' },
+      ])
+    }))
+
+  it('refuses access to an archived entity with "no longer available"', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const old = await createEntity(tx, org, { status: 'archived', archivedAt: new Date() })
+      const kunle = await createMember(tx, org, { role: 'project_manager' })
+      await expect(
+        updateMemberAccess(await contextFor(tx, org.owner, org), {
+          memberId: kunle.member.id,
+          roleId: org.roleIds.get('project_manager') ?? '',
+          entityIds: [old.id],
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'entity_unavailable' } })
+    }))
+})
+
+describe('two owners removing each other at the same moment', () => {
+  // Real commits on separate connections: the only way to prove the organization lock
+  // serialises them (the test database is recreated each run).
+  it('lets one succeed and refuses the other as the last owner', async () => {
+    const org = await createOrganization(db, { name: `Owner Race ${uniqueEmail('org')}` })
+    const second = await createMember(db, org, { role: 'owner', name: 'Ngozi Adeyemi' })
+    // Both loaded their access before either acted, as two open browsers would have.
+    const firstCtx = await contextFor(db, org.owner, org)
+    const secondCtx = await contextFor(db, second.user, org)
+
+    const results = await Promise.allSettled([
+      removeMember(firstCtx, second.member.id),
+      removeMember(secondCtx, org.ownerMemberId),
+    ])
+
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    const refused = results.find((r) => r.status === 'rejected')
+    expect(refused?.status === 'rejected' && refused.reason).toMatchObject({
+      code: 'CONFLICT',
+      message: `${org.name} needs at least one owner. Make someone else an owner first.`,
+      data: { reason: 'last_owner' },
+    })
+    const owners = await db
+      .select()
+      .from(members)
+      .where(and(eq(members.organizationId, org.id), eq(members.status, 'active')))
+    expect(owners).toHaveLength(1)
+  })
 })

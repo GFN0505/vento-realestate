@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server'
-import type { ConflictReason, CountLimitKey, ForbiddenReason } from '@vento/shared'
+import type { ConflictData, ConflictReason, CountLimitKey, ForbiddenReason } from '@vento/shared'
 
 // Services throw these; oRPC formats them. Messages are end-user copy.
 
@@ -7,8 +7,20 @@ export function notFound(): ORPCError<'NOT_FOUND', undefined> {
   return new ORPCError('NOT_FOUND', { message: "We couldn't find that. It may have been removed." })
 }
 
-export function conflict(reason: ConflictReason, message: string) {
-  return new ORPCError('CONFLICT', { message, data: { reason } })
+export function conflict(
+  reason: ConflictReason,
+  message: string,
+  extra?: Omit<ConflictData, 'reason'>,
+) {
+  return new ORPCError('CONFLICT', { message, data: { reason, ...extra } })
+}
+
+/** Too soon to do this again; the web can say when to retry. */
+export function tooManyRequests(message: string, retryAfterSeconds: number) {
+  return new ORPCError('TOO_MANY_REQUESTS', {
+    message,
+    data: { retryAfterSeconds: Math.max(1, Math.ceil(retryAfterSeconds)) },
+  })
 }
 
 /** The tab names another organization than the session (decision 0013); the web reloads. */

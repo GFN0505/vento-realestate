@@ -5,8 +5,10 @@ import {
   type PermissionAction,
   type PermissionModule,
 } from '@vento/shared'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm'
+import { MEMBER_ACTIVITY_WRITE_INTERVAL_MS } from '@/auth/policy'
 import type { DbOrTx } from '@/db/client'
+import { rawTimestamp } from '@/db/raw'
 import { members, organizations, roles, sessions, users } from '@/db/schema'
 import type { OrganizationAvailability } from '@/platform/availability'
 
@@ -39,6 +41,8 @@ export type MemberContext = {
   /** null = all entities. */
   entityIds: string[] | null
   requiresTwoStep: boolean
+  /** As read with the membership, so the hourly activity write needs no extra read. */
+  lastActiveAt: Date | null
 }
 
 export type Membership = {
@@ -76,6 +80,7 @@ type MembershipRow = {
   requires_two_step: boolean
   permissions: string[] | null
   entity_ids: string[] | null
+  last_active_at: Date | string | null
   release_group: 'standard' | 'pilot' | 'internal' | null
   plan_version_id: string | null
 }
@@ -107,7 +112,7 @@ export async function loadMembership(
         where rp.role_id = r.id) as permissions,
       (select array_agg(l.entity_id) from member_entity_limits l
         where l.member_id = m.id) as entity_ids,
-      op.release_group, op.plan_version_id
+      m.last_active_at, op.release_group, op.plan_version_id
     from members m
     join roles r on r.id = m.role_id and r.organization_id = m.organization_id
     join organizations o on o.id = m.organization_id
@@ -129,6 +134,7 @@ export async function loadMembership(
       permissions: toPermissionSet(row.permissions ?? []),
       entityIds: row.entity_ids,
       requiresTwoStep: row.requires_two_step,
+      lastActiveAt: rawTimestamp(row.last_active_at),
     },
     plan: {
       releaseGroup: row.release_group ?? 'standard',
@@ -206,4 +212,27 @@ export function twoStepRequired(
   member: Pick<MemberContext, 'requiresTwoStep'> | null,
 ): boolean {
   return user.twoStepSetupRequired || Boolean(member?.requiresTwoStep)
+}
+
+/**
+ * Records that the member used Vento, at most once an hour: the value read with the membership
+ * decides, so a recent one costs nothing, and the conditional update keeps two requests at once
+ * to one write. `updated_at` stays put: activity isn't a change to the member.
+ */
+export async function touchMemberActivity(
+  db: DbOrTx,
+  member: Pick<MemberContext, 'id' | 'lastActiveAt'>,
+  now = new Date(),
+): Promise<void> {
+  const cutoff = new Date(now.getTime() - MEMBER_ACTIVITY_WRITE_INTERVAL_MS)
+  if (member.lastActiveAt && member.lastActiveAt > cutoff) return
+  await db
+    .update(members)
+    .set({ lastActiveAt: now, updatedAt: sql`${members.updatedAt}` })
+    .where(
+      and(
+        eq(members.id, member.id),
+        or(isNull(members.lastActiveAt), lt(members.lastActiveAt, cutoff)),
+      ),
+    )
 }

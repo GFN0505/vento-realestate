@@ -14,6 +14,7 @@ import {
   type Membership,
   resolveMembership,
   setActiveOrganization,
+  touchMemberActivity,
   twoStepRequired,
 } from '@/access/context'
 import { userIdForResetToken } from '@/auth/security-store'
@@ -84,6 +85,7 @@ export async function getMe(
   store: FeatureStore,
 ): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
+  if (membership) await touchMemberActivity(db, membership.member)
   const [nextStep, organizations, { features, plan }] = await runQueries(db, [
     () => nextStepFor(db, user, membership),
     () => listActiveMemberships(db, user.id),

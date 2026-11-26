@@ -7,6 +7,7 @@ import {
 import { accountContract } from './account/contract'
 import { healthContract } from './health/contract'
 import { entitiesContract, onboardingContract, organizationContract } from './organization/contract'
+import { checklistContract, teamContract } from './team/contract'
 
 /** The whole API surface. The server implements it and the web client calls it. */
 export const contract = {
@@ -19,5 +20,7 @@ export const contract = {
   members: membersContract,
   invitations: invitationsContract,
   access: accessContract,
+  team: teamContract,
+  checklist: checklistContract,
 }
 export type Contract = typeof contract

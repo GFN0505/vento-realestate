@@ -2,7 +2,7 @@ import { CURRENT_TERMS_VERSION, createInvitationsInput } from '@vento/shared'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
-import { invitations, members, sessions, users } from '@/db/schema'
+import { auditEvents, invitations, members, sessions, users } from '@/db/schema'
 import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
@@ -19,6 +19,7 @@ import { clientAs } from '@/test/router-client'
 import {
   acceptInvitation,
   createInvitations,
+  displayName,
   previewInvitation,
   resendInvitation,
   withdrawInvitation,
@@ -177,7 +178,7 @@ describe('invitations', () => {
       const org = await createOrganization(tx)
       const { invitation, token } = await createInvitation(tx, org, { role: 'sales' })
       expect(await withdrawInvitation(await contextFor(tx, org.owner, org), invitation.id)).toEqual(
-        { notice: 'Invitation withdrawn' },
+        { notice: `Invitation to ${invitation.email} withdrawn` },
       )
       expect((await previewInvitation(tx, token)).status).toBe('withdrawn')
     }))
@@ -211,7 +212,7 @@ describe('invitations', () => {
         { user: aisha.user, session: { id: '01936f1e-8b2a-7c3d-9e4f-5a6b7c8d9e0f' } },
         token,
       )
-      expect(result).toEqual({ nextStep: 'ready' })
+      expect(result).toEqual({ nextStep: 'ready', emails: [] })
       const rows = await tx.select().from(members).where(eq(members.userId, aisha.user.id))
       expect(rows.map((r) => r.organizationId).sort()).toEqual([first.id, second.id].sort())
       const { client } = clientAs(tx, aisha.user, { activeOrganizationId: second.id })
@@ -373,5 +374,190 @@ describe('accepting as a new person: edge cases', () => {
       expect(result).toEqual({ nextStep: 'sign_in' })
       const [joined] = await tx.select().from(users).where(eq(users.email, invitation.email))
       expect(joined).toBeDefined()
+    }))
+})
+
+describe('invitations from the Team page', () => {
+  it('keeps quotes, backslashes and line breaks out of the sender name', () => {
+    expect(displayName('Vento "Homes"\\\r\nLtd\u0007 via Vento')).toBe('Vento Homes Ltd via Vento')
+    expect(displayName('x'.repeat(80))).toHaveLength(60)
+  })
+
+  it('marks every clashing email at once and sends nothing', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const aisha = await createMember(tx, org, { role: 'finance' })
+      const grace = await createMember(tx, org, { role: 'sales' })
+      const kunle = await createInvitation(tx, org, { role: 'sales' })
+      const roleId = org.roleIds.get('viewer') ?? ''
+      const items = [aisha.user.email, grace.user.email, kunle.invitation.email, uniqueEmail()]
+      await expect(
+        createInvitations(await contextFor(tx, org.owner, org), {
+          items: items.map((email) => ({ email, roleId })),
+          entityIds: null,
+        }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: '3 of these people are already in or invited. Nothing was sent.',
+        data: {
+          reason: 'already_member',
+          alreadyMembers: [aisha.user.email, grace.user.email],
+          alreadyInvited: [{ email: kunle.invitation.email, id: kunle.invitation.id }],
+        },
+      })
+      const rows = await tx.select().from(invitations).where(eq(invitations.organizationId, org.id))
+      expect(rows).toHaveLength(1)
+    }))
+
+  it('queues each invitation, then records it sent, with the sender details on the email', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const { client, mailer } = clientAs(tx, org.owner)
+      const email = uniqueEmail()
+      const result = await client.invitations.create({
+        items: [{ email, roleId: org.roleIds.get('sales') ?? '' }],
+        entityIds: null,
+      })
+      const [row] = result.invitations
+      expect(row).toMatchObject({ email, status: 'pending', delivery: 'sent' })
+      const [stored] = await tx.select().from(invitations).where(eq(invitations.email, email))
+      expect(stored?.deliveryMessageId).toMatch(/^memory-/)
+      expect(mailer.to(email)[0]).toMatchObject({
+        fromName: 'Vento Homes Ltd via Vento',
+        replyTo: { name: 'Olumide Bankole', email: org.owner.email },
+        metadata: { invitationId: row?.id },
+      })
+    }))
+
+  it('keeps the invitation and its audit when the email fails, and shows it undelivered', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const { client, mailer } = clientAs(tx, org.owner)
+      mailer.failNext('transient')
+      const email = uniqueEmail()
+      const result = await client.invitations.create({
+        items: [{ email, roleId: org.roleIds.get('sales') ?? '' }],
+        entityIds: null,
+      })
+      expect(result.invitations[0]?.delivery).toBe('failed')
+      const [stored] = await tx.select().from(invitations).where(eq(invitations.email, email))
+      expect(stored).toMatchObject({ status: 'pending', delivery: 'failed' })
+      const audit = await tx
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.targetId, stored?.id ?? ''))
+      expect(audit.map((a) => a.action)).toEqual(['invitation.sent'])
+    }))
+
+  it('resends once a minute per invitation', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const ctx = await contextFor(tx, org.owner, org)
+      const recent = await createInvitation(tx, org, { role: 'sales', lastSentAt: new Date() })
+      await expect(resendInvitation(ctx, recent.invitation.id)).rejects.toMatchObject({
+        code: 'TOO_MANY_REQUESTS',
+        message: 'We sent it less than a minute ago. Try again shortly.',
+        data: { retryAfterSeconds: expect.any(Number) },
+      })
+      const older = await createInvitation(tx, org, {
+        role: 'sales',
+        lastSentAt: new Date(Date.now() - 61_000),
+      })
+      await expect(resendInvitation(ctx, older.invitation.id)).resolves.toBeTruthy()
+      await expect(resendInvitation(ctx, older.invitation.id)).rejects.toMatchObject({
+        code: 'TOO_MANY_REQUESTS',
+      })
+    }))
+
+  it('keeps resending an owner invitation to owners', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const admin = await createMember(tx, org, { role: 'admin' })
+      const { invitation } = await createInvitation(tx, org, { role: 'owner' })
+      await expect(
+        resendInvitation(await contextFor(tx, admin.user, org), invitation.id),
+      ).rejects.toMatchObject({
+        message: 'Only owners can resend an owner invitation.',
+        data: { reason: 'owner_only' },
+      })
+      await expect(
+        resendInvitation(await contextFor(tx, org.owner, org), invitation.id),
+      ).resolves.toBeTruthy()
+    }))
+
+  it("won't let a limited admin resend or withdraw an invitation wider than their access", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const parkview = await createEntity(tx, org)
+      const admin = await createMember(tx, org, { role: 'admin', entityIds: [parkview.id] })
+      const ctx = await contextFor(tx, admin.user, org)
+      const wide = await createInvitation(tx, org, { role: 'sales' })
+      const narrow = await createInvitation(tx, org, { role: 'sales', entityIds: [parkview.id] })
+      for (const attempt of [resendInvitation, withdrawInvitation]) {
+        await expect(attempt(ctx, wide.invitation.id)).rejects.toMatchObject({
+          data: { reason: 'entity_limit' },
+        })
+      }
+      await expect(withdrawInvitation(ctx, narrow.invitation.id)).resolves.toBeTruthy()
+    }))
+
+  it('withdraws an expired invitation so it leaves the list', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const { invitation } = await createInvitation(tx, org, {
+        role: 'sales',
+        expiresAt: new Date(Date.now() - DAY),
+      })
+      await withdrawInvitation(await contextFor(tx, org.owner, org), invitation.id)
+      const [row] = await tx.select().from(invitations).where(eq(invitations.id, invitation.id))
+      expect(row?.status).toBe('withdrawn')
+    }))
+
+  it('refuses an archived entity with "no longer available"', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const old = await createEntity(tx, org, { status: 'archived', archivedAt: new Date() })
+      await expect(
+        createInvitations(await contextFor(tx, org.owner, org), {
+          items: [{ email: uniqueEmail(), roleId: org.roleIds.get('sales') ?? '' }],
+          entityIds: [old.id],
+        }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: 'One of the entities you chose is no longer available. Choose again.',
+        data: { reason: 'entity_unavailable' },
+      })
+    }))
+
+  it('tells an admin at the people limit who to ask, without the plan', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      const admin = await createMember(tx, org, { role: 'admin' })
+      for (let i = 0; i < 7; i++) await createMember(tx, org, { role: 'viewer' })
+      await expect(
+        createInvitations(await contextFor(tx, admin.user, org), {
+          items: [uniqueEmail(), uniqueEmail()].map((email) => ({
+            email,
+            roleId: org.roleIds.get('viewer') ?? '',
+          })),
+          entityIds: null,
+        }),
+      ).rejects.toMatchObject({
+        message:
+          'Your organization has reached its limit of 10 people. Ask Olumide Bankole (owner).',
+        data: { reason: 'plan_limit', askName: 'Olumide Bankole' },
+      })
+    }))
+
+  it('alerts every owner when someone accepts an owner invitation', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const invitee = await createUser(tx, { name: 'Aisha Bello', twoFactorEnabled: true })
+      const { token } = await createInvitation(tx, org, { role: 'owner', email: invitee.email })
+      const { client, mailer } = clientAs(tx, invitee)
+      await client.invitations.accept({ token })
+      const subject = 'Vento: Aisha Bello is now an owner of Vento Homes Ltd'
+      expect(mailer.to(org.owner.email).map((m) => m.subject)).toEqual([subject])
+      expect(mailer.to(invitee.email).map((m) => m.subject)).toEqual([subject])
     }))
 })

@@ -43,29 +43,52 @@ const ENTITIES = [
   { name: 'Lekki Pearl Estates Ltd', type: 'spv', rcNumber: 'RC 1904417', tin: null },
 ] as const
 
-type Person = { name: string; email: string; role: SystemRoleKey; onlyEntity?: string }
+type Person = {
+  name: string
+  email: string
+  role: SystemRoleKey
+  onlyEntity?: string
+  /** Team page "Last active": days ago, or null for never since joining. */
+  activeDaysAgo?: number | null
+}
 
 const PEOPLE: Person[] = [
-  { name: 'Olumide Bankole', email: 'olumide@ventohomes.ng', role: 'owner' },
-  { name: 'Ngozi Adeyemi', email: 'ngozi@ventohomes.ng', role: 'land_legal' },
+  { name: 'Olumide Bankole', email: 'olumide@ventohomes.ng', role: 'owner', activeDaysAgo: 0 },
+  { name: 'Ngozi Adeyemi', email: 'ngozi@ventohomes.ng', role: 'land_legal', activeDaysAgo: 1 },
   {
     name: 'Kunle Ojo',
     email: 'kunle@ventohomes.ng',
     role: 'project_manager',
     onlyEntity: 'RC 1789234',
+    activeDaysAgo: 3,
   },
-  { name: 'Grace Umeh', email: 'grace@ventohomes.ng', role: 'sales' },
-  { name: 'Aisha Bello', email: 'aisha@ventohomes.ng', role: 'finance' },
-  { name: 'Kemi Adebayo', email: 'kemi@ventohomes.ng', role: 'hr' },
-  { name: 'Ope Martins', email: 'ope@ventohomes.ng', role: 'facility' },
+  { name: 'Grace Umeh', email: 'grace@ventohomes.ng', role: 'sales', activeDaysAgo: 0 },
+  { name: 'Aisha Bello', email: 'aisha@ventohomes.ng', role: 'finance', activeDaysAgo: 2 },
+  { name: 'Kemi Adebayo', email: 'kemi@ventohomes.ng', role: 'hr', activeDaysAgo: 14 },
+  { name: 'Ope Martins', email: 'ope@ventohomes.ng', role: 'facility', activeDaysAgo: null },
   // Accountant in the designs; viewer until custom roles exist (owner's decision 12).
-  { name: 'Tunde Ola', email: 'tunde@ventohomes.ng', role: 'viewer' },
+  { name: 'Tunde Ola', email: 'tunde@ventohomes.ng', role: 'viewer', activeDaysAgo: 6 },
+  // An admin limited to Parkview: sees only Parkview's names on Team and manages only its people.
+  {
+    name: 'Funmi Akande',
+    email: 'funmi@ventohomes.ng',
+    role: 'admin',
+    onlyEntity: 'RC 1789234',
+    activeDaysAgo: 1,
+  },
 ]
 
+/** Someone who left, for the Team page's Removed chip. */
+const REMOVED = { name: 'Emeka Nwosu', email: 'emeka@ventohomes.ng', role: 'sales' } as const
+
 const INVITES = [
-  { email: 'chidi.okafor@ventohomes.ng', role: 'finance', expired: false },
-  { email: 'segun.adeleke@ventohomes.ng', role: 'sales', expired: true },
+  { email: 'chidi.okafor@ventohomes.ng', role: 'finance', expired: false, delivery: 'sent' },
+  { email: 'segun.adeleke@ventohomes.ng', role: 'sales', expired: true, delivery: 'sent' },
+  // Shows "Email not delivered" on Team.
+  { email: 'yemi.ade@ventohomes.ng', role: 'sales', expired: false, delivery: 'bounced' },
 ] as const
+
+const DAY_MS = 24 * 3600_000
 
 async function upsertOrganization(
   tx: DbOrTx,
@@ -167,7 +190,13 @@ async function upsertPerson(
 
 async function upsertMembership(
   tx: DbOrTx,
-  input: { organizationId: string; userId: string; roleId: string; entityId?: string },
+  input: {
+    organizationId: string
+    userId: string
+    roleId: string
+    entityId?: string
+    activeDaysAgo?: number | null
+  },
 ) {
   const [existing] = await tx
     .select({ id: members.id })
@@ -192,7 +221,14 @@ async function upsertMembership(
         .returning({ id: members.id })
     )[0]?.id
   if (!memberId) throw new Error('Member insert failed')
-  await tx.update(members).set({ roleId: input.roleId }).where(eq(members.id, memberId))
+  const lastActiveAt =
+    input.activeDaysAgo === undefined || input.activeDaysAgo === null
+      ? null
+      : new Date(Date.now() - input.activeDaysAgo * DAY_MS)
+  await tx
+    .update(members)
+    .set({ roleId: input.roleId, lastActiveAt })
+    .where(eq(members.id, memberId))
   await tx.delete(memberEntityLimits).where(eq(memberEntityLimits.memberId, memberId))
   if (input.entityId) {
     await tx
@@ -203,6 +239,28 @@ async function upsertMembership(
     userId: input.userId,
     sessionId: null,
     organizationId: input.organizationId,
+  })
+}
+
+/** A removed membership (once), removed by the owner five days ago. */
+async function upsertRemoved(
+  tx: DbOrTx,
+  input: { organizationId: string; userId: string; roleId: string; ownerId: string },
+) {
+  const [existing] = await tx
+    .select({ id: members.id })
+    .from(members)
+    .where(and(eq(members.organizationId, input.organizationId), eq(members.userId, input.userId)))
+  if (existing) return
+  const removedAt = new Date(Date.now() - 5 * DAY_MS)
+  await tx.insert(members).values({
+    organizationId: input.organizationId,
+    userId: input.userId,
+    roleId: input.roleId,
+    status: 'removed',
+    joinedAt: new Date(Date.now() - 90 * DAY_MS),
+    removedAt,
+    removedByUserId: input.ownerId,
   })
 }
 
@@ -223,6 +281,9 @@ async function upsertInvitations(
       expiresAt,
       lastSentAt: new Date(),
       roleId: roleIds.get(invite.role) ?? '',
+      delivery: invite.delivery,
+      deliveryChangedAt: new Date(),
+      deliveryMessageId: null,
     }
     const [existing] = await tx
       .select({ id: invitations.id })
@@ -235,9 +296,8 @@ async function upsertInvitations(
       await tx
         .insert(invitations)
         .values({ ...values, organizationId, email: invite.email, invitedByUserId: ownerId })
-    links.push(
-      `${invite.email} (${invite.expired ? 'expired' : 'pending'}): ${webUrl(`/accept-invitation/${token}`)}`,
-    )
+    const state = invite.expired ? 'expired' : invite.delivery === 'bounced' ? 'bounced' : 'pending'
+    links.push(`${invite.email} (${state}): ${webUrl(`/accept-invitation/${token}`)}`)
   }
   return links
 }
@@ -269,8 +329,15 @@ async function seed() {
         userId,
         roleId: roleIds.get(person.role) ?? '',
         entityId: person.onlyEntity ? entityIds.get(person.onlyEntity) : undefined,
+        activeDaysAgo: person.activeDaysAgo,
       })
     }
+    await upsertRemoved(tx, {
+      organizationId,
+      userId: await upsertPerson(tx, REMOVED, passwordHash),
+      roleId: roleIds.get(REMOVED.role) ?? '',
+      ownerId,
+    })
     return upsertInvitations(tx, organizationId, roleIds, ownerId)
   })
 
