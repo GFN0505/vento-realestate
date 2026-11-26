@@ -28,7 +28,7 @@ export const MODULE_HIGHLIGHTS: Partial<Record<NavKey, readonly string[]>> = {
   ],
   finance: [
     'Receipts applied to instalments, oldest first',
-    'A ledger per entity, in naira and foreign currency',
+    'A ledger per company, in naira and foreign currency',
     'VAT and WHT worked out for you',
   ],
   hr: [
@@ -39,7 +39,7 @@ export const MODULE_HIGHLIGHTS: Partial<Record<NavKey, readonly string[]>> = {
   compliance: [
     'Permits with expiry reminders',
     'Buyer KYC and AML reviews',
-    'The UBO register for each entity',
+    'The UBO register for each company',
   ],
   documents: [
     'Offer and allocation letters from templates',

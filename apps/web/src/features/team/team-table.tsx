@@ -39,7 +39,7 @@ export function TeamTable({ rows, onOpen }: Props) {
               Role
             </th>
             <th scope="col" className={th}>
-              Entity access
+              Company access
             </th>
             <th scope="col" className={th}>
               Two-step

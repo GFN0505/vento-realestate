@@ -143,7 +143,7 @@ export const NAV: readonly NavItem[] = [
     icon: Wallet,
     group: 'main',
     keywords: ['receipts', 'ledger', 'fx', 'tax', 'vat', 'wht', 'banks'],
-    comingSoon: 'Receipts, ledgers per entity, FX, construction finance and tax.',
+    comingSoon: 'Receipts, ledgers per company, FX, construction finance and tax.',
   },
   {
     key: 'hr',
@@ -207,8 +207,17 @@ export const NAV: readonly NavItem[] = [
     to: '/settings',
     icon: Settings,
     group: 'footer',
-    keywords: ['team', 'members', 'roles', 'permissions', 'entities', 'organization', 'security'],
-    comingSoon: 'Your team, roles and permissions, entities and your own security.',
+    keywords: [
+      'team',
+      'members',
+      'roles',
+      'permissions',
+      'companies',
+      'entities',
+      'organization',
+      'security',
+    ],
+    comingSoon: 'Your team, roles and permissions, companies and your own security.',
   },
   {
     // Hidden until the help centre exists.

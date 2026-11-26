@@ -246,12 +246,12 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             {entity.entity && (
               <CommandItem
                 value="entity:all"
-                keywords={['Show all entities', 'switch entity']}
+                keywords={['Show all companies', 'switch company entity']}
                 onSelect={run(() => entity.select(null))}
               >
                 <LayersIcon aria-hidden />
-                Show all entities
-                <CommandHint>Entity</CommandHint>
+                Show all companies
+                <CommandHint>Company</CommandHint>
               </CommandItem>
             )}
             {entity.options
@@ -260,12 +260,12 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
                 <CommandItem
                   key={e.id}
                   value={`entity:${e.id}`}
-                  keywords={[`Switch to ${e.name}`, 'switch entity spv']}
+                  keywords={[`Switch to ${e.name}`, 'switch company entity spv']}
                   onSelect={run(() => entity.select(e.id))}
                 >
                   <LayersIcon aria-hidden />
                   <span className="truncate">Switch to {e.name}</span>
-                  <CommandHint>Entity</CommandHint>
+                  <CommandHint>Company</CommandHint>
                 </CommandItem>
               ))}
           </>

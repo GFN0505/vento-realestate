@@ -19,7 +19,7 @@ export function EntityTypePicker({
     <RadioGroupPrimitive.Root
       value={value}
       onValueChange={(next) => onChange(next === 'holding' ? 'holding' : 'spv')}
-      aria-label="Entity type"
+      aria-label="Company type"
       className="grid grid-cols-2 gap-2.5"
     >
       {OPTIONS.map((option) => (

@@ -44,14 +44,14 @@ export function EntityTriggerContent({
           </span>
           {menu && <ChevronDownIcon aria-hidden className="size-3.5 shrink-0" />}
         </span>
-        {menu && <span className="sr-only">, change entity</span>}
+        {menu && <span className="sr-only">, change company</span>}
       </>
     )
   }
   return (
     <>
       <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
-        Entity
+        Company
       </span>
       <span className="truncate" title={label}>
         {label}
@@ -117,8 +117,8 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
   )
 }
 
-/** The company name, "All entities", or "No company" when every one of theirs is archived. */
+/** The company name, "All companies", or "No company" when every one of theirs is archived. */
 export function switcherLabel(current: ReturnType<typeof useCurrentEntity>): string {
   if (current.entity) return current.entity.name
-  return current.noCompany ? 'No company' : 'All entities'
+  return current.noCompany ? 'No company' : 'All companies'
 }

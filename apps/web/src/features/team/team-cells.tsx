@@ -32,12 +32,12 @@ export function YouTag() {
 
 const others = (n: number) => (n === 1 ? 'and 1 other' : `and ${n} others`)
 
-/** Plain words for entity access: "All entities", "Parkview Residences SPV Ltd", "2 entities". */
+/** Plain words for company access: "All companies", "Parkview Residences SPV Ltd", "2 companies". */
 export function accessLabel(access: EntityAccess): string {
-  if (access.kind === 'all') return 'All entities'
+  if (access.kind === 'all') return 'All companies'
   const [only] = access.entities
   const base =
-    access.entities.length === 1 && only ? only.name : `${access.entities.length} entities`
+    access.entities.length === 1 && only ? only.name : `${access.entities.length} companies`
   return access.hiddenCount > 0 ? `${base} ${others(access.hiddenCount)}` : base
 }
 

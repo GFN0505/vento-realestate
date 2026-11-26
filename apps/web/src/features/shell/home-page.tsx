@@ -32,7 +32,7 @@ export function HomePage() {
     entity.status === 'pending' && !entity.locked ? (
       <Skeleton className="inline-block h-3.5 w-24 bg-auth-hairline align-middle" />
     ) : (
-      (entity.entity?.name ?? (entity.noCompany ? 'No company' : 'All entities'))
+      (entity.entity?.name ?? (entity.noCompany ? 'No company' : 'All companies'))
     )
 
   return (

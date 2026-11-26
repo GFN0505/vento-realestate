@@ -8,8 +8,9 @@ import { renderWithMe } from '@/test/render-with-me'
 import { PlanLimitMessage } from './plan-limit-message'
 
 const OWNER_COPY =
-  'Your Starter plan includes 2 entities. Archive an entity or talk to Vento about Growth.'
-const MEMBER_COPY = 'Your organization has reached its limit of 2 entities. Ask Bisi Lawal (owner).'
+  'Your Starter plan includes 2 active companies. Archive one, or talk to Vento about Growth.'
+const MEMBER_COPY =
+  'Your organization has reached its limit of 2 active companies. Ask Bisi Lawal (owner).'
 
 const limitError = (message: string) =>
   new ORPCError('FORBIDDEN', {
@@ -28,7 +29,7 @@ describe('PlanLimitMessage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(OWNER_COPY)
     const link = screen.getByRole('link', { name: 'Talk to Vento' })
     expect(decodeURIComponent(link.getAttribute('href') ?? '')).toContain(
-      'talk about more entities',
+      'talk about more companies',
     )
   })
 

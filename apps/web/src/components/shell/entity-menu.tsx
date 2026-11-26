@@ -59,7 +59,7 @@ export function EntityMenu({
           value={current.entity?.id ?? (single ? (current.options[0]?.id ?? ALL) : ALL)}
           onValueChange={(value) => current.select(value === ALL ? null : value)}
         >
-          {!single && <EntityRow value={ALL} name="All entities" note={null} />}
+          {!single && <EntityRow value={ALL} name="All companies" note={null} />}
           {current.options.map((entity) => (
             <EntityRow
               key={entity.id}
@@ -83,7 +83,7 @@ export function EntityMenu({
         )}
         {current.status === 'error' && (
           <p className="px-2.5 py-2 text-muted-foreground text-xs" role="status">
-            Couldn't load your entities. Close and open this menu to try again.
+            Couldn't load your companies. Close and open this menu to try again.
           </p>
         )}
       </DropdownMenuContent>

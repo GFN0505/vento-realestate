@@ -16,7 +16,7 @@ import { type InviteDraft, type InviteRow, inviteDraft } from './use-invite-draf
 export type SendBatch = { draft: InviteDraft; rows: readonly InviteRow[]; organizationId?: string }
 
 export const ENTITY_UNAVAILABLE =
-  'One of the entities you chose is no longer available. Choose again.'
+  'One of the companies you chose is no longer available. Choose again.'
 
 export type InviteErrors = { emails: string | null; role: string | null; entities: string | null }
 
@@ -29,7 +29,7 @@ export function validateDraft(draft: InviteDraft, sendable = draft.rows): Invite
     role: draft.roleId === null && sendable.some((r) => r.roleId === null) ? 'Choose a role' : null,
     entities:
       draft.entityMode === 'some' && draft.entityIds.length === 0
-        ? 'Choose at least one entity, or allow all'
+        ? 'Choose at least one company, or allow all'
         : null,
   }
 }

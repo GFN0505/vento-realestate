@@ -6,9 +6,9 @@ type Copy = { label: string; open: string; short: string }
 export const CHECKLIST_COPY: Record<ChecklistItemKey, Copy> = {
   organization: { label: 'Create your organization', open: '', short: 'Organization' },
   first_entity: {
-    label: 'Add your first entity',
+    label: 'Add your first company',
     open: 'The company that holds your first project',
-    short: 'first entity',
+    short: 'first company',
   },
   other_companies: {
     label: 'Add your other companies (SPVs)',

@@ -49,12 +49,12 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
       noValidate
       className="contents"
     >
-      <StepHeader title="First entity">
+      <StepHeader title="First company">
         Most projects sit in their own company (SPV). Books, bank accounts and tax are kept per
-        entity.
+        company.
       </StepHeader>
       {showAlert && <FormAlert variant="error">{apiErrorMessage(create.error)}</FormAlert>}
-      <CompanyFields form={form} nameLabel="Entity name" />
+      <CompanyFields form={form} />
       <label
         htmlFor={vatId}
         className="flex cursor-pointer items-start gap-2.5 border-t py-2.5 text-[13px]"
@@ -74,7 +74,7 @@ export function EntityStep({ organizationName }: { organizationName: string }) {
         <span className="font-semibold">
           Registered for VAT
           <span className="block font-normal text-muted-foreground text-xs">
-            You can change this later in the entity's settings.
+            You can change this later under Settings → Companies.
           </span>
         </span>
       </label>

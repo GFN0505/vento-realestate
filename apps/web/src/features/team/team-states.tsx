@@ -110,7 +110,7 @@ export function TeamEmpty({
         icon={UsersIcon}
         action={
           <Button variant="outline" onClick={onAllEntities} className="max-md:h-11">
-            Show all entities
+            Show all companies
           </Button>
         }
       >
@@ -172,7 +172,7 @@ export function EntityScopeLine({
         onClick={onAllEntities}
         className="rounded-sm font-semibold text-link underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
       >
-        Show all entities
+        Show all companies
       </button>
     </p>
   )
