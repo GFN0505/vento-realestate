@@ -142,8 +142,18 @@ export async function guardTurnOff(
   }
   const wrong =
     failure === AUTH_ERROR_CODES.INVALID_CODE || failure === AUTH_ERROR_CODES.INVALID_BACKUP_CODE
-  if (!wrong)
-    throw authError('BAD_REQUEST', failure, 'Two-step is off now. The page is up to date.')
+  if (!wrong) {
+    // Two-step was turned off meanwhile (another tab): the page is stale. Anything else is the
+    // plugin's own answer, passed on as it is.
+    const off = failure === 'TOTP_NOT_ENABLED' || failure === 'BACKUP_CODES_NOT_ENABLED'
+    throw off
+      ? authError(
+          'BAD_REQUEST',
+          AUTH_ERROR_CODES.TWO_FACTOR_NOT_ENABLED,
+          AUTH_ERROR_MESSAGES.TWO_FACTOR_NOT_ENABLED,
+        )
+      : authError('BAD_REQUEST', failure, 'Something went wrong. Try again.')
+  }
   await recordAccountEvent(deps.db, {
     userId: user.id,
     action: 'auth.two_step_failed',
