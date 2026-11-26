@@ -1,0 +1,119 @@
+import { useQuery } from '@tanstack/react-query'
+import { useLocation } from '@tanstack/react-router'
+import { FingerprintIcon, LoaderCircleIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { DialogBody, DialogFooter } from '@/components/ui/dialog'
+import { clearPasskeyOffer, offerSeenKey } from '@/features/auth/passkey-offer-flag'
+import { useMe } from '@/features/preview/use-effective-permissions'
+import { securityQuery } from '@/features/settings/security-queries'
+import { hasPlatformAuthenticator } from '@/lib/passkey-support'
+import { readItem, writeItem } from '@/lib/storage'
+import { ConfirmPasswordDialog } from './dialogs/confirm-password-dialog'
+import { DialogFrame, dialogFooterClass } from './dialogs/dialog-frame'
+import { useAddPasskey } from './passkey-actions'
+import { thisDeviceKind } from './security-words'
+
+/**
+ * "Sign in faster next time" (spec, plan question 12): once per device per person, right after
+ * a password sign-in, when this device has Face ID, Touch ID, a fingerprint or Windows Hello and
+ * none of the person's passkeys is named for this kind of device.
+ */
+export function PasskeyOffer({ onDone }: { onDone: () => void }) {
+  const me = useMe()
+  const onSecurityPage = useLocation({ select: (l) => l.pathname === '/settings/security' })
+  const security = useQuery(securityQuery())
+  const [platform, setPlatform] = useState<boolean | null>(null)
+  const [open, setOpen] = useState(false)
+  const decided = useRef(false)
+  const passkeys = useAddPasskey()
+  const seenKey = offerSeenKey(me.user.id)
+
+  useEffect(() => {
+    void hasPlatformAuthenticator().then(setPlatform)
+  }, [])
+
+  useEffect(() => {
+    const data = security.data
+    if (decided.current || platform === null || (!data && !security.isError)) return
+    // Decided once per sign-in, whatever the answer: landing on My security first means no offer.
+    decided.current = true
+    clearPasskeyOffer()
+    const kind = thisDeviceKind()
+    const hasOneHere = !!kind && !!data?.passkeys.items.some((p) => p.name.includes(kind))
+    const offer =
+      !!data?.passkeys.available &&
+      platform &&
+      !hasOneHere &&
+      !onSecurityPage &&
+      readItem(seenKey) === null
+    if (offer) setOpen(true)
+    else onDone()
+  }, [platform, security.data, security.isError, onSecurityPage, seenKey, onDone])
+
+  function close() {
+    setOpen(false)
+    // After the dialog animates out, the offer (and its code) leaves the page.
+    window.setTimeout(onDone, 250)
+  }
+
+  function answer() {
+    writeItem(seenKey, '1')
+    close()
+  }
+
+  return (
+    <>
+      <DialogFrame
+        open={open}
+        busy={passkeys.pending}
+        onClose={answer}
+        title="Sign in faster next time"
+        className="md:max-w-[420px]"
+      >
+        <DialogBody className="items-center gap-4 py-6 text-center max-md:flex-1 max-md:justify-center">
+          <span
+            aria-hidden
+            className="flex size-14 items-center justify-center rounded-2xl bg-selected text-selected-foreground ring-8 ring-highlight dark:ring-0"
+          >
+            <FingerprintIcon className="size-7" strokeWidth={1.6} />
+          </span>
+          <p className="max-w-xs text-[13.5px] text-muted-foreground leading-relaxed">
+            Use Face ID or your fingerprint instead of a password and code on this device.
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Only add a passkey on a device that's yours.
+          </p>
+        </DialogBody>
+        <DialogFooter className={dialogFooterClass}>
+          <Button
+            variant="ghost"
+            disabled={passkeys.pending}
+            onClick={answer}
+            className="font-medium text-muted-foreground hover:text-foreground"
+          >
+            Not now
+          </Button>
+          <Button
+            disabled={passkeys.pending}
+            aria-busy={passkeys.pending || undefined}
+            onClick={async () => {
+              writeItem(seenKey, '1')
+              await passkeys.add()
+              close()
+            }}
+          >
+            {passkeys.pending ? (
+              <LoaderCircleIcon aria-hidden className="animate-spin" />
+            ) : (
+              <FingerprintIcon aria-hidden />
+            )}
+            Add a passkey
+          </Button>
+        </DialogFooter>
+      </DialogFrame>
+      {/* Only while the offer is open, so it never stacks with My security's own. */}
+      {open && <ConfirmPasswordDialog />}
+    </>
+  )
+}

@@ -45,6 +45,7 @@ type RawRow = {
   two_factor_enabled: boolean | null
   password_reset_required: boolean | null
   two_step_setup_required: boolean | null
+  passkey_count: number | null
   joined_at: Date | string | null
   last_active_at: Date | string | null
   last_sent_at: Date | string | null
@@ -114,8 +115,11 @@ function activeMembersSql(organizationId: string, f: Filters): SQL {
   return sql`
     select 'member'::text as kind, 0 as rank,
       (case when r.key = 'owner' then 0 else 1 end) as owner_rank, m.id, m.user_id, u.name, u.email,
-      r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
+      r.id as role_id, r.key as role_key, r.name as role_name,
+      -- The role, or the organization's "Require two-step for everyone".
+      (r.requires_two_step or o.two_step_required_for_everyone) as requires_two_step,
       u.two_factor_enabled, u.password_reset_required, u.two_step_setup_required,
+      (select count(*) from passkeys p where p.user_id = m.user_id)::int as passkey_count,
       m.joined_at, m.last_active_at,
       null::timestamptz as last_sent_at, null::timestamptz as expires_at,
       null::text as invited_by_name, null::invitation_delivery as delivery,
@@ -125,6 +129,7 @@ function activeMembersSql(organizationId: string, f: Filters): SQL {
     from members m
     join users u on u.id = m.user_id
     join roles r on r.id = m.role_id and r.organization_id = m.organization_id
+    join organizations o on o.id = m.organization_id
     where m.organization_id = ${organizationId} and m.status = 'active'${filterSql(f, {
       role: sql`m.role_id`,
       id: sql`m.id`,
@@ -146,7 +151,7 @@ function openInvitationsSql(organizationId: string, f: Filters): SQL {
       null::text as name,
       i.email, r.id as role_id, r.key as role_key, r.name as role_name, r.requires_two_step,
       null::boolean as two_factor_enabled, null::boolean as password_reset_required,
-      null::boolean as two_step_setup_required,
+      null::boolean as two_step_setup_required, null::int as passkey_count,
       null::timestamptz as joined_at, null::timestamptz as last_active_at,
       i.last_sent_at, i.expires_at, inviter.name as invited_by_name, i.delivery,
       i.delivery_changed_at, null::timestamptz as removed_at, null::text as removed_by_name,
@@ -176,6 +181,7 @@ function removedSql(organizationId: string, f: Filters): SQL {
         u.name, u.email, r.id as role_id, r.key as role_key, r.name as role_name,
         null::boolean as requires_two_step, null::boolean as two_factor_enabled,
         null::boolean as password_reset_required, null::boolean as two_step_setup_required,
+        null::int as passkey_count,
         m.joined_at, null::timestamptz as last_active_at,
         null::timestamptz as last_sent_at, null::timestamptz as expires_at,
         null::text as invited_by_name, null::invitation_delivery as delivery,
@@ -356,9 +362,18 @@ function memberRow(
   })
   const userId = r.user_id ?? ''
   const name = r.name ?? r.email
+  const passkeyCount = r.passkey_count ?? 0
   const rights = memberRowRights(
     viewer,
-    { userId, name, roleKey: r.role_key, permissions, entityIds: idsOf(limits), twoStep },
+    {
+      userId,
+      name,
+      roleKey: r.role_key,
+      permissions,
+      entityIds: idsOf(limits),
+      twoStep,
+      passkeyCount,
+    },
     ownerName,
   )
   return {
@@ -371,6 +386,7 @@ function memberRow(
     role: roleOf(r),
     access: accessFor(viewer.entityIds, limits),
     twoStep,
+    passkeyCount,
     joinedAt: at(r.joined_at).toISOString(),
     lastActiveAt: iso(r.last_active_at),
     ...rights,

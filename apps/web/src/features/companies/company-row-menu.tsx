@@ -23,7 +23,7 @@ type Props = {
 }
 
 const trigger =
-  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground'
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted data-[state=open]:text-foreground'
 
 /** ⋯ on a company: Edit · Archive (active) or Restore (archived); only what the viewer may do. */
 export function CompanyRowMenu({

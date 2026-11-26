@@ -1,23 +1,36 @@
 import { APIError } from 'better-auth/api'
-import type { Db } from '@/db/client'
+import type { Db, DbOrTx } from '@/db/client'
 import type { EmailMessage, Mailer } from '@/email/mailer'
 import { sendAll } from '@/email/mailer'
 import type { RenderedEmail } from '@/email/templates/layout'
 import { env } from '@/env'
+import type { FeatureStore } from '@/platform/feature-store'
 
-/** The two server-only Better Auth calls the hooks make, typed narrowly. */
+/** The server-only Better Auth calls the hooks make, typed narrowly. */
 export type AuthServerApi = {
   createVerificationOTP(input: {
     body: { email: string; type: 'email-verification' }
   }): Promise<string>
   viewBackupCodes(input: { body: { userId: string } }): Promise<{ backupCodes: string[] }>
+  /** With a live session: checks the code and returns, without a new session. */
+  verifyTOTP(input: { body: { code: string }; headers: Headers }): Promise<unknown>
+  /** With a live session and `disableSession`: checks and consumes the code. */
+  verifyBackupCode(input: {
+    body: { code: string; disableSession: true }
+    headers: Headers
+  }): Promise<unknown>
 }
+
+/** What the lock and failure counting need: also used by account.confirmPassword. */
+export type LockDeps = { db: DbOrTx; mailer: Mailer }
 
 export type AuthDeps = {
   db: Db
   mailer: Mailer
   /** Set once betterAuth() has returned; hooks only run after that. */
   api: () => AuthServerApi
+  /** Availability snapshot (decision 0016), for `platform.passkeys`. */
+  features: FeatureStore
 }
 
 /** A link on the web app (same origin as the API in production, proxied in development). */
@@ -26,7 +39,7 @@ export function webUrl(path: string): string {
 }
 
 export async function sendEmail(
-  deps: AuthDeps,
+  deps: Pick<AuthDeps, 'mailer'>,
   to: string,
   tag: EmailMessage['tag'],
   email: RenderedEmail,
@@ -36,7 +49,13 @@ export async function sendEmail(
 
 /** Our own error shape on /api/auth: `{ code, message, ...extra }`, like Better Auth's. */
 export function authError(
-  status: 'BAD_REQUEST' | 'FORBIDDEN' | 'TOO_MANY_REQUESTS',
+  status:
+    | 'BAD_REQUEST'
+    | 'UNAUTHORIZED'
+    | 'FORBIDDEN'
+    | 'NOT_FOUND'
+    | 'CONFLICT'
+    | 'TOO_MANY_REQUESTS',
   code: string,
   message: string,
   extra: Record<string, unknown> = {},
@@ -57,7 +76,7 @@ export function errorCode(returned: unknown): string | null {
  * after-hooks that change the outcome (a lock) return one of these.
  */
 export function errorResponse(
-  status: 403 | 429,
+  status: 400 | 401 | 403 | 404 | 409 | 429,
   body: { code: string; message: string } & Record<string, unknown>,
 ): Response {
   return new Response(JSON.stringify(body), {

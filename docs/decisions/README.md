@@ -24,5 +24,7 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0016](0016-feature-availability-declared-in-the-contract-enforced-in-me.md) | Feature availability: declared in the contract, enforced in member, read from memory | accepted |
 | [0017](0017-transactional-email-through-postmark-with-delivery-tracked-o.md) | Transactional email through Postmark, with delivery tracked on invitations | accepted |
 | [0018](0018-entities-are-called-companies-on-screen.md) | Entities are called companies on screen; code keeps "entity" | accepted |
+| [0019](0019-passkeys-count-as-two-step.md) | Passkeys count as two-step; the authenticator app stays the fallback | accepted |
+| [0020](0020-approximate-place-from-an-offline-ip-database.md) | Approximate place from an offline IP database, looked up once at sign-in | accepted |
 
 Template: [0000-template.md](0000-template.md)

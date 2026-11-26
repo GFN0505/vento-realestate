@@ -39,7 +39,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
     <header className="flex flex-col gap-3">
       <Link
         to="/settings/roles"
-        className="-ml-1 inline-flex w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-hidden hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+        className="-ml-1 inline-flex w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-hidden hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
       >
         <ChevronLeftIcon aria-hidden className="size-4" />
         Roles & permissions
@@ -83,7 +83,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
                 type="button"
                 aria-label="Rename role"
                 onClick={() => nameRef.current?.focus()}
-                className="-ml-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-hidden hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="-ml-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-hidden hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <PencilIcon aria-hidden className="size-3.5" />
               </button>
@@ -125,7 +125,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
             <Link
               to="/settings/team"
               search={{ role: role.id }}
-              className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+              className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
             >
               {peopleLine(role)}
             </Link>

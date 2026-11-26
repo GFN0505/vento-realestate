@@ -19,7 +19,6 @@ import {
   lockViewer,
   type ServiceContext,
   setActiveOrganization,
-  twoStepRequired,
 } from '@/access/context'
 import { assertGrantableEntities } from '@/access/grants'
 import {
@@ -30,6 +29,7 @@ import {
   widerThan,
 } from '@/access/manage-rules'
 import { newOwnerAlerts } from '@/access/new-owner-alerts'
+import { memberTwoStepGate } from '@/access/two-step-gate'
 import { firstOwner } from '@/access/who-can-grant'
 import { webUrl } from '@/auth/hooks/deps'
 import { checkPasswordPolicy } from '@/auth/password-policy'
@@ -101,7 +101,10 @@ type InvitationDetails = {
 
 async function details(db: DbOrTx, row: InvitationRow): Promise<InvitationDetails> {
   const [org] = await db
-    .select({ name: organizations.name })
+    .select({
+      name: organizations.name,
+      twoStepForEveryone: organizations.twoStepRequiredForEveryone,
+    })
     .from(organizations)
     .where(eq(organizations.id, row.organizationId))
   const [inviter] = await db
@@ -116,7 +119,7 @@ async function details(db: DbOrTx, row: InvitationRow): Promise<InvitationDetail
     roleName: role?.name ?? '',
     entities: limits ? limits.map((e) => e.name) : 'all',
     canApprove: (role?.canApprove ?? []).map((m) => MODULE_LABELS[m]),
-    twoStepRequired: Boolean(role?.requiresTwoStep),
+    twoStepRequired: Boolean(role?.requiresTwoStep || org?.twoStepForEveryone),
   }
 }
 
@@ -641,7 +644,10 @@ async function joinOrganization(
   })
 }
 
-/** Where the person goes after joining: two-step setup when the role needs it. */
+/**
+ * Where the person goes after joining: two-step setup when the role or the organization needs
+ * it. Joining is entering the organization, so its setting applies at once (no grace).
+ */
 async function nextStepAfterJoin(
   db: DbOrTx,
   row: InvitationRow,
@@ -650,7 +656,14 @@ async function nextStepAfterJoin(
   const [role] = await db
     .select({ requiresTwoStep: roles.requiresTwoStep })
     .from(roles)
-    .where(eq(roles.id, row.roleId))
+    .where(and(eq(roles.organizationId, row.organizationId), eq(roles.id, row.roleId)))
+  const [org] = await db
+    .select({
+      required: organizations.twoStepRequiredForEveryone,
+      since: organizations.twoStepRequiredChangedAt,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, row.organizationId))
   const [user] = await db
     .select({
       twoFactorEnabled: users.twoFactorEnabled,
@@ -659,7 +672,16 @@ async function nextStepAfterJoin(
     .from(users)
     .where(eq(users.id, userId))
   if (!user) return 'ready'
-  return twoStepRequired(user, role ?? null) && !user.twoFactorEnabled ? 'two_step_setup' : 'ready'
+  const gate = memberTwoStepGate(
+    user,
+    {
+      requiresTwoStep: Boolean(role?.requiresTwoStep),
+      organizationTwoStep: { required: Boolean(org?.required), since: org?.since ?? null },
+    },
+    null,
+    new Date(),
+  )
+  return gate.kind === 'required' ? 'two_step_setup' : 'ready'
 }
 
 /** Signed in as the invited email (an existing Vento user joining another organization). */

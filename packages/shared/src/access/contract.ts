@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { notice } from '../account/schema'
 import { platform } from '../common/errors'
-import { id, paginated } from '../common/schemas'
+import { id } from '../common/schemas'
 import { teamInvitationRow, teamMemberRow } from '../team/schema'
 import {
   acceptInvitationAsNewUserInput,
@@ -12,6 +12,8 @@ import {
   invitationTokenInput,
   memberIdInput,
   role,
+  roleDetail,
+  roleList,
   updateMemberAccessInput,
   updateRoleInput,
   whoCanChangeAccessInput,
@@ -25,9 +27,9 @@ export const rolesContract = {
    * Every live role in one page (at most 59), built-ins in the default order, then custom A–Z.
    * Each says what the viewer may do with it.
    */
-  list: platform.output(paginated(role)),
+  list: platform.output(roleList),
   /** Archived (deleted) roles are NOT_FOUND. */
-  get: platform.input(byId).output(role),
+  get: platform.input(byId).output(roleDetail),
   /** A custom role copying the source's permissions and two-step value. */
   create: platform.input(createRoleInput).output(notice.extend({ role })),
   /** `role.version` is the new version, for Undo. */

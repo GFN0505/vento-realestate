@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { EyeIcon, KeyboardIcon, LogOutIcon, SettingsIcon } from 'lucide-react'
+import { EyeIcon, KeyboardIcon, LockKeyholeIcon, LogOutIcon, SettingsIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +55,13 @@ export function UserMenuPanel({
             {me.user.email}
           </p>
         </div>
+        {/* Personal, so everyone has it whatever their role (3d). */}
+        <DropdownMenuItem asChild>
+          <Link to="/settings/security" preload="intent">
+            <LockKeyholeIcon aria-hidden />
+            My security
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>

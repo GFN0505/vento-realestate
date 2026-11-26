@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { index, pgEnum, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { id, timestamps, timestamptz } from '../columns'
 import { users } from './auth'
 
@@ -48,4 +48,28 @@ export const passwordHistories = pgTable(
     ...timestamps,
   },
   (t) => [index('password_histories_user_idx').on(t.userId, t.createdAt.desc())],
+)
+
+/**
+ * Browsers that have signed in to this person's account, by a hash of Vento's random device
+ * cookie (no fingerprinting). A sign-in from one not seen in 90 days sends the "new sign-in"
+ * alert. Rows unseen for 90 days are pruned at the person's next sign-in.
+ */
+export const knownDevices = pgTable(
+  'known_devices',
+  {
+    id: id(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Hex SHA-256 of the cookie value; the cookie itself is never stored. */
+    deviceHash: text().notNull(),
+    firstSeenAt: timestamptz().defaultNow().notNull(),
+    lastSeenAt: timestamptz().defaultNow().notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('known_devices_user_device_unique').on(t.userId, t.deviceHash),
+    index('known_devices_user_last_seen_idx').on(t.userId, t.lastSeenAt),
+  ],
 )

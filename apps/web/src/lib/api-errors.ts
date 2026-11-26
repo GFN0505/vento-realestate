@@ -37,10 +37,15 @@ export function isAccessChanged(error: unknown): boolean {
   )
 }
 
-/** A refused session or an out-of-date tab: the shell already says so; forms stay quiet. */
+/**
+ * A refused session, an out-of-date tab or two-step now required: the shell already says so (or
+ * opens the setup over the page); forms stay quiet.
+ */
 export function isHandledElsewhere(error: unknown): boolean {
   return (
-    (error instanceof ORPCError && error.code === 'UNAUTHORIZED') || isOrganizationChanged(error)
+    (error instanceof ORPCError && error.code === 'UNAUTHORIZED') ||
+    isOrganizationChanged(error) ||
+    errorReason(error) === 'two_step_setup_required'
   )
 }
 

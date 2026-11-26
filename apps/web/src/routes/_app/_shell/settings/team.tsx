@@ -2,13 +2,19 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import type { Me } from '@vento/shared'
 import { meQuery } from '@/features/account/api'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
+import { moduleGuard } from '@/features/shell/module-route'
 import { TeamPage } from '@/features/team/team-page'
 import { teamListKey, teamListQuery } from '@/features/team/team-queries'
 import { restoreTeamFilters, validateTeamSearch } from '@/features/team/team-search'
 
+const guard = moduleGuard('settings')
+
 export const Route = createFileRoute('/_app/_shell/settings/team')({
+  staticData: { module: 'settings' },
   validateSearch: validateTeamSearch,
   beforeLoad: ({ context, search }) => {
+    // Before any loader: a role without settings view gets the 403 and requests no team data.
+    guard({ context })
     // A bare link to Team opens with this device's last role filter and chip.
     const me = context.queryClient.getQueryData<Me>(meQuery().queryKey)
     const restored = me?.organization ? restoreTeamFilters(me.organization.id, search) : null

@@ -3,6 +3,7 @@ import { systemRoleKey } from '../access/default-roles'
 import { permissionSet } from '../access/permissions'
 import { id } from '../common/schemas'
 import { availableFeature, mePlan } from '../features/schema'
+import { twoStepRequirement } from './security'
 
 /** Where the web sends a signed-in person next. The server decides; the web only follows. */
 export const nextStep = z.enum([
@@ -53,8 +54,18 @@ export const me = z.object({
     })
     .nullable(),
   nextStep,
-  /** The role requires two-step, or an owner or admin reset it. */
+  /**
+   * Two-step is required here now: the role, an owner or admin's reset, or the organization's
+   * "Require two-step for everyone" (also during its 7-day grace).
+   */
   twoStepRequired: z.boolean(),
+  /** What requires it, active organization first, for My security's line; null when nothing does. */
+  twoStepRequiredBy: twoStepRequirement.nullable(),
+  /**
+   * The organization requires two-step for everyone and this person hasn't set it up yet, but may
+   * keep working until this moment (the banner's deadline). null outside that grace period.
+   */
+  twoStepSetupBy: z.iso.datetime().nullable(),
   /**
    * Settings create and all-companies access: show "+ Add company" (switcher, Home, ⌘K). The
    * web still ANDs it with the previewed role's permissions.
@@ -81,6 +92,8 @@ export const sessionItem = z.object({
   browser: z.string(),
   /** "102.89.34.x"; null when unknown. Full addresses are never stored. */
   ipMasked: z.string().nullable(),
+  /** Approximate place worked out at sign-in, "Lekki, Lagos"; null when unknown. */
+  place: z.string().nullable(),
   lastActiveAt: z.iso.datetime(),
   createdAt: z.iso.datetime(),
   /** "Keep me signed in" was ticked. */

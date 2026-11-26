@@ -19,13 +19,13 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
-import { roleQuery } from '@/features/settings/role-queries'
 import { errorReason, OFFLINE_SAVE_ERROR } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
 import { client } from '@/lib/orpc'
 import { hasFinePointer } from '@/lib/pointer'
 import { markJustCreated } from './just-created'
 import { StartFromSelect } from './start-from-select'
+import { cacheRoleDetail } from './use-save-role'
 
 type Props = {
   open: boolean
@@ -157,7 +157,7 @@ function NewRoleForm({
     setPending(true)
     try {
       const { role } = await client.roles.create(parsed.data)
-      queryClient.setQueryData(roleQuery(role.id).queryKey, role)
+      cacheRoleDetail(queryClient, role)
       void queryClient.invalidateQueries({ queryKey: rolesQuery().queryKey })
       toast.success(`${role.name} created`)
       markJustCreated(role.id)

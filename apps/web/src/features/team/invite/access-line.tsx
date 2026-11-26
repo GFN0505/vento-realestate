@@ -57,7 +57,7 @@ export function AccessLine({ value, onChange, entities, limits, error }: Props) 
             type="button"
             onClick={() => setOpen(true)}
             aria-label={`Change company access, now ${label}`}
-            className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
+            className="rounded-sm font-semibold text-link underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
           >
             Change
           </button>

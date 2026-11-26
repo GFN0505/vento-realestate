@@ -12,13 +12,18 @@ import {
   loadMembership,
   type MemberContext,
   touchMemberActivity,
-  twoStepRequired,
   writeBackActiveOrganization,
 } from './context'
 import { allEntitiesMessage } from './role-refusals'
+import { enteredAtFor, memberTwoStepGate } from './two-step-gate'
 import { firstOwner, whoCanGrant } from './who-can-grant'
 
 const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?vento\.session_token=/
+
+/** Better Auth hands additional date fields back as Date or ISO text. */
+function optionalDate(value: Date | string | null | undefined): Date | null {
+  return value ? new Date(value) : null
+}
 
 function unauthorized(reason: 'signed_out' | 'session_expired') {
   return new ORPCError('UNAUTHORIZED', {
@@ -43,10 +48,13 @@ export async function authenticate(
   if (!result) throw unauthorized(hadCookie ? 'session_expired' : 'signed_out')
   const s = result.session
   if ((await applySessionPolicy(context.db, s)) === 'expired') throw unauthorized('session_expired')
+  const policy = toPolicySession(s)
   const session: AuthSession = {
-    ...toPolicySession(s),
+    ...policy,
     userId: s.userId,
     activeOrganizationId: s.activeOrganizationId ?? null,
+    organizationEnteredAt: optionalDate(s.organizationEnteredAt) ?? policy.createdAt,
+    reauthenticatedAt: optionalDate(s.reauthenticatedAt),
   }
   const u = result.user
   const user: AuthUser = {
@@ -94,17 +102,19 @@ export function memberMiddleware(enforceTwoStep: boolean) {
     if (!membership) {
       throw forbidden('permission', 'Set up your organization first.')
     }
-    if (
-      enforceTwoStep &&
-      twoStepRequired(context.user, membership.member) &&
-      !context.user.twoFactorEnabled
-    ) {
-      throw forbidden('two_step_setup_required', 'Set up two-step sign-in to continue.')
+    const now = new Date()
+    if (enforceTwoStep) {
+      const enteredAt = enteredAtFor(context.session, membership.organizationId, now)
+      const gate = memberTwoStepGate(context.user, membership.member, enteredAt, now)
+      // `grace` goes ahead: the banner asks, and the deadline or the next sign-in enforces it.
+      if (gate.kind === 'required') {
+        throw forbidden('two_step_setup_required', 'Set up two-step sign-in to continue.')
+      }
     }
     const features = organizationAvailability(
       await context.featureStore.get(),
       { organizationId: membership.organizationId, ...membership.plan },
-      new Date(),
+      now,
     )
     const feature = (procedure['~orpc'].meta as ProcedureMeta).feature
     // Unavailable reads exactly like a missing record: to this organization it doesn't exist.

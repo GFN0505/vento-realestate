@@ -19,16 +19,43 @@ export function resolveClientIp(
   return isIP(unwrapped) ? unwrapped : null
 }
 
-/** IPv4 keeps /24 ("102.89.34.x"); IPv6 keeps /48. Enough to recognise a network, not a person. */
+/**
+ * Enough to recognise a network, never a person. IPv4 keeps /24 ("102.89.34.x"); IPv6 keeps its
+ * first two groups ("2a02:8109:••••"). Loopback, private and link-local addresses say nothing
+ * useful about where someone is, so they're dropped (null), never shown as "0:0:0".
+ */
 export function maskIp(ip: string | null | undefined): string | null {
   if (!ip) return null
   const version = isIP(ip)
-  if (version === 4) return `${ip.split('.').slice(0, 3).join('.')}.x`
+  if (version === 4) {
+    return isLocalIpv4(ip) ? null : `${ip.split('.').slice(0, 3).join('.')}.x`
+  }
   if (version === 6) {
     const groups = expandIpv6(ip)
-    return groups ? `${groups.slice(0, 3).join(':')}::/48` : null
+    if (!groups || isLocalIpv6(groups)) return null
+    return `${groups.slice(0, 2).join(':')}:••••`
   }
   return null
+}
+
+function isLocalIpv4(ip: string): boolean {
+  const [a = 0, b = 0] = ip.split('.').map(Number)
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  )
+}
+
+function isLocalIpv6(groups: string[]): boolean {
+  const first = Number.parseInt(groups[0] ?? '0', 16)
+  // ::, ::1 (and any all-zero prefix), unique local fc00::/7, link-local fe80::/10.
+  if (groups.slice(0, 7).every((g) => g === '0')) return true
+  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80
 }
 
 function expandIpv6(ip: string): string[] | null {

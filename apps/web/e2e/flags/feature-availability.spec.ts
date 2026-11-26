@@ -108,7 +108,7 @@ async function expectNoModulesAnywhere(page: Page, mobile: boolean, owner = fals
   await openPalette(page)
   await expect(
     page.getByRole('option', {
-      name: /^Go to (?!Home|Settings|Team|Organization|Companies|Roles)/,
+      name: /^Go to (?!Home|Settings|Team|Organization|Companies|Roles|My security)/,
     }),
   ).toHaveCount(0)
   await page.getByPlaceholder('Type a page or action').fill('parcels')

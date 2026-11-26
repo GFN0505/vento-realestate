@@ -65,10 +65,19 @@ if (total > BUDGET_KB * 1000) {
   process.exit(1)
 }
 
-// Code that must never reach Home's first load (plan 3c §7): the shared role rules, the roles
-// screens and the Company sheet. A static import from the shell or Home would pull them in.
-// Read from each first-load chunk's sourcemap, so a rename or minification can't hide it.
-const FORBIDDEN = ['access/role-rules.ts', 'features/roles/', 'features/companies/sheet/']
+// Code that must never reach Home's first load (plan 3c §7, 3d §8.3): the shared role rules, the
+// roles screens, the Company sheet, My security, and the WebAuthn code (it loads only when someone
+// starts a passkey action). A static import from the shell or Home would pull them in. Read from
+// each first-load chunk's sourcemap, so a rename or minification can't hide it.
+const FORBIDDEN = [
+  'access/role-rules.ts',
+  'features/roles/',
+  'features/companies/sheet/',
+  'features/security/',
+  'lib/passkey-client.ts',
+  '@simplewebauthn/browser',
+  '@better-auth/passkey',
+]
 const leaks = []
 for (const row of rows) {
   if (!row.file.endsWith('.js')) continue

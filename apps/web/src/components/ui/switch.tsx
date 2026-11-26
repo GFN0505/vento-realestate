@@ -14,7 +14,7 @@ function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
         'peer inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border border-transparent p-0.5 outline-hidden transition-colors duration-150',
         // Off is the muted text colour, so the track keeps 3:1 against the card in both themes.
         'bg-muted-foreground data-[state=checked]:bg-primary',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         'disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}

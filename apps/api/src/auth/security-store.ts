@@ -1,10 +1,12 @@
-import { PASSWORD_HISTORY_SIZE } from '@vento/shared'
-import { and, count, desc, eq, gt, lt, max, min, notInArray } from 'drizzle-orm'
+import { PASSWORD_HISTORY_SIZE, type TwoStepRequirement } from '@vento/shared'
+import { and, asc, count, desc, eq, gt, lt, max, min, notInArray, or, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import {
   accounts,
   authAttempts,
   members,
+  organizations,
+  passkeys,
   passwordHistories,
   roles,
   signInLocks,
@@ -144,23 +146,51 @@ export async function recentPasswordHashes(db: DbOrTx, userId: string): Promise<
   return rows.map((r) => r.hash)
 }
 
-/** True when any active membership's role requires two-step. */
-export async function roleRequiresTwoStep(db: DbOrTx, userId: string): Promise<boolean> {
+/**
+ * The first active membership that requires two-step, by role or by the organization's
+ * "Require two-step for everyone": the preferred (active) organization first, then by name.
+ * A role requirement is named before the organization's when both apply. Null when none does.
+ */
+export async function firstTwoStepRequirement(
+  db: DbOrTx,
+  userId: string,
+  preferOrganizationId: string | null = null,
+): Promise<TwoStepRequirement | null> {
   const [row] = await db
-    .select({ n: count() })
+    .select({
+      organizationName: organizations.name,
+      byRole: roles.requiresTwoStep,
+      roleName: roles.name,
+    })
     .from(members)
     .innerJoin(
       roles,
       and(eq(roles.id, members.roleId), eq(roles.organizationId, members.organizationId)),
     )
+    .innerJoin(organizations, eq(organizations.id, members.organizationId))
     .where(
       and(
         eq(members.userId, userId),
         eq(members.status, 'active'),
-        eq(roles.requiresTwoStep, true),
+        or(eq(roles.requiresTwoStep, true), eq(organizations.twoStepRequiredForEveryone, true)),
       ),
     )
-  return (row?.n ?? 0) > 0
+    .orderBy(
+      sql`(${members.organizationId} = ${preferOrganizationId}::uuid) is true desc`,
+      asc(organizations.name),
+      asc(organizations.id),
+    )
+    .limit(1)
+  if (!row) return null
+  return row.byRole
+    ? { reason: 'role', organizationName: row.organizationName, roleName: row.roleName }
+    : { reason: 'organization', organizationName: row.organizationName, roleName: null }
+}
+
+/** How many passkeys the person has (every organization: they belong to the person). */
+export async function passkeyCountFor(db: DbOrTx, userId: string): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(passkeys).where(eq(passkeys.userId, userId))
+  return row?.n ?? 0
 }
 
 export async function clearTwoStepSetupRequired(db: DbOrTx, userId: string): Promise<void> {

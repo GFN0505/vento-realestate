@@ -26,6 +26,8 @@ export function clientAs(
     authApi?: Record<string, (...args: never[]) => unknown>
     /** Availability source; by default read from `db` on every call, so changes show at once. */
     features?: FeatureStore
+    /** Session fields beyond the defaults (a fresh session entered now, never confirmed). */
+    session?: { createdAt?: Date; organizationEnteredAt?: Date; reauthenticatedAt?: Date | null }
   } = {},
 ) {
   const context = testContext(db, user, options)
@@ -50,8 +52,10 @@ export function testContext(
                 userId: user.id,
                 activeOrganizationId: options.activeOrganizationId ?? null,
                 persistent: false,
-                createdAt: now,
+                createdAt: options.session?.createdAt ?? now,
                 lastActiveAt: now,
+                organizationEnteredAt: options.session?.organizationEnteredAt ?? null,
+                reauthenticatedAt: options.session?.reauthenticatedAt ?? null,
               },
             }
           : null,

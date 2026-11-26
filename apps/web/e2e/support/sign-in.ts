@@ -4,7 +4,7 @@ import { totpCode } from './totp'
 export async function enterPassword(page: Page, email: string, password: string) {
   await page.getByLabel('Work email').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 }
 
 /** Sign in with email, password and the current authenticator code; waits for the home page. */

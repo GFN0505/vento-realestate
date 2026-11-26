@@ -76,6 +76,14 @@ export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Pro
         <dd>
           <TwoStepBadge state={row.twoStep} />
         </dd>
+        {row.passkeyCount > 0 && (
+          <>
+            <dt className="text-muted-foreground">Passkeys</dt>
+            <dd className="tabular-nums">
+              {row.passkeyCount} {row.passkeyCount === 1 ? 'passkey' : 'passkeys'}
+            </dd>
+          </>
+        )}
         {!editable && (
           <>
             <dt className="text-muted-foreground">Role</dt>

@@ -38,6 +38,18 @@ Stream `platform_audit_events` (and ideally `audit_events`) to an external, appe
 3. `node dist/platform/cli/main.mjs superadmin grant <email> --bootstrap --reason "…"` (the person needs two-step on).
 4. Leave every flag at `internal` until the owner releases it.
 
+### 5. IP geolocation database (decision 0020)
+- Download DB-IP **IP to City Lite** (MMDB, CC BY 4.0, https://db-ip.com/db/download/ip-to-city-lite) at deploy and once a month after (DB-IP publishes at the start of each month). Put it outside the repository (`*.mmdb` is git-ignored) and point `GEOIP_DB_PATH` at it.
+- The API reads it once at startup, in the background, and keeps it in memory (about 120 MB). Replacing the file takes effect at the next restart. Without the file the API runs normally and My security shows no places; the log has one `place_lookup_unavailable` line.
+- If the instance is short of memory, use the country-only Lite file instead (a few MB); places then read "Nigeria" instead of "Lekki, Lagos".
+- The attribution "IP geolocation by DB-IP" is shown under the sessions list and must stay in the privacy notice.
+
+### 6. Passkey domain (decision 0019)
+Passkeys are bound to the host of `WEB_ORIGIN`, which must be `https://` in production (the API refuses to start otherwise). Choose the production host before `platform.passkeys` reaches `on`: moving to another host makes every passkey stop working.
+
+### 7. Dependency release age
+`pnpm-workspace.yaml` sets `minimumReleaseAge: 4320` (3 days). A dependency update that pnpm refuses as too new waits, or is added to `minimumReleaseAgeExclude` as an exact `name@version` after review, never as a bare name.
+
 ## Deploy notes per migration
 Checks to run against production **before** the release step, for migrations that add a constraint existing rows must already meet.
 

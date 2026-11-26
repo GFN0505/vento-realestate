@@ -25,7 +25,7 @@ function RadioGroupItem({
       data-slot="radio-group-item"
       className={cn(
         'aspect-square size-4 shrink-0 rounded-full border-[1.5px] border-control-border bg-card text-primary outline-hidden data-[state=checked]:border-primary',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60',
+        'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
       {...props}

@@ -21,7 +21,7 @@ export function NavSheet() {
           setUsed(true)
           setOpen(true)
         }}
-        className="-ml-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground outline-hidden hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring lg:hidden"
+        className="-ml-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground outline-hidden hover:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring lg:hidden"
       >
         <MenuIcon aria-hidden className="size-5" />
       </button>

@@ -6,6 +6,7 @@ import {
   invitations,
   members,
   organizations,
+  passkeys,
   roles,
   sessions,
   users,
@@ -38,6 +39,18 @@ describe('organization isolation', () => {
       const theirMember = await createMember(tx, theirs, { role: 'sales' })
       const theirInvitation = await createInvitation(tx, theirs, { role: 'viewer' })
       const theirSession = await createSession(tx, theirMember.user)
+      const [theirPasskey] = await tx
+        .insert(passkeys)
+        .values({
+          userId: theirMember.user.id,
+          name: 'Their iPhone',
+          publicKey: 'x',
+          credentialID: `cred-${theirMember.user.id}`,
+          counter: 0,
+          deviceType: 'multiDevice',
+          backedUp: true,
+        })
+        .returning()
       const myViewerRole = mine.roleIds.get('viewer') ?? ''
       const theirViewerRole = theirs.roleIds.get('viewer') ?? ''
       const myMember = await createMember(tx, mine, { role: 'sales' })
@@ -108,6 +121,14 @@ describe('organization isolation', () => {
           () => client.invitations.withdraw({ id: theirInvitation.invitation.id }),
         ],
         ['account.sessions.revoke', () => client.account.sessions.revoke({ id: theirSession.id })],
+        [
+          'account.passkeys.rename',
+          () => client.account.passkeys.rename({ id: theirPasskey?.id ?? '', name: 'Mine now' }),
+        ],
+        [
+          'account.passkeys.remove',
+          () => client.account.passkeys.remove({ id: theirPasskey?.id ?? '' }),
+        ],
       ]
       // A role id that isn't this organization's live role answers role_unavailable, the same as
       // one deleted a moment ago: one generic answer that says nothing about other organizations.
@@ -137,6 +158,14 @@ describe('organization isolation', () => {
       expect(await tx.select().from(sessions).where(eq(sessions.id, theirSession.id))).toHaveLength(
         1,
       )
+      expect(
+        (
+          await tx
+            .select()
+            .from(passkeys)
+            .where(eq(passkeys.id, theirPasskey?.id ?? ''))
+        )[0]?.name,
+      ).toBe('Their iPhone')
       expect(
         (await tx.select().from(users).where(eq(users.id, theirMember.user.id)))[0]
           ?.twoStepSetupRequired,

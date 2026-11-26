@@ -6,8 +6,9 @@ import { syncTabOrganization, takeOrganizationNotice } from '@/lib/tab-organizat
 
 /**
  * Keeps the open shell honest when `me` changes underneath it (tab focus refetches it):
- * another organization → reload (decision 0013); a new required step (e.g. two-step for a new
- * role) → the guard redirects. Also shows the notice from the last organization change.
+ * another organization → reload (decision 0013); two-step now required (a new role, or the
+ * organization's 7 days ran out) → the setup opens over the page, keeping what's on it (3d);
+ * any other required step → the guard redirects. Also shows the last organization change notice.
  */
 export function useShellSync() {
   const me = useMe()
@@ -20,6 +21,7 @@ export function useShellSync() {
 
   useEffect(() => {
     if (syncTabOrganization(me) === 'reload') return
-    if (me.nextStep !== 'ready') void router.invalidate()
+    // Two-step required: TwoStepSetupHost opens the setup over the page from `me` itself.
+    if (me.nextStep !== 'ready' && me.nextStep !== 'two_step_setup') void router.invalidate()
   }, [me, router])
 }

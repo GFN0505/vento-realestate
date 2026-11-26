@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { PERMISSION_MODULES, type Role, roleName } from '@vento/shared'
+import { PERMISSION_MODULES, type RoleDetail, roleName } from '@vento/shared'
 import { CloudOffIcon, SearchXIcon } from 'lucide-react'
 import { type RefObject, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -109,7 +109,7 @@ export function RolePage() {
 }
 
 type EditorProps = {
-  role: Role
+  role: RoleDetail
   undo: ReturnType<typeof useRoleUndo>
   dirtyRef: RefObject<boolean>
 }
@@ -174,6 +174,7 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
         checked={editable ? draft.requiresTwoStep : role.requiresTwoStep}
         locked={draft.twoStepLocked}
         onChange={editable ? draft.setTwoStep : null}
+        requiredForEveryone={role.requiredForEveryone ? (me.organization?.name ?? '') : null}
       />
       {(dirty || save.error !== null) && (
         <RoleSaveBar

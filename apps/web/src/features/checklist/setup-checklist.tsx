@@ -14,10 +14,10 @@ import { ALL_DONE_LINE, CHECKLIST_COPY } from './checklist-copy'
 import { checklistQuery } from './checklist-queries'
 
 export const checklistMenuTrigger =
-  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted max-md:size-11'
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted max-md:size-11'
 
 const rowAction =
-  'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border bg-muted px-3 font-semibold text-xs outline-hidden transition-colors hover:bg-border/60 focus-visible:outline-2 focus-visible:outline-ring max-md:h-11'
+  'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border bg-muted px-3 font-semibold text-xs outline-hidden transition-colors hover:bg-border/60 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:h-11'
 
 const loadMenu = () =>
   import('./checklist-menu-panel').then((m): ComponentType<LazyMenuProps> => m.ChecklistMenuPanel)
@@ -74,7 +74,7 @@ export function SetupChecklist() {
             onClick={() =>
               void import('./checklist-visibility').then((m) => m.hideChecklist(queryClient))
             }
-            className="rounded-md px-2 py-1 font-semibold text-foreground outline-hidden hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+            className="rounded-md px-2 py-1 font-semibold text-foreground outline-hidden hover:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
           >
             Hide checklist
           </button>
@@ -178,7 +178,7 @@ function OtherCompaniesActions() {
       <button
         type="button"
         onClick={() => void answerSingleCompany(queryClient, true)}
-        className="inline-flex h-8 items-center rounded-md px-2.5 font-medium text-muted-foreground text-xs outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring max-md:h-11"
+        className="inline-flex h-8 items-center rounded-md px-2.5 font-medium text-muted-foreground text-xs outline-hidden transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:h-11"
       >
         We only have one company
       </button>

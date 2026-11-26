@@ -3,7 +3,15 @@ import { getTableColumns, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
-import { accounts, sessions, twoFactors, users, verifications } from '@/db/schema'
+import {
+  accounts,
+  knownDevices,
+  passkeys,
+  sessions,
+  twoFactors,
+  users,
+  verifications,
+} from '@/db/schema'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { createAuth } from './auth'
 
@@ -15,6 +23,7 @@ const ours: Record<string, PgTable> = {
   account: accounts,
   verification: verifications,
   twoFactor: twoFactors,
+  passkey: passkeys,
 }
 
 describe('Better Auth schema', () => {
@@ -29,6 +38,20 @@ describe('Better Auth schema', () => {
     const fields = Object.keys(expected[model]?.fields ?? {})
     const columns = table ? Object.keys(getTableColumns(table)) : []
     expect(fields.filter((f) => !columns.includes(f))).toEqual([])
+  })
+})
+
+describe('identity tables', () => {
+  // Passkeys and known devices belong to a person, not an organization (decision 0010).
+  it.each([
+    ['passkeys', passkeys],
+    ['known_devices', knownDevices],
+  ])('%s has no organization_id', (_name, table) => {
+    expect(Object.keys(getTableColumns(table))).not.toContain('organizationId')
+  })
+
+  it('names the credential column credential_id, as Better Auth reads it', () => {
+    expect(getTableColumns(passkeys).credentialID.name).toBe('credential_id')
   })
 })
 

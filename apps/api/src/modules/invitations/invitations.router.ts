@@ -3,6 +3,7 @@ import { serviceContext } from '@/access/service-context'
 import { sendAll } from '@/email/mailer'
 import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
+import { requestScope } from '@/lib/request-scope'
 import { authed, member, os } from '@/orpc'
 import { deliverInvitations } from './delivery'
 import {
@@ -55,7 +56,9 @@ export const invitationsRouter = {
     .handler(async ({ context, input }) => {
       const { email, nextStep, emails } = await acceptInvitationAsNewUser(context.db, input)
       await sendAll(context.mailer, emails)
-      // Sign in through Better Auth so the session, cookie and audit go through one path.
+      // Sign in through Better Auth so the session, cookie and audit go through one path. Their
+      // very first sign-in: the browser is remembered without a "new sign-in" email.
+      requestScope().auth.firstSignIn = true
       try {
         const { headers } = await context.auth.api.signInEmail({
           body: { email, password: input.password, rememberMe: false },

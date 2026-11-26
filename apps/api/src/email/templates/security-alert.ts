@@ -103,3 +103,91 @@ export function newOwnerAlert(p: {
     ],
   )
 }
+
+/** A sign-in from a browser not seen on this account in 90 days. Never includes an IP address. */
+export function newSignInAlert(p: {
+  device: string
+  place: string | null
+  at: string
+  on: string
+  securityUrl: string
+}): RenderedEmail {
+  const near = p.place ? `, near ${p.place}` : ''
+  return renderEmail(`Vento: new sign-in on ${p.device}`, 'New sign-in to your account', [
+    {
+      kind: 'p',
+      text: `Your Vento account was signed in to at ${p.at} on ${p.on} from ${p.device}${near}. If this was you, there's nothing to do. If it wasn't, reset your password and sign that device out: ${p.securityUrl}`,
+    },
+    { kind: 'button', label: 'Check My security', url: p.securityUrl },
+  ])
+}
+
+export function passkeyAddedAlert(p: {
+  name: string
+  at: string
+  on: string
+  securityUrl: string
+  resetUrl: string
+}): RenderedEmail {
+  return renderEmail('Vento: a passkey was added to your account', 'A passkey was added', [
+    {
+      kind: 'p',
+      text: `A passkey (${p.name}) was added at ${p.at} on ${p.on}. It can sign in to your account without a password. If this wasn't you, remove it and reset your password: ${p.resetUrl}`,
+    },
+    { kind: 'button', label: 'Check My security', url: p.securityUrl },
+  ])
+}
+
+export function passkeyRemovedAlert(p: {
+  name: string
+  at: string
+  on: string
+  securityUrl: string
+  resetUrl: string
+}): RenderedEmail {
+  return renderEmail('Vento: a passkey was removed from your account', 'A passkey was removed', [
+    {
+      kind: 'p',
+      text: `The passkey ${p.name} was removed at ${p.at} on ${p.on}. If this wasn't you, reset your password now: ${p.resetUrl}`,
+    },
+    { kind: 'button', label: 'Check My security', url: p.securityUrl },
+  ])
+}
+
+/** To every owner when "Require two-step sign-in for everyone" is turned off. */
+export function twoStepNoLongerRequiredAlert(p: {
+  byName: string
+  organizationName: string
+  at: string
+  on: string
+  organizationUrl: string
+}): RenderedEmail {
+  return renderEmail(
+    `Vento: two-step is no longer required for everyone in ${p.organizationName}`,
+    'Two-step is no longer required for everyone',
+    [
+      {
+        kind: 'p',
+        text: `${p.byName} turned off "Require two-step sign-in for everyone" at ${p.at} on ${p.on}. Owners, admins, finance and HR still need it. If this wasn't expected, check Organization: ${p.organizationUrl}`,
+      },
+      { kind: 'button', label: 'Check Organization', url: p.organizationUrl },
+    ],
+  )
+}
+
+/** A passkey answered with a counter that went backwards: someone may have copied it. */
+export function passkeyCopiedAlert(p: {
+  name: string
+  at: string
+  on: string
+  securityUrl: string
+  resetUrl: string
+}): RenderedEmail {
+  return renderEmail('Vento: a passkey may have been copied', 'A passkey may have been copied', [
+    {
+      kind: 'p',
+      text: `At ${p.at} on ${p.on} someone tried to sign in with your passkey ${p.name}, but it looked like a copy of the key, so we refused it. If you didn't just sign in on two devices at once, remove this passkey and reset your password: ${p.resetUrl}`,
+    },
+    { kind: 'button', label: 'Check My security', url: p.securityUrl },
+  ])
+}

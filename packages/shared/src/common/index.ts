@@ -18,7 +18,7 @@ export {
   platform,
   unauthorizedReason,
 } from './errors'
-export { ORGANIZATION_HEADER } from './http'
+export { ORGANIZATION_HEADER, REMEMBER_ME_HEADER } from './http'
 export { money, signedMoney } from './money'
 export type { NigerianState } from './nigeria'
 export { MONTHS, monthNumber, NIGERIAN_STATES, nigerianState, stateLabel } from './nigeria'
