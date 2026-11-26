@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createOrganizationInput,
   entityInput,
+  listEntitiesInput,
   normaliseRcNumber,
   rcNumberWarning,
   tinWarning,
@@ -61,6 +62,24 @@ describe('organization input', () => {
     })
     expect(
       createOrganizationInput.safeParse({ name: 'Vento', headOfficeState: 'Atlantis' }).success,
+    ).toBe(false)
+  })
+})
+
+describe('list entities input', () => {
+  it('trims the search and pages by 25 unless asked', () => {
+    expect(listEntitiesInput.parse({ q: '  Parkview ', status: 'archived' })).toEqual({
+      q: 'Parkview',
+      status: 'archived',
+      page: 1,
+      pageSize: 25,
+    })
+  })
+
+  it('refuses unknown keys, such as an organizationId', () => {
+    expect(
+      listEntitiesInput.safeParse({ organizationId: '01936f1e-8b2a-7c3d-9e4f-5a6b7c8d9e0f' })
+        .success,
     ).toBe(false)
   })
 })

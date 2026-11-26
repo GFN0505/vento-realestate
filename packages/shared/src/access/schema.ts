@@ -5,6 +5,7 @@ import { id, isoDate } from '../common/schemas'
 import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 import { systemRoleKey } from './default-roles'
 import { permissionModule, permissionSet } from './permissions'
+import { isEmptyPermissionSet, ROLE_NAME_MAX } from './role-rules'
 
 export const email = z
   .string()
@@ -19,6 +20,29 @@ export const personName = z
   .max(100, { message: 'Use 100 characters or fewer' })
   .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
 
+export const roleName = z
+  .string()
+  .trim()
+  .min(2, { message: 'Enter a name for the role' })
+  .max(ROLE_NAME_MAX, { message: `Use ${ROLE_NAME_MAX} characters or fewer` })
+  .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
+
+export const roleDescription = z
+  .string()
+  .trim()
+  .max(200, { message: 'Use 200 characters or fewer' })
+  .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
+
+/** Why a role page is read-only for this viewer; `message` is the line shown above the grid. */
+export const roleReadOnlyReason = z.enum([
+  'built_in',
+  'own_role',
+  'all_entities',
+  'permission',
+  'wider_permissions',
+])
+export type RoleReadOnlyReason = z.infer<typeof roleReadOnlyReason>
+
 export const role = z.object({
   id,
   key: systemRoleKey.nullable(),
@@ -29,10 +53,45 @@ export const role = z.object({
   requiresTwoStep: z.boolean(),
   permissions: permissionSet,
   canApprove: z.array(permissionModule),
+  /** Bumped on every save; `roles.update` must send the version it loaded. */
+  version: z.number().int().min(1),
+  /** Active members holding the role. */
+  memberCount: z.number().int().min(0),
+  /** Open invitations for the role, expired ones included (they can be resent). */
+  invitedCount: z.number().int().min(0),
+  /** For the viewer, computed by the server from the manage rules (like team.list rows). */
+  can: z.object({
+    /** Offer it in Team and invite role menus (within the viewer's own permissions). */
+    assign: z.boolean(),
+    edit: z.boolean(),
+    /** Custom, editable, and nobody holds it. */
+    delete: z.boolean(),
+    /** Offer it as "Start from" in New role. */
+    duplicate: z.boolean(),
+  }),
+  readOnly: z.object({ reason: roleReadOnlyReason, message: z.string() }).nullable(),
 })
 export type Role = z.infer<typeof role>
 
-/** An entity named in someone's access. */
+export const createRoleInput = z.strictObject({ name: roleName, sourceRoleId: id })
+export type CreateRoleInput = z.input<typeof createRoleInput>
+
+export const updateRoleInput = z.strictObject({
+  id,
+  /** The version the page loaded; a newer one in the database is `role_changed`. */
+  version: z.number().int().min(1),
+  name: roleName.optional(),
+  description: roleDescription.optional(),
+  requiresTwoStep: z.boolean().optional(),
+  permissions: permissionSet
+    .refine((s) => !isEmptyPermissionSet(s), {
+      message: 'Give this role access to at least one area',
+    })
+    .optional(),
+})
+export type UpdateRoleInput = z.input<typeof updateRoleInput>
+
+/** An entity (a company on screen) named in someone's access. */
 export const entityRef = z.object({ id, name: z.string() })
 export type EntityRef = z.infer<typeof entityRef>
 
@@ -42,7 +101,7 @@ export type MemberStatus = z.infer<typeof memberStatus>
 /** Entity limits: null = all entities, otherwise at least one. */
 export const entityLimit = z
   .array(id)
-  .min(1, { message: 'Choose at least one entity, or allow all' })
+  .min(1, { message: 'Choose at least one company, or allow all' })
   .max(100)
   .nullable()
 

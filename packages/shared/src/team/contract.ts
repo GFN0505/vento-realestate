@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { notice } from '../account/schema'
 import { platform } from '../common/errors'
 import { checklist, listTeamInput, listTeamOutput } from './schema'
@@ -18,4 +19,11 @@ export const checklistContract = {
   hide: platform.output(notice),
   /** ⌘K "Show setup checklist". */
   show: platform.output(notice),
+  /**
+   * "We only have one company" (true), or its Undo (false). Recorded on the organization with
+   * who and when, audited as organization.updated.
+   */
+  answerSingleCompany: platform
+    .input(z.strictObject({ singleCompany: z.boolean() }))
+    .output(notice),
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { monthNumber, nigerianState } from '../common/nigeria'
-import { id, paginationInput } from '../common/schemas'
+import { id, paginated, paginationInput } from '../common/schemas'
 import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
 
 export const organizationName = z
@@ -100,6 +100,8 @@ export const entity = z.object({
   baseCurrency: z.literal('NGN'),
   status: entityStatus,
   archivedAt: z.iso.datetime().nullable(),
+  /** "Archived 2 Dec 2026 by Olumide Bankole"; null while active (or archived before 3c with no record). */
+  archivedByName: z.string().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
@@ -124,11 +126,32 @@ export const updateEntityInput = z.strictObject({
 })
 
 export const listEntitiesInput = paginationInput
-  .extend({ status: entityStatus.optional() })
+  .extend({
+    status: entityStatus.optional(),
+    /** Name or RC number, matched anywhere. */
+    q: z.string().trim().max(100).optional(),
+  })
   .strict()
+export type ListEntitiesInput = z.input<typeof listEntitiesInput>
+
+export const listEntitiesOutput = paginated(entity).extend({
+  /** For the chips and the context line, within the viewer's access; `q` doesn't narrow them. */
+  counts: z.object({
+    active: z.number().int().min(0),
+    archived: z.number().int().min(0),
+  }),
+})
+export type ListEntitiesOutput = z.infer<typeof listEntitiesOutput>
 
 export const entityArchivePreview = z.object({
-  /** Members who can see only this entity; they'd see none after archiving. */
-  membersOnlyThisEntity: z.number().int().min(0),
   isLastActive: z.boolean(),
+  /**
+   * Active members whose only active company is this one; they'd see none after archiving.
+   * Up to 3 names, A–Z; `count` is the total.
+   */
+  members: z.object({
+    count: z.number().int().min(0),
+    names: z.array(z.string()).max(3),
+  }),
 })
+export type EntityArchivePreview = z.infer<typeof entityArchivePreview>

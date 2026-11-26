@@ -55,6 +55,11 @@ export const me = z.object({
   nextStep,
   /** The role requires two-step, or an owner or admin reset it. */
   twoStepRequired: z.boolean(),
+  /**
+   * Settings create and all-companies access: show "+ Add company" (switcher, Home, ⌘K). The
+   * web still ANDs it with the previewed role's permissions.
+   */
+  canAddCompany: z.boolean(),
 })
 export type Me = z.infer<typeof me>
 

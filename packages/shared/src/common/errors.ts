@@ -8,6 +8,9 @@ import { id } from './schemas'
 export const unauthorizedReason = z.enum(['signed_out', 'session_expired'])
 export type UnauthorizedReason = z.infer<typeof unauthorizedReason>
 
+export const badRequestReason = z.enum([...PASSWORD_ERROR_CODES, 'role_needs_two_step'])
+export type BadRequestReason = z.infer<typeof badRequestReason>
+
 export const forbiddenReason = z.enum([
   'permission',
   'two_step_setup_required',
@@ -18,6 +21,14 @@ export const forbiddenReason = z.enum([
   'entity_limit',
   /** A create would go over the plan's limit (projects, entities, people). */
   'plan_limit',
+  /** The target role, person or invitation can do things the viewer can't (permission ceiling). */
+  'wider_permissions',
+  /** Organization-wide changes need access to every company. */
+  'all_entities_required',
+  /** Built-in roles never change. */
+  'built_in_role',
+  /** Nobody edits or deletes the role they hold. */
+  'own_role',
 ])
 export type ForbiddenReason = z.infer<typeof forbiddenReason>
 
@@ -35,6 +46,20 @@ export const conflictReason = z.enum([
   'not_archivable',
   /** An archived entity of this organization was chosen for access; choose again. */
   'entity_unavailable',
+  /** Another live role already has this name (any case, built-ins included). */
+  'role_name_taken',
+  /** Someone saved the role since it was loaded; `changedByName` says who. */
+  'role_changed',
+  /** Active members or open invitations hold the role; `holders` has the counts. */
+  'role_in_use',
+  /** The chosen role was deleted meanwhile; choose another. */
+  'role_unavailable',
+  /** 50 custom roles already. */
+  'role_limit',
+  /** The entity is archived; restore it to make changes. */
+  'entity_archived',
+  /** Restore of an entity that is already active. */
+  'not_restorable',
   /**
    * The tab names a different organization than the session (decision 0013). The web never
    * shows the message; it reloads into the session's organization with a notice.
@@ -48,11 +73,14 @@ export type ConflictReason = z.infer<typeof conflictReason>
  * `data.reason` lets the web choose a screen or state without parsing the message.
  */
 export const errorMap = {
-  /** Password rules checked on the server (reuse, or length and number where zod didn't run). */
+  /**
+   * Password rules checked on the server (reuse, or length and number where zod didn't run), and
+   * `role_needs_two_step`: a role that can manage money, payroll or access sent without two-step.
+   */
   BAD_REQUEST: {
     status: 400,
     message: 'Check the highlighted fields',
-    data: z.object({ reason: z.enum(PASSWORD_ERROR_CODES) }),
+    data: z.object({ reason: badRequestReason }),
   },
   UNAUTHORIZED: {
     status: 401,
@@ -88,6 +116,17 @@ export const errorMap = {
        */
       alreadyMembers: z.array(z.string()).optional(),
       alreadyInvited: z.array(z.object({ email: z.string(), id })).optional(),
+      /**
+       * `rc_number_taken`: the company already using the RC number, for "Restore it instead"
+       * when it's archived. Only companies within the viewer's access are named.
+       */
+      entity: z.object({ id, name: z.string(), archived: z.boolean() }).optional(),
+      /** `role_changed`: who saved the role last, e.g. "Aisha Bello". */
+      changedByName: z.string().optional(),
+      /** `role_in_use`: active members and open invitations holding the role. */
+      holders: z
+        .object({ members: z.number().int().min(0), invited: z.number().int().min(0) })
+        .optional(),
     }),
   },
   TOO_MANY_REQUESTS: {
