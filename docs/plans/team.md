@@ -1,6 +1,6 @@
 # Plan: Team (brick 3b)
 
-- **Status:** draft for the owner. It uses the spec's recommended defaults for all 12 open questions. Section 15 lists what would change under a different answer.
+- **Status:** approved by the owner on 26 Nov 2026 (all recommendations, incl. section 15 questions 1–7), plus: real emails may be sent during manual browser testing in development, through Postmark with an allow-list (13.3). Build after PR #4 merges (or stacked on it).
 - **Spec:** [docs/specs/team.md](../specs/team.md) (draft)
 - **Journeys:** J-ONB-02 (now the full screen flow), J-ONB-06 (new), J-ONB-01 step 7 (setup checklist)
 - **Branch:** `brick/03b-team`, cut from `brick/03-feature-flags` (PR #4 merges first)
@@ -613,7 +613,7 @@ No new variables. `EMAIL_FROM` stays as is, and `.mail/` keeps working as today.
 | **Test, CI or e2e:** `NODE_ENV=test`, or `CI` set, or `VENTO_E2E=1` | **Refuse to start if `EMAIL_TRANSPORT=postmark` or any `POSTMARK_SERVER_TOKEN` is present:** "Postmark is never used in tests, CI or e2e. Use EMAIL_TRANSPORT=memory or dev." |
 | `APP_ENV=staging` | Needs `EMAIL_TRANSPORT=postmark`, `POSTMARK_SERVER_TOKEN`, a real `EMAIL_FROM` (not `localhost`), `POSTMARK_WEBHOOK_SECRET` (32+ characters) and a non-empty `EMAIL_ALLOWED_RECIPIENTS` |
 | `APP_ENV=production` | The same, but `EMAIL_ALLOWED_RECIPIENTS` must be **empty**, so production can never silently drop mail. Also `NODE_ENV=production`. |
-| `APP_ENV=development` (default) | `dev` or `memory` only; `postmark` is refused locally so a stray token can't mail real people |
+| `APP_ENV=development` (default) | `dev` by default. **Owner's choice: manual testing in the browser may send real email**: `EMAIL_TRANSPORT=postmark` is allowed in development when `POSTMARK_SERVER_TOKEN` and a non-empty `EMAIL_ALLOWED_RECIPIENTS` are set (same allow-list rule as staging, so demo addresses like `@ventohomes.ng` and anyone not listed still go to `.mail/` instead of a real inbox). The test/CI/e2e guard above still wins: automated runs can never use Postmark. |
 | `NODE_ENV=production` with `APP_ENV` unset | Refused ("Set APP_ENV to staging or production"). This replaces today's blanket refusal in `createMailer`. |
 
 - **E2E marker:** `apps/web/playwright.config.ts` adds `VENTO_E2E: '1'` to `apiEnv`. `.github/workflows/ci.yml` already sets `CI` and `EMAIL_TRANSPORT: dev`. `src/test/setup-env.ts` keeps `memory`.
@@ -711,7 +711,7 @@ EMAIL_ALLOWED_RECIPIENTS=
 # 0017 · Transactional email through Postmark, with delivery tracked on invitations
 
 - **Date:** 2026-11-26
-- **Status:** proposed
+- **Status:** accepted
 
 ## Context
 Invitations, verification codes, password resets and security alerts must reach Gmail and Outlook inboxes from staging and production. The app has had only console and in-memory transports, and production refused to start. Owners need to know when an invitation didn't arrive. Tests run constantly and must never email anyone. Postmark is a data processor in the United States (NDPA 2023).

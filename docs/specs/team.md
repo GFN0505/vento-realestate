@@ -1,6 +1,6 @@
 # Team (brick 3b)
 
-- **Status:** draft
+- **Status:** approved (26 Nov 2026), in build
 - **Module:** Platform
 - **Journeys:** J-ONB-02 (now the full screen flow), J-ONB-06 (new: change access, reset two-step, remove a leaver), J-ONB-01 (step 7: the setup checklist)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
@@ -291,7 +291,10 @@ To add to `docs/DOMAIN.md` once approved:
 - Buyer-facing email, broadcast streams and marketing email; per-organization sending domains; email open or click tracking.
 - Billing: the usage line and limit messages only point to **Talk to Vento**.
 
-## Open questions (defaults in bold)
+## Owner's decisions (26 Nov 2026)
+All 12 recommendations below were approved, plus the plan's questions (open invitations first then members A–Z; new-owner alert also on accepting an owner invitation; only owners resend owner invitations; a skipped staging email shows "Email not delivered"; the old `members.list` / `invitations.list` endpoints are retired). Added by the owner: **real emails can be sent while testing manually in the browser** (development, through Postmark, only to addresses on an allow-list you set; automated tests, CI and e2e can never send real email).
+
+## Open questions (answered above; defaults in bold)
 1. **Two pull requests for 3b** (Team screens first, Postmark second) so DNS and Postmark approval don't block your review? **Yes.**
 2. **Settings sub-navigation with one section:** hide it until a second section ships (3c), or show a one-item menu now? **Hide it.**
 3. **One list for members and invitations** (with *Invited* and *Removed* chips), rather than separate tabs? **One list.**
