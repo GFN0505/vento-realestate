@@ -6,6 +6,7 @@ import { backupCodeUsedAlert } from '@/email/templates/security-alert'
 import { formatDate, formatTime } from '@/lib/format'
 import { requestScope } from '@/lib/request-scope'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
+import { recordTotpStep } from '../second-factor'
 import {
   activeLockUntil,
   clearTwoStepSetupRequired,
@@ -65,12 +66,16 @@ export async function afterTwoStepVerify(
   ctx: SignInContext,
   input: { method: 'totp' | 'backup_code'; returned: unknown },
 ): Promise<Response | undefined> {
-  const { twoStepMode, userId, wasTwoFactorEnabled } = requestScope().auth
+  const { twoStepMode, userId, wasTwoFactorEnabled, totpStep } = requestScope().auth
   if (!userId) return
   const user = await findUserById(deps.db, userId)
   if (!user) return
   const code = errorCode(input.returned)
 
+  // The accepted code's step can't be used again (audit L4).
+  if (!code && twoStepMode === 'sign_in' && input.method === 'totp' && totpStep !== undefined) {
+    await recordTotpStep(deps.db, user.id, totpStep)
+  }
   if (twoStepMode === 'setup') {
     if (!code && input.method === 'totp' && !wasTwoFactorEnabled) {
       await clearTwoStepSetupRequired(deps.db, user.id)

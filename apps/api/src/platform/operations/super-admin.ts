@@ -154,14 +154,23 @@ export async function revokeSuperAdmin(
   input: SuperAdminTarget & { reason: string },
 ): Promise<string> {
   return db.transaction(async (tx) => {
+    // The same lock as grants: two super-admins removing each other at once can't leave none.
+    await tx.execute(`select pg_advisory_xact_lock(hashtext('platform_admins'))`)
     const user = await findPerson(tx, input)
     if (user.id === actor.userId) throw selfRemoval()
+    // The actor may have been removed while this waited (R1).
+    if (!actor.userId || !(await isActive(tx, actor.userId))) {
+      throw new PlatformError("You're no longer a Vento super-admin.")
+    }
     const [revoked] = await tx
       .update(platformAdmins)
       .set({ revokedAt: new Date(), revokedByUserId: actor.userId })
       .where(and(eq(platformAdmins.userId, user.id), isNull(platformAdmins.revokedAt)))
       .returning({ id: platformAdmins.id })
     if (!revoked) throw notOne(user)
+    if ((await activeSuperAdminCount(tx)) === 0) {
+      throw new PlatformError('There must always be at least one super-admin.')
+    }
     await tx
       .update(sessions)
       .set({ consoleOpenedAt: null, consoleActiveAt: null })

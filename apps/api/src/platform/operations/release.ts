@@ -178,6 +178,13 @@ export async function setStage(
       ? `${label} is now off for everyone, including overrides and plans.`
       : `${label} is now at ${input.stage}. Takes effect within 30 seconds.`
   await db.transaction(async (tx) => {
+    // No row means `internal`. Make the implicit row real first, so FOR UPDATE has something to
+    // lock and two first-ever changes can't both pass the before-state check (R2). Rolled back
+    // with the change if it's refused.
+    await tx
+      .insert(featureReleases)
+      .values({ featureKey: input.key, stage: 'internal', reason: 'New flags start at internal' })
+      .onConflictDoNothing({ target: featureReleases.featureKey })
     const [existing] = await tx
       .select({ stage: featureReleases.stage })
       .from(featureReleases)

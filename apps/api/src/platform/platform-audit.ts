@@ -17,6 +17,8 @@ export type PlatformActor = {
   operator: string | null
   /** One per confirmed console change: the same key never applies twice. */
   idempotencyKey?: string
+  /** The console request the key was made for (procedure and input, hashed). */
+  requestHash?: string
 }
 
 export const SCHEDULED_ACTOR: PlatformActor = {
@@ -62,8 +64,13 @@ export async function recordPlatformAudit(
     done?: string
   },
 ): Promise<void> {
-  const metadata =
-    input.done === undefined ? (input.metadata ?? null) : { ...input.metadata, done: input.done }
+  const extra = {
+    ...(input.done !== undefined && { done: input.done }),
+    ...(input.actor.requestHash && { request: input.actor.requestHash }),
+  }
+  const metadata = Object.keys(extra).length
+    ? { ...input.metadata, ...extra }
+    : (input.metadata ?? null)
   await db.insert(platformAuditEvents).values({
     actorUserId: input.actor.userId,
     actorName: input.actor.name,
@@ -85,7 +92,7 @@ export async function recordPlatformAudit(
 export async function findByIdempotencyKey(
   db: DbOrTx,
   key: string,
-): Promise<{ actorUserId: string | null; done: string } | null> {
+): Promise<{ actorUserId: string | null; done: string; request: string | null } | null> {
   const [row] = await db
     .select({
       actorUserId: platformAuditEvents.actorUserId,
@@ -94,8 +101,12 @@ export async function findByIdempotencyKey(
     .from(platformAuditEvents)
     .where(eq(platformAuditEvents.idempotencyKey, key))
   if (!row) return null
-  const done = (row.metadata as { done?: unknown } | null)?.done
-  return { actorUserId: row.actorUserId, done: typeof done === 'string' ? done : 'Done.' }
+  const meta = row.metadata as { done?: unknown; request?: unknown } | null
+  return {
+    actorUserId: row.actorUserId,
+    done: typeof meta?.done === 'string' ? meta.done : 'Done.',
+    request: typeof meta?.request === 'string' ? meta.request : null,
+  }
 }
 
 /**

@@ -32,7 +32,13 @@ import * as superAdmins from './super-admins.service'
 type AccessRequest = Omit<access.AccessContext, 'authApi'> & { auth: { api: unknown } }
 
 function accessContext(context: AccessRequest): access.AccessContext {
-  return { ...context, authApi: context.auth.api as AuthServerApi }
+  const auth = context.auth as { api: unknown; $context?: Promise<{ secretConfig?: unknown }> }
+  return {
+    ...context,
+    authApi: auth.api as AuthServerApi,
+    // Better Auth's own key, read only when a code needs checking (absent in stubbed tests).
+    totpKey: async () => (await auth.$context)?.secretConfig as access.TotpKey | undefined,
+  }
 }
 
 /**
@@ -77,8 +83,11 @@ export const consoleRouter = {
         changePlanChange.preview(context.db, input),
       ),
       apply: orgs.changePlan.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          changePlanChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.changePlan.apply', input },
+          (actor) => changePlanChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -87,8 +96,11 @@ export const consoleRouter = {
         startTrialChange.preview(context.db, input),
       ),
       apply: orgs.startTrial.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          startTrialChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.startTrial.apply', input },
+          (actor) => startTrialChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -97,8 +109,11 @@ export const consoleRouter = {
         endTrialChange.preview(context.db, input),
       ),
       apply: orgs.endTrial.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          endTrialChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.endTrial.apply', input },
+          (actor) => endTrialChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -107,8 +122,11 @@ export const consoleRouter = {
         addAiChange.preview(context.db, input),
       ),
       apply: orgs.addAi.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          addAiChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.addAi.apply', input },
+          (actor) => addAiChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -117,8 +135,11 @@ export const consoleRouter = {
         changeAiBudgetChange.preview(context.db, input),
       ),
       apply: orgs.changeAiBudget.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          changeAiBudgetChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.changeAiBudget.apply', input },
+          (actor) => changeAiBudgetChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -127,8 +148,11 @@ export const consoleRouter = {
         removeAiChange.preview(context.db, input),
       ),
       apply: orgs.removeAi.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          removeAiChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.removeAi.apply', input },
+          (actor) => removeAiChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -137,8 +161,11 @@ export const consoleRouter = {
         releaseGroupChange.preview(context.db, input),
       ),
       apply: orgs.changeReleaseGroup.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          releaseGroupChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.changeReleaseGroup.apply', input },
+          (actor) => releaseGroupChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -147,8 +174,11 @@ export const consoleRouter = {
         setOverrideChange.preview(context.db, input),
       ),
       apply: orgs.setOverride.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          setOverrideChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.setOverride.apply', input },
+          (actor) => setOverrideChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -157,8 +187,11 @@ export const consoleRouter = {
         clearOverrideChange.preview(context.db, input),
       ),
       apply: orgs.clearOverride.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
-          clearOverrideChange.apply(context.db, actor, input),
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'organizations.clearOverride.apply', input },
+          (actor) => clearOverrideChange.apply(context.db, actor, input),
         ),
       ),
     },
@@ -175,7 +208,7 @@ export const consoleRouter = {
         setStageChange.preview(context.db, input),
       ),
       apply: consoleWindow.console.releases.setStage.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
+        applyOnce(context.db, context.admin, { path: 'releases.setStage.apply', input }, (actor) =>
           setStageChange.apply(context.db, actor, input),
         ),
       ),
@@ -191,7 +224,7 @@ export const consoleRouter = {
         publishChange.preview(context.db, input),
       ),
       apply: consoleWindow.console.plans.publish.apply.handler(({ input, context }) =>
-        applyOnce(context.db, context.admin, input.idempotencyKey, (actor) =>
+        applyOnce(context.db, context.admin, { path: 'plans.publish.apply', input }, (actor) =>
           publishChange.apply(context.db, actor, input),
         ),
       ),
@@ -207,14 +240,21 @@ export const consoleRouter = {
       ),
       apply: consoleWindow.console.superAdmins.add.apply.handler(async ({ input, context }) => {
         let ran = false
-        const done = await applyOnce(context.db, context.admin, input.idempotencyKey, (actor) => {
-          ran = true
-          return grantSuperAdmin(context.db, actor, {
-            email: input.email,
-            reason: input.reason,
-            operator: actor.operator,
-          })
-        })
+        const done = await applyOnce(
+          context.db,
+          context.admin,
+          { path: 'superAdmins.add.apply', input },
+          async (actor) => {
+            const message = await grantSuperAdmin(context.db, actor, {
+              email: input.email,
+              reason: input.reason,
+              operator: actor.operator,
+            })
+            // Only once it has committed: a twin request that replays never sends again (R4).
+            ran = true
+            return message
+          },
+        )
         // After the commit, and only the first time: a replay sends nothing again.
         if (ran) {
           const actor = consoleActor(context.admin)
@@ -232,10 +272,19 @@ export const consoleRouter = {
       ),
       apply: consoleWindow.console.superAdmins.remove.apply.handler(async ({ input, context }) => {
         let ran = false
-        const done = await applyOnce(context.db, context.admin, input.idempotencyKey, (actor) => {
-          ran = true
-          return revokeSuperAdmin(context.db, actor, { userId: input.userId, reason: input.reason })
-        })
+        const done = await applyOnce(
+          context.db,
+          context.admin,
+          { path: 'superAdmins.remove.apply', input },
+          async (actor) => {
+            const message = await revokeSuperAdmin(context.db, actor, {
+              userId: input.userId,
+              reason: input.reason,
+            })
+            ran = true
+            return message
+          },
+        )
         if (ran) {
           const actor = consoleActor(context.admin)
           await sendAll(

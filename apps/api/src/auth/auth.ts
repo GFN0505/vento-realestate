@@ -26,7 +26,13 @@ import { requestScope } from '@/lib/request-scope'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
 import { checkDevice } from './hooks/after-sign-in'
 import { onBackupCodesRegenerated, onPasswordChanged, onTwoStepDisabled } from './hooks/audit-hooks'
-import { type AuthDeps, type AuthServerApi, errorCode, errorResponse } from './hooks/deps'
+import {
+  type AuthDeps,
+  type AuthServerApi,
+  authError,
+  errorCode,
+  errorResponse,
+} from './hooks/deps'
 import {
   afterPasskeyRegistration,
   afterPasskeySignIn,
@@ -62,6 +68,7 @@ import {
   SESSION_MAX_MS,
   VERIFICATION_TTL_SECONDS,
 } from './policy'
+import { assertFreshFactorForSuperAdmin, totpStepOf } from './second-factor'
 import {
   clearPasswordResetRequired,
   findUserById,
@@ -220,6 +227,7 @@ function hookSession(
     userId: found.user.id,
     activeOrganizationId: typeof active === 'string' ? active : null,
     reauthenticatedAt: optionalDate(found.session.reauthenticatedAt),
+    secondFactorAt: optionalDate(found.session.secondFactorAt),
   }
 }
 
@@ -418,7 +426,15 @@ export function createAuth(options: CreateAuthOptions) {
           case '/two-factor/generate-backup-codes': {
             // A locked account can't confirm anything with a password (plan question 11).
             const session = await getSessionFromCtx(ctx)
-            if (session) await assertNotLocked(deps, session.user.email)
+            if (!session) return
+            await assertNotLocked(deps, session.user.email)
+            // New backup codes are a way into the console: a super-admin proves a code first.
+            if (ctx.path === '/two-factor/generate-backup-codes') {
+              await assertFreshFactorForSuperAdmin(db, {
+                userId: session.user.id,
+                secondFactorAt: optionalDate(session.session.secondFactorAt),
+              })
+            }
             return
           }
           case '/passkey/generate-register-options':
@@ -487,6 +503,24 @@ export function createAuth(options: CreateAuthOptions) {
               pendingUserId = row && row.expiresAt > new Date() ? row.value : null
             }
             await beforeTwoStepVerify(deps, { sessionUser, pendingUserId })
+            // At sign-in, a code already used (its step or an earlier one) is refused (audit L4).
+            // Not at set-up: that code can't sign anyone in, and a sign-in right after must work.
+            const code = bodyField(ctx.body, 'code')
+            if (
+              ctx.path === '/two-factor/verify-totp' &&
+              pendingUserId &&
+              typeof code === 'string'
+            ) {
+              const match = await totpStepOf(db, pendingUserId, code, ctx.context.secretConfig)
+              if (match?.replayed) {
+                throw authError(
+                  'UNAUTHORIZED',
+                  AUTH_ERROR_CODES.INVALID_CODE,
+                  AUTH_ERROR_MESSAGES.INVALID_CODE,
+                )
+              }
+              if (match) requestScope().auth.totpStep = match.step
+            }
             // "Trust this device" is not offered (spec departures), whatever a client sends.
             return { context: { body: { ...(ctx.body as object), trustDevice: false } } }
           }
@@ -571,7 +605,9 @@ export function createAuth(options: CreateAuthOptions) {
             await onTwoStepDisabled(deps, user)
             return
           case '/two-factor/generate-backup-codes':
-            await onBackupCodesRegenerated(deps, user)
+            await onBackupCodesRegenerated(deps, user, {
+              secondFactorAt: optionalDate(ctx.context.session?.session.secondFactorAt),
+            })
             return
         }
       }),

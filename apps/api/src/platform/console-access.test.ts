@@ -1,10 +1,14 @@
 import { APIError } from 'better-auth/api'
+import { symmetricEncrypt } from 'better-auth/crypto'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
 import { auditEvents, passkeys, sessions, twoFactors, verifications } from '@/db/schema'
+import { createMemoryTransport } from '@/email/transports/memory'
 import { env } from '@/env'
+import { createRateLimiter } from '@/lib/rate-limit'
 import { router } from '@/router'
+import { totpFromUri } from '@/test/auth-client'
 import { countingDb } from '@/test/counting-db'
 import { withRollback } from '@/test/db'
 import {
@@ -17,6 +21,9 @@ import {
 } from '@/test/factories'
 import { type ConsoleWindowState, clientAs, consoleClientAs } from '@/test/router-client'
 import { type SoftAuthenticator, softAuthenticator } from '@/test/soft-authenticator'
+import type { AccessContext } from './console/access.service'
+import * as access from './console/access.service'
+import { liveFeatureStore } from './feature-store'
 import { revokeSuperAdmin } from './operations/super-admin'
 
 // Who can reach the Vento console, and how "Confirm it's you" opens it (admin-console plan §8).
@@ -268,7 +275,11 @@ async function storePasskey(tx: DbOrTx, user: TestUser, key: SoftAuthenticator) 
 }
 
 async function passkeyAttempt(tx: DbOrTx, user: TestUser, sign: (challenge: string) => unknown) {
-  const { client } = consoleClientAs(tx, user, { window: 'closed' })
+  // A code was proven after the passkey was added (a later one can't open the console).
+  const { client } = consoleClientAs(tx, user, {
+    window: 'closed',
+    session: { secondFactorAt: new Date(Date.now() + 1000) },
+  })
   const { options } = await client.console.access.passkeyOptions()
   const response = sign(String(options.challenge)) as Record<string, unknown>
   return { client, response }
@@ -377,5 +388,122 @@ describe('removing a super-admin', () => {
       await expect(client.console.plans.list()).rejects.toMatchObject(plainNotFound)
       const customer = clientAs(tx, tunde, { activeOrganizationId: org.id })
       await expect(customer.client.account.me()).resolves.toMatchObject({ console: null })
+    }))
+})
+
+describe('a password alone never makes a way into the console (audit H1)', () => {
+  it('refuses a passkey added after the last code or passkey proof', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const key = softAuthenticator(env.WEB_ORIGIN)
+      await storePasskey(tx, admin, key)
+      // The session proved a code before the passkey was added (it was added with a password).
+      const { client } = consoleClientAs(tx, admin, {
+        window: 'closed',
+        session: { secondFactorAt: new Date(Date.now() - 60_000) },
+      })
+      const { options } = await client.console.access.passkeyOptions()
+      const response = key.signIn({ challenge: String(options.challenge) }) as Record<
+        string,
+        unknown
+      >
+      await expect(
+        client.console.access.confirm({ method: 'passkey', response }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST', data: { reason: 'passkey_failed' } })
+    }))
+
+  it('refuses backup codes made with only a password, without spending them', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      await tx.insert(twoFactors).values({
+        userId: admin.id,
+        secret: 'x',
+        backupCodes: 'x',
+        backupCodesUnprovenAt: new Date(),
+      })
+      let spent = false
+      const { client } = consoleClientAs(tx, admin, {
+        window: 'closed',
+        authApi: {
+          verifyBackupCode: async () => {
+            spent = true
+            return {}
+          },
+        },
+      })
+      await expect(
+        client.console.access.confirm({ method: 'backup_code', code: 'abcde-fghij' }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST', data: { reason: 'wrong_code' } })
+      expect(spent).toBe(false)
+    }))
+})
+
+describe('console confirm limits (L3, L4)', () => {
+  async function accessContext(tx: DbOrTx, admin: TestUser, extra: Partial<AccessContext> = {}) {
+    return {
+      db: tx,
+      user: { ...admin, twoFactorEnabled: true, twoStepSetupRequired: false, companyName: null },
+      session: {
+        id: '01936f1e-8b2a-7c3d-9e4f-000000000000',
+        userId: admin.id,
+        activeOrganizationId: null,
+        persistent: false,
+        createdAt: new Date(),
+        lastActiveAt: new Date(),
+        organizationEnteredAt: new Date(),
+        reauthenticatedAt: null,
+        secondFactorAt: new Date(Date.now() + 1000),
+        consoleOpenedAt: null,
+        consoleActiveAt: null,
+      },
+      admin: {
+        userId: admin.id,
+        name: admin.name,
+        email: admin.email,
+        twoFactorEnabled: true,
+        lastConsoleAt: null,
+      },
+      headers: new Headers(),
+      mailer: createMemoryTransport(),
+      rateLimiter: createRateLimiter(true),
+      featureStore: liveFeatureStore(tx),
+      authApi: {
+        verifyTOTP: async () => ({}),
+        verifyBackupCode: async () => ({}),
+        viewBackupCodes: async () => ({ backupCodes: [] }),
+      },
+      ...extra,
+    } satisfies AccessContext
+  }
+
+  it('counts passkey options and confirm attempts together', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      await storePasskey(tx, admin, softAuthenticator(env.WEB_ORIGIN))
+      const ctx = await accessContext(tx, admin)
+      for (let i = 0; i < 10; i++) await access.passkeyOptions(ctx)
+      await expect(access.confirm(ctx, { method: 'code', code: '123456' })).rejects.toMatchObject({
+        code: 'TOO_MANY_REQUESTS',
+      })
+    }))
+
+  it('refuses an authenticator code that was already used', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const secret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
+      await tx.insert(twoFactors).values({
+        userId: admin.id,
+        secret: await symmetricEncrypt({ key: 'test-key', data: `base32:${secret}` }),
+        backupCodes: 'x',
+      })
+      const code = totpFromUri(`otpauth://totp/Vento:x?secret=${secret}`)
+      const ctx = await accessContext(tx, admin, { totpKey: async () => 'test-key' })
+      await expect(access.confirm(ctx, { method: 'code', code })).resolves.toMatchObject({
+        window: 'open',
+      })
+      await expect(access.confirm(ctx, { method: 'code', code })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+        data: { reason: 'wrong_code' },
+      })
     }))
 })

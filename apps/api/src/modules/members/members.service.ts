@@ -24,6 +24,7 @@ import { recordAccountEvent, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
 import { loadRoles, lockAssignableRoles, onArchivedRole } from '@/modules/roles/roles.service'
 import { memberRowById } from '@/modules/team/team.service'
+import { activeSuperAdmin } from '@/platform/super-admins'
 
 const isOwnerKey = (key: string | null) => key === 'owner'
 
@@ -273,6 +274,10 @@ export async function resetMemberTwoStep(
     const live = await lockViewer(tx, ctx)
     const target = await lockTarget(tx, live, memberId)
     await assertMayManage(tx, live, target, 'reset')
+    // A Vento super-admin's two-step guards every customer (audit M1): only Vento resets it.
+    if (await activeSuperAdmin(tx, target.userId)) {
+      throw forbidden('permission', 'Vento staff reset two-step with Vento.')
+    }
     // The same per-person lock the passkeys insert trigger takes (migration 0010): a registration
     // in flight either lands first and is deleted below, or waits and is refused as reset-pending.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${target.userId}::text, 0))`)

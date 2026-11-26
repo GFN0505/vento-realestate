@@ -1,6 +1,7 @@
 import { generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server'
-import { AUTH_ERROR_MESSAGES } from '@vento/shared'
+import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@vento/shared'
 import type { ConfirmInput, ConsoleStatus } from '@vento/shared/console'
+import type { SymmetricDecryptOptions } from 'better-auth/crypto'
 import { and, count, eq } from 'drizzle-orm'
 import { consoleWindow, proofIsFresh } from '@/access/console-window'
 import type { AuthSession, AuthUser } from '@/access/context'
@@ -14,13 +15,15 @@ import {
   clearWrongCodes,
   isWrongCode,
   onWrongCode,
+  recordTotpStep,
+  totpStepOf,
   twoStepLockedUntil,
   verifyCodeInPlace,
 } from '@/auth/second-factor'
 import { activeLockUntil } from '@/auth/security-store'
 import { webAuthnSettings } from '@/auth/webauthn-settings'
 import type { DbOrTx } from '@/db/client'
-import { passkeys, sessions, verifications } from '@/db/schema'
+import { passkeys, sessions, twoFactors, verifications } from '@/db/schema'
 import type { Mailer } from '@/email/mailer'
 import { badRequest, notFound, tooManyRequests } from '@/lib/errors'
 import type { RateLimiter } from '@/lib/rate-limit'
@@ -42,9 +45,13 @@ export type AccessContext = {
   rateLimiter: RateLimiter
   featureStore: FeatureStore
   authApi: Pick<AuthServerApi, 'verifyTOTP' | 'verifyBackupCode' | 'viewBackupCodes'>
+  /** Better Auth's key for the stored authenticator secret, to refuse a replayed code (L4). */
+  totpKey?: () => Promise<TotpKey | undefined>
 }
 
 type Method = 'passkey' | 'code' | 'backup_code' | 'recent_proof'
+
+export type TotpKey = SymmetricDecryptOptions['key']
 
 const challengeId = (sessionId: string) => `console-passkey:${sessionId}`
 
@@ -121,6 +128,8 @@ export async function passkeyOptions(
   ctx: AccessContext,
   now = new Date(),
 ): Promise<{ options: Record<string, unknown> }> {
+  // Shares the confirm budget (audit L3): options and attempts are one stream per person.
+  hitConfirmLimit(ctx)
   if (await passkeysSwitchedOff(ctx.featureStore)) throw notFound()
   const credentials = await passkeyIds(ctx.db, ctx.user.id)
   if (credentials.length === 0) throw notFound()
@@ -174,10 +183,20 @@ async function verifyPasskey(ctx: AccessContext, response: Record<string, unknow
       publicKey: passkeys.publicKey,
       counter: passkeys.counter,
       transports: passkeys.transports,
+      createdAt: passkeys.createdAt,
     })
     .from(passkeys)
     .where(and(eq(passkeys.credentialID, credentialId), eq(passkeys.userId, ctx.user.id)))
   if (!stored) throw passkeyFailed()
+  // A passkey added since the last code or passkey proof on this session could have been added
+  // with a password alone (audit H1): it can't open the console until a code is proven again.
+  const proven = ctx.session.secondFactorAt
+  if (!proven || stored.createdAt > proven) {
+    throw badRequest(
+      'passkey_failed',
+      'This passkey was added after you last used a code. Use a code from your authenticator app this time.',
+    )
+  }
   const settings = webAuthnSettings()
   let newCounter: number
   try {
@@ -218,6 +237,15 @@ function lockedOut(until: Date, now: Date) {
   )
 }
 
+/** Backup codes made without a fresh code or passkey (audit H1). */
+async function backupCodesUnproven(db: DbOrTx, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ at: twoFactors.backupCodesUnprovenAt })
+    .from(twoFactors)
+    .where(eq(twoFactors.userId, userId))
+  return Boolean(row?.at)
+}
+
 /** A code or backup code, counted towards the same lock as the sign-in page. */
 async function verifyCode(
   ctx: AccessContext,
@@ -228,13 +256,28 @@ async function verifyCode(
     (await twoStepLockedUntil(ctx.db, ctx.user.id)) ??
     (await activeLockUntil(ctx.db, ctx.user.email))
   if (locked) throw lockedOut(locked, now)
-  const failure = await verifyCodeInPlace(
-    ctx.authApi,
-    ctx.headers,
-    input.method === 'code' ? { code: input.code } : { backupCode: input.code },
-  )
+  if (input.method === 'backup_code' && (await backupCodesUnproven(ctx.db, ctx.user.id))) {
+    // Checked before the code is used, so it isn't spent and doesn't count towards a lock.
+    throw badRequest(
+      'wrong_code',
+      "These backup codes were made with only your password, so they can't open the Vento console. Use your authenticator app or a passkey.",
+    )
+  }
+  const step =
+    input.method === 'code'
+      ? await totpStepOf(ctx.db, ctx.user.id, input.code, await ctx.totpKey?.())
+      : null
+  // A code already used counts as a wrong one (audit L4).
+  const failure = step?.replayed
+    ? AUTH_ERROR_CODES.INVALID_CODE
+    : await verifyCodeInPlace(
+        ctx.authApi,
+        ctx.headers,
+        input.method === 'code' ? { code: input.code } : { backupCode: input.code },
+      )
   if (!failure) {
     await clearWrongCodes(ctx.db, ctx.user.id)
+    if (step) await recordTotpStep(ctx.db, ctx.user.id, step.step)
     if (input.method === 'backup_code') {
       await onBackupCodeUsed(
         { db: ctx.db, mailer: ctx.mailer, api: () => ctx.authApi as AuthServerApi },
@@ -257,11 +300,8 @@ async function verifyCode(
   )
 }
 
-export async function confirm(
-  ctx: AccessContext,
-  input: ConfirmInput,
-  now = new Date(),
-): Promise<ConsoleStatus> {
+/** "Confirm it's you" attempts and passkey options per person per minute, together. */
+function hitConfirmLimit(ctx: Pick<AccessContext, 'rateLimiter' | 'user'>): void {
   const retryAfter = ctx.rateLimiter.hit(
     `console-confirm:${ctx.user.id}`,
     CONSOLE_CONFIRM_PER_MINUTE,
@@ -269,6 +309,14 @@ export async function confirm(
   if (retryAfter > 0) {
     throw tooManyRequests('Too many attempts. Wait a minute and try again.', retryAfter)
   }
+}
+
+export async function confirm(
+  ctx: AccessContext,
+  input: ConfirmInput,
+  now = new Date(),
+): Promise<ConsoleStatus> {
+  hitConfirmLimit(ctx)
   if (input.method === 'passkey') {
     if (await passkeysSwitchedOff(ctx.featureStore)) throw notFound()
     await verifyPasskey(ctx, input.response, now)

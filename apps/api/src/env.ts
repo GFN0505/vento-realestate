@@ -33,6 +33,8 @@ const envSchema = z.object({
    * Unset or missing file: no place is shown; sign-in works the same.
    */
   GEOIP_DB_PATH: optionalText,
+  /** Break-glass changes are emailed here when no other super-admin can be told (audit M2). */
+  SECURITY_ALERT_EMAIL: optionalText.pipe(z.email().optional()),
   /** "Talk to Vento" for owners. Required in production. */
   SUPPORT_EMAIL: optionalText.pipe(z.email().optional()),
   SUPPORT_WHATSAPP: optionalText.pipe(

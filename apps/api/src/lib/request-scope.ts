@@ -23,6 +23,8 @@ export type RequestScope = {
     rememberMe?: boolean
     /** The passkey sign-in challenge this request answers, read before the plugin consumes it. */
     passkeyChallenge?: string
+    /** The 30-second step of the authenticator code this request sends, once it's matched. */
+    totpStep?: number
     /**
      * A first sign-in (sign-up's automatic one, accepting an invitation): the browser is recorded
      * silently, with no "new sign-in" email.

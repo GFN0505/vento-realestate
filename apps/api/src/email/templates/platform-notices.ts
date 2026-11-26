@@ -64,16 +64,44 @@ export function breakGlassEmail(p: {
   at: string
   reason: string
   activityUrl: string
+  /** To the person named by --by: someone with host access may have used their name. */
+  toActor?: boolean
 }): RenderedEmail {
   const subject = `${p.summary} from the command line`
   const what = p.summary.charAt(0).toLowerCase() + p.summary.slice(1)
   const where = p.host ? ` on ${p.host}` : ''
+  if (p.toActor) {
+    return renderEmail(subject, subject, [
+      {
+        kind: 'p',
+        text: `This was run as you${where} at ${p.at}: ${what}. Reason: ${p.reason}`,
+      },
+      {
+        kind: 'p',
+        text: "If it wasn't you, tell the other super-admins at once and reset your password.",
+      },
+      { kind: 'button', label: 'Check the activity', url: p.activityUrl },
+    ])
+  }
+  return renderEmail(subject, subject, [
+    { kind: 'p', text: `${p.actorName} ${what}${where} at ${p.at}. Reason: ${p.reason}` },
+    { kind: 'button', label: 'Check the activity', url: p.activityUrl },
+    { kind: 'small', text: "If you didn't expect this, check the Activity page." },
+  ])
+}
+
+/** To the other super-admins when one of them makes new backup codes (a way into the console). */
+export function superAdminBackupCodesEmail(p: {
+  name: string
+  at: string
+  activityUrl: string
+}): RenderedEmail {
+  const subject = `${p.name} made new backup codes`
   return renderEmail(subject, subject, [
     {
       kind: 'p',
-      text: `${p.actorName} ${what}${where} at ${p.at}. Reason: ${p.reason}`,
+      text: `${p.name}, a Vento super-admin, made new two-step backup codes at ${p.at}. Backup codes can open the Vento console.`,
     },
-    { kind: 'button', label: 'Check the activity', url: p.activityUrl },
-    { kind: 'small', text: "If you didn't expect this, check the Activity page." },
+    { kind: 'small', text: "If you didn't expect this, check with them." },
   ])
 }

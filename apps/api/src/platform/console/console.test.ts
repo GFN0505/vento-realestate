@@ -280,8 +280,11 @@ describe('idempotency under concurrency', () => {
       ...key(),
     }
     const run = () =>
-      applyOnce(pool, { userId: admin.id, name: admin.name }, input.idempotencyKey, (actor) =>
-        changePlanChange.apply(pool, actor, input),
+      applyOnce(
+        pool,
+        { userId: admin.id, name: admin.name },
+        { path: 'organizations.changePlan.apply', input },
+        (actor) => changePlanChange.apply(pool, actor, input),
       )
     const [a, b] = await Promise.all([run(), run()])
     expect(a).toEqual(b)
@@ -443,4 +446,53 @@ describe('filters added for the web', () => {
       const activity = await client.console.activity.list({ organizationId: org.id })
       expect(activity).toMatchObject({ total: 0, organizationName: name })
     }))
+})
+
+describe('idempotency keys', () => {
+  it('refuse the same key for a different change (L2)', () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      const { client } = consoleClientAs(tx, admin)
+      const ids = key()
+      const fields = { organizationId: org.id, planKey: 'growth' }
+      const preview = await client.console.organizations.changePlan.preview(fields)
+      await client.console.organizations.changePlan.apply({
+        ...fields,
+        expected: preview.expected,
+        ...why,
+        ...ids,
+      })
+      await expect(
+        client.console.organizations.changePlan.apply({
+          organizationId: org.id,
+          planKey: 'enterprise',
+          expected: preview.expected,
+          ...why,
+          ...ids,
+        }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: 'That change key was used for a different change. Start again.',
+      })
+    }))
+
+  it('send the super-admin emails once when the same add arrives twice at once (R4)', async () => {
+    const ada = await createSuperAdmin(pool, { email: uniqueEmail('ada.r4') })
+    const newcomer = await createUser(pool, {
+      name: 'Kemi Ojo',
+      email: uniqueEmail('kemi.r4'),
+      twoFactorEnabled: true,
+    })
+    const input = { email: newcomer.email, expected: {}, ...why, ...key() }
+    const first = consoleClientAs(pool, ada)
+    const second = consoleClientAs(pool, ada)
+    const [a, b] = await Promise.all([
+      first.client.console.superAdmins.add.apply(input),
+      second.client.console.superAdmins.add.apply(input),
+    ])
+    expect(a).toEqual(b)
+    const welcomes = [...first.mailer.to(newcomer.email), ...second.mailer.to(newcomer.email)]
+    expect(welcomes).toHaveLength(1)
+  })
 })

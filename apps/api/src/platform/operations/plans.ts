@@ -198,19 +198,30 @@ export async function publishPlan(
     }
     const defaults = d.defaultForNew === undefined ? {} : { isDefaultForNew: d.defaultForNew }
     let planId: string
-    if (existing) {
-      planId = existing.id
-      await tx
-        .update(plans)
-        .set({ name: d.name, sortOrder: d.sortOrder, ...defaults })
-        .where(eq(plans.id, planId))
-    } else {
-      const [created] = await tx
-        .insert(plans)
-        .values({ key: d.key, name: d.name, sortOrder: d.sortOrder, ...defaults })
-        .returning({ id: plans.id })
-      if (!created) throw new Error('Plan insert returned nothing')
-      planId = created.id
+    try {
+      if (existing) {
+        planId = existing.id
+        await tx
+          .update(plans)
+          .set({ name: d.name, sortOrder: d.sortOrder, ...defaults })
+          .where(eq(plans.id, planId))
+      } else {
+        const [created] = await tx
+          .insert(plans)
+          .values({ key: d.key, name: d.name, sortOrder: d.sortOrder, ...defaults })
+          .returning({ id: plans.id })
+        if (!created) throw new Error('Plan insert returned nothing')
+        planId = created.id
+      }
+    } catch (error) {
+      // Someone published a plan with this key or position at the same moment (R5).
+      if (isUniqueViolation(error, 'plans_key_unique')) {
+        throw new PlatformError(`There's already a plan called "${d.key}".`)
+      }
+      if (isUniqueViolation(error, 'plans_sort_order_unique')) {
+        throw new PlatformError(`Another plan already uses position ${d.sortOrder}.`)
+      }
+      throw error
     }
     const version = (latest?.n ?? 0) + 1
     const limits = storedLimits(d.limits)

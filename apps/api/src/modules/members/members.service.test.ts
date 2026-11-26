@@ -12,6 +12,7 @@ import {
   createOfficeManager,
   createOrganization,
   createSession,
+  createSuperAdmin,
   reloadUser,
 } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
@@ -219,6 +220,31 @@ describe('members', () => {
         { body: { email: aisha.user.email, redirectTo: '/reset-password' } },
       ])
     }))
+
+  // Audit M1: whoever in the organization may reset two-step, a Vento super-admin's stays.
+  it.each(['owner', 'admin'] as const)(
+    'refuses a %s resetting a Vento super-admin’s two-step, and changes nothing',
+    (role) =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx)
+        const resetter = role === 'owner' ? org.owner : (await createMember(tx, org, { role })).user
+        const ada = await createSuperAdmin(tx, {}, { organization: org, role: 'sales' })
+        await tx.insert(twoFactors).values({ userId: ada.id, secret: 'x', backupCodes: 'x' })
+        const [member] = await tx.select().from(members).where(eq(members.userId, ada.id))
+        const { client } = clientAs(tx, resetter, { activeOrganizationId: org.id })
+        await expect(
+          client.members.resetTwoStep({ memberId: member?.id ?? '' }),
+        ).rejects.toMatchObject({
+          code: 'FORBIDDEN',
+          message: 'Vento staff reset two-step with Vento.',
+        })
+        expect(
+          await tx.select().from(twoFactors).where(eq(twoFactors.userId, ada.id)),
+        ).toHaveLength(1)
+        const [user] = await tx.select().from(users).where(eq(users.id, ada.id))
+        expect(user?.twoFactorEnabled).toBe(true)
+      }),
+  )
 
   it('keeps a limited admin within their own entities when changing access', () =>
     withRollback(async (tx) => {

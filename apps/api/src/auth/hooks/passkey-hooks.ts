@@ -16,6 +16,7 @@ import {
 } from '../passkey-availability'
 import { isSuspectedClone, readAssertion } from '../passkey-clone'
 import { REAUTH_WINDOW_MS } from '../policy'
+import { assertFreshFactorForSuperAdmin } from '../second-factor'
 import { findUserById, passkeyCountFor } from '../security-store'
 import { afterSignIn, type SignInContext } from './after-sign-in'
 import { type AuthDeps, authError, errorCode, errorResponse, sendEmail, webUrl } from './deps'
@@ -27,6 +28,8 @@ export type HookSession = {
   userId: string
   activeOrganizationId: string | null
   reauthenticatedAt: Date | null
+  /** The last code or passkey proven on this session (a super-admin needs it fresh). */
+  secondFactorAt: Date | null
 }
 
 const webOrigin = () => new URL(env.WEB_ORIGIN).origin
@@ -60,6 +63,9 @@ export async function beforePasskeyRegistration(
       AUTH_ERROR_MESSAGES.REAUTH_REQUIRED,
     )
   }
+  // A new passkey can open the console: a super-admin proves a code or passkey first (both steps,
+  // so a challenge issued earlier can't be finished once the proof is stale).
+  await assertFreshFactorForSuperAdmin(deps.db, session, now)
   if ((await passkeyCountFor(deps.db, session.userId)) >= PASSKEY_LIMIT) {
     throw authError('CONFLICT', AUTH_ERROR_CODES.PASSKEY_LIMIT, AUTH_ERROR_MESSAGES.PASSKEY_LIMIT)
   }

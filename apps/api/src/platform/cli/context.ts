@@ -39,6 +39,8 @@ export type CommandDeps = {
    * the other super-admins once it has committed. Set by `runCommand`, not by the caller.
    */
   breakGlass?: BreakGlassChange[]
+  /** Overrides SECURITY_ALERT_EMAIL (tests); null = none. */
+  securityAlertEmail?: string | null
 }
 
 /** A change made with --break-glass: who, which command, and how to find its audit rows. */

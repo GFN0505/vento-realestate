@@ -85,6 +85,13 @@
       "when": 1795716262031,
       "tag": "0011_console",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795729613252,
+      "tag": "0012_second_factor_guards",
+      "breakpoints": true
     }
   ]
 }

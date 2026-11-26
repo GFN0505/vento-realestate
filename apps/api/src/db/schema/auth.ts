@@ -134,6 +134,16 @@ export const twoFactors = pgTable(
     verified: boolean().notNull().default(true),
     failedVerificationCount: integer().notNull().default(0),
     lockedUntil: timestamptz(),
+    /**
+     * The 30-second step of the last authenticator code accepted. A code for that step or an
+     * earlier one is refused, so an observed code can't be replayed (audit L4).
+     */
+    lastTotpStep: integer(),
+    /**
+     * Set when backup codes were made on a session with no fresh code or passkey (a password
+     * alone): those codes can't open the Vento console (audit H1). Cleared by a proven set.
+     */
+    backupCodesUnprovenAt: timestamptz(),
     ...timestamps,
   },
   (t) => [

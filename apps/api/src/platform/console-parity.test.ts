@@ -271,7 +271,7 @@ describe('break-glass', () => {
     }),
   )
 
-  it.each(IDS)('%s with --break-glass emails every other super-admin, never the actor', (id) =>
+  it.each(IDS)('%s with --break-glass emails every other super-admin and the --by person', (id) =>
     withRollback(async (tx) => {
       const f = await fixture(tx, CASES[id])
       const { code, mailer } = await runCli(tx, f, CASES[id].command(f), true)
@@ -282,7 +282,9 @@ describe('break-glass', () => {
       expect(message?.text).toContain('Ada Okafor')
       expect(message?.text).toContain(`on api-1 at`)
       expect(message?.text).toContain(`Reason: ${REASON}`)
-      expect(mailer.to(f.admin.email).filter((m) => m.tag === 'platform_notice')).toEqual([])
+      // The --by person is told too, in their own words (audit M2).
+      const [own] = mailer.to(f.admin.email).filter((m) => m.tag === 'platform_notice')
+      expect(own?.text).toContain('This was run as you on api-1')
     }),
   )
 
@@ -309,4 +311,42 @@ describe('break-glass', () => {
       expect(viaConsole?.notices).toEqual(command?.notices)
     },
   )
+})
+
+describe('break-glass with no other super-admin', () => {
+  it('tells the security inbox, and the --by person', () =>
+    withRollback(async (tx) => {
+      // Other tests commit super-admins; revoked here (rolled back) so this one is alone.
+      const { platformAdmins } = await import('@/db/schema')
+      await tx.update(platformAdmins).set({ revokedAt: new Date() })
+      const admin = await createSuperAdmin(tx)
+      const target = await createOrganization(tx, { planKey: 'starter' })
+      const io = memoryIo([true])
+      const mailer = createMemoryTransport()
+      const code = await runCommand(
+        'plans',
+        [
+          'assign',
+          target.id,
+          'growth',
+          '--by',
+          admin.email,
+          '--reason',
+          REASON,
+          '--yes',
+          '--break-glass',
+        ],
+        {
+          db: tx,
+          io,
+          operator: 'ada@api-1',
+          mailer,
+          now: () => new Date(),
+          securityAlertEmail: 'security@ventoerp.com',
+        },
+      )
+      expect(code).toBe(0)
+      expect(mailer.to('security@ventoerp.com')).toHaveLength(1)
+      expect(mailer.to(admin.email)).toHaveLength(1)
+    }))
 })

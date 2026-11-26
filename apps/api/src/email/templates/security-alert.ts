@@ -191,3 +191,18 @@ export function passkeyCopiedAlert(p: {
     { kind: 'button', label: 'Check My security', url: p.securityUrl },
   ])
 }
+
+/** New backup codes replace the old ones: said at once, since they can sign in instead of a code. */
+export function backupCodesRegeneratedAlert(p: {
+  at: string
+  on: string
+  resetUrl: string
+}): RenderedEmail {
+  return renderEmail('Vento: new backup codes were made', 'New backup codes were made', [
+    {
+      kind: 'p',
+      text: `New backup codes were made for your Vento account at ${p.at} on ${p.on}. Your old codes no longer work.`,
+    },
+    { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
+  ])
+}
