@@ -1,7 +1,7 @@
 # 0019 · Passkeys count as two-step; the authenticator app stays the fallback
 
 - **Date:** 2026-11-26
-- **Status:** proposed (with the brick 3d plan)
+- **Status:** accepted (owner, 26 Nov 2026, with the brick 3d plan)
 
 ## Context
 Brick 3d adds passkeys (Face ID, Touch ID, a fingerprint, Windows Hello or the device PIN) through Better Auth's passkey plugin. Two-step sign-in (decision 0010, brick 2a) is an authenticator-app code after the password, required by some roles and, from 3d, by an organization-wide setting. We had to decide whether a passkey sign-in also has to pass the code step, whether a passkey can replace the app for people who are required to use two-step, and which web domain the passkeys are bound to. All three are hard to reverse: once people sign in with passkeys every day, adding a code step back or forcing the app on them is a visible step backwards, and passkeys can't be moved to another domain.

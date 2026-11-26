@@ -1,6 +1,6 @@
 # Plan: My security and passkeys (brick 3d)
 
-- **Status:** for review (owner). 14 plan questions at the end, each with a recommendation.
+- **Status:** approved (owner, 26 Nov 2026, all 14 plan questions as recommended).
 - **Spec:** [docs/specs/my-security.md](../specs/my-security.md) (approved, all 16 recommendations, 26 Nov 2026)
 - **Journeys:** J-ONB-04 (changed), J-ONB-09 and J-ONB-10 (new, draft), J-ONB-06 (changed)
 - **Branch:** `brick/03d-security`, cut from `main` after 3b and 3c. **One pull request**, audited by the security agent before it's opened (app-shell owner's decision 1).
@@ -537,7 +537,7 @@ Then: tester (service, auth endpoint, isolation, e2e with the virtual authentica
 - **R7 Gate regressions.** The gate replaces `twoStepRequired` at three call sites; a missed site would let someone past the deadline or block someone in grace. The table test plus the middleware tests cover all three.
 - **R8 Admin-reset race.** A passkey added between the reset's delete and commit can't happen (the person's sessions are deleted in the same transaction and registration needs a session), and the `passwordResetRequired` check on passkey sign-in guards anything else.
 
-## 16. Plan questions (recommendations in bold)
+## 16. Plan questions (owner approved all recommendations, 26 Nov 2026)
 1. **Name changes.** The spec says limit Better Auth's `/update-user` to `name`. It also accepts `image` and our `companyName` field and writes outside our transaction and audit. *Recommended:* **switch `/update-user` off entirely and change names through `account.updateName`** (audited in the same transaction). Nothing in the web calls it today.
 2. **Passkey list, rename and remove.** *Recommended:* **through our oRPC procedures; switch the plugin's three endpoints off**, as 2a did for sessions. One place for audit, "not found" for someone else's id, and the alert email after commit. Registration and sign-in stay on the plugin's endpoints.
 3. **"Confirm it's you" for turning two-step on and new backup codes.** Better Auth requires the password in those requests for anyone who has one, with no password-free path. *Recommended:* **those two always ask for the password (inside their own dialog, so the click counts in the spec hold), and a correct one opens the 5-minute window**; the window then skips the question for adding a passkey. The alternative, re-implementing backup-code generation outside Better Auth, means copying its encryption internals.

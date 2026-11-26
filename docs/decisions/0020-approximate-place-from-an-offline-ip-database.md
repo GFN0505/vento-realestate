@@ -1,7 +1,7 @@
 # 0020 · Approximate place from an offline IP database, looked up once at sign-in
 
 - **Date:** 2026-11-26
-- **Status:** proposed (with the brick 3d plan)
+- **Status:** accepted (owner, 26 Nov 2026, with the brick 3d plan)
 
 ## Context
 My security lists where a person is signed in. A masked IP address ("102.89.34.x") means nothing to Aisha; "Lekki, Lagos" or "London, United Kingdom" does, and the "new sign-in" email needs the same words. Turning an IP address into a place needs a lookup. We never store or log a full IP address (brick 2a, NDPA), and we don't want to send people's addresses to an outside service at every sign-in.
