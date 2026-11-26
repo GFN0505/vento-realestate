@@ -1,6 +1,6 @@
 # My security and passkeys (brick 3d)
 
-- **Status:** draft
+- **Status:** approved (owner, 26 Nov 2026)
 - **Module:** Platform
 - **Journeys:** J-ONB-04 (changed: passkey sign-in, recovery), J-ONB-09 (new: secure your own account), J-ONB-10 (new: require two-step for everyone), J-ONB-06 (changed: a two-step reset also removes passkeys)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
@@ -330,7 +330,10 @@ To add to `docs/DOMAIN.md` once approved:
 - Buyer and realtor portal sign-in (with the portals).
 - The audit log page (brick 4); personal events are already recorded.
 
-## Open questions
+## Owner's decisions (26 Nov 2026)
+All 16 recommendations below were approved as written. Already decided before the spec: every user can turn two-step on for themselves, and owners get an organization setting "Require two-step for everyone" (off by default).
+
+## Open questions (answered above; recommendations in bold)
 Each has a recommendation; the owner's decision of 26 Nov 2026 (anyone can turn two-step on; "Require two-step for everyone", owners only, off by default, at the next sign-in; roles that require it unchanged) is already built in above.
 
 1. **Does a passkey sign-in count as two-step?** *Recommended:* **yes.** A passkey only works on the device that holds it, after Face ID, a fingerprint or the device PIN, and it can't be typed into a fake website, so it's stronger than a password plus a code. Vento refuses passkeys that skip that check.
