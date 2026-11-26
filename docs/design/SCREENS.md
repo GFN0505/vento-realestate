@@ -19,7 +19,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Accept invitation | [AcceptInvite](claude-design/AcceptInvite.dc.html) | built |
 | Set up two-step (forced at sign-in or after accepting an invitation) and backup codes | [SecuritySettings](claude-design/SecuritySettings.dc.html) (two-factor panel only) | pattern |
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
-| Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K) | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | todo |
+| Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K) | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | built |
 | App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
 | ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento's internal organizations once feature flags ship) | – | pattern |
@@ -189,11 +189,12 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 12. Settings and admin
 | Screen | Design | Status |
 |---|---|---|
-| Settings layout with left sub-navigation (brick 3b: only built sections the member can view; no sub-navigation while there's one section; Settings in the sidebar footer, user menu and More) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | todo |
+| Settings layout with left sub-navigation (brick 3b: only built sections the member can view; no sub-navigation while there's one section; Settings in the sidebar footer, user menu and More) | [SetOrg](claude-design/SetOrg.dc.html), [DSAdditions](claude-design/DSAdditions.dc.html) (settings nav), [SettingsMobile](claude-design/SettingsMobile.dc.html) | built |
 | Organization profile and entities: add, edit, archive (brick 3c) | [SetOrg](claude-design/SetOrg.dc.html) | todo |
 | Branding: logo and colours on documents, emails and portals (proposed: with the first customer-facing document) | [SetBranding](claude-design/SetBranding.dc.html) | todo |
-| Team: one list of members and open invitations (role in place, entity access, two-step, last active, invitation and delivery state), search, role filter, Invited and Removed chips, owner's plan usage line, confirms for remove, reset two-step and make owner (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | todo |
-| Invite people sheet: up to 20 emails, role for everyone or per row, entity access, row problems, plan places (brick 3b; also opens from the Home checklist and ⌘K) | – | todo |
+| Team: one list of members and open invitations (role in place, entity access, two-step, last active, invitation and delivery state), search, role filter, Invited and Removed chips, owner's plan usage line, confirms for remove, reset two-step and make owner (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built |
+| Invite people sheet: up to 20 emails, role for everyone or per row, entity access, row problems, plan places (brick 3b; also opens from the Home checklist and ⌘K; follows the entity switcher) | – | pattern |
+| Member sheet: role, entity access with Save changes, two-step, reset two-step, make owner, remove; invitation sheet for open invitations (brick 3b) | [RolesSettings](claude-design/RolesSettings.dc.html) (users tab) | built |
 | Member and invitation sheets: facts, change role and entity access, reset two-step, remove; resend, withdraw (brick 3b) | – | todo |
 | Permissions: role × module matrix, copy and edit custom roles (brick 3c) | [SetPermissions](claude-design/SetPermissions.dc.html), [PermissionsMobile](claude-design/PermissionsMobile.dc.html) | todo |
 | Approval rules | [SetApprovalRules](claude-design/SetApprovalRules.dc.html) | todo |
