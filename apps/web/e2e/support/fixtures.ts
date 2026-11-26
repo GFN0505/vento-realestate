@@ -263,3 +263,37 @@ export const ageReauth = (email: string) => runFixture<{ sessions: number }>('ag
 /** Days until the person's newest session expires on the server, and whether it is persistent. */
 export const sessionExpiry = (email: string) =>
   runFixture<{ days: number; persistent: boolean }>('session-expiry', email)
+
+// Vento console (admin-console plan §13). Fixtures never change global stages except
+// `flagStage`, which only releases.spec.ts uses, to put back the keys it owns.
+
+export type SuperAdminState = 'member' | 'no-org' | 'revoked' | 'two-step-reset'
+
+export type SuperAdminFixture = Credentials & {
+  userId: string
+  totpSecret: string
+  backupCodes: string[]
+  /** null for `no-org`: signing in lands on the console. */
+  organizationName: string | null
+  state: SuperAdminState
+}
+
+/** A Vento super-admin: owner of an internal organization, or with no organization at all. */
+export const createSuperAdminFixture = (state: SuperAdminState = 'member') =>
+  runFixture<SuperAdminFixture>('super-admin', state)
+
+/** Closes the console window on every session: 16 minutes idle, or opened 8 hours ago. */
+export const ageConsole = (email: string, how: 'idle' | 'max' = 'idle') =>
+  runFixture<{ sessions: number }>('age-console', email, how)
+
+/** The last code or passkey was 10 minutes ago: opening the console asks "Confirm it's you". */
+export const ageSecondFactor = (email: string) =>
+  runFixture<{ sessions: number }>('age-second-factor', email)
+
+/** releases.spec.ts only: sets (or restores) a global release stage on a key it owns. */
+export const flagStage = (key: string, stage: 'off' | 'internal' | 'pilot' | 'on') =>
+  afterSnapshotReload(runFixture<{ key: string; stage: string }>('flag-stage', key, stage))
+
+/** A break-glass change by that super-admin in Vento's activity (the rose Command line tag). */
+export const platformActivity = (email: string) =>
+  runFixture<{ email: string }>('platform-activity', email)

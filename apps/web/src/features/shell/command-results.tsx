@@ -7,6 +7,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   FingerprintIcon,
+  GaugeIcon,
   KeyboardIcon,
   KeyRoundIcon,
   LaptopMinimalIcon,
@@ -210,6 +211,19 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
         </CommandGroup>
       )}
       <CommandGroup heading="Actions">
+        {me.console && (
+          <CommandItem
+            value="console"
+            keywords={[
+              'Open Vento console',
+              'staff admin super-admin releases plans organizations',
+            ]}
+            onSelect={run(() => void router.navigate({ to: '/console' }))}
+          >
+            <GaugeIcon aria-hidden />
+            Open Vento console
+          </CommandItem>
+        )}
         {canInvite && (
           <CommandItem
             value="invite"

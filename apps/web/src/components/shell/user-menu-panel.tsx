@@ -1,5 +1,12 @@
 import { Link } from '@tanstack/react-router'
-import { EyeIcon, KeyboardIcon, LockKeyholeIcon, LogOutIcon, SettingsIcon } from 'lucide-react'
+import {
+  EyeIcon,
+  GaugeIcon,
+  KeyboardIcon,
+  LockKeyholeIcon,
+  LogOutIcon,
+  SettingsIcon,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +69,18 @@ export function UserMenuPanel({
             My security
           </Link>
         </DropdownMenuItem>
+        {/* Active Vento super-admins only (decision 0021); the console's code loads on approach. */}
+        {me.console && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/console" preload="intent">
+                <GaugeIcon aria-hidden />
+                Vento console
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>

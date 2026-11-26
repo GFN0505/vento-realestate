@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 178 rows · 137 designed (21 of them partly) · 41 without a design.
+**Coverage:** 185 rows · 138 designed (22 of them partly) · 47 without a design.
 
 
 
@@ -246,9 +246,16 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 15. Super-admin (Vento staff only)
 | Screen | Design | Status |
 |---|---|---|
-| Organizations list and detail: release group, plan, add-ons, overrides and trials, AI budget (console in R2) | [AdminOrgs](claude-design/AdminOrgs.dc.html), [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) | todo |
+| Vento console shell (`/console`): navy sidebar with the amber "Vento staff · all customers" label, Organizations · Releases · Plans · Activity · Super-admins, top bar with the label below lg, bottom tabs (Organizations, Releases, Plans, More), user menu with **Back to {organization}**, theme and Sign out; 404 inside the console | [AdminOrgs](claude-design/AdminOrgs.dc.html) (sidebar) | built |
+| *Confirm it's you* for the console (passkey, code, backup code): page card on arrival, dialog over the page mid-task; "Set up two-step to use the Vento console." | – | pattern |
+| Organizations list (console home): four filtering stat cards, chips, search, table (cards on phones), no Projects column until the projects module | [AdminOrgs](claude-design/AdminOrgs.dc.html), [AdminOrgsMobile](claude-design/AdminOrgsMobile.dc.html) | built |
+| Organization detail: Plan, Trial, Add-ons, Overrides (with ended), Features ("why"), Activity | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (header and card layout) | built |
+| Organization change sheets: change plan, start and end trial, add AI, change AI budget, remove AI, release group, add and clear override (fields → preview → reason) | – | pattern |
 | AI usage and cost by organization and feature | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
-| Feature flags: stage per flag, who has it, plans that include it (console in R2) | [AdminOrgDetail](claude-design/AdminOrgDetail.dc.html) (per organization only) | todo |
-| Plans: contents, limits, versions (console in R2) | – | todo |
+| Releases list and feature detail: stage control, **Turn off for everyone** always at the foot, holders by group, overrides, recent changes | – | pattern, needs-design |
+| Plans list, plan detail (versions side by side), **Publish new version** stepped sheet (also a new plan) | – | pattern, needs-design |
+| Super-admins: list, add (sheet), remove (confirm with reason), "fewer than 4" line | – | pattern |
+| Activity (platform audit trail): person, feature, kind and date filters; **Command line** rose and **Console** tags | – (pattern from [AuditLog](claude-design/AuditLog.dc.html)) | pattern |
+| User menu, More sheet and ⌘K: **Vento console** / "Open Vento console" (active super-admins only) | – | built |
 | Flag and plan commands (`pnpm flags …`, `pnpm plans …`, `pnpm superadmin …`; text output, used until the console ships) | – | built |
 | System health and failed jobs | [AdminJobs](claude-design/AdminJobs.dc.html) (failed jobs only) | todo |
