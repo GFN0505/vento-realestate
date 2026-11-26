@@ -1,6 +1,6 @@
 # Feature flags and plan entitlements
 
-- **Status:** draft
+- **Status:** approved (26 Nov 2026); see [Owner's decisions](#owners-decisions-26-nov-2026)
 - **Module:** Platform
 - **Journeys:** J-ADM-01 and J-ADM-02 (new), J-ONB-05 (step 2 and watch-for changed), J-AI-04 (an add-on appears only once it's available to the organization)
 - **Screens:** see [Screens this spec touches](#screens-this-spec-touches)
@@ -73,7 +73,7 @@ For an organization and a feature:
 **AI add-on features** need one more step (`ai-features` skill): available **and** switched on by the owner in Settings → AI **and** under budget.
 
 ## Initial catalog
-The catalog is code in `packages/shared` (key, kind, prerequisites, one-line description, label used in prompts). Stages, release groups, plans, add-ons and overrides are data. A new flag starts at `internal` when its first code merges. A flag needs a reason to exist: a module, a part released or sold on its own, or an add-on. Options and small screens don't get flags.
+The "Release" column is the [release plan](../release-plan.md)'s recommendation; the owner releases each flag when they choose, once it is *releasable* (built, tested, reviewed, documented, and reviewed hands-on by the owner). The catalog is code in `packages/shared` (key, kind, prerequisites, one-line description, label used in prompts). Stages, release groups, plans, add-ons and overrides are data. A new flag starts at `internal` when its first code merges. A flag needs a reason to exist: a module, a part released or sold on its own, or an add-on. Options and small screens don't get flags.
 
 | Key | Kind | Release | Prerequisites |
 |---|---|---|---|
@@ -92,11 +92,11 @@ The catalog is code in `packages/shared` (key, kind, prerequisites, one-line des
 | `sales.leads`, `sales.commissions`, `sales.site_plan`, `sales.transfer`, `sales.construction_linked_plans` | feature | R2 | `sales` |
 | `realtor_portal` | module | R2 | `sales.leads`, `sales.commissions` |
 | `platform.sms`, `platform.digest`, `platform.ekyc` | feature | R2 | – |
-| `projects.costs`, `projects.procurement`, `projects.site_diary` | feature | R3 | `projects` |
-| `finance.vendor_bills`, `compliance.permits` | feature | R3 | their module |
-| `finance.close`, `finance.facilities`, `finance.revenue_recognition`, `finance.intercompany`, `finance.tax` | feature | R4 | `finance` |
-| `documents.contracts`, `compliance.ubo_scuml`, `analytics.board_pack` | feature | R4 | their module |
-| `facility`, `hr` | module | R5 | – |
+| `projects.costs` (BoQ, material rates, budget vs actual), `projects.procurement` (contractors, vendors, material requests, POs, goods received), `projects.site_diary` (full diary with offline) | feature | R1 | `projects` |
+| `finance.vendor_bills` (with WHT), `compliance.permits` | feature | R1 | their module |
+| `finance.close`, `finance.facilities`, `finance.revenue_recognition`, `finance.intercompany`, `finance.tax` | feature | R3 | `finance` |
+| `documents.contracts`, `compliance.ubo_scuml`, `analytics.board_pack` | feature | R3 | their module |
+| `facility`, `hr` | module | R4 | – |
 | `ai.document_extraction`, `ai.payment_matching`, `ai.ask`, `ai.drafting`, `ai.site_diary_voice`, `ai.predictions`, `ai.anomaly_detection` | add_on feature | Per feature, after its eval | e.g. `ai.payment_matching` needs `finance.bank_import` |
 
 ## User flow
@@ -233,7 +233,22 @@ The catalog is code in `packages/shared` (key, kind, prerequisites, one-line des
 - Customers switching non-AI features on or off, or seeing a roadmap or a "coming soon" list.
 - Scheduled stage changes. A third-party flag service.
 
-## Open questions
+## Owner's decisions (26 Nov 2026)
+All recommendations below were approved, with the release plan's changes applied:
+1. Release flags and plan entitlements are separate; a feature is available only when released **and** entitled.
+2. NOT_FOUND for unavailable features (not released or not in the plan); upgrade hints come only from `me`, only to owners.
+3. Features outside the plan are hidden from every navigation; owners see "Available on …" only in ⌘K and limit messages, with **Talk to Vento**.
+4. "Early access" tag for features reached through `internal`, `pilot` or a release override; trials show no tag but get the Home line and emails.
+5. "Soon" tags only in `internal` organizations.
+6. Plan versions keep existing customers on their deal until reassigned.
+7. Security and compliance in every plan; site work (BoQ, procurement, site diary, vendor bills, permits) is in every plan too, as part of Release 1.
+8. No second approver for flag and plan changes while fewer than four people are super-admins.
+9. Customers are told about changes in their audit trail, and about trials by email.
+10. Built as the next slice after 3a, before 3b.
+11. Changes propagate within 30 seconds.
+12. Pilots are optional and have no fixed thresholds; the owner moves each flag when they choose.
+
+## Open questions (answered above)
 1. **NOT_FOUND for unavailable features.** *Recommended:* yes, for both "not released" and "not in plan", as argued above. Upgrade hints come only from `me`, and only to owners.
 2. **Released but not in the plan.** *Recommended:* hidden for every non-owner; for owners, hidden from navigation but offered at the point of need (⌘K and limit messages) with **Talk to Vento**. The alternative is a greyed "Available on Growth" sidebar entry for owners, which is more visible but adds permanent clutter.
 3. **"Early access" tag for pilots.** *Recommended:* yes, so pilots know what's new. No tag for trials (they get the Home line and emails instead).

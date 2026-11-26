@@ -6,7 +6,7 @@ Spec: [feature-flags](../specs/feature-flags.md). Plan: [release-plan](../releas
 
 ## J-ADM-01 · Release a feature, stage by stage
 **Who / how often:** Vento super-admin, every release (every few weeks); a kill switch is rare.
-**Starts from:** a feature's journey e2e passing and reviews done (the `internal → pilot` bar in the release plan).
+**Starts from:** the feature being *releasable* (built, tested, reviewed, help article written, and the owner's hands-on review done; release plan section 6) and the owner deciding to release it, to everyone or to chosen organizations first. Steps 2–4 are optional: a feature can go straight from `internal` to `on`.
 
 **Steps**
 1. `pnpm flags show sales` (later *Feature flags*): stage `internal`, organizations that have it, prerequisites, plans that include it.
@@ -37,8 +37,8 @@ Spec: [feature-flags](../specs/feature-flags.md). Plan: [release-plan](../releas
 **Watch for:** two creates racing for the last slot (only one succeeds); members and pending invitations both count towards `members`; archived records don't count; a non-owner hitting a limit is told whom to ask, never the plan or price; plan contents changed later (a new version; this organization keeps its version until reassigned); Starter organization owner searching ⌘K for "commissions" ("Available on Growth" with **Talk to Vento**), non-owners see nothing.
 **Target:** 1 command each, under 1 minute. **Test:** `apps/api/src/platform/plans-cli.test.ts`, `e2e/settings/plan-limits.spec.ts` **Status:** draft
 
-## Assumptions to confirm
-- Pilots are on Enterprise at no charge during the pilot.
+## Settled by the owner (26 Nov 2026)
+- Pilots are optional; if used, they're on Enterprise at no charge while piloting.
 - Trial reminders go to owners 7 days and 1 day before the end.
 - Changes take effect within 30 seconds.
 - No second approver for flag and plan changes while fewer than four people are super-admins.

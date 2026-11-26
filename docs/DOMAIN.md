@@ -122,7 +122,8 @@ Shared vocabulary for the Nigerian real estate developer ERP. Code, UI copy, tab
 | **Feature flag** | The release switch for one feature. | Has a **release stage**. Says whether a feature is ready, not whether it's paid for. |
 | **Release stage** | How far a flag has been released: `off → internal → pilot → on`. | `off` is a kill switch for everyone; `internal` = Vento's own organizations; `pilot` = also pilot organizations; `on` = everyone. |
 | **Release group** | An organization's place in releases: `standard`, `pilot` or `internal`. | New organizations are `standard`. `internal` organizations (Vento's demo and test ones) are also entitled to everything with no limits. |
-| **Release** | A numbered set of features moved to `on` together (Release 1 is the MVP). | See `docs/release-plan.md`. A release is a flag change, not a deploy. |
+| **Release** | A recommended group of features (Release 1 is the MVP: sell, collect and build). | See `docs/release-plan.md`. A living recommendation, not a gate: the owner releases feature by feature with flags, and build order is separate from release order. |
+| **Releasable** | A feature that is built, tested, reviewed, has its help article, and has had the owner's hands-on review. | Only a releasable feature may move beyond `internal`. |
 | **Early access** | The tag on a feature an organization has before its stage is `on`. | Shown in navigation; disappears when released to everyone. |
 | **Plan** | A priced tier an organization is on (e.g. Starter, Growth, Enterprise). | Data, versioned: lists included features and **limits**. Changing a plan publishes a new version; organizations keep theirs until moved. One plan per organization. |
 | **Entitlement** | An organization's right to a feature or a limit value, from its plan, add-ons or an override. | A released feature without an entitlement is unavailable. |
