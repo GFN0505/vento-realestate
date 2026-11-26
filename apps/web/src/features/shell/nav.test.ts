@@ -1,5 +1,4 @@
 import {
-  DEFAULT_ROLES,
   defaultPermissions,
   defaultRole,
   defaultRoleAllows,
@@ -34,35 +33,21 @@ describe('sidebar', () => {
     expect(labels(shown)).toEqual(labels(expected))
   })
 
-  it('groups the sidebar only when it has more than six entries', () => {
-    const grouped = DEFAULT_ROLES.filter(
-      (r) => sidebarSections(perms(r.key))[0]?.heading !== 'Workspace',
-    )
-    expect(grouped.map((r) => r.key)).toEqual([
-      'owner',
-      'admin',
-      'project_manager',
-      'finance',
-      'viewer',
-    ])
-  })
-
-  it('uses the spec headings for a grouped sidebar', () => {
-    expect(sidebarSections(perms('owner')).map((s) => s.heading)).toEqual([
-      'Overview',
-      'Land & assets',
-      'Revenue',
-      'People & governance',
+  it('puts Home first, then the modules, without group headings on screen', () => {
+    expect(sidebarSections(perms('owner')).map((s) => s.heading)).toEqual(['Overview', 'Modules'])
+    expect(labels(sidebarSections(perms('hr'))[1]?.items ?? [])).toEqual([
+      'HR & payroll',
+      'Documents',
     ])
   })
 
   it('never shows a module the role cannot view', () => {
     expect(labels(visibleNav(perms('sales')))).not.toContain('HR & payroll')
-    expect(labels(visibleNav(perms('hr')))).toEqual(['Home', 'HR & payroll', 'Documents', 'Help'])
+    expect(labels(visibleNav(perms('hr')))).toEqual(['Home', 'HR & payroll', 'Documents'])
   })
 
-  it('shows only Home and Help to someone with no permissions', () => {
-    expect(labels(visibleNav(null))).toEqual(['Home', 'Help'])
+  it('shows only Home to someone with no permissions', () => {
+    expect(labels(visibleNav(null))).toEqual(['Home'])
   })
 })
 
@@ -103,12 +88,8 @@ describe('mobile tabs', () => {
 })
 
 describe('sidebar footer', () => {
-  it('shows Settings only to roles that can view it, and Help to everyone', () => {
-    expect(labels(footerNav(perms('owner')))).toEqual(['Settings', 'Help'])
-    expect(labels(footerNav(perms('admin')))).toEqual(['Settings', 'Help'])
-    for (const key of SYSTEM_ROLE_KEYS.filter((k) => k !== 'owner' && k !== 'admin')) {
-      expect(labels(footerNav(perms(key)))).toEqual(['Help'])
-    }
+  it('hides Settings and Help until they have somewhere real to go', () => {
+    for (const key of SYSTEM_ROLE_KEYS) expect(footerNav(perms(key))).toEqual([])
   })
 
   it('keeps the workspace grid to modules, without Home or the footer', () => {

@@ -6,7 +6,13 @@ import {
   createUnverifiedFixture,
 } from '../support/fixtures'
 import { newestEmail } from '../support/mailbox'
-import { enterPassword, HOME_GREETING, runCommand, signInWithTotp } from '../support/sign-in'
+import {
+  enterPassword,
+  expectOnOrganization,
+  HOME_GREETING,
+  runCommand,
+  signInWithTotp,
+} from '../support/sign-in'
 import { totpCode } from '../support/totp'
 
 // J-ONB-04: password, then the two-step check, then signed in; then sign out everywhere.
@@ -34,8 +40,7 @@ test('a member with two-step signs in, is refused a wrong code, then gets in wit
   await expect(
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Olumide$/ }),
   ).toBeVisible()
-  await expect(page.getByRole('main').getByText(member.organizationName)).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Get set up' })).toBeVisible()
+  await expectOnOrganization(page, member.organizationName)
 })
 
 test('a wrong password gets the same message as an unknown email', async ({ page }) => {

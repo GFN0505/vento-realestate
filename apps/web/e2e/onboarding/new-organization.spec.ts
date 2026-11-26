@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { createHalfOnboardedFixture, createMemberFixture } from '../support/fixtures'
 import { newestEmail, verificationCode } from '../support/mailbox'
-import { enterPassword } from '../support/sign-in'
+import { enterPassword, expectOnOrganization } from '../support/sign-in'
 import { completeTwoStepSetup } from '../support/two-step'
 
 // J-ONB-01: sign up, verify, create the organization and first entity, set up two-step.
@@ -42,8 +42,7 @@ test('a new owner signs up, sets up the organization and entity, and ends up sig
   await expect(
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Amaka$/ }),
   ).toBeVisible()
-  await expect(page.getByRole('main').getByText(company)).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Get set up' })).toBeVisible()
+  await expectOnOrganization(page, company)
 })
 
 test('a wrong verification code shows what to do and keeps the person on the page', async ({

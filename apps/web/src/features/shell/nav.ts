@@ -39,8 +39,8 @@ export type NavKey =
   | 'settings'
   | 'help'
 
-/** `footer` items sit at the bottom of the sidebar (Settings, Help), not in the module groups. */
-type NavGroup = 'overview' | 'land_assets' | 'revenue' | 'people' | 'footer'
+/** `footer` items sit at the bottom of the sidebar (Settings, Help); `main` is Home and modules. */
+type NavGroup = 'main' | 'footer'
 
 /** `soon` is a quieter sidebar entry and a Coming soon page; `hidden` is the one-switch hide. */
 export type NavStatus = 'built' | 'soon' | 'hidden'
@@ -69,7 +69,7 @@ export const NAV: readonly NavItem[] = [
     label: 'Home',
     to: '/',
     icon: House,
-    group: 'overview',
+    group: 'main',
     status: 'built',
     keywords: ['dashboard', 'start'],
   },
@@ -80,7 +80,7 @@ export const NAV: readonly NavItem[] = [
     to: '/land',
     summary: 'Parcels, titles and encumbrances',
     icon: MapPin,
-    group: 'land_assets',
+    group: 'main',
     status: 'soon',
     keywords: ['parcels', 'plots', 'c of o', 'consent', 'survey', 'encumbrances'],
     comingSoon:
@@ -93,7 +93,7 @@ export const NAV: readonly NavItem[] = [
     to: '/projects',
     summary: 'Phases, budgets and the site diary',
     icon: Building2,
-    group: 'land_assets',
+    group: 'main',
     status: 'soon',
     keywords: ['construction', 'phases', 'site', 'diary', 'boq', 'contractors', 'purchase orders'],
     comingSoon: 'Run phases, budgets, BoQs, contractors, purchase orders and the site diary.',
@@ -105,7 +105,7 @@ export const NAV: readonly NavItem[] = [
     to: '/estates',
     summary: 'Service charge and maintenance',
     icon: Building,
-    group: 'land_assets',
+    group: 'main',
     status: 'soon',
     keywords: ['facility', 'service charge', 'maintenance', 'residents'],
     comingSoon: 'Manage handed-over estates: service charge, utilities and maintenance.',
@@ -117,7 +117,7 @@ export const NAV: readonly NavItem[] = [
     to: '/sales',
     summary: 'Leads, units and subscriptions',
     icon: Tag,
-    group: 'revenue',
+    group: 'main',
     status: 'soon',
     keywords: ['leads', 'buyers', 'units', 'subscriptions', 'payment plans', 'commissions', 'crm'],
     comingSoon: 'Sell off-plan: leads, units, subscriptions, payment plans and commissions.',
@@ -129,7 +129,7 @@ export const NAV: readonly NavItem[] = [
     to: '/finance',
     summary: 'Receipts, ledgers and tax',
     icon: Wallet,
-    group: 'revenue',
+    group: 'main',
     status: 'soon',
     keywords: ['receipts', 'ledger', 'fx', 'tax', 'vat', 'wht', 'banks'],
     comingSoon: 'Receipts, ledgers per entity, FX, construction finance and tax.',
@@ -141,7 +141,7 @@ export const NAV: readonly NavItem[] = [
     to: '/hr',
     summary: 'Staff and payroll',
     icon: Users,
-    group: 'people',
+    group: 'main',
     status: 'soon',
     keywords: ['staff', 'payroll', 'paye', 'pension', 'nhf', 'leave'],
     comingSoon: 'Staff, site workers and payroll with PAYE, pension and NHF.',
@@ -153,7 +153,7 @@ export const NAV: readonly NavItem[] = [
     to: '/compliance',
     summary: 'Permits, buyer KYC and AML',
     icon: ShieldCheck,
-    group: 'people',
+    group: 'main',
     status: 'soon',
     keywords: ['permits', 'kyc', 'aml', 'ubo', 'scuml'],
     comingSoon: 'Permits, buyer KYC, AML reviews and the UBO register.',
@@ -165,7 +165,7 @@ export const NAV: readonly NavItem[] = [
     to: '/documents',
     summary: 'Contracts and letters',
     icon: FileText,
-    group: 'people',
+    group: 'main',
     status: 'soon',
     keywords: ['contracts', 'letters', 'templates', 'e-signature', 'offer', 'allocation'],
     comingSoon: 'Contracts and letters from templates, with approvals and e-signature.',
@@ -177,44 +177,36 @@ export const NAV: readonly NavItem[] = [
     to: '/reports',
     summary: 'Dashboards and board packs',
     icon: ChartColumn,
-    group: 'people',
+    group: 'main',
     status: 'soon',
     keywords: ['analytics', 'dashboards', 'board pack', 'returns'],
     comingSoon: 'Dashboards, project returns and board packs.',
   },
   {
+    // Hidden until Team settings (3b) give it something real to open; then 'soon' or 'built'.
     key: 'settings',
     module: 'settings',
     label: 'Settings',
     to: '/settings',
     icon: Settings,
     group: 'footer',
-    status: 'soon',
+    status: 'hidden',
     keywords: ['team', 'members', 'roles', 'permissions', 'entities', 'organization', 'security'],
     comingSoon: 'Your team, roles and permissions, entities and your own security.',
   },
   {
+    // Hidden until the help centre exists.
     key: 'help',
     module: null,
     label: 'Help',
     to: '/help',
     icon: LifeBuoy,
     group: 'footer',
-    status: 'soon',
+    status: 'hidden',
     keywords: ['support', 'guides', 'how to', 'help centre'],
     comingSoon: 'Short guides for each task, written for your role. They arrive with each module.',
   },
 ]
-
-const GROUP_HEADINGS: Record<Exclude<NavGroup, 'footer'>, string> = {
-  overview: 'Overview',
-  land_assets: 'Land & assets',
-  revenue: 'Revenue',
-  people: 'People & governance',
-}
-
-/** Longer lists get group headings; six or fewer sit under one "Workspace" heading. */
-const GROUPED_ABOVE = 6
 
 /** Spec table "Mobile tabs": the modules after Home, in priority order, per built-in role. */
 export const MOBILE_TAB_PRIORITY: Record<SystemRoleKey, readonly NavKey[]> = {
@@ -242,18 +234,18 @@ export function visibleNav(permissions: PermissionSet | null): NavItem[] {
   return NAV.filter((item) => canView(permissions, item))
 }
 
+/**
+ * Home, then the role's modules after a gap. No group headings: even an owner's ten entries
+ * read at a glance, and headings were noise (UI review). The labels stay for screen readers.
+ */
 export function sidebarSections(
   permissions: PermissionSet | null,
 ): { heading: string; items: NavItem[] }[] {
   const items = visibleNav(permissions).filter((i) => i.group !== 'footer')
-  if (items.length <= GROUPED_ABOVE) return [{ heading: 'Workspace', items }]
-  const groups = Object.keys(GROUP_HEADINGS) as Exclude<NavGroup, 'footer'>[]
-  return groups
-    .map((group) => ({
-      heading: GROUP_HEADINGS[group],
-      items: items.filter((i) => i.group === group),
-    }))
-    .filter((section) => section.items.length > 0)
+  return [
+    { heading: 'Overview', items: items.filter((i) => i.key === 'home') },
+    { heading: 'Modules', items: items.filter((i) => i.key !== 'home') },
+  ].filter((section) => section.items.length > 0)
 }
 
 /** Home plus up to three modules; custom roles get their first three in sidebar order. */

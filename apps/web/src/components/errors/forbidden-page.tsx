@@ -42,7 +42,7 @@ export function ForbiddenPage({ module }: { module?: PermissionModule | undefine
       tone="amber"
       title={title}
       actions={
-        <Button asChild>
+        <Button asChild className="shadow-none hover:shadow-none">
           <Link to="/">Go to your home</Link>
         </Button>
       }

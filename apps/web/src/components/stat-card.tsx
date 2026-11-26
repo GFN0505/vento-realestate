@@ -1,50 +1,80 @@
-import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import { type ReactNode, useId } from 'react'
 import { cn } from '@/lib/utils'
 
 type Props = {
   label: string
-  /** The number, or "—" until its module ships. */
-  value: ReactNode
-  /** One quiet line under the number. */
-  caption: ReactNode
-  /** No data yet: a flat placeholder trend instead of a sparkline. */
-  pending?: boolean
+  icon: LucideIcon
+  /** The number. Omit until the module that owns it ships: the tile shows a quiet placeholder. */
+  value?: ReactNode
   className?: string
 }
 
 /**
- * A role-home number (boards HomeSales, HomeFinance…: label, value, one line). While its module
- * isn't built it shows "—" and a flat dashed trend, never a made-up figure.
+ * A role-home number (boards HomeSales, HomeFinance…): an icon in a tinted square, the label and
+ * a large tabular value over a soft chart area. With no value yet it shows a refined placeholder
+ * and an empty baseline: never a made-up figure or a fake trend.
  */
-export function StatCard({ label, value, caption, pending = false, className }: Props) {
+export function StatCard({ label, icon: Icon, value, className }: Props) {
+  const empty = value === undefined
+  const wash = useId()
   return (
     <div
-      className={cn('flex flex-col gap-1 rounded-[10px] border bg-card px-[18px] py-4', className)}
+      className={cn(
+        'relative flex min-h-[128px] flex-col overflow-hidden rounded-xl border bg-card p-4 sm:min-h-[136px] sm:p-5',
+        className,
+      )}
     >
-      <span className="truncate font-semibold text-muted-foreground text-xs">{label}</span>
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-start gap-2.5 sm:items-center">
         <span
-          className={cn(
-            'font-semibold text-[22px] tabular-nums leading-tight',
-            pending && 'text-muted-foreground',
-          )}
+          aria-hidden
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg tile-gradient text-tile-icon"
         >
-          {value}
+          <Icon className="size-4" strokeWidth={1.9} />
         </span>
-        {pending && (
-          <svg aria-hidden width="56" height="20" viewBox="0 0 56 20" className="mb-1 text-border">
-            <path
-              d="M1 14 L11 12 L21 13 L31 9 L41 10 L55 6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeDasharray="3 3"
-              strokeLinecap="round"
+        <span className="line-clamp-2 min-w-0 font-medium text-[13px] text-muted-foreground leading-tight">
+          {label}
+        </span>
+      </div>
+      <div className="mt-3 font-heading font-semibold text-[28px] tabular-nums leading-none tracking-[-0.02em]">
+        {empty ? (
+          <>
+            {/* A short, soft bar where the figure will sit: intentional, not a bare dash. */}
+            <span
+              aria-hidden
+              className="inline-block h-[0.55em] w-14 rounded-full bg-muted align-middle"
             />
-          </svg>
+            <span className="sr-only">Not available yet</span>
+          </>
+        ) : (
+          value
         )}
       </div>
-      <span className="truncate text-muted-foreground text-xs">{caption}</span>
+      {/* The chart area: an empty baseline over a faint brand wash, ready for a real trend. */}
+      <svg
+        aria-hidden
+        viewBox="0 0 200 48"
+        preserveAspectRatio="none"
+        className="-mx-4 sm:-mx-5 -mb-4 sm:-mb-5 mt-auto h-10 w-[calc(100%+2rem)] text-brand sm:w-[calc(100%+2.5rem)]"
+      >
+        <defs>
+          <linearGradient id={wash} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="currentColor" stopOpacity="0.1" />
+            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="30" width="200" height="18" fill={`url(#${wash})`} />
+        <line
+          x1="0"
+          x2="200"
+          y1="30"
+          y2="30"
+          stroke="currentColor"
+          strokeOpacity="0.28"
+          strokeDasharray="2 4"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
     </div>
   )
 }

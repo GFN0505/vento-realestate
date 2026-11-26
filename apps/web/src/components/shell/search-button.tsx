@@ -1,6 +1,6 @@
 import { SearchIcon } from 'lucide-react'
 import { Kbd } from '@/components/ui/kbd'
-import { loadPalette, shellUi } from '@/features/shell/shell-ui'
+import { preloadPalette, shellUi } from '@/features/shell/shell-ui'
 import { modKeyLabel } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 
@@ -12,8 +12,8 @@ export function SearchButton({ variant }: { variant: 'bar' | 'icon' }) {
     type: 'button' as const,
     onClick: () => shellUi.open('palette'),
     // Fetch the palette's code as soon as someone heads for it.
-    onPointerEnter: () => void loadPalette(),
-    onFocus: () => void loadPalette(),
+    onPointerEnter: preloadPalette,
+    onFocus: preloadPalette,
     'aria-haspopup': 'dialog' as const,
   }
   if (variant === 'icon') {

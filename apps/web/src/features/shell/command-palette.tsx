@@ -6,7 +6,7 @@ import { Command, CommandEmpty, CommandInput, CommandList } from '@/components/u
 import { Kbd } from '@/components/ui/kbd'
 import { commandScore } from './command-filter'
 import { CommandResults } from './command-results'
-import { markPaletteMounted, shellUi, takeEarlyQuery, useOverlay } from './shell-ui'
+import { shellUi, useOverlay } from './shell-ui'
 
 /**
  * ⌘K (board ExecutiveHome palette): Go to, Actions and Recently opened. Full screen with 44px
@@ -32,13 +32,8 @@ export function CommandPalette() {
         <DialogPrimitive.Overlay className="data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 fixed inset-0 z-50 bg-overlay data-[state=closed]:animate-out data-[state=open]:animate-in max-sm:hidden motion-reduce:animate-none" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          // The input has focus from here on: take any keys typed while the code was loading.
-          onOpenAutoFocus={() => {
-            const early = takeEarlyQuery()
-            if (early) setSearch((current) => current + early)
-            markPaletteMounted()
-          }}
-          className="data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=closed]:fade-out-0 fixed inset-0 z-50 flex flex-col overflow-hidden bg-card outline-none duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in sm:inset-x-0 sm:top-[110px] sm:bottom-auto sm:mx-auto sm:max-h-[min(520px,calc(100dvh-140px))] sm:w-[min(580px,calc(100vw-2rem))] sm:rounded-xl sm:shadow-[0_24px_64px_rgb(10_12_30/0.35)] motion-reduce:animate-none"
+          // Opaque popover surface: nothing on the page shows through.
+          className="data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=closed]:fade-out-0 fixed inset-0 z-50 flex flex-col overflow-hidden bg-popover text-popover-foreground outline-none duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in sm:inset-x-0 sm:top-[110px] sm:bottom-auto sm:mx-auto sm:max-h-[min(520px,calc(100dvh-140px))] sm:w-[min(580px,calc(100vw-2rem))] sm:rounded-xl sm:border sm:shadow-[0_24px_64px_rgb(10_12_30/0.35)] motion-reduce:animate-none"
         >
           <DialogPrimitive.Title className="sr-only">Search or run a command</DialogPrimitive.Title>
           <Command

@@ -26,7 +26,13 @@ export function OfflineBanner() {
         <b className="text-status-amber-fg">You're offline.</b> You can keep reading; saving resumes
         when you reconnect.
       </p>
-      <Button size="sm" variant="outline" disabled={checking} onClick={() => void retry()}>
+      <Button
+        size="sm"
+        variant="outline"
+        className="max-md:h-9"
+        disabled={checking}
+        onClick={() => void retry()}
+      >
         {checking ? 'Checking…' : 'Retry now'}
       </Button>
     </div>

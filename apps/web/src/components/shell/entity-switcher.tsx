@@ -1,43 +1,84 @@
 import { ChevronDownIcon } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import type { ComponentType } from 'react'
+import { LazyMenu, type LazyMenuProps } from '@/components/ui/lazy-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { entityNote } from '@/features/entity/current-entity'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
+import { useMe } from '@/features/preview/use-effective-permissions'
 import { cn } from '@/lib/utils'
 
-const ALL = 'all'
+type Variant = { compact: boolean }
+
+export const entityTriggerClass = ({ compact }: Variant) =>
+  compact
+    ? // Phones: the organization and the entity are one 44px button.
+      '-mx-1.5 flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-lg px-1.5 text-left outline-none transition-colors active:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+    : 'inline-flex h-9 min-w-0 max-w-[280px] items-center gap-2 rounded-lg border bg-background px-3 font-semibold text-[13px] text-foreground outline-none transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:border-input-hover'
+
+/** What the trigger shows; shared by the plain button and the loaded menu's trigger. */
+export function EntityTriggerContent({
+  compact,
+  organization,
+  label,
+  menu,
+}: Variant & { organization: string; label: string; menu: boolean }) {
+  if (compact) {
+    return (
+      <>
+        <span
+          className="max-w-full truncate font-heading font-semibold text-[17px] leading-snug"
+          title={organization}
+        >
+          {organization}
+        </span>
+        <span className="flex max-w-full items-center gap-1 font-semibold text-muted-foreground text-xs">
+          <span className="truncate" title={label}>
+            {label}
+          </span>
+          {menu && <ChevronDownIcon aria-hidden className="size-3.5 shrink-0" />}
+        </span>
+        {menu && <span className="sr-only">, change entity</span>}
+      </>
+    )
+  }
+  return (
+    <>
+      <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
+        Entity
+      </span>
+      <span className="truncate" title={label}>
+        {label}
+      </span>
+      {menu && <ChevronDownIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />}
+    </>
+  )
+}
+
+const loadMenu = (compact: boolean) => () =>
+  import('./entity-menu').then(
+    (m): ComponentType<LazyMenuProps> =>
+      (props) => <m.EntityMenu {...props} compact={compact} />,
+  )
+const loaders = { compact: loadMenu(true), bar: loadMenu(false) }
 
 /**
  * Board ExecutiveHome: "ENTITY All entities ▾". A filter for the pages that use it; it never
- * grants access (decision 0014). One-entity members see a label without a menu.
- * `compact` is the phone header's small line under the organization name.
+ * grants access (decision 0014). One-entity members see a label without a menu. On phones it
+ * is the header's organization-and-entity block. The menu itself loads on first approach.
  */
 export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
+  const me = useMe()
   const current = useCurrentEntity()
+  const organization = me.organization?.name ?? 'Vento'
   const label = current.entity?.name ?? 'All entities'
-
-  const trigger = compact
-    ? // A 44px touch area around a small line, without making the header taller.
-      'relative -ml-1 inline-flex max-w-full items-center gap-1 rounded px-1 font-semibold text-muted-foreground text-xs after:absolute after:-inset-y-3 after:inset-x-0'
-    : 'inline-flex h-9 min-w-0 max-w-[280px] items-center gap-2 rounded-lg border bg-background px-3 font-semibold text-[13px] text-foreground'
-
-  const caption = compact ? (
-    <span className="sr-only">Entity: </span>
-  ) : (
-    <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
-      Entity
-    </span>
-  )
 
   if (current.status === 'pending' && !current.locked) {
     return compact ? (
-      <Skeleton className="mt-1 h-3.5 w-24" />
+      <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
+        <span className="truncate font-heading font-semibold text-[17px] leading-snug">
+          {organization}
+        </span>
+        <Skeleton className="mt-1 h-3.5 w-24" />
+      </div>
     ) : (
       <Skeleton className="h-9 w-[168px] rounded-lg" />
     )
@@ -45,60 +86,23 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
 
   if (current.locked) {
     return (
-      <span className={cn(trigger, 'after:hidden')} title={label}>
-        {caption}
-        <span className="truncate">{label}</span>
-      </span>
+      <div className={cn(entityTriggerClass({ compact }), 'cursor-default active:bg-transparent')}>
+        <EntityTriggerContent
+          compact={compact}
+          organization={organization}
+          label={label}
+          menu={false}
+        />
+      </div>
     )
   }
 
   return (
-    <DropdownMenu onOpenChange={(open) => open && current.status === 'error' && current.refetch()}>
-      <DropdownMenuTrigger
-        className={cn(
-          trigger,
-          'outline-none transition-colors focus-visible:outline-2 focus-visible:outline-ring',
-          !compact && 'hover:border-input-hover data-[state=open]:border-input-hover',
-        )}
-      >
-        {caption}
-        <span className="truncate" title={label}>
-          {label}
-        </span>
-        <ChevronDownIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[min(300px,calc(100vw-2rem))]">
-        <DropdownMenuRadioGroup
-          value={current.entity?.id ?? ALL}
-          onValueChange={(value) => current.select(value === ALL ? null : value)}
-        >
-          <EntityRow value={ALL} name="All entities" note={null} />
-          {current.options.map((entity) => (
-            <EntityRow
-              key={entity.id}
-              value={entity.id}
-              name={entity.name}
-              note={entityNote(entity)}
-            />
-          ))}
-        </DropdownMenuRadioGroup>
-        {current.status === 'error' && (
-          <p className="px-2.5 py-2 text-muted-foreground text-xs" role="status">
-            Couldn't load your entities. Close and open this menu to try again.
-          </p>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function EntityRow({ value, name, note }: { value: string; name: string; note: string | null }) {
-  return (
-    <DropdownMenuRadioItem value={value} className="gap-3 py-2">
-      <span className="min-w-0 flex-1 truncate font-semibold" title={name}>
-        {name}
-      </span>
-      {note && <span className="shrink-0 text-[11px] text-muted-foreground">{note}</span>}
-    </DropdownMenuRadioItem>
+    <LazyMenu
+      load={compact ? loaders.compact : loaders.bar}
+      className={entityTriggerClass({ compact })}
+    >
+      <EntityTriggerContent compact={compact} organization={organization} label={label} menu />
+    </LazyMenu>
   )
 }

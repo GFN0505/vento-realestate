@@ -21,7 +21,7 @@ export type InvitationFixture = {
 }
 
 /** Runs the API's fixture CLI against the database the e2e API uses. Its last line is JSON. */
-function runFixture<T>(...args: string[]): T {
+export function runFixture<T>(...args: string[]): T {
   const output = execFileSync(
     'pnpm',
     ['--filter', '@vento/api', 'exec', 'tsx', 'src/test/e2e-fixtures.ts', ...args],
@@ -53,3 +53,33 @@ export const createResetByAdminFixture = () => runFixture<Credentials>('reset-by
 
 /** Makes this person's sessions 40 minutes idle, past the 30-minute limit. */
 export const ageSessions = (email: string) => runFixture<{ aged: number }>('age-session', email)
+
+export type TeamMember = { email: string; name: string; totpSecret?: string }
+
+export type TeamFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  entities: Record<'holding' | 'parkview' | 'lekki', { id: string; name: string }>
+  members: Record<string, TeamMember>
+}
+
+/** One organization, three entities and a member per built-in role (see the API fixtures CLI). */
+export const createTeamFixture = () => runFixture<TeamFixture>('team')
+
+export type MultiOrgFixture = {
+  password: string
+  organizations: { a: { id: string; name: string }; b: { id: string; name: string } }
+  tunde: { email: string; name: string; totpSecret: string }
+  pendingTwoStep: { email: string; name: string }
+}
+
+/** Tunde: finance in organization A and owner in B. Zainab's role in B needs two-step she lacks. */
+export const createMultiOrgFixture = () => runFixture<MultiOrgFixture>('multi-org')
+
+/** Changes the person's role in their current organization, as an owner would. */
+export const setRole = (email: string, role: string) =>
+  runFixture<{ role: string }>('set-role', email, role)
+
+/** Removes the person from their current organization, ending their sessions there. */
+export const removeMember = (email: string) => runFixture<{ email: string }>('remove-member', email)

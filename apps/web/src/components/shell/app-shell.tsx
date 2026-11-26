@@ -2,11 +2,11 @@ import { useMatches } from '@tanstack/react-router'
 import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react'
 import { InShellContext } from '@/components/errors/error-state'
 import { LazyForbiddenPage } from '@/components/errors/lazy-pages'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { useEntitySync } from '@/features/entity/use-current-entity'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { canView, navItemForModule } from '@/features/shell/nav'
-import { loadPalette, useOverlay } from '@/features/shell/shell-ui'
+import { routeModule } from '@/features/shell/route-module'
+import { loadPalette, preloadPalette, useOverlay } from '@/features/shell/shell-ui'
 import { useRouteFocus } from '@/features/shell/use-route-focus'
 import { useShellSync } from '@/features/shell/use-shell-sync'
 import { useShortcuts } from '@/features/shell/use-shortcuts'
@@ -33,31 +33,29 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <InShellContext.Provider value>
-      <TooltipProvider>
-        <a
-          href="#main"
-          className="skip-link rounded-lg bg-primary px-4 py-2.5 font-semibold text-primary-foreground text-sm shadow-lg"
-        >
-          Skip to content
-        </a>
-        <Sidebar />
-        <div className="flex min-h-dvh flex-col transition-[padding] duration-200 ease-out motion-reduce:transition-none lg:pl-(--sidebar-width)">
-          <div className="sticky top-0 z-30">
-            <PreviewBanner />
-            <TopBar />
-          </div>
-          <main
-            id="main"
-            tabIndex={-1}
-            className="flex-1 px-4 pt-5 pb-28 outline-none sm:px-6 md:pb-14 lg:px-8 lg:pt-7"
-          >
-            <OfflineBanner />
-            <PermittedPage>{children}</PermittedPage>
-          </main>
+      <a
+        href="#main"
+        className="skip-link rounded-lg bg-primary px-4 py-2.5 font-semibold text-primary-foreground text-sm shadow-lg"
+      >
+        Skip to content
+      </a>
+      <Sidebar />
+      <div className="flex min-h-dvh flex-col transition-[padding] duration-200 ease-out motion-reduce:transition-none lg:pl-(--sidebar-width)">
+        <div className="sticky top-0 z-30">
+          <PreviewBanner />
+          <TopBar />
         </div>
-        <MobileTabs />
-        <ShellOverlays />
-      </TooltipProvider>
+        <main
+          id="main"
+          tabIndex={-1}
+          className="flex-1 px-4 pt-5 pb-28 outline-none sm:px-6 md:pb-14 lg:px-8 lg:pt-7"
+        >
+          <OfflineBanner />
+          <PermittedPage>{children}</PermittedPage>
+        </main>
+      </div>
+      <MobileTabs />
+      <ShellOverlays />
     </InShellContext.Provider>
   )
 }
@@ -68,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
  */
 function PermittedPage({ children }: { children: ReactNode }) {
   const { permissions } = useEffectiveAccess()
-  const module = useMatches({ select: (m) => m.at(-1)?.staticData?.module })
+  const module = useMatches({ select: routeModule })
   const item = module ? navItemForModule(module) : undefined
   if (module && item && !canView(permissions, item)) return <LazyForbiddenPage module={module} />
   return children
@@ -86,7 +84,7 @@ function ShellOverlays() {
   // The palette's code arrives in the background once the page is idle, so ⌘K opens at once.
   useEffect(() => {
     const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1500))
-    idle(() => void loadPalette())
+    idle(preloadPalette)
   }, [])
 
   return (

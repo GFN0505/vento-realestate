@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { footerNav, type NavItem, sidebarSections } from '@/features/shell/nav'
 import { cn } from '@/lib/utils'
@@ -11,26 +10,20 @@ type Props = {
   onNavigate?: () => void
 }
 
-/** The role's modules, grouped above six entries (spec "Navigation rules"). */
+/** Home, then the role's modules (decision 12: only those it can view). */
 export function SidebarNav({ collapsed = false, onNavigate }: Props) {
   const { permissions } = useEffectiveAccess()
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {sidebarSections(permissions).map((section, index) => (
         <fieldset
           key={section.heading}
           aria-label={section.heading}
           className="flex flex-col gap-px"
         >
-          {collapsed ? (
-            index > 0 && <span aria-hidden className="mx-auto mb-2 h-px w-5 bg-sidebar-border/60" />
-          ) : (
-            <span
-              aria-hidden
-              className="truncate px-2.5 pb-1 font-semibold text-[10.5px] text-sidebar-faint-foreground uppercase tracking-[0.07em]"
-            >
-              {section.heading}
-            </span>
+          {/* No visible headings: one quiet gap (a hairline when collapsed) after Home. */}
+          {collapsed && index > 0 && (
+            <span aria-hidden className="mx-auto mb-2 h-px w-5 bg-sidebar-border/60" />
           )}
           {section.items.map((item) => (
             <SidebarLink key={item.key} item={item} collapsed={collapsed} onNavigate={onNavigate} />
@@ -41,7 +34,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: Props) {
   )
 }
 
-/** Settings (owners and admins) and Help, above Collapse. */
+/** Settings and Help, above Collapse, once they have somewhere to go (nav.ts). */
 export function SidebarFooterNav({ collapsed = false, onNavigate }: Props) {
   const { permissions } = useEffectiveAccess()
   return (
@@ -66,11 +59,13 @@ function SidebarLink({
   onNavigate: (() => void) | undefined
 }) {
   const soon = item.status === 'soon'
-  const link = (
+  return (
     <Link
       to={item.to}
       activeOptions={{ exact: item.to === '/', includeSearch: false }}
       onClick={onNavigate}
+      // Collapsed: the label shows on hover (no tooltip library in the first load).
+      title={collapsed ? `${item.label}${soon ? ' · Soon' : ''}` : undefined}
       className={cn(
         sidebarRow,
         // Unbuilt modules read quieter; the page itself says "Coming soon".
@@ -107,15 +102,5 @@ function SidebarLink({
         </>
       )}
     </Link>
-  )
-  if (!collapsed) return link
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{link}</TooltipTrigger>
-      <TooltipContent side="right">
-        {item.label}
-        {soon ? ' · Soon' : ''}
-      </TooltipContent>
-    </Tooltip>
   )
 }

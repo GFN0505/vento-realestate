@@ -116,7 +116,6 @@ export function CommandResults({ page, onPreviewPage, close, navigate }: Props) 
             <item.icon aria-hidden />
             Go to {item.label}
             {item.key === 'home' && <CommandHint>G then H</CommandHint>}
-            {item.status === 'soon' && <CommandHint>Soon</CommandHint>}
           </CommandItem>
         ))}
       </CommandGroup>

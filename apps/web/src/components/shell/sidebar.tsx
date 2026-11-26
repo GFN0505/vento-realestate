@@ -1,6 +1,5 @@
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react'
 import { lazy, Suspense } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { VentoMark } from '@/components/vento-mark'
 import { toggleSidebar, useSidebarCollapsed } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -25,7 +24,8 @@ export function Sidebar() {
       aria-label="Main"
       className={cn(
         'fixed inset-y-0 left-0 z-40 flex w-(--sidebar-width) flex-col overflow-x-hidden border-sidebar-edge border-r bg-sidebar py-3 text-sidebar-foreground transition-[width] duration-200 ease-out motion-reduce:transition-none max-lg:hidden',
-        collapsed ? 'px-2.5' : 'px-3',
+        // Collapsed in dark, the rail needs a firmer edge against the same-shade page.
+        collapsed ? 'px-2.5 dark:border-sidebar-border' : 'px-3',
       )}
     >
       <SidebarHeader collapsed={collapsed} />
@@ -54,6 +54,7 @@ function CollapseButton({ collapsed }: { collapsed: boolean }) {
       onClick={toggleSidebar}
       aria-expanded={!collapsed}
       aria-keyshortcuts="["
+      title={collapsed ? 'Expand sidebar ( [ )' : undefined}
       className={cn(
         sidebarRow,
         'text-sidebar-faint-foreground',
@@ -65,13 +66,7 @@ function CollapseButton({ collapsed }: { collapsed: boolean }) {
       {!collapsed && <span className="sr-only"> sidebar</span>}
     </button>
   )
-  if (!collapsed) return button
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="right">Expand sidebar · [</TooltipContent>
-    </Tooltip>
-  )
+  return button
 }
 
 /** Lockup and organization card. Shared with the tablet sheet. */

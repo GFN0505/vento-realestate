@@ -40,6 +40,7 @@ The owner's standard is **the best experience imaginable**, everywhere in the ap
 - Plain words from the user's world; no system concepts on screen (flags, plans, entitlements, roles mechanics stay invisible unless the user must act on them).
 - When in doubt, remove. A feature that makes a screen harder to understand doesn't ship as is.
 - Sophistication lives under the hood (speed, memory of choices, smart defaults), not in extra controls.
+- **Simple flow, rich craft.** Simplicity is about the experience (no dead ends, no clutter, obvious next step), never about looking plain. Screens stay classy and creative: considered typography, depth, brand-colour detail, beautiful empty states.
 
 **Forms**
 - The right `type`, `inputMode`, `autoComplete` and `name` on every field, so phones show the right keyboard and browsers and password managers fill correctly. Email fields: no spell-check or autocorrect, no auto-capitals; typo help on common domains.

@@ -51,6 +51,15 @@
   --selected-foreground: #3f40b8;
   /* Highlighted menu and ⌘K row (board t.sel). Muted text on it keeps 4.6:1. */
   --highlight: #f5f5ff;
+  /* Page decoration on light surfaces (Coming soon, Home cards): a faint grid and a brand glow. */
+  --surface-grid-line: rgb(18 26 63 / 0.05);
+  --surface-glow: rgb(118 119 251 / 0.16);
+  /* A card lifting on hover. */
+  --lift-shadow: rgb(18 26 63 / 0.22);
+  /* Module icon tiles: the logo's violet into its cyan, faintly. */
+  --tile-from: rgb(108 99 245 / 0.14);
+  --tile-to: rgb(76 201 240 / 0.14);
+  --tile-icon: #4f46e5;
   --selected-border: #7677fb;
 
   --sidebar: #121a3f;
@@ -154,6 +163,12 @@
   --selected: #262b63;
   --selected-foreground: #c7c8ff;
   --highlight: #1e2350;
+  --surface-grid-line: rgb(255 255 255 / 0.04);
+  --surface-glow: rgb(138 139 252 / 0.18);
+  --lift-shadow: rgb(0 0 0 / 0.5);
+  --tile-from: rgb(108 99 245 / 0.22);
+  --tile-to: rgb(76 201 240 / 0.16);
+  --tile-icon: #a5a6fb;
   --selected-border: #8a8bfc;
 
   /*
@@ -228,6 +243,11 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-selected: var(--selected);
   --color-highlight: var(--highlight);
+  --color-surface-glow: var(--surface-glow);
+  --shadow-lift: 0 12px 28px -12px var(--lift-shadow);
+  --color-tile-from: var(--tile-from);
+  --color-tile-to: var(--tile-to);
+  --color-tile-icon: var(--tile-icon);
   --color-selected-foreground: var(--selected-foreground);
   --color-selected-border: var(--selected-border);
   --color-sidebar: var(--sidebar);
@@ -498,4 +518,23 @@
 /* Room for the phone's home indicator under the bottom tabs and sheets. */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* A hairline grid that fades towards the edges, for light and dark surfaces (Coming soon). */
+@utility surface-grid {
+  background-image:
+    linear-gradient(to right, var(--surface-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--surface-grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(60% 70% at 50% 35%, black, transparent 75%);
+}
+
+/* A soft brand glow behind a focal element. */
+@utility surface-glow {
+  background-image: radial-gradient(closest-side, var(--surface-glow), transparent);
+}
+
+/* The module icon tile: the logo's violet into its cyan. */
+@utility tile-gradient {
+  background-image: linear-gradient(135deg, var(--tile-from), var(--tile-to));
 }

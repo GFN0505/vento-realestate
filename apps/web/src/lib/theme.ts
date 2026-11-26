@@ -70,6 +70,7 @@ function watch() {
       applySidebar(event.newValue === SIDEBAR_COLLAPSED)
       emitSidebar()
     }
+    if (event.key === SIDEBAR_WIDTH_KEY) previewSidebarWidth(storedSidebarWidth())
   })
 }
 

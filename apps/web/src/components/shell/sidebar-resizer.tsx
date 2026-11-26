@@ -84,6 +84,7 @@ export function SidebarResizer() {
       aria-valuemin={SIDEBAR_WIDTH.min}
       aria-valuemax={SIDEBAR_WIDTH.max}
       aria-valuenow={collapsed ? SIDEBAR_WIDTH.min : width}
+      aria-valuetext={collapsed ? 'Collapsed' : `${width} pixels`}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -91,13 +92,15 @@ export function SidebarResizer() {
       onPointerCancel={onPointerUp}
       onDoubleClick={() => commit(SIDEBAR_WIDTH.default)}
       onKeyDown={onKeyDown}
+      // Another tab may have changed it.
+      onFocus={() => setWidth(storedSidebarWidth())}
       title="Drag to resize. Double-click to reset."
       className="group/resize fixed inset-y-0 left-[calc(var(--sidebar-width)-4px)] z-50 w-2 cursor-col-resize touch-none outline-none max-lg:hidden"
     >
       {/* The hairline: invisible at rest, brand on hover, drag or keyboard focus. */}
       <span
         aria-hidden
-        className="absolute inset-y-0 left-[3px] w-0.5 bg-transparent transition-colors duration-150 group-hover/resize:bg-brand group-focus-visible/resize:bg-brand in-data-sidebar-resizing:bg-brand motion-reduce:transition-none"
+        className="absolute inset-y-0 left-[3px] w-0.5 bg-transparent transition-colors duration-150 group-hover/resize:bg-brand group-focus-visible/resize:left-0.5 group-focus-visible/resize:w-1 group-focus-visible/resize:bg-ring in-data-sidebar-resizing:bg-brand motion-reduce:transition-none"
       />
     </div>
   )
