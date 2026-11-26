@@ -6,8 +6,10 @@ import { createInvitations } from '@/modules/invitations/invitations.service'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
   contextFor,
+  createCustomRole,
   createEntity,
   createMember,
+  createOfficeManager,
   createOrganization,
   createSession,
   reloadUser,
@@ -391,4 +393,81 @@ describe('two owners removing each other at the same moment', () => {
       .where(and(eq(members.organizationId, org.id), eq(members.status, 'active')))
     expect(owners).toHaveLength(1)
   })
+})
+
+describe('members: the permission ceiling and custom roles', () => {
+  it("won't let an office manager change, reset or remove someone who can do more", () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const office = await createOfficeManager(tx, org)
+      const kemi = await createMember(tx, org, { role: 'finance', name: 'Kemi Adebayo' })
+      const ctx = await contextFor(tx, office.user, org)
+      const refused = {
+        code: 'FORBIDDEN',
+        data: { reason: 'wider_permissions' },
+        message: "Kemi Adebayo can do things you can't. Ask Olumide Bankole (owner) to change it.",
+      }
+      await expect(
+        updateMemberAccess(ctx, {
+          memberId: kemi.member.id,
+          roleId: org.roleIds.get('viewer') ?? '',
+          entityIds: null,
+        }),
+      ).rejects.toMatchObject(refused)
+      await expect(resetMemberTwoStep(ctx, kemi.member.id)).rejects.toMatchObject(refused)
+      await expect(removeMember(ctx, kemi.member.id)).rejects.toMatchObject(refused)
+    }))
+
+  it('lets an office manager give a role within their permissions, never a wider one', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const office = await createOfficeManager(tx, org)
+      // Viewer includes Finance: View, which the office manager lacks; a clerk role doesn't.
+      const clerk = await createCustomRole(tx, org, {
+        name: 'Clerk',
+        permissions: { sales: ['view'] },
+      })
+      const grace = await createMember(tx, org, {
+        role: 'sales',
+        roleId: clerk.id,
+        name: 'Grace Umeh',
+      })
+      const ctx = await contextFor(tx, office.user, org)
+      const give = (key: 'sales' | 'admin') =>
+        updateMemberAccess(ctx, {
+          memberId: grace.member.id,
+          roleId: org.roleIds.get(key) ?? '',
+          entityIds: null,
+        })
+      await expect(give('admin')).rejects.toMatchObject({
+        data: { reason: 'wider_permissions' },
+        message: 'You can only give access you have yourself.',
+      })
+      expect((await give('sales')).notice).toBe('Grace Umeh is now Sales')
+    }))
+
+  it('gives a custom role, and refuses one deleted meanwhile', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const grace = await createMember(tx, org, { role: 'viewer', name: 'Grace Umeh' })
+      const site = await createCustomRole(tx, org, { permissions: { projects: ['view'] } })
+      const gone = await createCustomRole(tx, org, {
+        name: 'Gone',
+        permissions: { projects: ['view'] },
+        archivedAt: new Date(),
+      })
+      const ctx = await contextFor(tx, org.owner, org)
+      const give = (roleId: string) =>
+        updateMemberAccess(ctx, { memberId: grace.member.id, roleId, entityIds: null })
+      expect((await give(site.id)).row.role).toEqual({
+        id: site.id,
+        key: null,
+        name: 'Site engineer',
+      })
+      await expect(give(gone.id)).rejects.toMatchObject({
+        code: 'CONFLICT',
+        data: { reason: 'role_unavailable' },
+        message: 'That role no longer exists. Choose another.',
+      })
+    }))
 })

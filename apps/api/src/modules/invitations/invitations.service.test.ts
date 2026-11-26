@@ -7,9 +7,11 @@ import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
   contextFor,
+  createCustomRole,
   createEntity,
   createInvitation,
   createMember,
+  createOfficeManager,
   createOrganization,
   createSession,
   createUser,
@@ -589,5 +591,65 @@ describe('invitations from the Team page', () => {
       const subject = 'Vento: Aisha Bello is now an owner of Vento Homes Ltd'
       expect(mailer.to(org.owner.email).map((m) => m.subject)).toEqual([subject])
       expect(mailer.to(invitee.email).map((m) => m.subject)).toEqual([subject])
+    }))
+})
+
+describe('invitations: the permission ceiling and custom roles', () => {
+  it('refuses inviting with a role wider than the inviter', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const office = await createOfficeManager(tx, org)
+      const ctx = await contextFor(tx, office.user, org)
+      await expect(
+        createInvitations(ctx, {
+          items: [{ email: uniqueEmail(), roleId: org.roleIds.get('finance') ?? '' }],
+          entityIds: null,
+        }),
+      ).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        data: { reason: 'wider_permissions' },
+        message: 'You can only give access you have yourself.',
+      })
+      const ok = await createInvitations(ctx, {
+        items: [{ email: uniqueEmail(), roleId: org.roleIds.get('sales') ?? '' }],
+        entityIds: null,
+      })
+      expect(ok.sent).toBe(1)
+    }))
+
+  it('invites with a custom role, and refuses one deleted meanwhile', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const site = await createCustomRole(tx, org, { permissions: { projects: ['view'] } })
+      const gone = await createCustomRole(tx, org, {
+        name: 'Gone',
+        permissions: { projects: ['view'] },
+        archivedAt: new Date(),
+      })
+      const ctx = await contextFor(tx, org.owner, org)
+      const invite = (roleId: string) =>
+        createInvitations(ctx, { items: [{ email: uniqueEmail(), roleId }], entityIds: null })
+      expect((await invite(site.id)).invitations[0]?.role.name).toBe('Site engineer')
+      await expect(invite(gone.id)).rejects.toMatchObject({
+        data: { reason: 'role_unavailable' },
+      })
+    }))
+
+  it('refuses resending or withdrawing an invitation wider than the viewer', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const office = await createOfficeManager(tx, org)
+      const { invitation } = await createInvitation(tx, org, {
+        role: 'finance',
+        email: 'kemi@test.vento.ng',
+      })
+      const ctx = await contextFor(tx, office.user, org)
+      const refused = {
+        data: { reason: 'wider_permissions' },
+        message:
+          "The invitation to kemi@test.vento.ng gives access you don't have. Ask Olumide Bankole (owner) to change it.",
+      }
+      await expect(resendInvitation(ctx, invitation.id)).rejects.toMatchObject(refused)
+      await expect(withdrawInvitation(ctx, invitation.id)).rejects.toMatchObject(refused)
     }))
 })

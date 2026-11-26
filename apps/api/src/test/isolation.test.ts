@@ -1,10 +1,21 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { entities, invitations, members, sessions, users } from '@/db/schema'
+import {
+  auditEvents,
+  entities,
+  invitations,
+  members,
+  organizations,
+  roles,
+  sessions,
+  users,
+} from '@/db/schema'
 import { recordDelivery } from '@/modules/invitations/delivery'
 import { withRollback } from './db'
 import {
   addAddOnRow,
+  archiveEntityRow,
+  createCustomRole,
   createEntity,
   createInvitation,
   createMember,
@@ -239,6 +250,103 @@ describe('organization isolation', () => {
         organizationId: theirs.id,
       } as unknown as Parameters<typeof client.entities.create>[0]
       await expect(client.entities.create(sneaky)).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+    }))
+})
+
+describe('organization isolation: roles and companies (brick 3c)', () => {
+  it('answers not found for their roles and companies, changing and auditing nothing', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      await createEntity(tx, mine)
+      const myMember = await createMember(tx, mine, { role: 'sales' })
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      await createEntity(tx, theirs, { name: 'Their Holding Ltd' })
+      const theirOld = await archiveEntityRow(
+        tx,
+        await createEntity(tx, theirs, { name: 'Their Old SPV Ltd' }),
+      )
+      const theirRole = await createCustomRole(tx, theirs, {
+        name: 'Their engineer',
+        permissions: { projects: ['view'] },
+      })
+      const { client } = clientAs(tx, mine.owner)
+      const attempts: [string, () => Promise<unknown>][] = [
+        ['roles.get', () => client.roles.get({ id: theirRole.id })],
+        [
+          'roles.update',
+          () => client.roles.update({ id: theirRole.id, version: 1, name: 'Mine now' }),
+        ],
+        ['roles.delete', () => client.roles.delete({ id: theirRole.id })],
+        [
+          'roles.create (their source)',
+          () => client.roles.create({ name: 'Copy', sourceRoleId: theirRole.id }),
+        ],
+        ['entities.restore', () => client.entities.restore({ id: theirOld.id })],
+        ['entities.update (archived)', () => client.entities.update({ id: theirOld.id, tin: '1' })],
+        ['entities.archivePreview', () => client.entities.archivePreview({ id: theirOld.id })],
+        [
+          'members.updateAccess (their custom role)',
+          () =>
+            client.members.updateAccess({
+              memberId: myMember.member.id,
+              roleId: theirRole.id,
+              entityIds: null,
+            }),
+        ],
+        [
+          'invitations.create (their custom role)',
+          () =>
+            client.invitations.create({
+              items: [{ email: 'x@test.vento.ng', roleId: theirRole.id }],
+              entityIds: null,
+            }),
+        ],
+      ]
+      for (const [name, attempt] of attempts) {
+        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      const [role] = await tx.select().from(roles).where(eq(roles.id, theirRole.id))
+      expect(role).toMatchObject({ name: 'Their engineer', version: 1, archivedAt: null })
+      const [old] = await tx.select().from(entities).where(eq(entities.id, theirOld.id))
+      expect(old?.status).toBe('archived')
+      expect(
+        await tx.select().from(auditEvents).where(eq(auditEvents.organizationId, theirs.id)),
+      ).toEqual([])
+      const mineAudit = await tx
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.organizationId, mine.id))
+      expect(mineAudit).toEqual([])
+    }))
+
+  it("never lists or counts another organization's roles, holders or companies", () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      await createEntity(tx, mine, { name: 'Mine Ltd' })
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      await createEntity(tx, theirs, { name: 'Parkview Theirs Ltd', rcNumber: 'RC 999' })
+      await createCustomRole(tx, theirs, { permissions: { projects: ['view'] } })
+      await createMember(tx, theirs, { role: 'viewer' })
+      const { client } = clientAs(tx, mine.owner)
+      const list = await client.roles.list()
+      expect(list.total).toBe(9)
+      expect(list.items.find((r) => r.key === 'viewer')?.memberCount).toBe(0)
+      expect(list.items.find((r) => r.key === 'owner')?.memberCount).toBe(1)
+      const search = await client.entities.list({ q: 'Theirs' })
+      expect(search).toMatchObject({ items: [], total: 0 })
+      expect((await client.entities.list({ q: 'RC 999' })).items).toEqual([])
+    }))
+
+  it('records the one-company answer on this organization only', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: 'Other Developer Ltd' })
+      await clientAs(tx, mine.owner).client.checklist.answerSingleCompany({ singleCompany: true })
+      const answered = async (id: string) =>
+        (await tx.select().from(organizations).where(eq(organizations.id, id)))[0]
+          ?.singleCompanyConfirmedAt ?? null
+      expect(await answered(mine.id)).not.toBeNull()
+      expect(await answered(theirs.id)).toBeNull()
     }))
 })
 
