@@ -146,7 +146,7 @@ os (implement apiContract)
 - The reasons on NOT_FOUND are only ever given to an active super-admin, who already knows they are one; customers and revoked super-admins get the plain NOT_FOUND, indistinguishable from a missing record.
 - Anonymous callers get UNAUTHORIZED like every non-public procedure (the existing walk expects 401). That is what lets a super-admin whose session ended mid-task get the *Session expired* dialog. On the web, `/console` still shows *404* to signed-out people (§9.1).
 - **Revocation:** `revokeSuperAdmin` sets `console_opened_at = null` on all the person's sessions in the same transaction; the middleware's per-request lookup refuses them anyway. Their customer sessions carry on.
-- **Two-step reset** of a super-admin by an owner (`members.resetTwoStep`) is allowed; the middleware refuses until they set it up again (spec).
+- **Two-step reset** of an active super-admin by a customer owner or admin (`members.resetTwoStep`) is **refused** ("Vento staff reset two-step with Vento."), changed after the security audit: a reset followed by a fresh set-up would otherwise let whoever controls the inbox open the console. New backup codes and new passkeys for a super-admin also need a code or passkey proven in the last 5 minutes (`SECOND_FACTOR_REQUIRED`), and an authenticator code is accepted only once (migration `0012_second_factor_guards`).
 
 ### 4.5 Super-admins with no organization, and two-step that can't be turned off
 - `account.me.nextStep` (`account.service.ts`, `nextStepFor`): no membership and an active super-admin → `'two_step_setup'` when two-step is off, else `'console'` (new value; web path `/console`). Everyone else unchanged.

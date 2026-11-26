@@ -19,6 +19,8 @@ Vento super-admins changed releases, plans, trials, add-ons, overrides and super
 - Each console request writes one session row (activity), which is cheap at staff volume.
 - New console procedures must use the console builder; walk tests fail otherwise. A new change command must be in the registry with a console equivalent, or it can't be authorised.
 - Super-admins can't turn two-step off (My security says "Required because you're a Vento super-admin").
+- A password can never mint a fresh factor: for a super-admin, new backup codes and new passkeys need a code or passkey proven in the last 5 minutes, codes or passkeys made without one can't open the console, an authenticator code works once, and customer owners can't reset a super-admin's two-step (security audit, 26 Nov 2026).
+- Browser calls to `/rpc` from another origin are refused (Origin / Sec-Fetch-Site check), so a sibling subdomain can't drive console changes.
 - A super-admin with no organization lands on the console after sign-in and can use it, but can't manage passkeys until they join an organization (My security lives in a workspace). Follow-up.
 - Pre-console platform audit rows keep `channel` null and are labelled at read time; the append-only table is never backfilled.
 

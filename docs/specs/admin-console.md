@@ -160,7 +160,7 @@ No design: *list page* (status `pattern`). Vento's platform audit trail: when, w
 - **Given** a super-admin whose last second-factor proof is older than 5 minutes, **when** they open the console, **then** *Confirm it's you* asks for a passkey or a code; the password alone is never enough. Five wrong codes lock sign-in as today (DOMAIN access rules).
 - **Given** a console window idle for 15 minutes or open for 8 hours, **when** the super-admin acts, **then** *Confirm it's you* opens over the page, keeps the open dialog and typed reason, and runs the action after the proof.
 - **Given** a super-admin removed by another super-admin, **when** they make their next console request, **then** it answers *not found*, their console window ends, and their customer workspace sessions carry on unaffected.
-- **Given** a super-admin whose two-step was reset by an owner of an organization they belong to, **then** the console stays closed until they set up the authenticator app again; the console shows "Set up two-step to use the Vento console." with **Set up two-step**.
+- **Given** an owner or admin of an organization a super-admin belongs to, **when** they try to reset that super-admin's two-step, **then** it's refused: "Vento staff reset two-step with Vento." (changed after the security audit, 26 Nov 2026). A super-admin without two-step sees "Set up two-step to use the Vento console." with **Set up two-step**.
 - **Given** a super-admin on My security, **then** two-step shows "Required because you're a Vento super-admin" and can't be turned off.
 
 ### Parity with the commands
