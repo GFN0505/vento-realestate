@@ -7,6 +7,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   FingerprintIcon,
+  HistoryIcon,
   KeyboardIcon,
   KeyRoundIcon,
   LaptopMinimalIcon,
@@ -20,6 +21,7 @@ import {
   SmartphoneIcon,
   UserPlusIcon,
   UsersIcon,
+  WorkflowIcon,
 } from 'lucide-react'
 import { PreviewRoles } from '@/components/shell/preview-roles'
 import { THEME_OPTIONS } from '@/components/shell/theme-icons'
@@ -37,6 +39,7 @@ import {
   useEffectiveAccess,
   useMe,
 } from '@/features/preview/use-effective-permissions'
+import { SECTION_COPY } from '@/features/settings/section-copy'
 import { type SettingsKey, type SettingsPath, visibleSections } from '@/features/settings/sections'
 import type { SecurityIntent } from '@/features/settings/security-search'
 import { NAV_COPY } from '@/features/shell/nav-copy'
@@ -53,6 +56,8 @@ const SECTION_ICONS: Record<SettingsKey, typeof UsersIcon> = {
   companies: BuildingIcon,
   team: UsersIcon,
   roles: ShieldCheckIcon,
+  'approval-rules': WorkflowIcon,
+  'audit-log': HistoryIcon,
   security: LockKeyholeIcon,
 }
 
@@ -87,6 +92,8 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
   const canAddCompany = me.canAddCompany && canInvite
   // New role: settings create and every company (organization-wide, as the server checks).
   const canNewRole = canInvite && me.member?.entityIds === null
+  // Approval rules are the owners' (spec open question 1), with every company.
+  const canAddRule = access.roleKey === 'owner' && me.member?.entityIds === null
   // Roles by name, only once the list is cached: ⌘K never fetches roles itself.
   const canSeeRoles = can(access.permissions, 'settings', 'view')
   const roles = useQuery({ ...rolesQuery(), enabled: false }).data?.items ?? []
@@ -177,7 +184,11 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             <CommandItem
               key={section.key}
               value={`go:settings:${section.key}`}
-              keywords={[`Go to ${section.label}`, 'settings', ...section.keywords]}
+              keywords={[
+                `Go to ${section.label}`,
+                'settings',
+                ...SECTION_COPY[section.key].keywords,
+              ]}
               onSelect={() => navigate(section.to)}
             >
               <Icon aria-hidden />
@@ -240,6 +251,22 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
           >
             <ShieldPlusIcon aria-hidden />
             New role
+          </CommandItem>
+        )}
+        {canAddRule && (
+          <CommandItem
+            value="approval-rule:new"
+            keywords={['Add approval rule', 'approvals maker checker approver limit threshold']}
+            onSelect={run(
+              () =>
+                void router.navigate({
+                  to: '/settings/approval-rules',
+                  search: { rule: 'new' },
+                }),
+            )}
+          >
+            <WorkflowIcon aria-hidden />
+            Add approval rule
           </CommandItem>
         )}
         {checklistHidden && (

@@ -83,6 +83,8 @@ describe('discarding unfinished staff accounts', () => {
       // account is none of those, and its own invitation link is cleared before the delete.
       expect(restricting.sort()).toEqual(
         [
+          'approval_decisions.user_id',
+          'approval_requests.maker_user_id',
           'audit_events.actor_user_id',
           'entities.archived_by_user_id',
           'feature_releases.changed_by_user_id',

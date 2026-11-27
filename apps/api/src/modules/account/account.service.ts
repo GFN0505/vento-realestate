@@ -6,7 +6,7 @@ import type {
   SwitchOrganizationOutput,
   TwoStepRequirement,
 } from '@vento/shared'
-import { hasPermission } from '@vento/shared'
+import { approvableModules, hasPermission } from '@vento/shared'
 import { and, count, desc, eq, gt, ne } from 'drizzle-orm'
 import {
   type AuthSession,
@@ -28,6 +28,7 @@ import { entities, sessions, users } from '@/db/schema'
 import { summariseUserAgent } from '@/lib/client-ip'
 import { notFound } from '@/lib/errors'
 import { pageOffset, toPage } from '@/lib/paginate'
+import { countWaiting, madeRecentRequest } from '@/modules/approvals/approvals.service'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
 import { organizationAvailability } from '@/platform/availability'
 import type { FeatureStore } from '@/platform/feature-store'
@@ -129,13 +130,17 @@ export async function getMe(
 ): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
   const gate = gateFor(user, session, membership, new Date())
-  const [step, organizations, { features, plan }, requiredBy, admin] = await runQueries(db, [
-    () => nextStepFor(db, membership, gate),
-    () => listActiveMemberships(db, user.id),
-    () => featuresAndPlan(db, membership, store),
-    () => twoStepRequiredBy(db, user, membership),
-    () => activeSuperAdmin(db, user.id),
-  ])
+  const [step, organizations, { features, plan }, requiredBy, admin, approvals] = await runQueries(
+    db,
+    [
+      () => nextStepFor(db, membership, gate),
+      () => listActiveMemberships(db, user.id),
+      () => featuresAndPlan(db, membership, store),
+      () => twoStepRequiredBy(db, user, membership),
+      () => activeSuperAdmin(db, user.id),
+      () => approvalsFor(db, membership),
+    ],
+  )
   // A staff account never onboards (decision 0023): an active super-admin with two-step goes
   // to the console; anyone else staff (joining, or after a reset) sets two-step up first.
   const nextStep: NextStep =
@@ -178,7 +183,26 @@ export async function getMe(
     twoStepSetupBy: gate.kind === 'grace' ? gate.deadline.toISOString() : null,
     canAddCompany: membership ? canAddCompany(membership.member) : false,
     console: admin ? { twoStepOn: admin.twoFactorEnabled } : null,
+    approvalsWaiting: approvals.waiting,
+    canSeeApprovals: approvals.canSee,
   }
+}
+
+/**
+ * The top bar's Approvals count, and whether to show Approvals at all: the role can approve in
+ * some module, or the person made a request in the last 90 days. Cosmetic: every approvals
+ * procedure filters on the server.
+ */
+async function approvalsFor(
+  db: DbOrTx,
+  membership: Membership | null,
+): Promise<{ waiting: number; canSee: boolean }> {
+  if (!membership) return { waiting: 0, canSee: false }
+  const ctx = { organizationId: membership.organizationId, member: membership.member }
+  const approver = approvableModules(membership.member.permissions).length > 0
+  // An approver always sees Approvals; only a maker without Approve needs the second query.
+  if (approver) return { waiting: await countWaiting(db, ctx), canSee: true }
+  return { waiting: 0, canSee: await madeRecentRequest(db, ctx) }
 }
 
 /** Settings create and access to every company: "+ Add company" in the switcher, Home and ⌘K. */

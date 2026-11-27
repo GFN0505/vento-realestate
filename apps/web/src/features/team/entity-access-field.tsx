@@ -17,6 +17,8 @@ type Props = {
   limits: readonly string[] | null
   error?: string | null
   hint?: string
+  /** The legend; "Companies" on an approval rule. */
+  legend?: string
 }
 
 /**
@@ -24,11 +26,20 @@ type Props = {
  * All entities or Only some; a granter limited to some entities sees only theirs and never "All
  * entities"; a granter limited to one sees it as fixed text.
  */
-export function EntityAccessField({ name, value, onChange, entities, limits, error, hint }: Props) {
+export function EntityAccessField({
+  name,
+  value,
+  onChange,
+  entities,
+  limits,
+  error,
+  hint,
+  legend = 'Company access',
+}: Props) {
   if (!entities) {
     return (
       <FieldSet>
-        <FieldLegend className="text-foreground text-sm">Company access</FieldLegend>
+        <FieldLegend className="text-foreground text-sm">{legend}</FieldLegend>
         <Skeleton className="h-16 w-full" />
       </FieldSet>
     )
@@ -37,7 +48,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
   if (only) {
     return (
       <div className="flex flex-col gap-1">
-        <span className="font-semibold text-sm">Company access</span>
+        <span className="font-semibold text-sm">{legend}</span>
         <span className="text-sm">{only.name}</span>
       </div>
     )
@@ -68,7 +79,7 @@ export function EntityAccessField({ name, value, onChange, entities, limits, err
 
   return (
     <FieldSet aria-describedby={error ? `${name}-error` : undefined}>
-      <FieldLegend className="mb-0 text-foreground text-sm">Company access</FieldLegend>
+      <FieldLegend className="mb-0 text-foreground text-sm">{legend}</FieldLegend>
       {limits ? (
         list
       ) : (

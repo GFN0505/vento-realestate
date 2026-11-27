@@ -23,7 +23,8 @@
     "mail": "pnpm --silent --filter @vento/api mail",
     "flags": "pnpm --silent --filter @vento/api flags",
     "plans": "pnpm --silent --filter @vento/api plans",
-    "superadmin": "pnpm --silent --filter @vento/api superadmin"
+    "superadmin": "pnpm --silent --filter @vento/api superadmin",
+    "approvals": "pnpm --silent --filter @vento/api approvals"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",

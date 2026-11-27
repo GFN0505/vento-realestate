@@ -12,6 +12,7 @@ export type EmailTag =
   | 'trial_ending'
   | 'platform_notice'
   | 'staff_invitation'
+  | 'approval'
 
 export type EmailMessage = {
   to: string

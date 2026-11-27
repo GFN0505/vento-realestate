@@ -7,25 +7,38 @@ import {
   visibleSections,
 } from './sections'
 
-const access = (key: 'owner' | 'admin' | 'sales') => ({
+const access = (key: 'owner' | 'admin' | 'sales', allEntities = true) => ({
   permissions: defaultPermissions(defaultRole(key)),
+  allEntities,
 })
 
 const fake = (label: string): SettingsSection => ({
   key: 'team',
   label,
   group: 'organization',
-  summary: '',
   to: '/settings/team',
-  keywords: [],
   can: () => true,
 })
 
 describe('settings sections', () => {
   it('lists the organization sections, then My security, for owners and admins', () => {
-    const order = ['Organization', 'Companies', 'Team', 'Roles & permissions', 'My security']
+    const order = [
+      'Organization',
+      'Companies',
+      'Team',
+      'Roles & permissions',
+      'Approval rules',
+      'Audit log',
+      'My security',
+    ]
     expect(visibleSections(access('owner')).map((s) => s.label)).toEqual(order)
     expect(visibleSections(access('admin')).map((s) => s.label)).toEqual(order)
+  })
+
+  it('hides the audit log from an admin limited to some companies', () => {
+    const labels = visibleSections(access('admin', false)).map((s) => s.label)
+    expect(labels).toContain('Approval rules')
+    expect(labels).not.toContain('Audit log')
   })
 
   it('lists only My security for a role without settings view, with no sub-navigation', () => {

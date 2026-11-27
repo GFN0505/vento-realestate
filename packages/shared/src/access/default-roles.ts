@@ -80,7 +80,8 @@ export const DEFAULT_ROLES: readonly DefaultRole[] = [
     name: 'Land & legal',
     pluralName: 'land & legal staff',
     description: 'Land, titles and legal documents.',
-    requiresTwoStep: false,
+    // Approve in Land/Projects: approvers need two-step (decision 0024).
+    requiresTwoStep: true,
     levels: {
       land: 'full',
       projects: 'view',
@@ -99,7 +100,8 @@ export const DEFAULT_ROLES: readonly DefaultRole[] = [
     name: 'Project manager',
     pluralName: 'project managers',
     description: 'Projects, construction and site work.',
-    requiresTwoStep: false,
+    // Approve in Land/Projects: approvers need two-step (decision 0024).
+    requiresTwoStep: true,
     levels: {
       land: 'view',
       projects: 'full',
@@ -175,7 +177,8 @@ export const DEFAULT_ROLES: readonly DefaultRole[] = [
     name: 'Facility',
     pluralName: 'facility staff',
     description: 'Estates, residents and maintenance.',
-    requiresTwoStep: false,
+    // Approve in Facility: approvers need two-step (decision 0024).
+    requiresTwoStep: true,
     levels: {
       land: 'none',
       projects: 'view',

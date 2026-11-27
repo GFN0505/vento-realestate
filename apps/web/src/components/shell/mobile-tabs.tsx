@@ -4,6 +4,7 @@ import { lazy, Suspense, useState } from 'react'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { mobileTabs, moreItems } from '@/features/shell/nav'
 import { cn } from '@/lib/utils'
+import { CountPill, useApprovalsWaiting, waitingWords } from './approvals-count'
 
 // The sheet (and Radix Dialog) load on first tap, keeping them out of the first load.
 const MoreSheet = lazy(() => import('./more-sheet').then((m) => ({ default: m.MoreSheet })))
@@ -14,6 +15,7 @@ const tab =
 /** Phones: Home, up to three of the modules the member can open, and More (boards *Mobile). */
 export function MobileTabs() {
   const access = useEffectiveAccess()
+  const waiting = useApprovalsWaiting()
   const [moreOpen, setMoreOpen] = useState(false)
   const [moreUsed, setMoreUsed] = useState(false)
   const pathname = useLocation({ select: (l) => l.pathname })
@@ -25,7 +27,7 @@ export function MobileTabs() {
   return (
     <nav
       aria-label="Tabs"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-(--tabbar-height) border-t bg-card px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
     >
       {tabs.map((item) => (
         <Link
@@ -34,8 +36,18 @@ export function MobileTabs() {
           activeOptions={{ exact: item.to === '/', includeSearch: false }}
           className={tab}
         >
-          <item.icon aria-hidden className="size-[22px]" strokeWidth={1.8} />
-          <span className="max-w-full truncate px-0.5">{item.label}</span>
+          <span className="relative">
+            <item.icon aria-hidden className="size-[22px]" strokeWidth={1.8} />
+            {item.key === 'approvals' && (
+              <CountPill count={waiting} className="-top-1.5 -right-3 absolute" />
+            )}
+          </span>
+          <span className="max-w-full truncate px-0.5">
+            {item.label}
+            {item.key === 'approvals' && waiting > 0 && (
+              <span className="sr-only">, {waitingWords(waiting)}</span>
+            )}
+          </span>
         </Link>
       ))}
       <button

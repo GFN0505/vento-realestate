@@ -1,5 +1,6 @@
 import { requireAllEntities, requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
+import { sendAll } from '@/email/mailer'
 import { member } from '@/orpc'
 import { createRole, deleteRole, getRoleDetail, listRoles, updateRole } from './roles.service'
 
@@ -17,7 +18,12 @@ export const rolesRouter = {
   update: member.roles.update
     .use(requirePermission('settings', 'edit', 'change roles'))
     .use(requireAllEntities())
-    .handler(({ context, input }) => updateRole(serviceContext(context), input)),
+    .handler(async ({ context, input }) => {
+      const { emails, ...result } = await updateRole(serviceContext(context), input)
+      // "Approval needed" to the first step's approvers, after commit.
+      await sendAll(context.mailer, emails)
+      return result
+    }),
   delete: member.roles.delete
     .use(requirePermission('settings', 'delete', 'delete roles'))
     .use(requireAllEntities())

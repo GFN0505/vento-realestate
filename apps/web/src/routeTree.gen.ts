@@ -27,6 +27,7 @@ import { Route as ConsoleActivityRouteImport } from './routes/console/activity'
 import { Route as ConsoleSuperAdminsRouteImport } from './routes/console/super-admins'
 import { Route as AppShellIndexRouteImport } from './routes/_app/_shell/index'
 import { Route as AppShellSplatRouteImport } from './routes/_app/_shell/$'
+import { Route as AppShellApprovalsRouteImport } from './routes/_app/_shell/approvals'
 import { Route as AppShellComplianceRouteImport } from './routes/_app/_shell/compliance'
 import { Route as AppShellDocumentsRouteImport } from './routes/_app/_shell/documents'
 import { Route as AppShellEstatesRouteImport } from './routes/_app/_shell/estates'
@@ -48,6 +49,8 @@ import { Route as ConsolePlansPlanKeyRouteImport } from './routes/console/plans.
 import { Route as ConsoleReleasesIndexRouteImport } from './routes/console/releases.index'
 import { Route as ConsoleReleasesKeyRouteImport } from './routes/console/releases.$key'
 import { Route as AppShellSettingsIndexRouteImport } from './routes/_app/_shell/settings/index'
+import { Route as AppShellSettingsApprovalRulesRouteImport } from './routes/_app/_shell/settings/approval-rules'
+import { Route as AppShellSettingsAuditLogRouteImport } from './routes/_app/_shell/settings/audit-log'
 import { Route as AppShellSettingsCompaniesRouteImport } from './routes/_app/_shell/settings/companies'
 import { Route as AppShellSettingsOrganizationRouteImport } from './routes/_app/_shell/settings/organization'
 import { Route as AppShellSettingsRolesRouteImport } from './routes/_app/_shell/settings/roles'
@@ -141,6 +144,11 @@ const AppShellIndexRoute = AppShellIndexRouteImport.update({
 const AppShellSplatRoute = AppShellSplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => AppShellRoute,
+} as any)
+const AppShellApprovalsRoute = AppShellApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => AppShellRoute,
 } as any)
 const AppShellComplianceRoute = AppShellComplianceRouteImport.update({
@@ -252,6 +260,18 @@ const AppShellSettingsIndexRoute = AppShellSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppShellSettingsRoute,
 } as any)
+const AppShellSettingsApprovalRulesRoute =
+  AppShellSettingsApprovalRulesRouteImport.update({
+    id: '/approval-rules',
+    path: '/approval-rules',
+    getParentRoute: () => AppShellSettingsRoute,
+  } as any)
+const AppShellSettingsAuditLogRoute =
+  AppShellSettingsAuditLogRouteImport.update({
+    id: '/audit-log',
+    path: '/audit-log',
+    getParentRoute: () => AppShellSettingsRoute,
+  } as any)
 const AppShellSettingsCompaniesRoute =
   AppShellSettingsCompaniesRouteImport.update({
     id: '/companies',
@@ -309,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/console/super-admins': typeof ConsoleSuperAdminsRoute
   '/console/': typeof ConsoleIndexRoute
   '/$': typeof AppShellSplatRoute
+  '/approvals': typeof AppShellApprovalsRoute
   '/compliance': typeof AppShellComplianceRoute
   '/documents': typeof AppShellDocumentsRoute
   '/estates': typeof AppShellEstatesRoute
@@ -329,6 +350,8 @@ export interface FileRoutesByFullPath {
   '/console/organizations/': typeof ConsoleOrganizationsIndexRoute
   '/console/plans/': typeof ConsolePlansIndexRoute
   '/console/releases/': typeof ConsoleReleasesIndexRoute
+  '/settings/approval-rules': typeof AppShellSettingsApprovalRulesRoute
+  '/settings/audit-log': typeof AppShellSettingsAuditLogRoute
   '/settings/companies': typeof AppShellSettingsCompaniesRoute
   '/settings/organization': typeof AppShellSettingsOrganizationRoute
   '/settings/roles': typeof AppShellSettingsRolesRouteWithChildren
@@ -353,6 +376,7 @@ export interface FileRoutesByTo {
   '/console/super-admins': typeof ConsoleSuperAdminsRoute
   '/console': typeof ConsoleIndexRoute
   '/$': typeof AppShellSplatRoute
+  '/approvals': typeof AppShellApprovalsRoute
   '/compliance': typeof AppShellComplianceRoute
   '/documents': typeof AppShellDocumentsRoute
   '/estates': typeof AppShellEstatesRoute
@@ -372,6 +396,8 @@ export interface FileRoutesByTo {
   '/console/organizations': typeof ConsoleOrganizationsIndexRoute
   '/console/plans': typeof ConsolePlansIndexRoute
   '/console/releases': typeof ConsoleReleasesIndexRoute
+  '/settings/approval-rules': typeof AppShellSettingsApprovalRulesRoute
+  '/settings/audit-log': typeof AppShellSettingsAuditLogRoute
   '/settings/companies': typeof AppShellSettingsCompaniesRoute
   '/settings/organization': typeof AppShellSettingsOrganizationRoute
   '/settings/security': typeof AppShellSettingsSecurityRoute
@@ -399,6 +425,7 @@ export interface FileRoutesById {
   '/console/super-admins': typeof ConsoleSuperAdminsRoute
   '/console/': typeof ConsoleIndexRoute
   '/_app/_shell/$': typeof AppShellSplatRoute
+  '/_app/_shell/approvals': typeof AppShellApprovalsRoute
   '/_app/_shell/compliance': typeof AppShellComplianceRoute
   '/_app/_shell/documents': typeof AppShellDocumentsRoute
   '/_app/_shell/estates': typeof AppShellEstatesRoute
@@ -420,6 +447,8 @@ export interface FileRoutesById {
   '/console/organizations/': typeof ConsoleOrganizationsIndexRoute
   '/console/plans/': typeof ConsolePlansIndexRoute
   '/console/releases/': typeof ConsoleReleasesIndexRoute
+  '/_app/_shell/settings/approval-rules': typeof AppShellSettingsApprovalRulesRoute
+  '/_app/_shell/settings/audit-log': typeof AppShellSettingsAuditLogRoute
   '/_app/_shell/settings/companies': typeof AppShellSettingsCompaniesRoute
   '/_app/_shell/settings/organization': typeof AppShellSettingsOrganizationRoute
   '/_app/_shell/settings/roles': typeof AppShellSettingsRolesRouteWithChildren
@@ -447,6 +476,7 @@ export interface FileRouteTypes {
     | '/console/super-admins'
     | '/console/'
     | '/$'
+    | '/approvals'
     | '/compliance'
     | '/documents'
     | '/estates'
@@ -467,6 +497,8 @@ export interface FileRouteTypes {
     | '/console/organizations/'
     | '/console/plans/'
     | '/console/releases/'
+    | '/settings/approval-rules'
+    | '/settings/audit-log'
     | '/settings/companies'
     | '/settings/organization'
     | '/settings/roles'
@@ -491,6 +523,7 @@ export interface FileRouteTypes {
     | '/console/super-admins'
     | '/console'
     | '/$'
+    | '/approvals'
     | '/compliance'
     | '/documents'
     | '/estates'
@@ -510,6 +543,8 @@ export interface FileRouteTypes {
     | '/console/organizations'
     | '/console/plans'
     | '/console/releases'
+    | '/settings/approval-rules'
+    | '/settings/audit-log'
     | '/settings/companies'
     | '/settings/organization'
     | '/settings/security'
@@ -536,6 +571,7 @@ export interface FileRouteTypes {
     | '/console/super-admins'
     | '/console/'
     | '/_app/_shell/$'
+    | '/_app/_shell/approvals'
     | '/_app/_shell/compliance'
     | '/_app/_shell/documents'
     | '/_app/_shell/estates'
@@ -557,6 +593,8 @@ export interface FileRouteTypes {
     | '/console/organizations/'
     | '/console/plans/'
     | '/console/releases/'
+    | '/_app/_shell/settings/approval-rules'
+    | '/_app/_shell/settings/audit-log'
     | '/_app/_shell/settings/companies'
     | '/_app/_shell/settings/organization'
     | '/_app/_shell/settings/roles'
@@ -700,6 +738,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof AppShellSplatRouteImport
+      parentRoute: typeof AppShellRoute
+    }
+    '/_app/_shell/approvals': {
+      id: '/_app/_shell/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof AppShellApprovalsRouteImport
       parentRoute: typeof AppShellRoute
     }
     '/_app/_shell/compliance': {
@@ -849,6 +894,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppShellSettingsIndexRouteImport
       parentRoute: typeof AppShellSettingsRoute
     }
+    '/_app/_shell/settings/approval-rules': {
+      id: '/_app/_shell/settings/approval-rules'
+      path: '/approval-rules'
+      fullPath: '/settings/approval-rules'
+      preLoaderRoute: typeof AppShellSettingsApprovalRulesRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
+    '/_app/_shell/settings/audit-log': {
+      id: '/_app/_shell/settings/audit-log'
+      path: '/audit-log'
+      fullPath: '/settings/audit-log'
+      preLoaderRoute: typeof AppShellSettingsAuditLogRouteImport
+      parentRoute: typeof AppShellSettingsRoute
+    }
     '/_app/_shell/settings/companies': {
       id: '/_app/_shell/settings/companies'
       path: '/companies'
@@ -917,6 +976,8 @@ const AppShellSettingsRolesRouteWithChildren =
   )
 
 interface AppShellSettingsRouteChildren {
+  AppShellSettingsApprovalRulesRoute: typeof AppShellSettingsApprovalRulesRoute
+  AppShellSettingsAuditLogRoute: typeof AppShellSettingsAuditLogRoute
   AppShellSettingsCompaniesRoute: typeof AppShellSettingsCompaniesRoute
   AppShellSettingsOrganizationRoute: typeof AppShellSettingsOrganizationRoute
   AppShellSettingsRolesRoute: typeof AppShellSettingsRolesRouteWithChildren
@@ -926,6 +987,8 @@ interface AppShellSettingsRouteChildren {
 }
 
 const AppShellSettingsRouteChildren: AppShellSettingsRouteChildren = {
+  AppShellSettingsApprovalRulesRoute: AppShellSettingsApprovalRulesRoute,
+  AppShellSettingsAuditLogRoute: AppShellSettingsAuditLogRoute,
   AppShellSettingsCompaniesRoute: AppShellSettingsCompaniesRoute,
   AppShellSettingsOrganizationRoute: AppShellSettingsOrganizationRoute,
   AppShellSettingsRolesRoute: AppShellSettingsRolesRouteWithChildren,
@@ -939,6 +1002,7 @@ const AppShellSettingsRouteWithChildren =
 
 interface AppShellRouteChildren {
   AppShellSplatRoute: typeof AppShellSplatRoute
+  AppShellApprovalsRoute: typeof AppShellApprovalsRoute
   AppShellComplianceRoute: typeof AppShellComplianceRoute
   AppShellDocumentsRoute: typeof AppShellDocumentsRoute
   AppShellEstatesRoute: typeof AppShellEstatesRoute
@@ -955,6 +1019,7 @@ interface AppShellRouteChildren {
 
 const AppShellRouteChildren: AppShellRouteChildren = {
   AppShellSplatRoute: AppShellSplatRoute,
+  AppShellApprovalsRoute: AppShellApprovalsRoute,
   AppShellComplianceRoute: AppShellComplianceRoute,
   AppShellDocumentsRoute: AppShellDocumentsRoute,
   AppShellEstatesRoute: AppShellEstatesRoute,

@@ -5,6 +5,7 @@ import {
   type InvitationDelivery,
   type ListTeamOutput,
   type listTeamInput,
+  type PendingApproval,
   type PermissionSet,
   type SystemRoleKey,
   type TeamInvitationRow,
@@ -24,6 +25,7 @@ import {
   viewerOf,
 } from '@/access/manage-rules'
 import { firstOwner } from '@/access/who-can-grant'
+import { pendingApprovals } from '@/approvals/pending'
 import { INVITATION_QUEUED_STALE_MS } from '@/auth/policy'
 import type { DbOrTx } from '@/db/client'
 import { rawTimestamp } from '@/db/raw'
@@ -353,6 +355,7 @@ function memberRow(
   limits: EntityRef[] | undefined,
   permissions: PermissionSet,
   ownerName: string | null,
+  pending: PendingApproval | null,
 ): TeamMemberRow {
   const twoStep = twoStepOf({
     twoFactorEnabled: Boolean(r.two_factor_enabled),
@@ -390,6 +393,7 @@ function memberRow(
     joinedAt: at(r.joined_at).toISOString(),
     lastActiveAt: iso(r.last_active_at),
     ...rights,
+    pendingApproval: pending,
   }
 }
 
@@ -455,10 +459,20 @@ async function hydrate(ctx: ServiceContext, rows: readonly RawRow[]): Promise<Te
   const ownerName = needsOwner
     ? ((await firstOwner(ctx.db, ctx.organizationId, ctx.user.id))?.name ?? null)
     : null
+  // "Owner · waiting for approval": the page's make-owner requests, in one query.
+  const memberIds = rows.filter((r) => r.kind === 'member').map((r) => r.id)
+  const pending = await pendingApprovals(
+    ctx.db,
+    ctx,
+    'access.member.make_owner',
+    'member',
+    memberIds,
+  )
   const now = new Date()
   return rows.map((r) => {
     if (r.kind === 'member') {
-      return memberRow(viewer, r, limits.get(r.id), permissions(r), ownerName)
+      const waiting = pending.get(r.id) ?? null
+      return memberRow(viewer, r, limits.get(r.id), permissions(r), ownerName, waiting)
     }
     if (r.kind === 'invitation') {
       return invitationRow(viewer, r, limits.get(r.id), permissions(r), ownerName, now)

@@ -23,8 +23,15 @@ export const invitationsRouter = {
     .use(requirePermission('settings', 'create', 'invite people'))
     .use(limitStaffRefusals())
     .handler(async ({ context, input }) => {
-      const { emails, sentAt, ...result } = await createInvitations(serviceContext(context), input)
+      const { emails, sentAt, ownerSends, ...result } = await createInvitations(
+        serviceContext(context),
+        input,
+      )
       const delivered = await deliverInvitations(context, emails, sentAt)
+      for (const send of ownerSends) {
+        for (const [id, d] of await deliverInvitations(context, [send.message], send.sentAt))
+          delivered.set(id, d)
+      }
       return {
         ...result,
         invitations: result.invitations.map((row) => ({ ...row, ...delivered.get(row.id) })),
@@ -34,9 +41,15 @@ export const invitationsRouter = {
     .use(requirePermission('settings', 'create', 'invite people'))
     .use(limitStaffRefusals())
     .handler(async ({ context, input }) => {
-      const { emails, sentAt, notice } = await resendInvitation(serviceContext(context), input.id)
+      const { emails, sentAt, ...result } = await resendInvitation(
+        serviceContext(context),
+        input.id,
+        input.reason,
+      )
+      // The invitation and any "Approval needed" or no-approver emails; only the invitation's
+      // delivery is recorded.
       await deliverInvitations(context, emails, sentAt)
-      return { notice }
+      return result
     }),
   withdraw: member.invitations.withdraw
     .use(requirePermission('settings', 'delete', 'withdraw invitations'))

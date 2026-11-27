@@ -23,6 +23,7 @@ import { moreItems, type NavTag, navTag } from '@/features/shell/nav'
 import { shellUi } from '@/features/shell/shell-ui'
 import { useShellActions } from '@/features/shell/use-shell-actions'
 import { cn } from '@/lib/utils'
+import { CountPill, useApprovalsWaiting, waitingWords } from './approvals-count'
 import { PreviewRolesSheet } from './preview-roles-sheet'
 import { ThemeSegments } from './theme-segments'
 
@@ -40,6 +41,7 @@ export function MoreSheet({ open, onOpenChange }: Props) {
   const [view, setView] = useState<'main' | 'preview'>('main')
   const close = () => onOpenChange(false)
   const modules = moreItems(access, access.roleKey)
+  const waiting = useApprovalsWaiting()
 
   return (
     <Sheet
@@ -82,7 +84,13 @@ export function MoreSheet({ open, onOpenChange }: Props) {
                 {modules.map((item) => (
                   <Link key={item.key} to={item.to} onClick={close} className={sheetRow}>
                     <item.icon aria-hidden strokeWidth={1.8} />
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className="flex-1 truncate">
+                      {item.label}
+                      {item.key === 'approvals' && waiting > 0 && (
+                        <span className="sr-only">, {waitingWords(waiting)}</span>
+                      )}
+                    </span>
+                    {item.key === 'approvals' && <CountPill count={waiting} />}
                     <NavTagBadge tag={navTag(access, item)} />
                   </Link>
                 ))}

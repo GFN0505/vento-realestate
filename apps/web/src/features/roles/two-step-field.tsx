@@ -15,7 +15,10 @@ type Props = {
   requiredForEveryone?: string | null
 }
 
-/** "Require two-step sign-in", locked on for roles that manage money, payroll or access. */
+/**
+ * "Require two-step sign-in", locked on for roles that manage money, payroll or access, or
+ * approve anything (decision 0024: approvers need two-step).
+ */
 export function TwoStepField({ checked, locked, onChange, requiredForEveryone = null }: Props) {
   const id = useId()
   const everyone = requiredForEveryone !== null
@@ -40,7 +43,7 @@ export function TwoStepField({ checked, locked, onChange, requiredForEveryone = 
               .
             </span>
           ) : locked ? (
-            "Required because this role can manage money, payroll or people's access."
+            "Required because this role can manage money, payroll or people's access, or approve anything."
           ) : (
             'A code from their phone at each sign-in.'
           )}

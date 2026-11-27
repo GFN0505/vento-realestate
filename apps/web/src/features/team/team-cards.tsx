@@ -1,5 +1,12 @@
 import { ChevronRightIcon } from 'lucide-react'
-import { accessLabel, InvitationBadge, PersonAvatar, TwoStepBadge, YouTag } from './team-cells'
+import {
+  accessLabel,
+  InvitationBadge,
+  OwnerPending,
+  PersonAvatar,
+  TwoStepBadge,
+  YouTag,
+} from './team-cells'
 import type { ListRow } from './team-table'
 
 type Props = { rows: readonly ListRow[]; onOpen: (row: ListRow) => void }
@@ -31,6 +38,7 @@ export function TeamCards({ rows, onOpen }: Props) {
                 <span className="truncate text-muted-foreground text-xs">
                   {row.role.name} · {accessLabel(row.access)}
                 </span>
+                <OwnerPending row={row} />
                 <span className="flex">
                   {member ? <TwoStepBadge state={row.twoStep} /> : <InvitationBadge row={row} />}
                 </span>

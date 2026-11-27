@@ -17,6 +17,10 @@ export const badRequestReason = z.enum([
   'wrong_code',
   /** The console's "Confirm it's you" with a passkey that didn't verify (never counts). */
   'passkey_failed',
+  /** An action a rule sends for approval, sent without a reason ("Tell the approver why."). */
+  'reason_required',
+  /** Reject without a comment the server caught (zod catches it first in the web). */
+  'comment_required',
 ])
 export type BadRequestReason = z.infer<typeof badRequestReason>
 
@@ -42,6 +46,14 @@ export const forbiddenReason = z.enum([
   'access_changed',
   /** A Vento Real Estate staff account can't create or join an organization (decision 0023). */
   'staff_account',
+  /** Deciding a step of your own approval request, whatever your role. */
+  'own_request',
+  /**
+   * Seeing the request but not eligible to decide its current step: the role isn't in the step,
+   * has no Approve in the module, company access doesn't cover it, decided an earlier step, or the
+   * action excludes this person. The message says which.
+   */
+  'not_eligible',
 ])
 export type ForbiddenReason = z.infer<typeof forbiddenReason>
 
@@ -89,6 +101,26 @@ export const conflictReason = z.enum([
   'staff_account',
   /** Staff sign-up: the invited email got a customer account after the invitation was sent. */
   'staff_customer_account',
+  /** A pending approval request for this record and action exists; `requestId` opens it. */
+  'approval_pending',
+  /** The request passed its 7 days; it now reads expired. */
+  'approval_expired',
+  /** The record changed after the request was made, so it expired instead of running. */
+  'approval_stale',
+  /** Someone decided this step a moment ago; `changedByName` says who. */
+  'approval_decided',
+  /** The request is no longer pending (approved, rejected, cancelled or expired). */
+  'approval_not_pending',
+  /** A money action with nobody else eligible to approve: refused before anything is saved. */
+  'no_approver',
+  /** Another approval rule already covers this action, amount and company scope. */
+  'approval_rule_exists',
+  /** Someone saved or deleted the rule since it was loaded; `changedByName` says who. */
+  'approval_rule_changed',
+  /** The role is named in approval rules; `count` says how many. */
+  'role_in_rule',
+  /** An export over the row cap; `count` is how many rows the filters match. */
+  'too_many_rows',
 ])
 export type ConflictReason = z.infer<typeof conflictReason>
 
@@ -166,6 +198,10 @@ export const errorMap = {
        */
       next: z.enum(['end_trial', 'change_ai_budget', 'resend_invitation']).optional(),
       invitationId: id.optional(),
+      /** `approval_pending`: the request already waiting for this record and action. */
+      requestId: id.optional(),
+      /** `role_in_rule`: rules naming the role; `too_many_rows`: rows matching the filters. */
+      count: z.number().int().min(0).optional(),
     }),
   },
   TOO_MANY_REQUESTS: {

@@ -195,6 +195,17 @@ export function requireAllEntities() {
   })
 }
 
+/**
+ * Owners only, whatever else the role allows (approval rules are the MD's controls: spec open
+ * question 1). Runs after requirePermission; the refusal is the page's own read-only line.
+ */
+export function requireOwner(message: string) {
+  return baseOs.$context<MemberRequestContext>().middleware(async ({ context, next }) => {
+    if (context.member.roleKey !== 'owner') throw forbidden('owner_only', message)
+    return next()
+  })
+}
+
 /** For public token procedures: a per-IP budget per procedure. */
 export function publicRateLimit(name: string, max: number) {
   return baseOs.$context<BaseContext>().middleware(async ({ context, next }) => {

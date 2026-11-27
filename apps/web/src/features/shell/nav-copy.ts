@@ -15,6 +15,9 @@ export const NAV_COPY: Record<NavKey, NavCopy> = {
   home: {
     keywords: ['dashboard', 'start'],
   },
+  approvals: {
+    keywords: ['approve', 'reject', 'requests', 'sign off', 'waiting for me', 'maker checker'],
+  },
   land: {
     keywords: ['parcels', 'plots', 'c of o', 'consent', 'survey', 'encumbrances'],
     comingSoon:
@@ -62,6 +65,8 @@ export const NAV_COPY: Record<NavKey, NavCopy> = {
       'entities',
       'organization',
       'security',
+      'approval rules',
+      'audit log',
     ],
     comingSoon: 'Your team, roles and permissions, companies and your own security.',
   },

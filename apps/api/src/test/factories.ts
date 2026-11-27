@@ -1,4 +1,4 @@
-import type { PermissionSet, SystemRoleKey } from '@vento/shared'
+import type { ApprovalActionKey, PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
   customRolePluralName,
   DEFAULT_ROLES,
@@ -13,6 +13,10 @@ import { syncSystemRoles } from '@/access/system-roles'
 import type { DbOrTx } from '@/db/client'
 import {
   accounts,
+  approvalRuleEntities,
+  approvalRuleStepRoles,
+  approvalRuleSteps,
+  approvalRules,
   entities,
   featureReleases,
   invitationEntityLimits,
@@ -513,4 +517,53 @@ function defaultPermissionsFor(key: SystemRoleKey): PermissionSet {
   const role = DEFAULT_ROLES.find((r) => r.key === key)
   if (!role) throw new Error(`Unknown role ${key}`)
   return defaultPermissions(role)
+}
+
+/**
+ * An approval rule straight into the tables. Steps name built-in role keys or role ids; `entities`
+ * defaults to all companies. Returns the rule's id.
+ */
+export async function createApprovalRule(
+  db: DbOrTx,
+  org: TestOrg,
+  options: {
+    actionKey?: ApprovalActionKey
+    steps: string[][]
+    entityIds?: string[] | 'all'
+    minAmount?: string | null
+    createdByMemberId?: string
+  },
+): Promise<string> {
+  const entityIds = options.entityIds ?? 'all'
+  const [rule] = await db
+    .insert(approvalRules)
+    .values({
+      organizationId: org.id,
+      actionKey: options.actionKey ?? 'access.role.update',
+      minAmount: options.minAmount ?? null,
+      appliesToAll: entityIds === 'all',
+      createdByMemberId: options.createdByMemberId ?? org.ownerMemberId,
+    })
+    .returning({ id: approvalRules.id })
+  if (!rule) throw new Error('approval rule insert failed')
+  for (const [i, step] of options.steps.entries()) {
+    const [row] = await db
+      .insert(approvalRuleSteps)
+      .values({ organizationId: org.id, ruleId: rule.id, position: i + 1 })
+      .returning({ id: approvalRuleSteps.id })
+    if (!row) throw new Error('approval rule step insert failed')
+    await db.insert(approvalRuleStepRoles).values(
+      step.map((role) => ({
+        organizationId: org.id,
+        stepId: row.id,
+        roleId: org.roleIds.get(role) ?? role,
+      })),
+    )
+  }
+  if (entityIds !== 'all') {
+    await db
+      .insert(approvalRuleEntities)
+      .values(entityIds.map((entityId) => ({ organizationId: org.id, ruleId: rule.id, entityId })))
+  }
+  return rule.id
 }

@@ -72,6 +72,8 @@ test.describe('on a laptop', () => {
         'Companies',
         'Team',
         'Roles & permissions',
+        'Approval rules',
+        'Audit log',
         'My security',
       ])
       await expect(switcher(page)).toHaveCount(0)

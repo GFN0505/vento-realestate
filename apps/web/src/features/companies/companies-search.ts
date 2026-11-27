@@ -1,4 +1,5 @@
 import type { ListEntitiesInput } from '@vento/shared'
+import { pageParam, textParam } from '@/lib/search-params'
 
 /*
  * The Companies page address: `/settings/companies?show=archived&q=parkview&page=2`.
@@ -14,12 +15,10 @@ export type CompaniesSearch = {
 export const COMPANIES_PAGE_SIZE = 50
 
 export function validateCompaniesSearch(search: Record<string, unknown>): CompaniesSearch {
-  const page = Number(search.page)
-  const q = typeof search.q === 'string' ? search.q.trim() : ''
   return {
     show: search.show === 'archived' ? 'archived' : undefined,
-    q: q.length > 0 && q.length <= 100 ? q : undefined,
-    page: Number.isInteger(page) && page > 1 && page < 10_000 ? page : undefined,
+    q: textParam(search.q, 100),
+    page: pageParam(search.page),
   }
 }
 

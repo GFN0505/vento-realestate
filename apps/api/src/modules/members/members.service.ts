@@ -1,4 +1,9 @@
-import type { PermissionSet, TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
+import type {
+  PermissionSet,
+  RequestOutcome,
+  TeamMemberRow,
+  updateMemberAccessInput,
+} from '@vento/shared'
 import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, lockViewer, type ServiceContext } from '@/access/context'
@@ -6,6 +11,13 @@ import { assertGrantableEntities } from '@/access/grants'
 import { type MemberAction, memberRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
 import { newOwnerAlerts } from '@/access/new-owner-alerts'
 import { firstOwner } from '@/access/who-can-grant'
+import { cancelForLeaver, requestOrRun } from '@/approvals/engine'
+import {
+  approvalMetadata,
+  type ExecuteMeta,
+  type ExecuteResult,
+  RAN_AT_ONCE,
+} from '@/approvals/plugin'
 import { clearSecondFactors } from '@/auth/clear-second-factors'
 import type { DbOrTx } from '@/db/client'
 import { entities, memberEntityLimits, members, roles, sessions, users } from '@/db/schema'
@@ -17,6 +29,7 @@ import { lockOrganization } from '@/modules/organization/organization.service'
 import { loadRoles, lockAssignableRoles, onArchivedRole } from '@/modules/roles/roles.service'
 import { memberRowById } from '@/modules/team/team.service'
 import { activeSuperAdmin } from '@/platform/super-admins'
+import { makeOwnerPlugin, type memberAccessPayload } from './approvals'
 
 const isOwnerKey = (key: string | null) => key === 'owner'
 
@@ -132,73 +145,147 @@ async function currentLimits(tx: DbOrTx, ctx: ServiceContext, memberId: string) 
     .orderBy(asc(entities.name))
 }
 
+export type MemberAccessPayload = z.output<typeof memberAccessPayload>
+
+type AccessSave = {
+  notice: string
+  row: TeamMemberRow
+  outcome: RequestOutcome
+  emails: EmailMessage[]
+}
+
+/**
+ * Changes someone's role and companies. Making someone an owner goes through the approvals
+ * engine (decision 0024) and may wait for approval; everything else runs at once.
+ */
 export async function updateMemberAccess(
   ctx: ServiceContext,
   input: z.output<typeof updateMemberAccessInput>,
-): Promise<{ notice: string; row: TeamMemberRow; emails: EmailMessage[] }> {
+): Promise<AccessSave> {
+  const payload: MemberAccessPayload = {
+    memberId: input.memberId,
+    roleId: input.roleId,
+    entityIds: input.entityIds,
+  }
   const result = await ctx.db.transaction(async (tx) => {
     await lockOrganization(tx, ctx.organizationId)
     // The viewer as they are now: a change to their own access waits for this write.
     const live = await lockViewer(tx, ctx)
     const target = await lockTarget(tx, live, input.memberId)
-    // Locked for share: a delete of this role waits, or wins and this is role_unavailable.
     const [role] = await lockAssignableRoles(tx, live.organizationId, [input.roleId])
     if (!role) throw notFound()
+    if (!(isOwnerKey(role.key) && !isOwnerKey(target.roleKey))) {
+      const ran = await applyMemberAccess(tx, live, payload, RAN_AT_ONCE)
+      return { ...ran, outcome: { ran: true as const, notice: ran.notice } }
+    }
+    // Refused requests are never saved: the same checks first, then the engine.
     await assertMayManage(tx, live, target, 'change', role)
-    if (isOwnerKey(target.roleKey) && !isOwnerKey(role.key)) {
-      if ((await otherActiveOwners(tx, live, target.id)) < 1) {
-        throw conflict('last_owner', lastOwnerMessage(live))
-      }
+    await assertGrantableEntities(tx, live, input.entityIds)
+    const out = await requestOrRun(tx, live, makeOwnerPlugin, { payload, reason: input.reason })
+    if (out.ran) {
+      const { notice, emails } = out.result
+      return { notice, emails, outcome: { ran: true as const, notice } }
     }
-    const newLimits = await assertGrantableEntities(tx, live, input.entityIds)
-
-    await onArchivedRole(
-      tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id)),
-    )
-    await tx.delete(memberEntityLimits).where(eq(memberEntityLimits.memberId, target.id))
-    if (newLimits.length) {
-      await tx.insert(memberEntityLimits).values(
-        newLimits.map((e) => ({
-          organizationId: live.organizationId,
-          memberId: target.id,
-          entityId: e.id,
-        })),
-      )
+    return {
+      notice: out.notice,
+      emails: out.emails,
+      outcome: { ran: false as const, requestId: out.requestId, notice: out.notice },
     }
-    await recordAudit(tx, {
-      organizationId: live.organizationId,
-      action: 'member.access_changed',
-      actor: actorOf(live),
-      target: { type: 'member', id: target.id, label: target.name },
-      before: {
-        role: target.roleName,
-        entities: target.limits.length ? target.limits.map((e) => e.name) : 'all',
-      },
-      after: {
-        role: role.name,
-        entities: newLimits.length ? newLimits.map((e) => e.name).sort() : 'all',
-      },
-      // Role names can repeat in spirit ("Owner (site)"); the console's "new owner" reads the key.
-      metadata: { roleKey: role.key },
-    })
-    const emails =
-      isOwnerKey(role.key) && !isOwnerKey(target.roleKey)
-        ? await newOwnerAlerts(tx, {
-            organizationId: live.organizationId,
-            organizationName: live.organizationName,
-            byName: live.user.name,
-            newOwnerName: target.name,
-          })
-        : []
-    const notice =
-      role.id === target.roleId
-        ? `Access updated for ${target.name}`
-        : `${target.name} is now ${role.name}`
-    return { notice, memberId: target.id, emails }
   })
-  const row = await memberRowById(ctx, result.memberId)
+  const row = await memberRowById(ctx, input.memberId)
   if (!row) throw notFound()
-  return { notice: result.notice, row, emails: result.emails }
+  return { notice: result.notice, row, outcome: result.outcome, emails: result.emails }
+}
+
+/**
+ * The only writer of a role-and-companies change (the make-owner plug-in's execute, and the
+ * change above when no approval is involved). Checks everything as `ctx` is now.
+ */
+export async function applyMemberAccess(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  input: MemberAccessPayload,
+  meta: ExecuteMeta,
+): Promise<ExecuteResult> {
+  await lockOrganization(tx, ctx.organizationId)
+  const live = await lockViewer(tx, ctx)
+  const target = await lockTarget(tx, live, input.memberId)
+  // Locked for share: a delete of this role waits, or wins and this is role_unavailable.
+  const [role] = await lockAssignableRoles(tx, live.organizationId, [input.roleId])
+  if (!role) throw notFound()
+  await assertMayManage(tx, live, target, 'change', role)
+  if (isOwnerKey(target.roleKey) && !isOwnerKey(role.key)) {
+    if ((await otherActiveOwners(tx, live, target.id)) < 1) {
+      throw conflict('last_owner', lastOwnerMessage(live))
+    }
+  }
+  const newLimits = await assertGrantableEntities(tx, live, input.entityIds)
+
+  await onArchivedRole(tx.update(members).set({ roleId: role.id }).where(eq(members.id, target.id)))
+  await tx.delete(memberEntityLimits).where(eq(memberEntityLimits.memberId, target.id))
+  if (newLimits.length) {
+    await tx.insert(memberEntityLimits).values(
+      newLimits.map((e) => ({
+        organizationId: live.organizationId,
+        memberId: target.id,
+        entityId: e.id,
+      })),
+    )
+  }
+  await recordAudit(tx, {
+    organizationId: live.organizationId,
+    action: 'member.access_changed',
+    actor: actorOf(live),
+    target: { type: 'member', id: target.id, label: target.name },
+    before: {
+      role: target.roleName,
+      entities: target.limits.length ? target.limits.map((e) => e.name) : 'all',
+    },
+    after: {
+      role: role.name,
+      entities: newLimits.length ? newLimits.map((e) => e.name).sort() : 'all',
+    },
+    // Role names can repeat in spirit ("Owner (site)"); the console's "new owner" reads the key.
+    metadata: { roleKey: role.key, ...approvalMetadata(meta) },
+  })
+  const emails =
+    isOwnerKey(role.key) && !isOwnerKey(target.roleKey)
+      ? await newOwnerAlerts(tx, {
+          organizationId: live.organizationId,
+          organizationName: live.organizationName,
+          byName: live.user.name,
+          newOwnerName: target.name,
+        })
+      : []
+  const notice =
+    role.id === target.roleId
+      ? `Access updated for ${target.name}`
+      : `${target.name} is now ${role.name}`
+  return { notice, emails, afterCommit: null }
+}
+
+/** Who the make-owner plug-in describes: the person and their role now. */
+export async function describeTarget(
+  tx: DbOrTx,
+  organizationId: string,
+  memberId: string,
+): Promise<{ userId: string; name: string; roleName: string } | null> {
+  const [row] = await tx
+    .select({ userId: members.userId, name: users.name, roleName: roles.name })
+    .from(members)
+    .innerJoin(users, eq(users.id, members.userId))
+    .innerJoin(
+      roles,
+      and(eq(roles.id, members.roleId), eq(roles.organizationId, members.organizationId)),
+    )
+    .where(
+      and(
+        eq(members.organizationId, organizationId),
+        eq(members.id, memberId),
+        eq(members.status, 'active'),
+      ),
+    )
+  return row ?? null
 }
 
 export async function removeMember(
@@ -218,6 +305,13 @@ export async function removeMember(
       .update(members)
       .set({ status: 'removed', removedAt: new Date(), removedByUserId: live.user.id })
       .where(eq(members.id, target.id))
+    // Their pending approval requests end with them ("Cancelled because Grace Umeh left").
+    await cancelForLeaver(tx, {
+      organizationId: live.organizationId,
+      memberId: target.id,
+      makerName: target.name,
+      actor: actorOf(live),
+    })
     // Their sessions in this organization end at once; sessions in their other organizations stay.
     const ended = await tx
       .delete(sessions)

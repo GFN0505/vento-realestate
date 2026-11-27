@@ -4,31 +4,23 @@
  * out of the route tree.
  */
 
+import {
+  dateParam as date,
+  isUuid,
+  matching,
+  oneOf,
+  pageParam as page,
+  textParam as text,
+  uuidParam as uuid,
+} from '@/lib/search-params'
+
 type Raw = Record<string, unknown>
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const DATE = /^\d{4}-\d{2}-\d{2}$/
-const KEY = /^[a-z][a-z0-9_.]{1,60}$/
-
-function text(value: unknown, max: number): string | undefined {
-  return typeof value === 'string' && value.trim().length > 0 && value.length <= max
-    ? value.trim()
-    : undefined
-}
-function oneOf<T extends string>(value: unknown, options: readonly T[]): T | undefined {
-  return options.find((option) => option === value)
-}
-function page(value: unknown): number | undefined {
-  const n = Number(value)
-  return Number.isInteger(n) && n > 1 && n < 10_000 ? n : undefined
-}
 /** An address id or plan key that can't exist: the page is the 404 and nothing is requested. */
-export const isOrganizationId = (value: string) => UUID.test(value)
+export const isOrganizationId = isUuid
 export const isPlanKey = (value: string) => /^[a-z][a-z0-9_]{1,30}$/.test(value)
 
-const uuid = (value: unknown) => (typeof value === 'string' && UUID.test(value) ? value : undefined)
-const key = (value: unknown) => (typeof value === 'string' && KEY.test(value) ? value : undefined)
-const date = (value: unknown) => (typeof value === 'string' && DATE.test(value) ? value : undefined)
+const key = (value: unknown) => matching(value, /^[a-z][a-z0-9_.]{1,60}$/)
 
 // ── Organizations ────────────────────────────────────────────────────────────
 

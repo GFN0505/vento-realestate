@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { nextStep } from '../account/schema'
+import { approvalReason, pendingApproval } from '../approvals/outcome'
 import { newPassword, termsVersion } from '../auth/password-schema'
 import { id, isoDate, paginated } from '../common/schemas'
 import { HIDDEN_CHARACTERS_MESSAGE, hasHiddenCharacters } from '../common/text'
@@ -82,7 +83,11 @@ const requiredForEveryone = z.boolean()
 export const roleList = paginated(role).extend({ requiredForEveryone })
 export type RoleList = z.infer<typeof roleList>
 
-export const roleDetail = role.extend({ requiredForEveryone })
+export const roleDetail = role.extend({
+  requiredForEveryone,
+  /** A permissions change waiting for approval (the grid is read-only meanwhile); null if none. */
+  pendingApproval: pendingApproval.nullable().optional(),
+})
 export type RoleDetail = z.infer<typeof roleDetail>
 
 export const createRoleInput = z.strictObject({ name: roleName, sourceRoleId: id })
@@ -100,6 +105,8 @@ export const updateRoleInput = z.strictObject({
       message: 'Give this role access to at least one area',
     })
     .optional(),
+  /** **Why?** for the approver; required only when a rule sends the change for approval. */
+  reason: approvalReason.optional(),
 })
 export type UpdateRoleInput = z.input<typeof updateRoleInput>
 
@@ -121,6 +128,8 @@ export const updateMemberAccessInput = z.strictObject({
   memberId: id,
   roleId: id,
   entityIds: entityLimit,
+  /** **Why?** for the approver; required only when making someone an owner needs approval. */
+  reason: approvalReason.optional(),
 })
 export const memberIdInput = z.strictObject({ memberId: id })
 
@@ -138,6 +147,17 @@ export const createInvitationsInput = z.strictObject({
       message: 'Each email can only be listed once',
     }),
   entityIds: entityLimit,
+  /** **Why?** for the approver; required only when an owner invitation needs approval. */
+  reason: approvalReason.optional(),
+})
+
+/**
+ * Resend: an owner invitation follows the "Make someone an owner" rules (security M2), so it may
+ * need **Why?** like inviting one does.
+ */
+export const resendInvitationInput = z.strictObject({
+  id,
+  reason: approvalReason.optional(),
 })
 
 export const invitationToken = z.string().min(20).max(200)

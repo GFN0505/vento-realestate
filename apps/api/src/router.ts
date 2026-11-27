@@ -1,5 +1,8 @@
 import { accessRouter } from '@/modules/access/access.router'
 import { accountRouter } from '@/modules/account/account.router'
+import { approvalRulesRouter } from '@/modules/approval-rules/approval-rules.router'
+import { approvalsRouter } from '@/modules/approvals/approvals.router'
+import { auditRouter } from '@/modules/audit/audit.router'
 import { checklistRouter } from '@/modules/checklist/checklist.router'
 import { entitiesRouter } from '@/modules/entities/entities.router'
 import { healthRouter } from '@/modules/health/health.router'
@@ -24,6 +27,9 @@ export const router = os.router({
   access: accessRouter,
   team: teamRouter,
   checklist: checklistRouter,
+  approvals: approvalsRouter,
+  approvalRules: approvalRulesRouter,
+  audit: auditRouter,
   console: consoleRouter,
 })
 export type Router = typeof router

@@ -13,6 +13,10 @@ export type ShortcutId =
   | 'team-search'
   | 'companies-add'
   | 'roles-new'
+  | 'approvals-next'
+  | 'approvals-previous'
+  | 'approvals-approve'
+  | 'approvals-comment'
 
 /**
  * Shortcuts that belong to one page are announced with this window event (detail: the id); the
@@ -101,6 +105,23 @@ export const SHORTCUTS: readonly Shortcut[] = [
     allowInFields: false,
     page: { path: '/settings/roles', name: 'Roles & permissions' },
   },
+  ...(
+    [
+      ['approvals-next', 'Next request', 'J'],
+      ['approvals-previous', 'Previous request', 'K'],
+      ['approvals-approve', 'Approve', 'A'],
+      ['approvals-comment', 'Write a comment', 'R'],
+    ] as const
+  ).map(
+    ([id, label, key]): Shortcut => ({
+      id,
+      label,
+      keys: [key],
+      trigger: { kind: 'key', key: key.toLowerCase() },
+      allowInFields: false,
+      page: { path: '/approvals', name: 'Approvals' },
+    }),
+  ),
 ]
 
 /** Listed in the `?` dialog but handled by each dialog and menu (Radix). */

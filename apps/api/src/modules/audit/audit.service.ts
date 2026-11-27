@@ -18,6 +18,8 @@ export type AuditInput = {
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null
   metadata?: Record<string, unknown> | null
+  /** When it happened, if not now: only the demo seed backdates events. */
+  at?: Date
 }
 
 const SECRET_KEY = /password|secret|token|code|backup/i
@@ -51,6 +53,7 @@ function row(input: AuditInput) {
     requestId: scope.requestId,
     ipMasked: scope.ipMasked,
     userAgentSummary: scope.userAgentSummary,
+    ...(input.at && { createdAt: input.at, updatedAt: input.at }),
   }
 }
 

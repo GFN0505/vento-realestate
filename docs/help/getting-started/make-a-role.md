@@ -11,7 +11,9 @@ Go to **Settings → Roles & permissions** and click a role. The grid shows each
 3. Tick and untick what the role needs. Ticking anything in an area also ticks View; unticking View clears the area.
 4. Click **Save changes**. The bar shows how many people the change affects, and the message has **Undo**.
 
-People with the role get the change on their next click. Two-step sign-in is required for any role that can change settings, or do more than view Finance or HR.
+If people already have the role, changes to what it can do may need approval from an owner or admin. The bar then says **Send for approval**. Add a reason and send it; the page shows "Waiting for approval" with **Cancel request**, and nothing changes until it's approved. Changes to a role nobody has, and renaming a role, happen at once. Under the grid, **Approves:** lists what the role can approve.
+
+People with the role get the change on their next click. Two-step sign-in is required for any role that can change settings, do more than view Finance or HR, or approve anything.
 
 **Try it before giving it out**
 On the role's page, click **Preview this role** to see Vento Real Estate as that role. Click **Stop preview** when you're done.
@@ -25,5 +27,6 @@ On the role's page, open ⋯ and choose **Delete role**. You can only delete a r
 **Things you can't do**
 - Give a role access you don't have yourself. Those boxes show a lock.
 - Change the role you have yourself. Ask another owner or admin.
+- Delete a role an approval rule uses. Change the rule first.
 
-Related: *Manage your team* · *Set up your organization and companies*
+Related: *Manage your team* · *Set approval rules* · *Approve or reject a request* · *Set up your organization and companies*

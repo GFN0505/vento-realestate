@@ -72,11 +72,13 @@ export function withinPermissions(granter: PermissionSet, target: PermissionSet)
 const SETTINGS_CHANGES: readonly PermissionAction[] = ['create', 'edit', 'delete']
 
 /**
- * Two-step is required for a role that can change settings (people's access) or do more than
- * view in Finance or HR (money and payroll). Matches every built-in role (tested).
+ * Two-step is required for a role that can change settings (people's access), do more than
+ * view in Finance or HR (money and payroll), or approve anything (decision 0024: approvers are
+ * the second person, so their sign-in must be strong). Matches every built-in role (tested).
  */
 export function roleNeedsTwoStep(set: PermissionSet): boolean {
   if ((set.settings ?? []).some((a) => SETTINGS_CHANGES.includes(a))) return true
+  if (PERMISSION_MODULES.some((m) => (set[m] ?? []).includes('approve'))) return true
   return (['finance', 'hr'] as const).some((m) => (set[m] ?? []).some((a) => a !== 'view'))
 }
 

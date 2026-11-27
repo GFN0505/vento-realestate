@@ -12,6 +12,8 @@ type Options = {
   earlyAccess?: readonly FeatureKey[]
   /** Default: true, so unbuilt modules show as in 3a. */
   internal?: boolean
+  /** `me.canSeeApprovals`. Default: false. */
+  approvals?: boolean
 }
 
 /** A `NavAccess` for tests: by default an internal organization with every module available. */
@@ -22,5 +24,6 @@ export function navAccess(permissions: PermissionSet | null, options: Options = 
     permissions,
     features: new Map(keys.map((key) => [key, { earlyAccess: early.has(key) }])),
     internal: options.internal ?? true,
+    approvals: options.approvals ?? false,
   }
 }

@@ -1,7 +1,7 @@
 import { expect, type Page, test as plain } from '@playwright/test'
 import { createTeamFixture, setRole } from '../support/fixtures'
 import { isMobile, sharedTeam, test } from '../support/shell'
-import { HOME_GREETING, signInWithPassword } from '../support/sign-in'
+import { HOME_GREETING, signInAs } from '../support/sign-in'
 
 // J-ONB-05 steps 1 and 2, decision 12: a module the role can't view appears nowhere in the
 // navigation, search or Home, and only a typed link reaches its 403.
@@ -27,8 +27,15 @@ const FOOTER: readonly Label[] = ['Settings', 'Help']
 const MODULES = EVERYTHING.filter((label) => !FOOTER.includes(label))
 
 // Written out by hand from the spec's role table, not derived from the app's own registry.
-const ROLES: Record<string, { visible: readonly Label[]; tabs: readonly Label[] }> = {
-  owner: { visible: EVERYTHING, tabs: ['Projects', 'Sales', 'Reports'] },
+// `approves`: the role holds Approve somewhere, so Approvals (a queue across modules, brick 4)
+// follows Home. Owners and admins get it as a phone tab, in place of their third module tab; for
+// the others it is the first entry in More.
+type Tab = Label | 'Approvals'
+const ROLES: Record<
+  string,
+  { visible: readonly Label[]; tabs: readonly Tab[]; approves: boolean }
+> = {
+  owner: { visible: EVERYTHING, tabs: ['Approvals', 'Projects', 'Reports'], approves: true },
   finance: {
     visible: [
       'Land & title',
@@ -43,16 +50,23 @@ const ROLES: Record<string, { visible: readonly Label[]; tabs: readonly Label[] 
       'Help',
     ],
     tabs: ['Finance', 'Sales', 'Reports'],
+    approves: true,
   },
   sales: {
     visible: ['Land & title', 'Projects', 'Sales', 'Compliance', 'Documents', 'Help'],
     tabs: ['Sales', 'Documents', 'Compliance'],
+    approves: false,
   },
   facility: {
     visible: ['Projects', 'Estates', 'Sales', 'Documents', 'Help'],
     tabs: ['Estates', 'Projects', 'Documents'],
+    approves: true,
   },
-  hr: { visible: ['HR & payroll', 'Documents', 'Help'], tabs: ['HR & payroll', 'Documents'] },
+  hr: {
+    visible: ['HR & payroll', 'Documents', 'Help'],
+    tabs: ['HR & payroll', 'Documents'],
+    approves: true,
+  },
 }
 
 const URL_OF: Record<Label, string> = {
@@ -97,7 +111,7 @@ async function openMore(page: Page) {
   return sheet
 }
 
-for (const [role, { visible, tabs }] of Object.entries(ROLES)) {
+for (const [role, { visible, tabs, approves }] of Object.entries(ROLES)) {
   const modules = visible.filter((label) => !FOOTER.includes(label))
   // Modules the role can't view: a typed link to one is a 403. Forbidden adds Settings.
   const hidden = MODULES.filter((label) => !visible.includes(label))
@@ -114,7 +128,8 @@ for (const [role, { visible, tabs }] of Object.entries(ROLES)) {
         const tabLinks = page.getByRole('navigation', { name: 'Tabs' }).getByRole('link')
         await expect(tabLinks).toHaveText(['Home', ...tabs])
         const sheet = await openMore(page)
-        const inMore = modules.filter((label) => !tabs.includes(label))
+        const approvalsInMore = approves && !tabs.includes('Approvals') ? ['Approvals'] : []
+        const inMore = [...approvalsInMore, ...modules.filter((label) => !tabs.includes(label))]
         const links = sheet.getByRole('region', { name: 'Modules' }).getByRole('link')
         await expect
           .poll(async () => withoutFooter((await links.allTextContents()).map(stripSoon)))
@@ -131,7 +146,7 @@ for (const [role, { visible, tabs }] of Object.entries(ROLES)) {
               (await links.allTextContents()).map((t) => t.replace(/, coming soon.*$/, '')),
             ),
           )
-          .toEqual(['Home', ...modules])
+          .toEqual(['Home', ...(approves ? ['Approvals'] : []), ...modules])
         for (const label of forbidden) {
           await expect(links.filter({ hasText: startsWith(label) })).toHaveCount(0)
         }
@@ -215,10 +230,9 @@ test('a permitted module that is not built yet opens its Coming soon page', asyn
   await page.goto('/')
 
   if (isMobile(testInfo)) {
-    await page
-      .getByRole('navigation', { name: 'Tabs' })
-      .getByRole('link', { name: 'Sales' })
-      .click()
+    // Owners' third tab is Approvals now, so Sales is in More.
+    const sheet = await openMore(page)
+    await sheet.getByRole('link', { name: /^Sales/ }).click()
   } else {
     await page
       .getByRole('navigation', { name: 'Main' })
@@ -253,10 +267,9 @@ test('the entity filter survives navigation, back, forward and a pasted link', a
   await expect(page.getByRole('button', { name: new RegExp(escapeRegExp(name)) })).toBeVisible()
 
   if (isMobile(testInfo)) {
-    await page
-      .getByRole('navigation', { name: 'Tabs' })
-      .getByRole('link', { name: 'Sales' })
-      .click()
+    // Owners' third tab is Approvals now, so Sales is in More.
+    const sheet = await openMore(page)
+    await sheet.getByRole('link', { name: /^Sales/ }).click()
   } else {
     await page
       .getByRole('navigation', { name: 'Main' })
@@ -274,31 +287,33 @@ test('the entity filter survives navigation, back, forward and a pasted link', a
   await expect(page.getByRole('button', { name: new RegExp(escapeRegExp(name)) })).toBeVisible()
 })
 
-// Watch for: role changed mid-session. A team of its own, because the role really changes.
+// Watch for: role changed mid-session. A team of its own, because the role really changes. The
+// member starts as Facility (two-step on, which Facility requires since it approves) and becomes
+// Sales, which needs none: moving the other way would stop at the two-step setup page instead.
 plain(
   'a role changed while a page is open updates the navigation and turns the page into a 403',
   async ({ page }, testInfo) => {
     const team = await createTeamFixture()
-    const sales = team.members.sales
-    if (!sales) throw new Error('No sales member')
-    await signInWithPassword(page, { email: sales.email, password: team.password })
-    await page.goto('/compliance')
-    await expect(page.getByRole('heading', { name: 'Compliance' })).toBeVisible()
+    const facility = team.members.facility
+    if (!facility) throw new Error('No facility member')
+    await signInAs(page, facility, team.password)
+    await page.goto('/estates')
+    await expect(page.getByRole('heading', { name: 'Estates' })).toBeVisible()
 
-    setRole(sales.email, 'facility')
+    setRole(facility.email, 'sales')
     // Coming back to the tab rechecks who you are.
     await page.evaluate(() =>
       document.dispatchEvent(new Event('visibilitychange', { bubbles: true })),
     )
 
     await expect(
-      page.getByRole('heading', { name: "You don't have access to Compliance" }),
+      page.getByRole('heading', { name: "You don't have access to Estates" }),
     ).toBeVisible()
     const shell = isMobile(testInfo) ? 'Tabs' : 'Main'
     const nav = page.getByRole('navigation', { name: shell })
     if (!isMobile(testInfo)) {
-      await expect(nav.getByRole('link', { name: /^Compliance/ })).toHaveCount(0)
-      await expect(nav.getByRole('link', { name: /^Estates/ })).toBeVisible()
+      await expect(nav.getByRole('link', { name: /^Estates/ })).toHaveCount(0)
+      await expect(nav.getByRole('link', { name: /^Compliance/ })).toBeVisible()
     }
   },
 )

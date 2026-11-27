@@ -38,5 +38,8 @@ docs/help/
 | [Set up your organization and companies](getting-started/set-up-your-companies.md) | J-ONB-07 | written |
 | [Make a role that fits the job](getting-started/make-a-role.md) | J-ONB-08 | written |
 | [Keep your account secure](getting-started/keep-your-account-secure.md) | J-ONB-09, J-ONB-10 | written |
+| [Approve or reject a request](getting-started/approve-or-reject-a-request.md) | J-EXE-02 | written |
+| [Set approval rules](getting-started/set-approval-rules.md) | J-ONB-12 | written |
+| [Read the audit log](getting-started/read-the-audit-log.md) | J-ONB-13 | written |
 
 Status: `todo` · `written` · `published`

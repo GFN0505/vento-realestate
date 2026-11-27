@@ -70,16 +70,22 @@ export function useSendInvitations(onSent: (sent: readonly string[]) => void) {
           roleId: row.roleId ?? draft.roleId ?? '',
         })),
         entityIds: draft.entityMode === 'all' ? null : [...draft.entityIds],
+        // Only an owner invitation under an approval rule needs it; the server says when.
+        reason: draft.reason.trim() || undefined,
       }),
     onMutate: () => inviteDraft.setError(null),
     onSuccess: (result, { draft, rows, organizationId }) => {
       const first = rows[0]
       if (organizationId && draft.roleId) rememberInviteRole(organizationId, draft.roleId)
+      // Owner invitations under a rule wait for approval: the server's words say so.
+      const requested = (result.requested?.length ?? 0) > 0
       // Open invitations are listed after the members, so offer the way to see them.
       toast.success(
-        result.sent === 1 && first
-          ? `Invitation sent to ${first.email}`
-          : `Invitations sent to ${result.sent} people`,
+        requested
+          ? result.notice
+          : result.sent === 1 && first
+            ? `Invitation sent to ${first.email}`
+            : `Invitations sent to ${result.sent} people`,
         {
           action: {
             label: 'View invited',

@@ -63,6 +63,9 @@ That is the thread from `PRODUCT.md`, `Land parcel → Project → Units → Sub
 ### Journeys in Release 1
 J-ONB-01 to J-ONB-05 · J-LND-01, J-LND-02, J-LND-03 · J-PRJ-01, J-PRJ-02, J-PRJ-03 · J-SAL-01, J-SAL-03, J-SAL-04, J-SAL-05, J-SAL-06 · J-SAL-07 *(allocation only)* · J-FIN-01, J-FIN-02, J-FIN-03 *(exact-match rules, no AI)*, J-FIN-04, J-FIN-05, J-FIN-06 · J-CMP-01 *(manual KYC)* · J-CMP-02 *(large-cash flag only)* · J-CMP-03 · J-EXE-01, J-EXE-02 · J-BUY-01, J-BUY-02 · J-ADM-01, J-ADM-02 (Vento staff).
 
+### Follow-ups (backlog)
+- **Fresh two-step code at the moment of approving** (owner's decision, 27 Nov 2026): when someone approves, ask for a new two-step code, not just a signed-in session. Backlogged until money approvals (receipt reversals, refunds, payroll, payments out) arrive in Release 1, when it matters most. Needs a spec (which actions, how long a code counts) and a web prompt in the approve button.
+
 ### Recommended to leave out of Release 1
 Leads pipeline and realtors, commissions, interactive estate layout, construction-linked plans, daily digest, two-way WhatsApp, SMS, e-KYC, self-service NDPA export and deletion (Vento support handles requests until R2), billing (invoiced by hand at first).
 

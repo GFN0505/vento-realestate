@@ -14,9 +14,17 @@ describe('default roles', () => {
     expect(DEFAULT_ROLES.map((r) => r.key)).toEqual([...SYSTEM_ROLE_KEYS])
   })
 
-  it('requires two-step for owner, admin, finance and HR only', () => {
+  it('requires two-step for every role but Sales and Viewer (approvers too, decision 0024)', () => {
     const required = DEFAULT_ROLES.filter((r) => r.requiresTwoStep).map((r) => r.key)
-    expect(required).toEqual(['owner', 'admin', 'finance', 'hr'])
+    expect(required).toEqual([
+      'owner',
+      'admin',
+      'land_legal',
+      'project_manager',
+      'finance',
+      'hr',
+      'facility',
+    ])
   })
 
   it('requires two-step exactly where the custom-role rule would lock it on', () => {

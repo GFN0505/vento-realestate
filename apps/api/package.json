@@ -15,7 +15,8 @@
     "mail": "tsx src/scripts/mail.ts",
     "flags": "tsx src/platform/cli/main.ts flags",
     "plans": "tsx src/platform/cli/main.ts plans",
-    "superadmin": "tsx src/platform/cli/main.ts superadmin"
+    "superadmin": "tsx src/platform/cli/main.ts superadmin",
+    "approvals": "tsx src/platform/cli/main.ts approvals"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.28",

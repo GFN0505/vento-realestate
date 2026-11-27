@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { Role } from '@vento/shared'
-import { CopyIcon, EllipsisIcon, EyeIcon, Trash2Icon, UsersIcon } from 'lucide-react'
+import { CopyIcon, EllipsisIcon, EyeIcon, HistoryIcon, Trash2Icon, UsersIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,17 +87,24 @@ export function RoleRowMenu({ role, actions }: { role: Role; actions: RoleAction
   )
 }
 
-/** ⋯ on a role page: only the delete (or who to move first). Waits while there are unsaved ticks. */
+/**
+ * ⋯ on a role page: View history (for people who can read the audit log) and the delete (or who
+ * to move first). Waits while there are unsaved ticks.
+ */
 export function RolePageMenu({
   role,
   disabled,
+  history,
   onDelete,
 }: {
   role: Role
   disabled: boolean
+  /** The audit log, filtered to this role. */
+  history: boolean
   onDelete: () => void
 }) {
-  if (role.isSystem || !(role.can.delete || (role.can.edit && holders(role) > 0))) return null
+  const deletable = !role.isSystem && (role.can.delete || (role.can.edit && holders(role) > 0))
+  if (!deletable && !history) return null
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -109,6 +116,18 @@ export function RolePageMenu({
         <EllipsisIcon aria-hidden className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-auto max-w-80 min-w-56">
+        {history && (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/settings/audit-log"
+              search={{ target: 'role', targetId: role.id, about: role.name }}
+            >
+              <HistoryIcon aria-hidden />
+              View history
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {history && deletable && <DropdownMenuSeparator />}
         <DeleteItem role={role} onDelete={onDelete} />
       </DropdownMenuContent>
     </DropdownMenu>

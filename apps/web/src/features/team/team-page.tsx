@@ -122,7 +122,7 @@ export function TeamPage() {
         </div>
         {canInvite && phone && (
           // Phones: the primary action sits above the tabs and the home indicator.
-          <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-4 pb-2 md:hidden">
+          <div className="fixed inset-x-0 bottom-(--tabbar-height) z-30 px-4 pb-2 md:hidden">
             <InviteButtonInline className="w-full shadow-lg" />
           </div>
         )}

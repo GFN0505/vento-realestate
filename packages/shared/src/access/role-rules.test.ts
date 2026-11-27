@@ -102,6 +102,24 @@ describe('roleNeedsTwoStep', () => {
     expect(roleNeedsTwoStep({ ...view, settings: ['view', 'edit'] })).toBe(true)
     expect(roleNeedsTwoStep({ ...view, settings: ['view'] })).toBe(false)
   })
+
+  it('is needed for Approve in any module, so every approver signs in with two-step', () => {
+    const view = { ...emptyPermissionSet(), projects: ['view'] } as PermissionSet
+    expect(roleNeedsTwoStep(view)).toBe(false)
+    expect(roleNeedsTwoStep({ ...view, projects: ['view', 'approve'] })).toBe(true)
+    expect(roleNeedsTwoStep({ ...view, documents: ['view', 'approve'] })).toBe(true)
+    expect(roleNeedsTwoStep({ ...view, projects: ['view', 'create', 'edit', 'export'] })).toBe(
+      false,
+    )
+  })
+
+  it('requires two-step for the built-in roles that approve: Land & legal, Project manager, Facility', () => {
+    expect(roleNeedsTwoStep(perms('land_legal'))).toBe(true)
+    expect(roleNeedsTwoStep(perms('project_manager'))).toBe(true)
+    expect(roleNeedsTwoStep(perms('facility'))).toBe(true)
+    expect(roleNeedsTwoStep(perms('sales'))).toBe(false)
+    expect(roleNeedsTwoStep(perms('viewer'))).toBe(false)
+  })
 })
 
 describe('permissionChanges', () => {

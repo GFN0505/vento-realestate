@@ -37,13 +37,17 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
   const dirty = draft?.dirty ?? false
   return (
     <header className="flex flex-col gap-3">
-      <Link
-        to="/settings/roles"
-        className="-ml-1 inline-flex w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-hidden hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
-      >
-        <ChevronLeftIcon aria-hidden className="size-4" />
-        Roles & permissions
-      </Link>
+      {/* The ⋯ menu rides on this row below xl, so it never sits alone on a line. */}
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to="/settings/roles"
+          className="-ml-1 inline-flex w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-hidden hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+        >
+          <ChevronLeftIcon aria-hidden className="size-4" />
+          Roles & permissions
+        </Link>
+        <div className="xl:hidden">{menu}</div>
+      </div>
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -147,7 +151,7 @@ export function RoleHeader({ role, draft, nameError, onDuplicate, onPreview, men
               Preview this role
             </SaveFirstButton>
           )}
-          {menu}
+          <div className="max-xl:hidden">{menu}</div>
         </div>
       </div>
     </header>

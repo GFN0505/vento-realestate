@@ -35,6 +35,8 @@ export type InviteDraft = {
   notice: string | null
   /** The last refusal, for the footer (plan limit, clashes, connection). */
   error: unknown
+  /** **Why?** for an owner invitation that needs approval (brick 4); empty otherwise. */
+  reason: string
 }
 
 export const BATCH_LIMIT_NOTICE =
@@ -50,6 +52,7 @@ const empty = (limits: readonly string[] | null): InviteDraft => ({
   entityIds: limits ?? [],
   notice: null,
   error: null,
+  reason: '',
 })
 
 let draft: InviteDraft = empty(null)
@@ -120,6 +123,7 @@ export const inviteDraft = {
   setEntityMode: (entityMode: EntityMode) => set({ entityMode }),
   setEntityIds: (entityIds: readonly string[]) => set({ entityIds }),
   setError: (error: unknown) => set({ error }),
+  setReason: (reason: string) => set({ reason }),
   /** Marks every row the server says is already in or invited. */
   markClashes(
     members: readonly string[],

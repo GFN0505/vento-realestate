@@ -74,6 +74,7 @@ export type GuardName =
   | 'members_role_not_archived'
   | 'invitations_role_not_archived'
   | 'roles_archive_unheld'
+  | 'roles_not_in_rule'
 
 /**
  * A database guard trigger refused the write (check_violation naming the guard). The services

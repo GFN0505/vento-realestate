@@ -78,6 +78,13 @@ export const me = z.object({
    * null for everyone else, revoked super-admins included.
    */
   console: z.object({ twoStepOn: z.boolean() }).nullable(),
+  /** Requests whose current step the person may decide now: the top bar's Approvals count. */
+  approvalsWaiting: z.number().int().min(0),
+  /**
+   * Show Approvals (nav, top bar, ⌘K): the role can approve in some module, or the person made a
+   * request in the last 90 days. Cosmetic only: every approvals procedure filters on the server.
+   */
+  canSeeApprovals: z.boolean(),
 })
 export type Me = z.infer<typeof me>
 

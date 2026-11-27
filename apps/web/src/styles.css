@@ -319,6 +319,9 @@
   --sidebar-open-width: 256px;
   --sidebar-width: var(--sidebar-open-width);
   --topbar-height: 60px;
+  /* The phone tab bar: 1px border, 6px top padding, 48px tabs, then the home indicator. Bars that
+     sit on it (save bars, sticky actions) use this one value, so they never float above it. */
+  --tabbar-height: calc(55px + max(0.5rem, env(safe-area-inset-bottom)));
 }
 :root[data-sidebar="collapsed"] {
   --sidebar-width: 64px;

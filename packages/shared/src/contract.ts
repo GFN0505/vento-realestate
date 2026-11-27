@@ -5,6 +5,8 @@ import {
   rolesContract,
 } from './access/contract'
 import { accountContract } from './account/contract'
+import { approvalRulesContract, approvalsContract } from './approvals/contract'
+import { auditContract } from './audit/contract'
 import { healthContract } from './health/contract'
 import { entitiesContract, onboardingContract, organizationContract } from './organization/contract'
 import { checklistContract, teamContract } from './team/contract'
@@ -22,5 +24,8 @@ export const contract = {
   access: accessContract,
   team: teamContract,
   checklist: checklistContract,
+  approvals: approvalsContract,
+  approvalRules: approvalRulesContract,
+  audit: auditContract,
 }
 export type Contract = typeof contract

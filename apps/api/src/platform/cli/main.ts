@@ -7,8 +7,8 @@ import { terminalIo } from './io'
 import { operatorIdentity } from './operator'
 import { runCommand } from './run'
 
-// `pnpm flags …`, `pnpm plans …`, `pnpm superadmin …` (production: node dist/platform/cli/main.mjs
-// flags …). Runs where devops grants database access; there is no web endpoint until the console.
+// `pnpm flags …`, `pnpm plans …`, `pnpm superadmin …`, `pnpm approvals …` (production: node
+// dist/platform/cli/main.mjs flags …). Runs where devops grants database access; there is no web endpoint until the console.
 const [group = '', ...args] = process.argv.slice(2)
 const operator = operatorIdentity()
 const mailer = createMailer(env)
@@ -30,7 +30,8 @@ try {
     mailer,
     requestPasswordReset,
     now: () => new Date(),
-    // Set only in the scheduler's environment: lets plans notify-trials run without --by.
+    // Set only in the scheduler's environment: lets plans notify-trials and approvals expire run
+    // without --by.
     scheduled: process.env.VENTO_CRON === '1',
   })
 } finally {
