@@ -4,6 +4,7 @@ import { isOrganizationId } from '@/routes/console/-search'
 import { ConsoleNotFoundPage } from '../shell/console-not-found'
 import { useConsoleTitle } from '../shell/use-console-title'
 import { ListError } from '../ui/list-states'
+import { AccountActivityCard } from './account-activity-card'
 import { ActivityCard } from './activity-card'
 import { FeaturesCard } from './features-card'
 import { OrganizationHeader } from './organization-header'
@@ -62,7 +63,8 @@ function Organization({ organizationId }: { organizationId: string }) {
         <div className="min-w-0 max-lg:order-1 lg:col-span-6 xl:col-span-4">
           <FeaturesCard organizationId={org.id} />
         </div>
-        <div className="min-w-0 max-lg:order-4 lg:col-span-6 xl:col-span-2">
+        <div className="flex min-w-0 flex-col gap-4 max-lg:order-4 lg:col-span-6 xl:col-span-2">
+          <AccountActivityCard organizationId={org.id} />
           <ActivityCard organizationId={org.id} />
         </div>
       </div>

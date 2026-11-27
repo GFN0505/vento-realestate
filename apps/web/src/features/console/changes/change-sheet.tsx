@@ -27,7 +27,7 @@ export type ChangeFrameProps = {
   fieldsDirty?: boolean
   /** Nothing can be changed (e.g. no trial to end): this line and **Close**, no preview. */
   notice?: ReactNode
-  onNext?: (next: ChangeNext) => void
+  onNext?: (next: ChangeNext, invitationId: string | null) => void
 }
 
 /** Review-only changes preview as soon as they open. */

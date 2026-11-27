@@ -3,7 +3,6 @@ import {
   CheckIcon,
   ChevronRightIcon,
   EyeIcon,
-  GaugeIcon,
   KeyboardIcon,
   LockKeyholeIcon,
   LogOutIcon,
@@ -78,13 +77,6 @@ export function MoreSheet({ open, onOpenChange }: Props) {
               <span className="flex-1">My security</span>
               <ChevronRightIcon aria-hidden />
             </Link>
-            {me.console && (
-              <Link to="/console" preload="intent" onClick={close} className={cn(sheetRow, 'mb-1')}>
-                <GaugeIcon aria-hidden />
-                <span className="flex-1">Vento console</span>
-                <ChevronRightIcon aria-hidden />
-              </Link>
-            )}
             {modules.length > 0 && (
               <Section title="Modules">
                 {modules.map((item) => (

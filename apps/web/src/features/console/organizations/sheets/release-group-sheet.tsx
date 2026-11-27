@@ -15,7 +15,7 @@ const CHOICES: { value: ReleaseGroup; label: string; note: string }[] = [
   {
     value: 'internal',
     label: 'Internal',
-    note: "Every feature, no limits. Only for Vento's own organizations.",
+    note: "Every feature, no limits. Only for Vento Real Estate's own organizations.",
   },
 ]
 

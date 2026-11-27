@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planInvite } from './invite-plan'
+import { planInvite, rowProblem } from './invite-plan'
 import { toParsed } from './parse-emails'
 import type { InviteRow } from './use-invite-draft'
 
@@ -31,5 +31,15 @@ describe('planInvite', () => {
     const plan = planInvite([row('a@x.ng'), row('b@x.ng'), row('c@x.ng')], 'me@x.ng', limit)
     expect(plan.left).toBe(1)
     expect([...plan.over]).toEqual(['b@x.ng', 'c@x.ng'])
+  })
+})
+
+describe('a staff email in Invite people', () => {
+  it('is a row problem, never sent', () => {
+    const staff = row('tunde@ventoerp.com', { kind: 'staff' })
+    expect(rowProblem(staff, 'me@x.ng')).toBe(
+      "A Vento Real Estate staff account can't join an organization. Use a different email.",
+    )
+    expect(planInvite([staff, row('a@x.ng')], 'me@x.ng', null).sendable).toHaveLength(1)
   })
 })

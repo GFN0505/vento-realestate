@@ -8,7 +8,11 @@ import { type ParsedEmail, parseEmails, toParsed } from './parse-emails'
  */
 
 /** A clash the server reported for this row (spec: every clashing row is marked at once). */
-export type RowClash = { kind: 'member' } | { kind: 'invited'; invitationId: string }
+export type RowClash =
+  | { kind: 'member' }
+  | { kind: 'invited'; invitationId: string }
+  /** A Vento Real Estate staff account: it can't join any organization (decision 0023). */
+  | { kind: 'staff' }
 
 export type InviteRow = ParsedEmail & {
   /** null = the role chosen for everyone. */
@@ -117,11 +121,17 @@ export const inviteDraft = {
   setEntityIds: (entityIds: readonly string[]) => set({ entityIds }),
   setError: (error: unknown) => set({ error }),
   /** Marks every row the server says is already in or invited. */
-  markClashes(members: readonly string[], invited: readonly { email: string; id: string }[]) {
+  markClashes(
+    members: readonly string[],
+    invited: readonly { email: string; id: string }[],
+    staff: readonly string[] = [],
+  ) {
     const member = new Set(members.map((e) => e.toLowerCase()))
+    const staffEmails = new Set(staff.map((e) => e.toLowerCase()))
     const pending = new Map(invited.map((i) => [i.email.toLowerCase(), i.id]))
     set({
       rows: draft.rows.map((r) => {
+        if (staffEmails.has(r.email)) return { ...r, clash: { kind: 'staff' } }
         if (member.has(r.email)) return { ...r, clash: { kind: 'member' } }
         const id = pending.get(r.email)
         return id ? { ...r, clash: { kind: 'invited', invitationId: id } } : r

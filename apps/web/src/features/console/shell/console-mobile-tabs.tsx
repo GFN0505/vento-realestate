@@ -8,11 +8,13 @@ import { CONSOLE_MORE, CONSOLE_TABS, isCurrent } from './console-nav'
 const tab =
   'flex min-h-12 flex-1 flex-col items-center justify-center gap-[3px] rounded-lg font-semibold text-[11px] text-muted-foreground outline-hidden transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring active:bg-muted aria-[current=page]:text-nav-active data-[current]:text-nav-active'
 
-/** Phones and tablets: Organizations, Releases, Plans and More (spec "Its own shell"). */
+/** Phones and tablets: Dashboard, Organizations, Releases and More (plan §1b.13). */
 export function ConsoleMobileTabs() {
   const [moreOpen, setMoreOpen] = useState(false)
   const pathname = useLocation({ select: (l) => l.pathname })
-  const inMore = CONSOLE_MORE.some((item) => isCurrent(item, pathname))
+  const inMore =
+    CONSOLE_MORE.some((item) => isCurrent(item, pathname)) ||
+    pathname.startsWith('/console/account')
   return (
     <nav
       aria-label="Tabs"

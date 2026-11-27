@@ -1,35 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { featureLabel } from '@vento/shared'
 import type { ReleaseDetail } from '@vento/shared/console'
 import { ActivityItem } from '../activity/activity-item'
 import { overrideUntil } from '../organizations/override-words'
 import { CardNote, DetailCard } from '../ui/detail-card'
 import { count, GROUP_LABEL } from '../words'
-import { PlansText } from './release-cells'
 
 const GROUP_ORDER = ['internal', 'pilot', 'standard'] as const
-
-/** Needs (prerequisites) and Included in (plans). */
-export function NeedsAndPlans({ release }: { release: ReleaseDetail }) {
-  return (
-    <DetailCard title="Needs and plans">
-      <dl className="flex flex-col text-[13px]">
-        <div className="flex justify-between gap-4 py-2">
-          <dt className="text-muted-foreground">Needs</dt>
-          <dd className="text-right font-semibold">
-            {release.needs.length > 0 ? release.needs.map(featureLabel).join(', ') : 'Nothing else'}
-          </dd>
-        </div>
-        <div className="flex justify-between gap-4 border-t py-2">
-          <dt className="text-muted-foreground">Included in</dt>
-          <dd className="text-right font-semibold">
-            <PlansText row={release} />
-          </dd>
-        </div>
-      </dl>
-    </DetailCard>
-  )
-}
 
 /** Organizations that have it, by release group; the first 50 names, the count is all. */
 export function Holders({ release }: { release: ReleaseDetail }) {

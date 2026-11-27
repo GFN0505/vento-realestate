@@ -4,10 +4,11 @@ import { connection } from '@/lib/connection'
 import { errorReason, isNetworkFailure } from '@/lib/error-data'
 import { consoleRefusal } from '../api'
 
-export const NETWORK_CHANGE_ERROR = "Couldn't reach Vento. Your change wasn't made. Try again."
+export const NETWORK_CHANGE_ERROR =
+  "Couldn't reach Vento Real Estate. Your change wasn't made. Try again."
 export const PROOF_NEEDED = "Confirm it's you to make this change, then try again."
 
-export type ChangeNext = 'end_trial' | 'change_ai_budget'
+export type ChangeNext = 'end_trial' | 'change_ai_budget' | 'resend_invitation'
 
 export type ChangeFailure = {
   message: string
@@ -15,19 +16,26 @@ export type ChangeFailure = {
   stale: boolean
   /** The console's next step, e.g. an **End trial** link (plan §6.1). */
   next: ChangeNext | null
+  /** `resend_invitation`: the staff invitation already open for that email. */
+  invitationId: string | null
   /** The session ended: the Session expired dialog says so; nothing to show here. */
   silent: boolean
 }
 
-function nextOf(error: ORPCError<string, unknown>): ChangeNext | null {
+const NEXTS: readonly ChangeNext[] = ['end_trial', 'change_ai_budget', 'resend_invitation']
+
+function nextOf(error: ORPCError<string, unknown>): Pick<ChangeFailure, 'next' | 'invitationId'> {
   const data: unknown = error.data
-  if (typeof data !== 'object' || data === null || !('next' in data)) return null
-  return data.next === 'end_trial' || data.next === 'change_ai_budget' ? data.next : null
+  if (typeof data !== 'object' || data === null) return { next: null, invitationId: null }
+  const next = 'next' in data ? NEXTS.find((n) => n === data.next) : undefined
+  const id =
+    'invitationId' in data && typeof data.invitationId === 'string' ? data.invitationId : null
+  return { next: next ?? null, invitationId: id }
 }
 
 /** What a refused preview or apply says. Operation messages are already plain words. */
 export function changeFailure(error: unknown): ChangeFailure {
-  const plain = { stale: false, next: null, silent: false }
+  const plain = { stale: false, next: null, invitationId: null, silent: false }
   if (isNetworkFailure(error) || !connection.isOnline()) {
     return { ...plain, message: NETWORK_CHANGE_ERROR }
   }
@@ -38,8 +46,7 @@ export function changeFailure(error: unknown): ChangeFailure {
   if (error instanceof ORPCError && error.code === 'CONFLICT') {
     const reason = errorReason(error)
     if (reason === 'platform_stale') return { ...plain, message: error.message, stale: true }
-    if (reason === 'platform_refused')
-      return { ...plain, message: error.message, next: nextOf(error) }
+    if (reason === 'platform_refused') return { ...plain, message: error.message, ...nextOf(error) }
   }
   return { ...plain, message: apiErrorMessage(error) }
 }

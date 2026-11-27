@@ -106,11 +106,21 @@ export const validatePlanSearch = (s: Raw): PlanSearch => ({
 
 // ── Super-admins and Activity ────────────────────────────────────────────────
 
-/** `add`: the Add sheet is open; `remove`: the user whose Remove confirm is open. */
-export type SuperAdminsSearch = { add?: true; remove?: string }
+/**
+ * `invite`: the Invite sheet is open. `remove` / `reset`: the person (user id) whose confirm is
+ * open. `withdraw`: the staff invitation whose confirm is open.
+ */
+export type SuperAdminsSearch = {
+  invite?: true
+  remove?: string
+  reset?: string
+  withdraw?: string
+}
 export const validateSuperAdminsSearch = (s: Raw): SuperAdminsSearch => ({
-  add: s.add === true || s.add === 'true' ? true : undefined,
+  invite: s.invite === true || s.invite === 'true' ? true : undefined,
   remove: uuid(s.remove),
+  reset: uuid(s.reset),
+  withdraw: uuid(s.withdraw),
 })
 
 export const ACTIVITY_KINDS = [

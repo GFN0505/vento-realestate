@@ -11,7 +11,7 @@ type Props = {
   autoFocus?: boolean
 }
 
-/** Spec: label "Reason", helper "Kept in Vento's activity. The customer doesn't see it." */
+/** Spec: label "Reason", helper "Kept in Vento Real Estate's activity. The customer doesn't see it." */
 export function ReasonField({ value, onChange, onBlur, error, disabled, autoFocus }: Props) {
   const id = useId()
   const field = useRef<HTMLTextAreaElement>(null)
@@ -47,7 +47,7 @@ export function ReasonField({ value, onChange, onBlur, error, disabled, autoFocu
         {error}
       </FieldError>
       <FieldDescription id={help}>
-        Kept in Vento's activity. The customer doesn't see it.
+        Kept in Vento Real Estate's activity. The customer doesn't see it.
       </FieldDescription>
     </Field>
   )

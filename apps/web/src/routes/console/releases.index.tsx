@@ -6,7 +6,7 @@ import { ConsolePageError } from '@/features/console/shell/console-route-error'
 import { validateReleasesSearch } from './-search'
 
 export const Route = createFileRoute('/console/releases/')({
-  codeSplitGroupings: [['loader', 'component'], ['errorComponent']],
+  codeSplitGroupings: [['loader', 'component', 'errorComponent']],
   validateSearch: validateReleasesSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ context: { queryClient }, deps }) =>

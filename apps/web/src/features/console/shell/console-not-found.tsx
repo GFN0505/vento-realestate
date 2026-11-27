@@ -15,7 +15,7 @@ export function ConsoleNotFoundPage() {
       title="We can't find that page"
       actions={
         <Button asChild>
-          <Link to="/console">Go to Organizations</Link>
+          <Link to="/console/organizations">Go to Organizations</Link>
         </Button>
       }
     >

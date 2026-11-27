@@ -81,7 +81,8 @@ function PasswordStep({ setup }: { setup: Setup }) {
   )
 }
 
-function ScanStep({ uri }: { uri: string }) {
+/** The QR and the key to type by hand. Also used by the staff sign-up. */
+export function ScanStep({ uri }: { uri: string }) {
   return (
     <div className="flex flex-wrap items-start gap-4">
       <Suspense fallback={<div className="size-[132px] rounded-md bg-muted" />}>
@@ -98,7 +99,17 @@ function ScanStep({ uri }: { uri: string }) {
   )
 }
 
-function VerifyStep({ setup }: { setup: Setup }) {
+/** The 6-digit code. `label` names the button ("Verify and turn on" here). */
+export function VerifyStep({
+  setup,
+  label = 'Verify and turn on',
+  errorText,
+}: {
+  setup: Setup
+  label?: string
+  /** Rewords an error for this screen (the staff sign-up's wrong-code sentence). */
+  errorText?: (error: string) => string
+}) {
   const errorId = useId()
   const [code, setCode] = useState('')
   return (
@@ -123,7 +134,7 @@ function VerifyStep({ setup }: { setup: Setup }) {
         aria-describedby={setup.error ? errorId : undefined}
       />
       <FieldError id={errorId} role="alert">
-        {setup.error}
+        {setup.error && errorText ? errorText(setup.error) : setup.error}
       </FieldError>
       <Button
         type="submit"
@@ -132,7 +143,7 @@ function VerifyStep({ setup }: { setup: Setup }) {
         aria-busy={setup.pending || undefined}
         className="relative sm:self-start"
       >
-        <PendingLabel pending={setup.pending}>Verify and turn on</PendingLabel>
+        <PendingLabel pending={setup.pending}>{label}</PendingLabel>
       </Button>
     </form>
   )

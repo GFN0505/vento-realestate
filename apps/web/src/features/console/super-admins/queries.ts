@@ -2,11 +2,23 @@ import { consoleOrpc } from '../api'
 
 export const superAdminsQuery = () => consoleOrpc.console.superAdmins.list.queryOptions()
 
-/** "tunde.bello@ventoerp.com" → "Tunde": before the server names the account, its email does. */
-export function nameFromEmail(email: string): string {
-  const first = email.trim().split('@')[0]?.split(/[._-]/)[0] ?? ''
-  return first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : email
-}
+/** Open staff invitations (at most 5), and expired ones from the last 30 days. */
+export const invitationsQuery = () => consoleOrpc.console.superAdmins.invitations.queryOptions()
 
 /** "Tunde Bello" → "Tunde" (spec: **Remove Tunde**). */
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
+
+const when = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Africa/Lagos',
+})
+
+/** "29 Nov 2026, 14:30" (Lagos), as the spec writes an invitation's expiry. */
+export function formatDateTime(iso: string): string {
+  return when.format(new Date(iso)).replace(' at ', ', ')
+}

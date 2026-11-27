@@ -12,6 +12,7 @@ import { type ChangeController, reasonProblem } from './use-change'
 const NEXT_LABEL: Record<ChangeNext, string> = {
   end_trial: 'End trial',
   change_ai_budget: 'Change AI budget',
+  resend_invitation: 'Resend',
 }
 
 type BodyProps = {
@@ -19,7 +20,7 @@ type BodyProps = {
   formId: string
   fields?: ReactNode
   onReview?: () => void
-  onNext?: (next: ChangeNext) => void
+  onNext?: (next: ChangeNext, invitationId: string | null) => void
 }
 
 /** The step's content: the fields, or the preview lines and the reason (plan §9.4). */
@@ -40,7 +41,7 @@ export function ChangeBody({ change, formId, fields, onReview, onNext }: BodyPro
                 size="sm"
                 variant="outline"
                 className="mt-2"
-                onClick={() => onNext(failure.next as ChangeNext)}
+                onClick={() => onNext(failure.next as ChangeNext, failure.invitationId)}
               >
                 {NEXT_LABEL[failure.next]}
               </Button>

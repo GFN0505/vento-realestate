@@ -20,4 +20,4 @@ export const overrideUntil = (o: ConsoleOverride) =>
   o.until ? `until ${formatDate(o.until)}` : 'no end date'
 
 export const overrideBy = (o: ConsoleOverride) =>
-  `${o.byName ?? 'Vento (scheduled)'} · ${formatDate(o.at)}`
+  `${o.byName ?? 'Vento Real Estate (scheduled)'} · ${formatDate(o.at)}`

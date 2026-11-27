@@ -34,7 +34,9 @@ export function ActivityCard({ organizationId }: { organizationId: string }) {
           </div>
         )
       ) : data.items.length === 0 ? (
-        <CardNote>No changes yet. Changes Vento makes here appear with who, why and when.</CardNote>
+        <CardNote>
+          No changes yet. Changes Vento Real Estate makes here appear with who, why and when.
+        </CardNote>
       ) : (
         <ul>
           {data.items.map((row) => (

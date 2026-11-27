@@ -18,7 +18,7 @@ export function ConsoleSidebar() {
       className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-sidebar-edge border-r bg-sidebar px-3 py-3 text-sidebar-foreground max-lg:hidden"
     >
       <div className="flex flex-col gap-1.5 px-2 pt-1 pb-4">
-        <VentoMark size={22} tone="navy" descriptor={false} className="text-sidebar-foreground" />
+        <VentoMark size={22} tone="navy" className="text-sidebar-foreground" />
         <span className="font-bold text-[10.5px] text-sidebar-staff uppercase tracking-[0.06em]">
           {STAFF_LABEL}
         </span>

@@ -56,11 +56,13 @@ function TwoStepSetupPage() {
   return (
     <AuthLayout wide>
       <AuthHeader title="Set up two-step sign-in">
-        {me.twoStepRequiredBy?.reason === 'organization'
-          ? `${me.twoStepRequiredBy.organizationName} requires a code from an authenticator app each time you sign in. It takes about a minute.`
-          : me.twoStepRequired
-            ? 'Your role needs a code from an authenticator app each time you sign in. It takes about a minute.'
-            : 'Add a code from an authenticator app to each sign-in.'}
+        {me.twoStepRequiredBy?.reason === 'super_admin'
+          ? 'Staff accounts need it every time you sign in. It takes about a minute.'
+          : me.twoStepRequiredBy?.reason === 'organization'
+            ? `${me.twoStepRequiredBy.organizationName} requires a code from an authenticator app each time you sign in. It takes about a minute.`
+            : me.twoStepRequired
+              ? 'Your role needs a code from an authenticator app each time you sign in. It takes about a minute.'
+              : 'Add a code from an authenticator app to each sign-in.'}
       </AuthHeader>
       <TwoStepSetupSteps setup={setup} />
       <Button variant="ghost" className="mx-auto mt-2 min-h-11" onClick={() => void leave()}>

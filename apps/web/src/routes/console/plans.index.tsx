@@ -6,7 +6,7 @@ import { ConsolePageError } from '@/features/console/shell/console-route-error'
 import { validatePlansSearch } from './-search'
 
 export const Route = createFileRoute('/console/plans/')({
-  codeSplitGroupings: [['loader', 'component'], ['errorComponent']],
+  codeSplitGroupings: [['loader', 'component', 'errorComponent']],
   validateSearch: validatePlansSearch,
   loader: ({ context: { queryClient } }) => loadConsoleData(queryClient, [plansQuery()]),
   component: PlansPage,

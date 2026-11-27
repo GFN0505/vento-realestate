@@ -31,7 +31,7 @@ export function OrganizationHeader({ org }: { org: OrganizationDetail }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
-        <BackLink to="/console">Organizations</BackLink>
+        <BackLink to="/console/organizations">Organizations</BackLink>
         <h1
           tabIndex={-1}
           className="mt-1 font-heading font-semibold text-[22px] leading-tight tracking-[-0.02em] sm:text-2xl"

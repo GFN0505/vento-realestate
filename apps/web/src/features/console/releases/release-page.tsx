@@ -12,7 +12,8 @@ import { ListError } from '../ui/list-states'
 import { moduleLabel } from '../words'
 import { releaseQuery } from './queries'
 import { StageBadge } from './release-cells'
-import { Holders, NeedsAndPlans, RecentChanges, ReleaseOverrides } from './release-sections'
+import { NeedsAndPlans } from './release-plans'
+import { Holders, RecentChanges, ReleaseOverrides } from './release-sections'
 import { KillSwitch, StageControl } from './stage-control'
 import { StageDialog } from './stage-dialog'
 
@@ -54,7 +55,7 @@ function Release({ featureKey }: { featureKey: FeatureKey }) {
 
   const offLine =
     release.stage === 'off' && release.stageChange
-      ? `Off for everyone since ${formatWhen(release.stageChange.at)} · ${release.stageChange.byName ?? 'Vento (scheduled)'} · ${release.stageChange.reason}`
+      ? `Off for everyone since ${formatWhen(release.stageChange.at)} · ${release.stageChange.byName ?? 'Vento Real Estate (scheduled)'} · ${release.stageChange.reason}`
       : null
 
   return (

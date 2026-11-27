@@ -12,7 +12,7 @@ import { ActivityItem } from './activity-item'
 import { ACTIVITY_PAGE_SIZE, activityQuery, hasActivityFilters } from './queries'
 
 /**
- * Activity (pattern: list page, from board AuditLog): Vento's platform trail, newest first.
+ * Activity (pattern: list page, from board AuditLog): Vento Real Estate's platform trail, newest first.
  * Read-only and append-only; no export in slice 1.
  */
 export function ActivityPage() {
@@ -35,7 +35,7 @@ export function ActivityPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Activity"
-        description="Every change Vento makes to releases, plans and organizations, with who and why."
+        description="Every change Vento Real Estate makes to releases, plans and organizations, with who and why."
       />
       <ActivityFilters search={search} update={update} organizationName={organizationName} />
       <div

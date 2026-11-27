@@ -22,6 +22,7 @@ import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthVerifyEmailRouteImport } from './routes/_auth/verify-email'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as ConsoleSplatRouteImport } from './routes/console/$'
+import { Route as ConsoleAccountRouteImport } from './routes/console/account'
 import { Route as ConsoleActivityRouteImport } from './routes/console/activity'
 import { Route as ConsoleSuperAdminsRouteImport } from './routes/console/super-admins'
 import { Route as AppShellIndexRouteImport } from './routes/_app/_shell/index'
@@ -39,6 +40,8 @@ import { Route as AppShellSalesRouteImport } from './routes/_app/_shell/sales'
 import { Route as AppShellSettingsRouteImport } from './routes/_app/_shell/settings'
 import { Route as AppTwoStepSetupRouteImport } from './routes/_app/two-step.setup'
 import { Route as AuthAcceptInvitationTokenRouteImport } from './routes/_auth/accept-invitation.$token'
+import { Route as AuthStaffInvitationTokenRouteImport } from './routes/_auth/staff-invitation.$token'
+import { Route as ConsoleOrganizationsIndexRouteImport } from './routes/console/organizations.index'
 import { Route as ConsoleOrganizationsOrganizationIdRouteImport } from './routes/console/organizations.$organizationId'
 import { Route as ConsolePlansIndexRouteImport } from './routes/console/plans.index'
 import { Route as ConsolePlansPlanKeyRouteImport } from './routes/console/plans.$planKey'
@@ -113,6 +116,11 @@ const ConsoleIndexRoute = ConsoleIndexRouteImport.update({
 const ConsoleSplatRoute = ConsoleSplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => ConsoleRoute,
+} as any)
+const ConsoleAccountRoute = ConsoleAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleActivityRoute = ConsoleActivityRouteImport.update({
@@ -201,6 +209,18 @@ const AuthAcceptInvitationTokenRoute =
     path: '/accept-invitation/$token',
     getParentRoute: () => AuthRoute,
   } as any)
+const AuthStaffInvitationTokenRoute =
+  AuthStaffInvitationTokenRouteImport.update({
+    id: '/staff-invitation/$token',
+    path: '/staff-invitation/$token',
+    getParentRoute: () => AuthRoute,
+  } as any)
+const ConsoleOrganizationsIndexRoute =
+  ConsoleOrganizationsIndexRouteImport.update({
+    id: '/organizations/',
+    path: '/organizations/',
+    getParentRoute: () => ConsoleRoute,
+  } as any)
 const ConsoleOrganizationsOrganizationIdRoute =
   ConsoleOrganizationsOrganizationIdRouteImport.update({
     id: '/organizations/$organizationId',
@@ -284,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof AuthSignUpRoute
   '/verify-email': typeof AuthVerifyEmailRoute
   '/console/$': typeof ConsoleSplatRoute
+  '/console/account': typeof ConsoleAccountRoute
   '/console/activity': typeof ConsoleActivityRoute
   '/console/super-admins': typeof ConsoleSuperAdminsRoute
   '/console/': typeof ConsoleIndexRoute
@@ -301,9 +322,11 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppShellSettingsRouteWithChildren
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/staff-invitation/$token': typeof AuthStaffInvitationTokenRoute
   '/console/organizations/$organizationId': typeof ConsoleOrganizationsOrganizationIdRoute
   '/console/plans/$planKey': typeof ConsolePlansPlanKeyRoute
   '/console/releases/$key': typeof ConsoleReleasesKeyRoute
+  '/console/organizations/': typeof ConsoleOrganizationsIndexRoute
   '/console/plans/': typeof ConsolePlansIndexRoute
   '/console/releases/': typeof ConsoleReleasesIndexRoute
   '/settings/companies': typeof AppShellSettingsCompaniesRoute
@@ -325,6 +348,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof AuthSignUpRoute
   '/verify-email': typeof AuthVerifyEmailRoute
   '/console/$': typeof ConsoleSplatRoute
+  '/console/account': typeof ConsoleAccountRoute
   '/console/activity': typeof ConsoleActivityRoute
   '/console/super-admins': typeof ConsoleSuperAdminsRoute
   '/console': typeof ConsoleIndexRoute
@@ -341,9 +365,11 @@ export interface FileRoutesByTo {
   '/sales': typeof AppShellSalesRoute
   '/two-step/setup': typeof AppTwoStepSetupRoute
   '/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/staff-invitation/$token': typeof AuthStaffInvitationTokenRoute
   '/console/organizations/$organizationId': typeof ConsoleOrganizationsOrganizationIdRoute
   '/console/plans/$planKey': typeof ConsolePlansPlanKeyRoute
   '/console/releases/$key': typeof ConsoleReleasesKeyRoute
+  '/console/organizations': typeof ConsoleOrganizationsIndexRoute
   '/console/plans': typeof ConsolePlansIndexRoute
   '/console/releases': typeof ConsoleReleasesIndexRoute
   '/settings/companies': typeof AppShellSettingsCompaniesRoute
@@ -368,6 +394,7 @@ export interface FileRoutesById {
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_auth/verify-email': typeof AuthVerifyEmailRoute
   '/console/$': typeof ConsoleSplatRoute
+  '/console/account': typeof ConsoleAccountRoute
   '/console/activity': typeof ConsoleActivityRoute
   '/console/super-admins': typeof ConsoleSuperAdminsRoute
   '/console/': typeof ConsoleIndexRoute
@@ -385,10 +412,12 @@ export interface FileRoutesById {
   '/_app/_shell/settings': typeof AppShellSettingsRouteWithChildren
   '/_app/two-step/setup': typeof AppTwoStepSetupRoute
   '/_auth/accept-invitation/$token': typeof AuthAcceptInvitationTokenRoute
+  '/_auth/staff-invitation/$token': typeof AuthStaffInvitationTokenRoute
   '/console/organizations/$organizationId': typeof ConsoleOrganizationsOrganizationIdRoute
   '/console/plans/$planKey': typeof ConsolePlansPlanKeyRoute
   '/console/releases/$key': typeof ConsoleReleasesKeyRoute
   '/_app/_shell/': typeof AppShellIndexRoute
+  '/console/organizations/': typeof ConsoleOrganizationsIndexRoute
   '/console/plans/': typeof ConsolePlansIndexRoute
   '/console/releases/': typeof ConsoleReleasesIndexRoute
   '/_app/_shell/settings/companies': typeof AppShellSettingsCompaniesRoute
@@ -413,6 +442,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/verify-email'
     | '/console/$'
+    | '/console/account'
     | '/console/activity'
     | '/console/super-admins'
     | '/console/'
@@ -430,9 +460,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/two-step/setup'
     | '/accept-invitation/$token'
+    | '/staff-invitation/$token'
     | '/console/organizations/$organizationId'
     | '/console/plans/$planKey'
     | '/console/releases/$key'
+    | '/console/organizations/'
     | '/console/plans/'
     | '/console/releases/'
     | '/settings/companies'
@@ -454,6 +486,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/verify-email'
     | '/console/$'
+    | '/console/account'
     | '/console/activity'
     | '/console/super-admins'
     | '/console'
@@ -470,9 +503,11 @@ export interface FileRouteTypes {
     | '/sales'
     | '/two-step/setup'
     | '/accept-invitation/$token'
+    | '/staff-invitation/$token'
     | '/console/organizations/$organizationId'
     | '/console/plans/$planKey'
     | '/console/releases/$key'
+    | '/console/organizations'
     | '/console/plans'
     | '/console/releases'
     | '/settings/companies'
@@ -496,6 +531,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-up'
     | '/_auth/verify-email'
     | '/console/$'
+    | '/console/account'
     | '/console/activity'
     | '/console/super-admins'
     | '/console/'
@@ -513,10 +549,12 @@ export interface FileRouteTypes {
     | '/_app/_shell/settings'
     | '/_app/two-step/setup'
     | '/_auth/accept-invitation/$token'
+    | '/_auth/staff-invitation/$token'
     | '/console/organizations/$organizationId'
     | '/console/plans/$planKey'
     | '/console/releases/$key'
     | '/_app/_shell/'
+    | '/console/organizations/'
     | '/console/plans/'
     | '/console/releases/'
     | '/_app/_shell/settings/companies'
@@ -627,6 +665,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/console/$'
       preLoaderRoute: typeof ConsoleSplatRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
+    '/console/account': {
+      id: '/console/account'
+      path: '/account'
+      fullPath: '/console/account'
+      preLoaderRoute: typeof ConsoleAccountRouteImport
       parentRoute: typeof ConsoleRoute
     }
     '/console/activity': {
@@ -747,6 +792,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/accept-invitation/$token'
       preLoaderRoute: typeof AuthAcceptInvitationTokenRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/_auth/staff-invitation/$token': {
+      id: '/_auth/staff-invitation/$token'
+      path: '/staff-invitation/$token'
+      fullPath: '/staff-invitation/$token'
+      preLoaderRoute: typeof AuthStaffInvitationTokenRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/console/organizations/': {
+      id: '/console/organizations/'
+      path: '/organizations'
+      fullPath: '/console/organizations/'
+      preLoaderRoute: typeof ConsoleOrganizationsIndexRouteImport
+      parentRoute: typeof ConsoleRoute
     }
     '/console/organizations/$organizationId': {
       id: '/console/organizations/$organizationId'
@@ -935,6 +994,7 @@ interface AuthRouteChildren {
   AuthSignUpRoute: typeof AuthSignUpRoute
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
   AuthAcceptInvitationTokenRoute: typeof AuthAcceptInvitationTokenRoute
+  AuthStaffInvitationTokenRoute: typeof AuthStaffInvitationTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -944,24 +1004,28 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthSignUpRoute: AuthSignUpRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   AuthAcceptInvitationTokenRoute: AuthAcceptInvitationTokenRoute,
+  AuthStaffInvitationTokenRoute: AuthStaffInvitationTokenRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ConsoleRouteChildren {
   ConsoleSplatRoute: typeof ConsoleSplatRoute
+  ConsoleAccountRoute: typeof ConsoleAccountRoute
   ConsoleActivityRoute: typeof ConsoleActivityRoute
   ConsoleSuperAdminsRoute: typeof ConsoleSuperAdminsRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
   ConsoleOrganizationsOrganizationIdRoute: typeof ConsoleOrganizationsOrganizationIdRoute
   ConsolePlansPlanKeyRoute: typeof ConsolePlansPlanKeyRoute
   ConsoleReleasesKeyRoute: typeof ConsoleReleasesKeyRoute
+  ConsoleOrganizationsIndexRoute: typeof ConsoleOrganizationsIndexRoute
   ConsolePlansIndexRoute: typeof ConsolePlansIndexRoute
   ConsoleReleasesIndexRoute: typeof ConsoleReleasesIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleSplatRoute: ConsoleSplatRoute,
+  ConsoleAccountRoute: ConsoleAccountRoute,
   ConsoleActivityRoute: ConsoleActivityRoute,
   ConsoleSuperAdminsRoute: ConsoleSuperAdminsRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
@@ -969,6 +1033,7 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
     ConsoleOrganizationsOrganizationIdRoute,
   ConsolePlansPlanKeyRoute: ConsolePlansPlanKeyRoute,
   ConsoleReleasesKeyRoute: ConsoleReleasesKeyRoute,
+  ConsoleOrganizationsIndexRoute: ConsoleOrganizationsIndexRoute,
   ConsolePlansIndexRoute: ConsolePlansIndexRoute,
   ConsoleReleasesIndexRoute: ConsoleReleasesIndexRoute,
 }

@@ -84,3 +84,9 @@ When a built screen deliberately differs from its approved design, record it her
 | 2026-11-26 | Console tab title | "{Page} · Vento console" instead of "Vento console · {page}" | Matches every other tab title in the app (plan §9.2) | No |
 | 2026-11-26 | Console on tablets | Bottom tabs up to 1024px instead of a navigation sheet | Five sections fit in tabs plus More; one less pattern | No |
 | 2026-11-26 | Feature detail (Releases) | No one-line description under the name; the key and module show instead | The catalog has no descriptions yet | Yes |
+| 2026-11-27 | Console Dashboard | Built from the role-home anatomy without a board: four numbers that open their lists, *Needs attention* with one action per row, *Customer activity* and *Plans and releases* panels; share bars are plain token-coloured bars, no chart library | No board yet (needs-design) | Yes |
+| 2026-11-27 | Console Dashboard | "Sign-ups not finished" counts the last 7 days, the panel's own period (spec's source table said 30) | Architect's plan §1b.20, accepted by the owner | No |
+| 2026-11-27 | Staff sign-up | No Terms checkbox; two-step is set up on the same page as the password, starting at the scan (the password was just typed) | Staff are covered by employment terms (plan §1b.20); one fewer step | Yes |
+| 2026-11-27 | Feature detail (Releases) | *Not in* lists plan names without versions or links; *Included in* links each plan's latest version | The release response names the plans; the plan list gives keys and versions (a `planVersions` field would make this one read) | No |
+| 2026-11-27 | Super-admins | **Remove** moved into the row's ⋯ menu beside **Reset two-step**; the row shows "Invited by" | Two actions per row (spec 1b) | No |
+| 2026-11-27 | Console phone top bar | The lockup and "Staff · all customers" replace "Vento console" and the full staff label | Approved short forms (a) and (b); the full label doesn't fit at 375 px | No |

@@ -1,4 +1,5 @@
-import { ArrowLeftIcon, ChevronsUpDownIcon, LogOutIcon } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { ChevronsUpDownIcon, LogOutIcon, UserRoundIcon } from 'lucide-react'
 import { Avatar } from '@/components/avatar'
 import { THEME_OPTIONS } from '@/components/shell/theme-icons'
 import {
@@ -18,7 +19,7 @@ import { useLeaveConsole } from './use-leave-console'
 
 type Props = { variant: 'sidebar' | 'topbar' }
 
-/** Name and email, Back to {organization}, theme, Sign out (plan §9.2). */
+/** Name and email, My account, theme, Sign out (plan §1b.13). */
 export function ConsoleUserMenu({ variant }: Props) {
   const me = useMe()
   const theme = useTheme()
@@ -62,12 +63,12 @@ export function ConsoleUserMenu({ variant }: Props) {
             {me.user.email}
           </p>
         </div>
-        {me.organization && (
-          <DropdownMenuItem onSelect={leave.back}>
-            <ArrowLeftIcon aria-hidden />
-            <span className="truncate">Back to {me.organization.name}</span>
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem asChild>
+          <Link to="/console/account" preload="intent">
+            <UserRoundIcon aria-hidden />
+            My account
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>

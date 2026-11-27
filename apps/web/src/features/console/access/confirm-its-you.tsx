@@ -7,7 +7,7 @@ import { useConsoleTitle } from '../shell/use-console-title'
 import { ConfirmItsYouForm } from './confirm-its-you-form'
 
 export const ENTRY_LINE =
-  'Use your passkey or a code from your authenticator app to open the Vento console.'
+  'Use your passkey or a code from your authenticator app to open the Vento Real Estate console.'
 export const EXPIRED_LINE =
   "Your console session timed out. Confirm it's you to carry on. Your change is still here."
 

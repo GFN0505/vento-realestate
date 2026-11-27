@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeftIcon, ChevronRightIcon, LogOutIcon } from 'lucide-react'
+import { ChevronRightIcon, LogOutIcon, UserRoundIcon } from 'lucide-react'
 import { sheetRow } from '@/components/shell/more-sheet'
 import { ThemeSegments } from '@/components/shell/theme-segments'
 import {
@@ -15,7 +15,7 @@ import { useLeaveConsole } from './use-leave-console'
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void }
 
-/** Phones: Activity, Super-admins, Back to {organization}, theme and Sign out. */
+/** Phones: Plans, Activity, Super-admins, My account, theme and Sign out. */
 export function ConsoleMoreSheet({ open, onOpenChange }: Props) {
   const me = useMe()
   const leave = useLeaveConsole()
@@ -43,24 +43,16 @@ export function ConsoleMoreSheet({ open, onOpenChange }: Props) {
               <ChevronRightIcon aria-hidden />
             </Link>
           ))}
+          <Link to="/console/account" onClick={close} className={sheetRow}>
+            <UserRoundIcon aria-hidden strokeWidth={1.8} />
+            <span className="flex-1">My account</span>
+            <ChevronRightIcon aria-hidden />
+          </Link>
         </div>
         <section aria-label="Theme" className="border-t pt-3 pb-1">
           <ThemeSegments />
         </section>
         <div className="mt-1 flex flex-col border-t pt-2">
-          {me.organization && (
-            <button
-              type="button"
-              className={sheetRow}
-              onClick={() => {
-                close()
-                leave.back()
-              }}
-            >
-              <ArrowLeftIcon aria-hidden />
-              <span className="flex-1 truncate">Back to {me.organization.name}</span>
-            </button>
-          )}
           <button
             type="button"
             className={sheetRow}
