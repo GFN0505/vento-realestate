@@ -6,7 +6,7 @@ Owners and admins manage people in **Settings → Team**. The list shows everyon
 Search by name or email, or filter by role. Choose **Invited** or **Removed** above the list to see only those people. If you pick one company at the top of the page, the list shows only the people who can work in that company. Click **Show all companies** to see everyone again.
 
 **Change someone's role**
-Click the role on their row and choose a new one. The message that appears has **Undo**. Making someone an **Owner** asks you to confirm first, and every owner gets an email about it.
+Click the role on their row and choose a new one. The message that appears has **Undo**. Making someone an **Owner** asks you to confirm first, and every owner gets an email about it. If your organization has an approval rule for it (it does by default), you'll be asked **Why?** and click **Send for approval**. The row reads "Owner · waiting for approval" until another owner approves it. Click **View history** on a person's sheet to see what's changed for them.
 
 **Limit someone to some companies**
 Click their row, choose **Only some companies**, tick the companies, then click **Save changes**.

@@ -14,6 +14,8 @@ Owners and admins can invite people to the organization. Each person gets an ema
 - Marked rows don't stop the others: **Send** sends only the unmarked ones and keeps the marked rows so you can fix them.
 
 **If your plan is full**
+Inviting someone as an owner needs approval by another owner first, with the same **Why?** question. The invitation is sent once it's approved.
+
 Owners see how many places are left, for example "You have 1 place left on your Starter plan." Choose **Send only 1**, or **Talk to Vento Real Estate** about a bigger plan. Admins see which owner to ask.
 
 **Later**

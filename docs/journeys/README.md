@@ -31,13 +31,13 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-03 | Import existing buyers and payments from Excel | Finance / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft |
 | J-ONB-04 | Sign in with two-factor, recover access | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built (passkey sign-in and new-device email: draft, brick 3d) |
 | J-ONB-05 | Find your way around the workspace | Everyone | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
-| J-ONB-06 | Change someone's access, reset their two-step, remove a leaver | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (make owner through approval: brick 4) |
+| J-ONB-06 | Change someone's access, reset their two-step, remove a leaver | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (make owner through approval: brick 4) |
 | J-ONB-07 | Set up the organization and its companies | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
-| J-ONB-08 | Make a role that fits the job | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (send for approval: draft, brick 4) |
+| J-ONB-08 | Make a role that fits the job | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (send for approval: brick 4) |
 | J-ONB-09 | Secure your own account (My security, passkeys, sessions) | Every member | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-10 | Require two-step for everyone | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
-| J-ONB-12 | Set approval rules | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (brick 4) |
-| J-ONB-13 | Find out who changed something (audit log) | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (brick 4) |
+| J-ONB-12 | Set approval rules | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built (brick 4) |
+| J-ONB-13 | Find out who changed something (audit log) | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (brick 4) |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
@@ -71,7 +71,7 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-CMP-03 | Renew an expiring permit | Land & legal | [08-compliance-and-documents](08-compliance-and-documents.md) | draft |
 | J-DOC-01 | Generate, approve and e-sign a contract of sale | Sales + legal | [08-compliance-and-documents](08-compliance-and-documents.md) | draft |
 | J-EXE-01 | Morning check-in | MD / CEO | [09-executive](09-executive.md) | draft |
-| J-EXE-02 | Approve sensitive actions from the inbox | MD / any approver | [09-executive](09-executive.md) | draft (brick 4) |
+| J-EXE-02 | Approve sensitive actions from the inbox | MD / any approver | [09-executive](09-executive.md) | built (brick 4) |
 | J-EXE-03 | Build a board pack | MD / finance manager | [09-executive](09-executive.md) | draft |
 | J-BUY-01 | Buyer joins the portal and pays an instalment | Buyer | [10-buyer-and-realtor-portals](10-buyer-and-realtor-portals.md) | draft |
 | J-BUY-02 | Buyer checks progress and downloads documents | Buyer | [10-buyer-and-realtor-portals](10-buyer-and-realtor-portals.md) | draft |

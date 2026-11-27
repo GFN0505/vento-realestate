@@ -40,6 +40,7 @@ Stream `platform_audit_events` (and ideally `audit_events`) to an external, appe
 - Read commands (`flags list | show`, `plans list | show`, `superadmin list`, which also lists open staff invitations) need nothing extra.
 - Set `VENTO_OPERATOR` per person (e.g. in their login profile) so the platform trail records who ran each command; it's still required for break-glass.
 - Schedule `node dist/platform/cli/main.mjs plans notify-trials` daily at 08:00 Lagos with `VENTO_CRON=1` in that job's environment only (recorded as **Scheduled**; it needs no `--break-glass`).
+- Schedule `node dist/platform/cli/main.mjs approvals expire` daily (08:00 Lagos is fine, in the same job as `plans notify-trials`) with `VENTO_CRON=1` in that job's environment only. It marks approval requests past their 7 days as expired and writes one `approval.expired` audit event each (actor "System"). It needs no `--by` or `--break-glass` from cron, is safe to run again, and handles at most a batch per transaction so a backlog never holds locks long. It is only a tidy-up: a request past its 7 days already reads as expired and can't be approved, because expiry is checked on every read and decision. If the job stops, nothing breaks; the Approvals count and lists stay right. By hand it needs `--by <super-admin email>`: `pnpm approvals expire --by …`.
 - After any break-glass change, the person who made it tells the others why, and someone checks *Activity* in the console once it's back.
 
 ### 4. First super-admin and starting data

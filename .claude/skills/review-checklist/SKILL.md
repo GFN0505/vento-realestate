@@ -47,6 +47,7 @@ Staff accounts: a staff account gets NOT_FOUND from every customer (`member`) pr
 
 ## 5b. Approvals, audit and AI
 - Sensitive actions (receipt reversal, refunds, payroll approval, price list changes, POs, manual journals) go through approval rules; the maker can't approve their own request, and the action runs only on approval.
+- A sensitive action calls `requestOrRun`, never its executor directly. Its plug-in's `execute` is the only writer of the change, and the action has a catalog entry and a service test (`registry.test.ts` fails without one).
 - Every change writes an audit event with before/after values.
 - AI calls go only through the AI gateway: feature flag checked, budget checked, input redacted, usage recorded. AI output is stored as a suggestion and changes nothing until accepted. A manual path exists and works with AI off.
 - Text from documents, bank narrations or user questions can't change AI instructions or reach write tools.
