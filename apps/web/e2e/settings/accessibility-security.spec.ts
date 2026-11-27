@@ -93,12 +93,7 @@ for (const width of [null, 1024] as const) {
 
       test(`Sign in with the passkey button has no serious violations in ${theme} mode`, async ({
         page,
-        isMobile,
       }) => {
-        // KNOWN APP BUG (reported, not fixed here): since the Vento Real Estate naming change the
-        // footnote link "Create an account" (a[href$="sign-up"]) fails axe link-in-text-block
-        // (serious): it differs from the surrounding text by colour alone. Remove once fixed.
-        test.fail(!isMobile, 'Sign-in footnote link fails link-in-text-block')
         await page.goto('/sign-in')
         await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toBeVisible()
 
