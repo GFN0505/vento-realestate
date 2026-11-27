@@ -22,6 +22,7 @@ import { requestScope, runWithRequestScope } from '@/lib/request-scope'
 import { checkHealth } from '@/modules/health/health.service'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
 import { router } from '@/router'
+import { postmarkWebhook } from '@/webhooks/postmark'
 
 export type AppDeps = {
   db: Db
@@ -30,6 +31,11 @@ export type AppDeps = {
   rateLimiter?: RateLimiter
   /** The server passes its refreshing store; tests default to one that reads on every call. */
   features?: FeatureStore
+  /**
+   * The bounce webhook's Basic-auth secret; the route exists only when this is set. Defaults to
+   * POSTMARK_WEBHOOK_SECRET when Postmark is the transport.
+   */
+  postmarkWebhookSecret?: string | null
 }
 
 function socketAddress(c: Context): string | undefined {
@@ -52,10 +58,16 @@ function trustedHeaders(c: Context): Headers {
 
 export function createApp(deps: AppDeps): Hono {
   const { db } = deps
-  const mailer = deps.mailer ?? createMailer(env)
+  const mailer = deps.mailer ?? createMailer(env, { pruneDevMailbox: true })
   const auth = deps.auth ?? createAuth({ db, mailer })
   const rateLimiter = deps.rateLimiter ?? createRateLimiter()
   const features = deps.features ?? liveFeatureStore(db)
+  const webhookSecret =
+    deps.postmarkWebhookSecret === undefined
+      ? env.EMAIL_TRANSPORT === 'postmark'
+        ? env.POSTMARK_WEBHOOK_SECRET
+        : undefined
+      : deps.postmarkWebhookSecret
 
   const rpc = new RPCHandler(router, {
     plugins: [new ResponseHeadersPlugin()],
@@ -144,6 +156,11 @@ export function createApp(deps: AppDeps): Hono {
     }
     return auth.handler(new Request(c.req.raw, { headers }))
   })
+
+  // Postmark's bounce and spam-complaint events (Hono, not oRPC: the payload is Postmark's shape).
+  if (webhookSecret) {
+    app.route('/webhooks/postmark', postmarkWebhook({ db, secret: webhookSecret, rateLimiter }))
+  }
 
   // JSON calls are small; file uploads get their own endpoints with their own limits.
   app.use('/rpc/*', bodyLimit({ maxSize: 1024 * 1024 }))

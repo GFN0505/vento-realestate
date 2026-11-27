@@ -13,6 +13,7 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "mail": "tsx src/scripts/mail.ts",
+    "email:check": "tsx src/scripts/postmark-check.ts",
     "flags": "tsx src/platform/cli/main.ts flags",
     "plans": "tsx src/platform/cli/main.ts plans",
     "superadmin": "tsx src/platform/cli/main.ts superadmin"

@@ -47,6 +47,7 @@ import {
   roles,
   users,
 } from '@/db/schema'
+import { displayName } from '@/email/escape'
 import type { EmailMessage } from '@/email/mailer'
 import { invitationEmail } from '@/email/templates/invitation'
 import { conflict, forbidden, isUniqueViolation, notFound, tooManyRequests } from '@/lib/errors'
@@ -122,14 +123,6 @@ async function details(db: DbOrTx, row: InvitationRow): Promise<InvitationDetail
     canApprove: (role?.canApprove ?? []).map((m) => MODULE_LABELS[m]),
     twoStepRequired: Boolean(role?.requiresTwoStep || org?.twoStepForEveryone),
   }
-}
-
-/** Safe inside a quoted display name: no quotes, backslashes, line breaks or control characters. */
-export function displayName(value: string): string {
-  const safe = [...value.replace(/\s+/g, ' ')]
-    .filter((c) => c !== '"' && c !== '\\' && c.charCodeAt(0) > 0x1f && c.charCodeAt(0) !== 0x7f)
-    .join('')
-  return safe.trim().slice(0, 60)
 }
 
 /**

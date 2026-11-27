@@ -1,7 +1,10 @@
 import type { Env } from '@/env'
 import { logger } from '@/lib/logger'
+import { parseAllowList, withAllowList } from './allow-list'
+import { resolvedAppEnv } from './config'
 import { createDevTransport } from './transports/dev'
 import { createMemoryTransport, type MemoryMailer } from './transports/memory'
+import { createPostmarkTransport } from './transports/postmark'
 
 export type EmailTag =
   | 'verify_email'
@@ -64,18 +67,39 @@ export async function sendEachInTurn(
   return results
 }
 
+export type MailerConfig = Pick<
+  Env,
+  | 'APP_ENV'
+  | 'EMAIL_TRANSPORT'
+  | 'EMAIL_DEV_DIR'
+  | 'EMAIL_FROM'
+  | 'POSTMARK_SERVER_TOKEN'
+  | 'POSTMARK_MESSAGE_STREAM'
+  | 'EMAIL_ALLOWED_RECIPIENTS'
+>
+
+/**
+ * The transport for this environment. `env.ts` has already refused unsafe settings (section 13.3
+ * of the Team plan); this only assembles them. Staging and development wrap Postmark in the
+ * allow-list: staging skips anyone else, development keeps their email in `.mail/`.
+ */
 export function createMailer(
-  config: Pick<Env, 'EMAIL_TRANSPORT' | 'EMAIL_DEV_DIR' | 'NODE_ENV'>,
+  config: MailerConfig,
+  options: { pruneDevMailbox?: boolean } = {},
 ): Mailer | MemoryMailer {
-  // No real provider exists yet: refuse to start rather than silently drop security emails.
-  if (config.NODE_ENV === 'production') {
-    throw new Error(
-      'Production needs a real email provider; dev and memory transports only work locally',
-    )
-  }
-  return config.EMAIL_TRANSPORT === 'memory'
-    ? createMemoryTransport()
-    : createDevTransport(config.EMAIL_DEV_DIR)
+  if (config.EMAIL_TRANSPORT === 'memory') return createMemoryTransport()
+  const dev = () => createDevTransport(config.EMAIL_DEV_DIR, { prune: options.pruneDevMailbox })
+  if (config.EMAIL_TRANSPORT === 'dev') return dev()
+  if (!config.POSTMARK_SERVER_TOKEN) throw new Error('POSTMARK_SERVER_TOKEN is not set')
+  const postmark = createPostmarkTransport({
+    token: config.POSTMARK_SERVER_TOKEN,
+    from: config.EMAIL_FROM,
+    stream: config.POSTMARK_MESSAGE_STREAM,
+  })
+  const appEnv = resolvedAppEnv(config)
+  if (appEnv === 'production') return postmark
+  const list = parseAllowList(config.EMAIL_ALLOWED_RECIPIENTS)
+  return appEnv === 'staging' ? withAllowList(postmark, list) : withAllowList(postmark, list, dev())
 }
 
 const thrown: SendResult = { status: 'failed', kind: 'transient' }

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { auditEvents, invitations, members, sessions, users } from '@/db/schema'
+import { displayName } from '@/email/escape'
 import { deleteRole } from '@/modules/roles/roles.service'
 import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail, withRollback } from '@/test/db'
@@ -22,7 +23,6 @@ import { clientAs } from '@/test/router-client'
 import {
   acceptInvitation,
   createInvitations,
-  displayName,
   previewInvitation,
   resendInvitation,
   withdrawInvitation,

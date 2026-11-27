@@ -50,16 +50,59 @@ Stream `platform_audit_events` (and ideally `audit_events`) to an external, appe
 5. **Straight away, invite a second super-admin** (*Super-admins* → **Invite super-admin**) and wait until they've joined, so a lost phone can be reset from the console. A lone super-admin who loses both phone and backup codes isn't locked out: from the host, `pnpm superadmin reset-two-step <your email> --break-glass --by <your email> --reason "…"` clears your two-step (the security inbox is told) and emails you a password link; set a new password from your inbox, then set up two-step again. Still keep two: it's the path that doesn't need host access.
 6. Leave every flag at `internal` until the owner releases it.
 
-### 5. IP geolocation database (decision 0020)
+### 5. Email through Postmark (decision 0017)
+**Postmark servers and secrets**
+- Two Postmark servers, "Vento staging" and "Vento production", each with its own server API token. Tokens and the webhook secret live in the secrets store only (never chat, email or the repo).
+- Per host: `APP_ENV` (`staging` or `production`), `EMAIL_TRANSPORT=postmark`, `POSTMARK_SERVER_TOKEN`, `EMAIL_FROM="Vento Real Estate <no-reply@mail.{Vento domain}>"`, `POSTMARK_MESSAGE_STREAM=outbound`, `POSTMARK_WEBHOOK_SECRET` (32+ random characters: `openssl rand -hex 32`).
+- Staging only: `EMAIL_ALLOWED_RECIPIENTS` (comma-separated domains and addresses, e.g. `you@example.com,@your-test-domain.com`; no wildcards or spaces). The seed and demo domains (`ventohomes.ng`, `lekkipartners.ng`) are refused at start-up, so seeded people never get real email. Anyone else is skipped and their invitation shows **Email not delivered**. Production must leave it empty; the API refuses to start otherwise.
+- The API refuses to start with `NODE_ENV=production` and no `APP_ENV`, and refuses Postmark whenever `NODE_ENV=test`, `CI` or `VENTO_E2E=1` is set.
+
+**Bounce webhook**
+- In each server's default transactional stream: Webhooks → Add webhook → URL `https://postmark:{POSTMARK_WEBHOOK_SECRET}@{api host}/webhooks/postmark/bounce`, events **Bounce** and **Spam complaint**. Leave **Include bounce content** off: it keeps payloads small (the route refuses bodies over 64 KB) and the bounced message's personal data out. HTTPS only.
+- Postmark doesn't sign webhooks; the Basic-auth secret is the check (compared in constant time). Optionally also allowlist Postmark's published webhook IPs at the proxy.
+- Only requests with wrong credentials are rate-limited (30 a minute per IP), so callers without the secret can't use up Postmark's allowance; authenticated calls aren't limited. The route exists only when Postmark is the transport and the secret is set. Rotate the secret if it leaks (worst case: someone marks pending invitations "Email not delivered").
+- Check: Postmark's "Send test" on the webhook gets 200; a wrong password gets 401.
+
+**Account hygiene (Postmark's activity log holds live invitation and reset links)**
+- Restrict Postmark account access to two people, both with two-step on.
+- Set content retention to the shortest Postmark allows.
+- Open and link tracking off on both servers (the API also sends with tracking off).
+- The DPA is signed and Postmark is on the privacy notice (purpose, United States) before the first customer.
+
+**Owner's setup checklist** (from the Team spec)
+1. Choose the sending domain: a subdomain used only for app email, e.g. `mail.{Vento domain}`.
+2. Create the Postmark account and the two servers.
+3. Verify the domain (Sender signatures → Domains): the DKIM TXT record and the custom Return-Path CNAME (`pm-bounces.mail.{domain}` → `pm.mtasv.net`). Return-Path can take up to 48 hours.
+4. Publish DMARC: TXT at `_dmarc` starting `v=DMARC1; p=none; rua=mailto:dmarc@{Vento domain}`; move to `p=quarantine` after 2–4 weeks of clean reports. Don't add Postmark to the root SPF record.
+5. Request account approval in the Postmark dashboard (account owner only): "transactional account email for a B2B property software: invitations, sign-in verification, password resets and security alerts; about {N} a month". Until approved, Postmark only sends to addresses on the verified domain.
+6. Turn off open and link tracking on both servers.
+7. Add the bounce webhook above to each server.
+8. Hand each server's token and the webhook secret to devops through the secrets store.
+9. Sign Postmark's DPA and add Postmark to the privacy notice.
+10. From staging, invite your own address: it lands in the inbox, and Gmail's "Show original" shows DKIM, SPF and DMARC passing. Invite an address outside the allow-list: the row shows **Email not delivered**. Invite Postmark's bounce test address (`hardbounce@bounce-testing.postmarkapp.com`): the row is marked within 5 minutes.
+
+**Real email while testing by hand (development only)**
+The owner may send real email from `pnpm dev`, only to the allow-list; everyone else still goes to `.mail/`. In `.env`:
+```
+EMAIL_TRANSPORT=postmark
+POSTMARK_SERVER_TOKEN=<staging server token>
+EMAIL_FROM="Vento Real Estate <no-reply@mail.{Vento domain}>"
+EMAIL_ALLOWED_RECIPIENTS=you@example.com,@your-test-domain.com
+```
+`pnpm test` blanks the token and e2e forces the dev transport, so leaving these lines in `.env` is safe. The bounce webhook isn't reachable on localhost, so bounces aren't marked there.
+
+**Checking the transport against Postmark** (opt-in, never in CI): `VENTO_EMAIL_INTEGRATION=1 POSTMARK_SERVER_TOKEN=POSTMARK_API_TEST pnpm --filter @vento/api email:check`. It uses Postmark's test token only, which delivers nothing.
+
+### 6. IP geolocation database (decision 0020)
 - Download DB-IP **IP to City Lite** (MMDB, CC BY 4.0, https://db-ip.com/db/download/ip-to-city-lite) at deploy and once a month after (DB-IP publishes at the start of each month). Put it outside the repository (`*.mmdb` is git-ignored) and point `GEOIP_DB_PATH` at it.
 - The API reads it once at startup, in the background, and keeps it in memory (about 120 MB). Replacing the file takes effect at the next restart. Without the file the API runs normally and My security shows no places; the log has one `place_lookup_unavailable` line.
 - If the instance is short of memory, use the country-only Lite file instead (a few MB); places then read "Nigeria" instead of "Lekki, Lagos".
 - The attribution "IP geolocation by DB-IP" is shown under the sessions list and must stay in the privacy notice.
 
-### 6. Passkey domain (decision 0019)
+### 7. Passkey domain (decision 0019)
 Passkeys are bound to the host of `WEB_ORIGIN`, which must be `https://` in production (the API refuses to start otherwise). Production is `WEB_ORIGIN=https://realestate.ventoerp.com` (decision 0022); the console is on the same host, so staff passkeys work there too. Don't move the host once passkeys are in use: moving to another host makes every passkey stop working.
 
-### 7. Dependency release age
+### 8. Dependency release age
 `pnpm-workspace.yaml` sets `minimumReleaseAge: 4320` (3 days). A dependency update that pnpm refuses as too new waits, or is added to `minimumReleaseAgeExclude` as an exact `name@version` after review, never as a bare name.
 
 ## Deploy notes per migration
@@ -98,4 +141,4 @@ docker compose down -v && pnpm db:up && pnpm db:migrate && pnpm db:seed
 ```
 
 ## Environment variables
-Every variable is in `.env.example`. Production also needs `SUPPORT_EMAIL` (the API refuses to start without it), and should set `SECURITY_ALERT_EMAIL` (a monitored security inbox that receives break-glass notices, including `superadmin reset-two-step`, when no other super-admin can be told; unset, the server logs a warning and sends nothing). Production values (decision 0022): `WEB_ORIGIN=https://realestate.ventoerp.com`; `EMAIL_FROM="Vento Real Estate <no-reply@realestate.ventoerp.com>"` with the Postmark sender signature, DKIM and Return-Path on that domain; `SUPPORT_EMAIL` (the **Talk to Vento Real Estate** address) and `SECURITY_ALERT_EMAIL` on Vento Real Estate addresses; TLS for the host.
+Every variable is in `.env.example`. Production also needs `SUPPORT_EMAIL` (the API refuses to start without it), and should set `SECURITY_ALERT_EMAIL` (a monitored security inbox that receives break-glass notices, including `superadmin reset-two-step`, when no other super-admin can be told; unset, the server logs a warning and sends nothing). Email settings are in section 5. Production values (decision 0022): `WEB_ORIGIN=https://realestate.ventoerp.com`; `EMAIL_FROM="Vento Real Estate <no-reply@realestate.ventoerp.com>"` with the Postmark sender signature, DKIM and Return-Path on that domain; `SUPPORT_EMAIL` (the **Talk to Vento Real Estate** address) and `SECURITY_ALERT_EMAIL` on Vento Real Estate addresses; TLS for the host.

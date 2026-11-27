@@ -86,6 +86,25 @@ describe('unexpected server errors', () => {
   })
 })
 
+describe('the Postmark bounce webhook route', () => {
+  const post = (secret: string | null) =>
+    createApp({
+      db: failingDb() as Parameters<typeof createApp>[0]['db'],
+      auth: {} as Auth,
+      mailer: createMemoryTransport(),
+      postmarkWebhookSecret: secret,
+    }).request('/webhooks/postmark/bounce', { method: 'POST', body: '{}' })
+
+  it('does not exist unless Postmark is the transport', async () => {
+    expect((await post(null)).status).toBe(404)
+  })
+
+  it('exists and asks for credentials when Postmark is configured', async () => {
+    vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    expect((await post('x'.repeat(32))).status).toBe(401)
+  })
+})
+
 describe('cross-site calls (audit M3)', () => {
   const call = (headers: Record<string, string>) =>
     app().request('/rpc/account/me', {

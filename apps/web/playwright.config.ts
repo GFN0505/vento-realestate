@@ -9,6 +9,14 @@ if (!isCI) {
     process.env.E2E_DATABASE_URL ?? 'postgres://vento:vento@localhost:5432/vento_e2e'
 }
 
+// Marks every process this run starts (servers, fixtures) as e2e, so the API refuses Postmark. A
+// developer's .env may hold a Postmark token for manual testing: blank it, and use the file
+// mailbox the specs read codes from.
+process.env.VENTO_E2E = '1'
+process.env.EMAIL_TRANSPORT = 'dev'
+process.env.POSTMARK_SERVER_TOKEN = ''
+process.env.EMAIL_ALLOWED_RECIPIENTS = ''
+
 // Locally, e2e starts its own API and web server on separate ports, so it never meets the
 // rate limits of a running `pnpm dev` and never shares its sessions. CI uses the usual ports.
 // E2E_API_PORT and E2E_WEB_PORT override both, e.g. to run CI mode next to `pnpm dev`.
@@ -24,6 +32,7 @@ const apiEnv = {
   WEB_ORIGIN: webOrigin,
   AUTH_RATE_LIMIT: 'off',
   EMAIL_TRANSPORT: 'dev',
+  VENTO_E2E: '1',
   // Availability is read from a snapshot the API reloads on a timer; the default is 10 seconds.
   // One second (the lowest allowed) keeps override specs quick without changing the code path.
   FEATURE_SNAPSHOT_REFRESH_SECONDS: '1',
