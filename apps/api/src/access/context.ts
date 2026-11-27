@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server'
-import type { PermissionSet, SystemRoleKey } from '@vento/shared'
+import type { AccountKind, PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
   emptyPermissionSet,
   PERMISSION_MODULES,
@@ -21,6 +21,8 @@ export type AuthUser = {
   twoFactorEnabled: boolean
   twoStepSetupRequired: boolean
   companyName: string | null
+  /** Staff accounts never reach organization data (decision 0023). */
+  accountKind: AccountKind
 }
 
 /** The current session row. */

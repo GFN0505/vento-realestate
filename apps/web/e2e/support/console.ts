@@ -22,6 +22,29 @@ export async function signInToConsole(
   await expect(page.getByText(STAFF_LABEL).locator('visible=true').first()).toBeVisible()
 }
 
+/**
+ * Staff sign in on the normal sign-in page and land on the console Dashboard: the code just typed
+ * is fresh proof, so no "Confirm it's you" (admin-console plan §1b.6).
+ */
+export async function signInAsStaff(
+  page: Page,
+  admin: { email: string; password: string; totpSecret: string },
+) {
+  await page.goto('/sign-in')
+  await page.getByLabel('Work email').fill(admin.email)
+  await page.getByLabel('Password', { exact: true }).fill(admin.password)
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Two-step check' })).toBeVisible()
+  await page.getByLabel('6-digit code').fill(totpCode(admin.totpSecret))
+  await expect(page).toHaveURL(/\/console\/?$/)
+}
+
+/** Opens a staff invitation link (from the fixture or the mailbox) on this web origin. */
+export async function openStaffInvitation(page: Page, link: string) {
+  const url = new URL(link)
+  await page.goto(`${url.pathname}${url.search}`)
+}
+
 /** Fills the "Confirm it's you" form (page card or dialog) with an authenticator code. */
 export async function confirmWithCode(page: Page | Locator, secret: string) {
   // The signing-in code was used in this 30-second window; the next window's code is accepted.

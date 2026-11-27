@@ -1,12 +1,12 @@
 import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { auditEvents, organizationAddOns, platformAuditEvents } from '@/db/schema'
-import { withRollback } from '@/test/db'
+import { uniqueEmail, withRollback } from '@/test/db'
 import {
   addAddOnRow,
   createOrganization,
+  createStaffInvitation,
   createSuperAdmin,
-  createUser,
   setStage,
   type TestUser,
 } from '@/test/factories'
@@ -16,7 +16,7 @@ import { FEATURE_RECORD_COUNTERS } from '../usage'
 import { findPlanVersion } from './common'
 import { changeAddOnBudget, previewAddOnBudget, previewAssign, previewPublish } from './plans'
 import { previewStage, setStage as setStageOperation } from './release'
-import { previewGrant } from './super-admin'
+import { previewInvite } from './staff-invitations'
 
 const consoleActor = (user: TestUser): PlatformActor => ({
   userId: user.id,
@@ -180,14 +180,14 @@ describe('previews', () => {
       expect(expected.latestVersion).toBe(growth.version)
     }))
 
-  it('warn when a grant makes four super-admins', () =>
+  it('warn when an invitation would make the fourth super-admin, counting open invitations', () =>
     withRollback(async (tx) => {
-      for (let i = 0; i < 3; i++) await createSuperAdmin(tx)
-      const candidate = await createUser(tx, { twoFactorEnabled: true })
-      const { lines } = await previewGrant(tx, { email: candidate.email })
+      for (let i = 0; i < 2; i++) await createSuperAdmin(tx)
+      await createStaffInvitation(tx)
+      const { lines } = await previewInvite(tx, { email: uniqueEmail('kemi'), name: 'Kemi Ojo' })
       expect(lines.at(-1)).toMatchObject({
         tone: 'warning',
-        text: expect.stringMatching(/second approver/),
+        text: "This would be the fourth super-admin. The owner asked for a second approver from then on; that's not built yet.",
       })
     }))
 })

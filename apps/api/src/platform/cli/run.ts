@@ -50,6 +50,7 @@ function nextStep(error: PlatformError): string | null {
     return `End it first with plans trial "${organizationName ?? '…'}" --end.`
   }
   if (next === 'change_ai_budget') return 'Remove it first with --remove.'
+  if (next === 'resend_invitation') return 'Resend it from Super-admins in the console.'
   if (missing === 'plan') return 'Run plans list to see them.'
   return null
 }

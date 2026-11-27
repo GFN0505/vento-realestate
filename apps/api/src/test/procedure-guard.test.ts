@@ -104,6 +104,31 @@ describe('organization guard walk', () => {
   })
 })
 
+describe('staff walk (decision 0023)', () => {
+  const paths = procedurePaths(router)
+  // Every customer procedure: built on `member` or `memberPendingTwoStep`.
+  const customer = paths.filter((p) => !isPublic(p) && !isPersonal(p) && !isConsole(p))
+
+  // A database that throws on use proves the refusal comes before any membership read or write.
+  it.each(customer)(
+    '%s answers a staff account NOT_FOUND before touching the database',
+    async (path) => {
+      const staff = {
+        id: '01936f1e-8b2a-7c3d-9e4f-000000000004',
+        name: 'Ada Okafor',
+        email: 'ada@ventoerp.com',
+        twoFactorEnabled: true,
+        accountKind: 'staff',
+      } as TestUser
+      const { client } = clientAs(throwingDb(), staff)
+      await expect(procedureAt(client, path)({})).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+        message: "We couldn't find that. It may have been removed.",
+      })
+    },
+  )
+})
+
 describe('all-companies guard (brick 3c)', () => {
   // Organization-wide changes: a member limited to some companies is refused before any write.
   const orgWide: [string, (ids: { role: string; entity: string }) => unknown][] = [

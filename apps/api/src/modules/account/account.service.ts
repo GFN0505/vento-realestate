@@ -136,13 +136,10 @@ export async function getMe(
     () => twoStepRequiredBy(db, user, membership),
     () => activeSuperAdmin(db, user.id),
   ])
-  // A Vento super-admin with no organization lands on the console (two-step first).
+  // A staff account never onboards (decision 0023): an active super-admin with two-step goes
+  // to the console; anyone else staff (joining, or after a reset) sets two-step up first.
   const nextStep: NextStep =
-    step === 'onboarding_organization' && admin
-      ? admin.twoFactorEnabled
-        ? 'console'
-        : 'two_step_setup'
-      : step
+    user.accountKind === 'staff' ? (admin?.twoFactorEnabled ? 'console' : 'two_step_setup') : step
   // Only someone through every gate (onboarding, two-step) is using the organization.
   if (membership && nextStep === 'ready') await touchMemberActivity(db, membership.member)
   return {

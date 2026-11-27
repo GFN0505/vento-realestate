@@ -24,6 +24,7 @@ import { logger } from '@/lib/logger'
 import { lookupPlace } from '@/lib/place'
 import { requestScope } from '@/lib/request-scope'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
+import { discardUnfinishedStaffAccounts, staffAccountState } from '@/platform/staff-accounts'
 import { checkDevice } from './hooks/after-sign-in'
 import { onBackupCodesRegenerated, onPasswordChanged, onTwoStepDisabled } from './hooks/audit-hooks'
 import {
@@ -166,6 +167,11 @@ const PASSWORD_CHECKED_PATHS = new Set([
   '/two-factor/generate-backup-codes',
 ])
 
+/** Active super-admin or joining: the only staff accounts that may sign in. */
+async function staffMaySignIn(db: Db, userId: string): Promise<boolean> {
+  return (await staffAccountState(db, userId)) !== 'closed'
+}
+
 export type CreateAuthOptions = {
   db: Db
   mailer: Mailer
@@ -246,7 +252,7 @@ export function createAuth(options: CreateAuthOptions) {
 
   const webauthn = webAuthnSettings()
   const auth = betterAuth({
-    appName: 'Vento',
+    appName: 'Vento Real Estate',
     basePath: AUTH_BASE_PATH,
     baseURL: env.WEB_ORIGIN,
     trustedOrigins: [env.WEB_ORIGIN],
@@ -549,6 +555,20 @@ export function createAuth(options: CreateAuthOptions) {
                 message: AUTH_ERROR_MESSAGES.PASSWORD_RESET_REQUIRED,
               })
             }
+            // A staff account that is neither a super-admin nor mid-way through its sign-up (the
+            // invitation expired, was withdrawn or resent) is refused exactly like a wrong
+            // password, and discarded (decision 0023).
+            if (user.accountKind === 'staff' && !(await staffMaySignIn(db, user.id))) {
+              await db.delete(sessions).where(eq(sessions.token, signedIn.session.token))
+              ctx.context.setNewSession(null)
+              await db.transaction((tx) => discardUnfinishedStaffAccounts(tx))
+              const lockedUntil = email ? await onPasswordFailure(deps, email) : null
+              if (lockedUntil) return lockedResponse(lockedUntil)
+              return errorResponse(401, {
+                code: AUTH_ERROR_CODES.INVALID_EMAIL_OR_PASSWORD,
+                message: AUTH_ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD,
+              })
+            }
             await onPasswordSuccess(deps, ctx, user)
             return
           }
@@ -625,7 +645,8 @@ export function createAuth(options: CreateAuthOptions) {
         },
       }),
       twoFactor({
-        issuer: 'Vento',
+        // New authenticator entries only: existing ones keep the label they were made with.
+        issuer: 'Vento Real Estate',
         backupCodeOptions: { amount: 10, length: 10 },
         accountLockout: { maxFailedAttempts: 5, durationSeconds: 900 },
         twoFactorCookieMaxAge: 600,

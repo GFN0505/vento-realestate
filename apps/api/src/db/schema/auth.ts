@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  pgEnum,
   pgTable,
   text,
   uniqueIndex,
@@ -15,6 +16,12 @@ import { organizations } from './organization'
 // Identity tables, shaped as Better Auth 1.7 expects (plural, snake_case). They belong to a
 // person, not an organization, so they have no organization_id (decision 0010).
 // On a Better Auth upgrade, diff against `npx auth generate`; auth-schema.test.ts guards drift.
+
+/**
+ * A customer account or a Vento Real Estate staff account (decision 0023). Fixed at creation:
+ * trigger `users_account_kind_fixed` (0014) refuses any change.
+ */
+export const accountKind = pgEnum('account_kind', ['customer', 'staff'])
 
 export const users = pgTable(
   'users',
@@ -35,6 +42,7 @@ export const users = pgTable(
      * new password through the emailed link, so a reset alone never opens the account.
      */
     passwordResetRequired: boolean().notNull().default(false),
+    accountKind: accountKind().notNull().default('customer'),
     ...timestamps,
   },
   (t) => [

@@ -1,22 +1,14 @@
 import type { PermissionSet, TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
-import { and, asc, count, eq, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, count, eq, isNull, ne, or } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, lockViewer, type ServiceContext } from '@/access/context'
 import { assertGrantableEntities } from '@/access/grants'
 import { type MemberAction, memberRefusal, needsOwnerName, viewerOf } from '@/access/manage-rules'
 import { newOwnerAlerts } from '@/access/new-owner-alerts'
 import { firstOwner } from '@/access/who-can-grant'
+import { clearSecondFactors } from '@/auth/clear-second-factors'
 import type { DbOrTx } from '@/db/client'
-import {
-  entities,
-  memberEntityLimits,
-  members,
-  passkeys,
-  roles,
-  sessions,
-  twoFactors,
-  users,
-} from '@/db/schema'
+import { entities, memberEntityLimits, members, roles, sessions, users } from '@/db/schema'
 import type { EmailMessage } from '@/email/mailer'
 import { twoStepResetAlert } from '@/email/templates/security-alert'
 import { conflict, forbidden, notFound } from '@/lib/errors'
@@ -186,6 +178,8 @@ export async function updateMemberAccess(
         role: role.name,
         entities: newLimits.length ? newLimits.map((e) => e.name).sort() : 'all',
       },
+      // Role names can repeat in spirit ("Owner (site)"); the console's "new owner" reads the key.
+      metadata: { roleKey: role.key },
     })
     const emails =
       isOwnerKey(role.key) && !isOwnerKey(target.roleKey)
@@ -274,28 +268,15 @@ export async function resetMemberTwoStep(
     const live = await lockViewer(tx, ctx)
     const target = await lockTarget(tx, live, memberId)
     await assertMayManage(tx, live, target, 'reset')
-    // A Vento super-admin's two-step guards every customer (audit M1): only Vento resets it.
+    // Backstop: staff accounts can't be members (decision 0023), and a super-admin's two-step
+    // guards every customer (audit M1), so only Vento Real Estate resets it.
     if (await activeSuperAdmin(tx, target.userId)) {
-      throw forbidden('permission', 'Vento staff reset two-step with Vento.')
+      throw forbidden(
+        'permission',
+        'Vento Real Estate staff reset two-step with Vento Real Estate.',
+      )
     }
-    // The same per-person lock the passkeys insert trigger takes (migration 0010): a registration
-    // in flight either lands first and is deleted below, or waits and is refused as reset-pending.
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${target.userId}::text, 0))`)
-    await tx.delete(twoFactors).where(eq(twoFactors.userId, target.userId))
-    // A lost phone's passkey must stop working too (spec 3d). Before the sessions go, in the
-    // same transaction: registration needs a session, so none can be added meanwhile.
-    const removedPasskeys = await tx
-      .delete(passkeys)
-      .where(eq(passkeys.userId, target.userId))
-      .returning({ id: passkeys.id })
-    await tx
-      .update(users)
-      .set({ twoFactorEnabled: false, twoStepSetupRequired: true, passwordResetRequired: true })
-      .where(eq(users.id, target.userId))
-    const ended = await tx
-      .delete(sessions)
-      .where(eq(sessions.userId, target.userId))
-      .returning({ id: sessions.id })
+    const cleared = await clearSecondFactors(tx, target.userId, { mode: 'reset' })
     await recordAccountEvent(tx, {
       userId: target.userId,
       action: 'two_step.reset',
@@ -303,8 +284,8 @@ export async function resetMemberTwoStep(
       target: { type: 'user', id: target.userId, label: target.name },
       metadata: {
         resetFrom: live.organizationName,
-        sessionsEnded: ended.length,
-        passkeysRemoved: removedPasskeys.length,
+        sessionsEnded: cleared.sessionsEnded,
+        passkeysRemoved: cleared.passkeysRemoved,
       },
     })
     const alert = twoStepResetAlert({ byName: live.user.name })

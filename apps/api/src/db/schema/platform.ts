@@ -28,7 +28,19 @@ export const releaseGroup = pgEnum('release_group', ['standard', 'pilot', 'inter
 export const overrideKind = pgEnum('override_kind', ['release', 'feature', 'limit'])
 export const platformRole = pgEnum('platform_role', ['super_admin'])
 /** Where a platform change came from. null on rows written before the console (read-time label). */
-export const platformChannel = pgEnum('platform_channel', ['console', 'command', 'scheduled'])
+export const platformChannel = pgEnum('platform_channel', [
+  'console',
+  'command',
+  'scheduled',
+  /** A staff person's own account event (sign-in, two-step, passkey, console opened). Never on Activity. */
+  'account',
+])
+export const staffInvitationStatus = pgEnum('staff_invitation_status', [
+  'pending',
+  'accepted',
+  'expired',
+  'withdrawn',
+])
 
 /** Release stage per catalog key. No row = `internal` (a new flag starts there). */
 export const featureReleases = pgTable(
@@ -118,6 +130,62 @@ export const platformAdmins = pgTable(
   ],
 )
 
+/**
+ * Invitations to become a super-admin (decision 0023). Platform configuration: no organization.
+ * `expired` is worked out when read (`expires_at`) and stored on the next write.
+ */
+export const staffInvitations = pgTable(
+  'staff_invitations',
+  {
+    id: id(),
+    email: text().notNull(),
+    name: text().notNull(),
+    reason: text().notNull(),
+    /** null = the bootstrap invitation from the command line. */
+    invitedByUserId: uuid().references(() => users.id, { onDelete: 'restrict' }),
+    /** The open bootstrap invitation is withdrawn when the command runs again. */
+    bootstrap: boolean().notNull().default(false),
+    status: staffInvitationStatus().notNull().default('pending'),
+    /** SHA-256 of the 256-bit token; the token itself is only in the email (or printed once). */
+    tokenHash: text().notNull(),
+    expiresAt: timestamptz().notNull(),
+    /** Resend is allowed once a minute. */
+    lastSentAt: timestamptz().defaultNow().notNull(),
+    /** The staff account, once the person set a password. */
+    userId: uuid().references(() => users.id, { onDelete: 'restrict' }),
+    startedAt: timestamptz(),
+    respondedAt: timestamptz(),
+    withdrawnByUserId: uuid().references(() => users.id, { onDelete: 'restrict' }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('staff_invitations_email_pending_unique')
+      .on(t.email)
+      .where(sql`${t.status} = 'pending'`),
+    uniqueIndex('staff_invitations_token_hash_unique').on(t.tokenHash),
+    index('staff_invitations_status_idx').on(t.status, t.createdAt.desc()),
+    index('staff_invitations_user_idx').on(t.userId),
+    index('staff_invitations_invited_by_idx').on(t.invitedByUserId),
+    index('staff_invitations_withdrawn_by_idx').on(t.withdrawnByUserId),
+    check('staff_invitations_email_lower_case', sql`${t.email} = lower(${t.email})`),
+    // As `accountName` in @vento/shared (2–80 after trimming).
+    check('staff_invitations_name_length', sql`char_length(btrim(${t.name})) between 2 and 80`),
+    check('staff_invitations_reason_length', sql`char_length(${t.reason}) between 3 and 500`),
+    check(
+      'staff_invitations_started_with_user',
+      sql`(${t.userId} is null) = (${t.startedAt} is null)`,
+    ),
+    check(
+      'staff_invitations_accepted_has_user',
+      sql`${t.status} <> 'accepted' or ${t.userId} is not null`,
+    ),
+    check(
+      'staff_invitations_responded',
+      sql`${t.status} not in ('accepted', 'withdrawn') or ${t.respondedAt} is not null`,
+    ),
+  ],
+)
+
 /** Vento-only trail of flag, plan and super-admin changes. Append-only (triggers in 0004). */
 export const platformAuditEvents = pgTable(
   'platform_audit_events',
@@ -137,7 +205,7 @@ export const platformAuditEvents = pgTable(
     after: jsonb(),
     reason: text().notNull(),
     metadata: jsonb(),
-    /** null = written before the console: read as `scheduled` for "Vento (scheduled)", else `command`. */
+    /** null = written before the console: read as `scheduled` for the scheduled actor, else `command`. */
     channel: platformChannel(),
     /** One per confirmed console change, so a retried request never applies it twice. */
     idempotencyKey: uuid(),

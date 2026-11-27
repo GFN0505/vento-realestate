@@ -63,7 +63,9 @@ describe('pnpm flags', () => {
       for (const by of [owner.email, noTwoStep.email]) {
         const { code, io } = await run(tx, ['stage', 'sales', 'on', ...why, '--by', by])
         expect(code).toBe(1)
-        expect(io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+        expect(io.errors).toEqual([
+          'Only Vento Real Estate super-admins can change flags and plans.',
+        ])
       }
       const { io } = await run(tx, ['stage', 'sales', 'on', '--by', admin.email])
       expect(io.errors).toEqual(['Add --reason so the audit trail says why.'])
@@ -165,7 +167,7 @@ describe('pnpm flags', () => {
         )
       expect(notices).toHaveLength(1)
       expect(notices[0]).toMatchObject({
-        actorName: 'Vento',
+        actorName: 'Vento Real Estate',
         actorUserId: null,
         metadata: { message: 'Vento turned on Buyer portal for your organization' },
       })

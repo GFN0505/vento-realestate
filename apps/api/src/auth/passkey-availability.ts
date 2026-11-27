@@ -48,7 +48,9 @@ export async function passkeysAvailableHere(
   store: FeatureStore,
   session: { userId: string; activeOrganizationId: string | null },
 ): Promise<boolean> {
-  if (!session.activeOrganizationId) return false
+  // No organization: a staff account on My account (or anyone else, who gets the same false
+  // as before); staff follow the super-admin rule below.
+  if (!session.activeOrganizationId) return passkeysAvailableForStaff(db, store, session.userId)
   const rows = await planRows(
     db,
     sql`m.user_id = ${session.userId} and m.organization_id = ${session.activeOrganizationId}::uuid`,
@@ -66,6 +68,15 @@ export async function passkeysAvailableForUser(
   userId: string,
 ): Promise<boolean> {
   if (await anyHas(store, await planRows(db, sql`m.user_id = ${userId}`))) return true
+  return passkeysAvailableForStaff(db, store, userId)
+}
+
+/** An active super-admin, unless passkeys are switched off for everyone. */
+async function passkeysAvailableForStaff(
+  db: DbOrTx,
+  store: FeatureStore,
+  userId: string,
+): Promise<boolean> {
   return !(await passkeysSwitchedOff(store)) && (await activeSuperAdmin(db, userId)) !== null
 }
 

@@ -9,6 +9,7 @@ import {
   isLimitKey,
 } from '@vento/shared'
 import type {
+  AccountActivity,
   ConsoleOverride,
   EndedOverride,
   FeatureWhy,
@@ -40,6 +41,7 @@ import { organizationState } from '../operations/common'
 import { allOrganizationPlans } from '../operations/release'
 import { limitUses } from '../plan-summary'
 import { loadSnapshot } from '../snapshot'
+import { customerFeed } from './customer-activity'
 
 // The Organizations pages (admin-console plan §9.6). Facts only: the owner's name and email,
 // counts and dates. Nothing here reads buyers, money, documents or KYC.
@@ -66,29 +68,49 @@ async function usageByOrganization(db: DbOrTx) {
   return { members: toMap(people.rows), entities: toMap(companies.rows) }
 }
 
+/** One count limit's use, when an organization is at or over it. */
+export type LimitUse = { key: 'members' | 'entities'; used: number; included: number }
+
 /**
- * Organizations over a count limit, evaluated in memory per organization (plan §9.6: fine to a
- * few thousand; revisit with materialised usage beyond that). Only limits a module counts.
+ * Each organization at or over a count limit, evaluated in memory per organization in one pass
+ * (plan §9.6: fine to a few thousand; revisit with materialised usage beyond that). Only limits
+ * a module counts. Internal organizations have no caps, so never appear.
  */
-export async function overLimitIds(
+export async function limitStanding(
   db: DbOrTx,
   now: Date,
   snapshot?: Snapshot,
-): Promise<Set<string>> {
+): Promise<Map<string, { over: LimitUse[]; at: LimitUse[] }>> {
   const [snap, orgs, usage] = await runQueries(db, [
     async () => snapshot ?? (await loadSnapshot(db, { now })),
     () => allOrganizationPlans(db),
     () => usageByOrganization(db),
   ])
-  const over = new Set<string>()
+  const standing = new Map<string, { over: LimitUse[]; at: LimitUse[] }>()
   for (const o of orgs) {
     const a = organizationAvailability(snap, { organizationId: o.id, ...o }, now)
+    const over: LimitUse[] = []
+    const at: LimitUse[] = []
     for (const key of ['members', 'entities'] as const) {
       const included = a.countLimit(key)
-      if (included !== null && (usage[key].get(o.id) ?? 0) > included) over.add(o.id)
+      if (included === null) continue
+      const used = usage[key].get(o.id) ?? 0
+      if (used > included) over.push({ key, used, included })
+      else if (used > 0 && used === included) at.push({ key, used, included })
     }
+    if (over.length || at.length) standing.set(o.id, { over, at })
   }
-  return over
+  return standing
+}
+
+/** Organizations over a count limit (slice 1's callers). */
+export async function overLimitIds(
+  db: DbOrTx,
+  now: Date,
+  snapshot?: Snapshot,
+): Promise<Set<string>> {
+  const standing = await limitStanding(db, now, snapshot)
+  return new Set([...standing].filter(([, s]) => s.over.length > 0).map(([id]) => id))
 }
 
 export async function summary(db: DbOrTx, now = new Date()): Promise<OrganizationsSummary> {
@@ -461,4 +483,47 @@ export async function endedOverrides(
     return o ? [{ ...o, endedAt: new Date(r.endedAt).toISOString() } as EndedOverride] : []
   })
   return toPage(items, input, total[0]?.n ?? 0)
+}
+
+const ACCOUNT_ACTIVITY_DAYS = 30
+const ACCOUNT_ACTIVITY_ROWS = 30
+
+/**
+ * Organization detail's Account activity card: "9 of 11 people active in the last 7 days · last
+ * active today", then this organization's feed for 30 days. Internal organizations show theirs
+ * too (the exclusion is for cross-customer numbers only).
+ */
+export async function accountActivity(
+  db: DbOrTx,
+  organizationId: string,
+  now = new Date(),
+): Promise<AccountActivity> {
+  const [org] = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+  if (!org) throw notFound()
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60_000)
+  const [people, feed] = await runQueries(db, [
+    () =>
+      db.execute<{ people: number; active: number; last_active_at: Date | string | null }>(sql`
+        select count(*)::int as people,
+          (count(*) filter (where last_active_at >= ${weekAgo.toISOString()}::timestamptz))::int
+            as active,
+          max(last_active_at) as last_active_at
+        from members where organization_id = ${organizationId}::uuid and status = 'active'`),
+    () =>
+      customerFeed(db, {
+        organizationId,
+        since: new Date(now.getTime() - ACCOUNT_ACTIVITY_DAYS * 24 * 60 * 60_000),
+        limit: ACCOUNT_ACTIVITY_ROWS,
+      }),
+  ])
+  const row = people.rows[0]
+  return {
+    people: Number(row?.people ?? 0),
+    activeLast7Days: Number(row?.active ?? 0),
+    lastActiveAt: row?.last_active_at ? new Date(row.last_active_at).toISOString() : null,
+    feed,
+  }
 }

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db as pool } from '@/db/client'
-import { auditEvents, organizationPlans, platformAuditEvents } from '@/db/schema'
+import { auditEvents, organizationPlans, platformAuditEvents, staffInvitations } from '@/db/schema'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
   addAddOnRow,
@@ -152,7 +152,7 @@ describe('changes', () => {
         .from(auditEvents)
         .where(and(eq(auditEvents.organizationId, org.id), eq(auditEvents.action, 'plan.assigned')))
       expect(notice).toMatchObject({
-        actorName: 'Vento',
+        actorName: 'Vento Real Estate',
         actorUserId: null,
         metadata: { message: 'Vento moved your organization to Growth' },
       })
@@ -310,6 +310,19 @@ describe('releases and plans', () => {
       expect(detail.holders.map((h) => h.group)).toEqual(['internal', 'pilot', 'standard'])
     }))
 
+  it("lists every live plan's latest version on a feature, and whether it's included", () =>
+    withRollback(async (tx) => {
+      const admin = await createSuperAdmin(tx)
+      const { client } = consoleClientAs(tx, admin)
+      const detail = await client.console.releases.get({ key: 'sales' })
+      const keys = detail.planVersions.map((p) => p.key)
+      expect(keys.slice(0, 3)).toEqual(['starter', 'growth', 'enterprise'])
+      for (const p of detail.planVersions) {
+        expect(p.included).toBe(detail.plans.includes(p.name))
+        expect(p.version).toBeGreaterThanOrEqual(1)
+      }
+    }))
+
   it('publishes a new version without moving anyone', () =>
     withRollback(async (tx) => {
       const admin = await createSuperAdmin(tx)
@@ -342,39 +355,60 @@ describe('releases and plans', () => {
 })
 
 describe('super-admins', () => {
-  it('adds someone with two-step and emails them and the others', () =>
+  it('invites someone and emails them and the others', () =>
     withRollback(async (tx) => {
       const ada = await createSuperAdmin(tx)
       const other = await createSuperAdmin(tx, { name: 'Bola Ade' })
-      const tunde = await createUser(tx, { name: 'Tunde Ola', twoFactorEnabled: true })
+      const email = uniqueEmail('tunde')
       const { client, mailer } = consoleClientAs(tx, ada)
-      const preview = await client.console.superAdmins.add.preview({ email: tunde.email })
-      await client.console.superAdmins.add.apply({
-        email: tunde.email,
+      const preview = await client.console.superAdmins.invite.preview({ email, name: 'Tunde Ola' })
+      await client.console.superAdmins.invite.apply({
+        email,
+        name: 'Tunde Ola',
         expected: preview.expected,
         ...why,
         ...key(),
       })
-      expect(mailer.to(tunde.email).at(-1)?.subject).toBe("You're now a Vento super-admin")
+      expect(mailer.to(email).at(-1)?.subject).toBe(
+        'Ada Okafor invited you to the Vento Real Estate console',
+      )
       expect(mailer.to(other.email).at(-1)?.subject).toBe(
-        'Ada Okafor made Tunde Ola a Vento super-admin',
+        `Ada Okafor invited Tunde Ola (${email}) to be a super-admin`,
       )
       expect(mailer.to(ada.email)).toEqual([])
-      const list = await client.console.superAdmins.list()
-      expect(list.find((r) => r.isYou)?.userId).toBe(ada.id)
+      const invitations = await client.console.superAdmins.invitations()
+      expect(invitations.find((i) => i.email === email)).toMatchObject({
+        name: 'Tunde Ola',
+        invitedByName: 'Ada Okafor',
+        status: 'pending',
+      })
     }))
 
-  it('refuses someone with no account or no two-step', () =>
+  it('refuses an email that has a customer account', () =>
     withRollback(async (tx) => {
       const ada = await createSuperAdmin(tx)
-      const noTwoStep = await createUser(tx, { twoFactorEnabled: false })
+      const customer = await createUser(tx, { name: 'Tunde Ola' })
       const { client } = consoleClientAs(tx, ada)
       await expect(
-        client.console.superAdmins.add.preview({ email: uniqueEmail('nobody') }),
-      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
-      await expect(
-        client.console.superAdmins.add.preview({ email: noTwoStep.email }),
-      ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'platform_refused' } })
+        client.console.superAdmins.invite.preview({ email: customer.email, name: 'Tunde Ola' }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        data: { reason: 'platform_refused' },
+        message: `${customer.email} already has a Vento Real Estate customer account. Invite a different email, such as their @ventoerp.com address.`,
+      })
+    }))
+
+  it('lists super-admins with who can be reset, never yourself', () =>
+    withRollback(async (tx) => {
+      const ada = await createSuperAdmin(tx)
+      const tunde = await createSuperAdmin(tx, { name: 'Tunde Ola' })
+      const { client } = consoleClientAs(tx, ada)
+      const list = await client.console.superAdmins.list()
+      expect(list.find((r) => r.userId === ada.id)).toMatchObject({
+        isYou: true,
+        canResetTwoStep: false,
+      })
+      expect(list.find((r) => r.userId === tunde.id)).toMatchObject({ canResetTwoStep: true })
     }))
 
   it("won't let you remove yourself", () =>
@@ -477,22 +511,23 @@ describe('idempotency keys', () => {
       })
     }))
 
-  it('send the super-admin emails once when the same add arrives twice at once (R4)', async () => {
+  it('sends the invitation once when the same invite arrives twice at once (R4)', async () => {
     const ada = await createSuperAdmin(pool, { email: uniqueEmail('ada.r4') })
-    const newcomer = await createUser(pool, {
-      name: 'Kemi Ojo',
-      email: uniqueEmail('kemi.r4'),
-      twoFactorEnabled: true,
-    })
-    const input = { email: newcomer.email, expected: {}, ...why, ...key() }
+    const email = uniqueEmail('kemi.r4')
+    const input = { email, name: 'Kemi Ojo', expected: {}, ...why, ...key() }
     const first = consoleClientAs(pool, ada)
     const second = consoleClientAs(pool, ada)
-    const [a, b] = await Promise.all([
-      first.client.console.superAdmins.add.apply(input),
-      second.client.console.superAdmins.add.apply(input),
-    ])
-    expect(a).toEqual(b)
-    const welcomes = [...first.mailer.to(newcomer.email), ...second.mailer.to(newcomer.email)]
-    expect(welcomes).toHaveLength(1)
+    try {
+      const [a, b] = await Promise.all([
+        first.client.console.superAdmins.invite.apply(input),
+        second.client.console.superAdmins.invite.apply(input),
+      ])
+      expect(a).toEqual(b)
+      const invitations = [...first.mailer.to(email), ...second.mailer.to(email)]
+      expect(invitations).toHaveLength(1)
+    } finally {
+      // Committed: don't leave an open invitation counting towards other tests' limit of 5.
+      await pool.delete(staffInvitations).where(eq(staffInvitations.email, email))
+    }
   })
 })

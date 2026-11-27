@@ -11,6 +11,28 @@ export function verifyEmail(p: { name: string; url: string; code: string }): Ren
   ])
 }
 
+/**
+ * A customer sign-up with a staff account's email (decision 0023): the screen looks normal, the
+ * inbox gets this instead of a second account.
+ */
+export function existingStaffAccountSignUp(p: { name: string; signInUrl: string }): RenderedEmail {
+  return renderEmail(
+    'Someone tried to create a Vento Real Estate customer account with your email',
+    `Hello ${p.name}`,
+    [
+      {
+        kind: 'p',
+        text: "Someone tried to create a Vento Real Estate customer account with your email. It's a staff account, so it can't be a customer account too. To try the product as a customer, sign up with a different email.",
+      },
+      { kind: 'button', label: 'Sign in to the console', url: p.signInUrl },
+      {
+        kind: 'small',
+        text: "If this wasn't you, you don't need to do anything. Your account is unchanged.",
+      },
+    ],
+  )
+}
+
 /** Sent instead of a second account when someone signs up with an email that already has one. */
 export function existingAccountSignUp(p: {
   name: string

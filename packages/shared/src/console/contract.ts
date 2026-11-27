@@ -6,7 +6,6 @@ import {
   activityPage,
   activityPerson,
   addAi,
-  addSuperAdmin,
   changeAiBudget,
   changePlan,
   changeReleaseGroup,
@@ -130,8 +129,6 @@ export const consoleContract = {
   },
   superAdmins: {
     list: staff.output(z.array(superAdminRow)),
-    /** Slice 1's grant; goes when the invite flow is built (1b, B3), never before. */
-    add: changeProcedures(addSuperAdmin),
     remove: changeProcedures(removeSuperAdmin),
     /** Open staff invitations (at most 5), plus expired ones from the last 30 days. */
     invitations: staff.output(z.array(staffInvitationRow)),

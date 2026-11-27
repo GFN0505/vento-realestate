@@ -15,5 +15,10 @@ export type WebAuthnSettings = {
 
 export function webAuthnSettings(webOrigin: string = env.WEB_ORIGIN): WebAuthnSettings {
   const url = new URL(webOrigin)
-  return { rpID: url.hostname, rpName: 'Vento', origin: url.origin, userVerification: 'required' }
+  return {
+    rpID: url.hostname,
+    rpName: 'Vento Real Estate',
+    origin: url.origin,
+    userVerification: 'required',
+  }
 }

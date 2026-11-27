@@ -13,9 +13,10 @@ import { organizations, platformAuditEvents } from '@/db/schema'
 import { pageOffset, toPage } from '@/lib/paginate'
 import { addDays, endOfLagosDay } from '../dates'
 import { describePlatformEvent } from '../operations/describe'
-import { SCHEDULED_ACTOR } from '../platform-audit'
+import { SCHEDULED_ACTOR_NAMES } from '../platform-audit'
 
-// Vento's own activity trail, in words (admin-console plan §5.3).
+// Vento Real Estate's own activity trail, in words (admin-console plan §5.3). A staff person's
+// own account events (channel `account`) are kept for investigations but never listed (§1b.11).
 
 const KIND_ACTIONS: Record<ActivityKind, string[]> = {
   release: ['release.stage_changed', 'release.group_changed'],
@@ -29,7 +30,15 @@ const KIND_ACTIONS: Record<ActivityKind, string[]> = {
     'plan.limit_overridden',
     'plan.override_cleared',
   ],
-  super_admin: ['superadmin.granted', 'superadmin.revoked'],
+  super_admin: [
+    'superadmin.granted',
+    'superadmin.revoked',
+    'superadmin.invited',
+    'superadmin.invitation_resent',
+    'superadmin.invitation_withdrawn',
+    'superadmin.joined',
+    'superadmin.two_step_reset',
+  ],
 }
 
 export const ACTIVITY_COLUMNS = {
@@ -54,7 +63,7 @@ export type ActivityEventRow = {
   at: Date
   actorName: string
   actorUserId: string | null
-  channel: PlatformChannel | null
+  channel: PlatformChannel | 'account' | null
   operator: string | null
   action: string
   targetType: string
@@ -66,10 +75,17 @@ export type ActivityEventRow = {
   organizationName: string | null
 }
 
-/** Rows written before the console have no channel: scheduled runs by name, else a command. */
+/** Changes only: never a staff person's own account events. */
+export const notAccountEvent = sql`${platformAuditEvents.channel} is distinct from 'account'`
+
+/**
+ * Rows written before the console have no channel: scheduled runs by name (old or new), else a
+ * command. `account` rows are never read as activity; listed as console if one slips through.
+ */
 export function channelOf(row: Pick<ActivityEventRow, 'channel' | 'actorName'>): PlatformChannel {
+  if (row.channel === 'account') return 'console'
   if (row.channel) return row.channel
-  return row.actorName === SCHEDULED_ACTOR.name ? 'scheduled' : 'command'
+  return SCHEDULED_ACTOR_NAMES.includes(row.actorName) ? 'scheduled' : 'command'
 }
 
 export function toActivityRow(row: ActivityEventRow): ActivityRow {
@@ -94,6 +110,7 @@ export function toActivityRow(row: ActivityEventRow): ActivityRow {
 
 function filters(input: ReturnType<typeof listActivityInput.parse>): SQL | undefined {
   return and(
+    notAccountEvent,
     input.actorUserId ? eq(platformAuditEvents.actorUserId, input.actorUserId) : undefined,
     input.organizationId ? eq(platformAuditEvents.organizationId, input.organizationId) : undefined,
     input.featureKey
@@ -149,7 +166,7 @@ export async function people(db: DbOrTx): Promise<{ userId: string; name: string
       latest,
     })
     .from(platformAuditEvents)
-    .where(isNotNull(platformAuditEvents.actorUserId))
+    .where(and(isNotNull(platformAuditEvents.actorUserId), notAccountEvent))
     .groupBy(platformAuditEvents.actorUserId)
     .orderBy(desc(latest))
   return rows.flatMap((r) => (r.userId ? [{ userId: r.userId, name: r.name }] : []))

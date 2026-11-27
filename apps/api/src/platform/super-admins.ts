@@ -4,7 +4,7 @@ import { platformAdmins, users } from '@/db/schema'
 import type { PlatformActor } from './platform-audit'
 import { PlatformError } from './platform-error'
 
-export const NOT_SUPER_ADMIN = 'Only Vento super-admins can change flags and plans.'
+export const NOT_SUPER_ADMIN = 'Only Vento Real Estate super-admins can change flags and plans.'
 
 /** An active super-admin, with whether two-step is on (the console's per-request lookup). */
 export type ActiveSuperAdmin = {

@@ -67,4 +67,44 @@ describe('describePlatformEvent', () => {
       }).summary,
     ).toBe('Moved old.flag to on')
   })
+
+  it.each([
+    [
+      'superadmin.invited',
+      { after: { name: 'Tunde Bello', email: 'tunde@ventoerp.com' } },
+      'Invited Tunde Bello (tunde@ventoerp.com)',
+    ],
+    [
+      'superadmin.invitation_resent',
+      { after: { name: 'Tunde Bello' } },
+      "Resent Tunde Bello's invitation",
+    ],
+    [
+      'superadmin.invitation_withdrawn',
+      { before: { name: 'Tunde Bello' } },
+      "Withdrew Tunde Bello's invitation",
+    ],
+    [
+      'superadmin.joined',
+      { after: { name: 'Tunde Bello' } },
+      'Tunde Bello joined as a super-admin',
+    ],
+    [
+      'superadmin.two_step_reset',
+      { before: { name: 'Tunde Bello' } },
+      "Reset Tunde Bello's two-step",
+    ],
+  ])('puts %s in words', (action, values, summary) => {
+    const event = { before: null, after: null, ...values }
+    expect(
+      describePlatformEvent({
+        ...base,
+        action,
+        targetType: 'staff_invitation',
+        targetKey: 'x',
+        organizationName: null,
+        ...event,
+      }),
+    ).toEqual({ summary, change: null })
+  })
 })

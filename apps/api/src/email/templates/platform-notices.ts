@@ -1,42 +1,43 @@
 import { type RenderedEmail, renderEmail } from './layout'
 
-// Emails to Vento staff about the super-admin list (admin-console plan §10). Short and factual:
+// Emails to Vento Real Estate staff about the super-admin list (admin-console plan §10). Short and factual:
 // who did what, when, and where to look.
 
-export function superAdminAddedEmail(p: {
-  name: string
-  byName: string
-  /** "21:14 on 26 Nov 2026". */
-  at: string
-  consoleUrl: string
+/** The staff invitation (spec 1b, UI copy). `byName` null = the bootstrap invitation. */
+export function staffInvitationEmail(p: {
+  byName: string | null
+  /** "29 Nov 2026, 14:30". */
+  until: string
+  url: string
 }): RenderedEmail {
-  const subject = "You're now a Vento super-admin"
+  const by = p.byName ?? 'Vento Real Estate'
+  const subject = `${by} invited you to the Vento Real Estate console`
   return renderEmail(subject, subject, [
     {
       kind: 'p',
-      text: `${p.byName} made you a Vento super-admin at ${p.at}. You can now open the Vento console, which changes plans, features and releases for every customer.`,
+      text: `${by} invited you to join Vento Real Estate as a super-admin. Super-admins manage every customer's plan, features and releases. You'll set a password and two-step sign-in. This link works until ${p.until}.`,
     },
-    { kind: 'button', label: 'Open the Vento console', url: p.consoleUrl },
+    { kind: 'button', label: 'Accept invitation', url: p.url },
     {
       kind: 'small',
-      text: "Two-step sign-in must stay on while you're a super-admin. If you didn't expect this, tell the person who added you.",
+      text: 'Not expecting this? Ignore this email. Nothing happens unless you accept.',
     },
   ])
 }
 
 export function superAdminRemovedEmail(p: { byName: string; at: string }): RenderedEmail {
-  const subject = "You're no longer a Vento super-admin"
+  const subject = "You're no longer a Vento Real Estate super-admin"
   return renderEmail(subject, subject, [
     {
       kind: 'p',
-      text: `${p.byName} removed you as a Vento super-admin at ${p.at}. Your access to customer organizations hasn't changed.`,
+      text: `${p.byName} removed you as a super-admin at ${p.at}. Your staff account is closed.`,
     },
   ])
 }
 
 /** To every other super-admin, so a change to the list never goes unseen. */
 export function superAdminsChangedEmail(p: {
-  /** "Ada Okafor made Tunde Ola a super-admin". */
+  /** "Ada Okafor invited Tunde Bello (tunde@ventoerp.com) to be a super-admin". */
   sentence: string
   at: string
   reason: string
@@ -100,7 +101,7 @@ export function superAdminBackupCodesEmail(p: {
   return renderEmail(subject, subject, [
     {
       kind: 'p',
-      text: `${p.name}, a Vento super-admin, made new two-step backup codes at ${p.at}. Backup codes can open the Vento console.`,
+      text: `${p.name}, a Vento Real Estate super-admin, made new two-step backup codes at ${p.at}. Backup codes can open the Vento Real Estate console.`,
     },
     { kind: 'small', text: "If you didn't expect this, check with them." },
   ])

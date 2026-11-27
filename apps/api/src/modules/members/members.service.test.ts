@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { db } from '@/db/client'
-import { auditEvents, members, sessions, twoFactors, users } from '@/db/schema'
+import { type DbOrTx, db } from '@/db/client'
+import { auditEvents, members, platformAdmins, sessions, twoFactors, users } from '@/db/schema'
 import { createInvitations } from '@/modules/invitations/invitations.service'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
@@ -12,11 +12,26 @@ import {
   createOfficeManager,
   createOrganization,
   createSession,
-  createSuperAdmin,
+  createUser,
   reloadUser,
+  type TestOrg,
 } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 import { removeMember, resetMemberTwoStep, updateMemberAccess } from './members.service'
+
+/**
+ * A super-admin who is also a member, as existed before migration 0014. Only inside a rolled-back
+ * test transaction: the guards that now forbid it are switched off for the insert.
+ */
+async function legacySuperAdminMember(tx: DbOrTx, org: TestOrg) {
+  const ada = await createUser(tx, { name: 'Ada Okafor', twoFactorEnabled: true })
+  // Triggers off for this transaction only (no table lock); the test database role is a superuser.
+  await tx.execute(sql`set local session_replication_role = replica`)
+  await tx.insert(platformAdmins).values({ userId: ada.id, reason: 'test' })
+  await tx.execute(sql`set local session_replication_role = origin`)
+  await createMember(tx, org, { role: 'sales', user: ada })
+  return ada
+}
 
 describe('members', () => {
   it('applies a role change on the very next request', () =>
@@ -221,14 +236,15 @@ describe('members', () => {
       ])
     }))
 
-  // Audit M1: whoever in the organization may reset two-step, a Vento super-admin's stays.
+  // Audit M1: whoever in the organization may reset two-step, a super-admin's stays. Staff can't
+  // be members since 0014, so this backstop needs the pre-1b state, built with the guard off.
   it.each(['owner', 'admin'] as const)(
     'refuses a %s resetting a Vento super-admin’s two-step, and changes nothing',
     (role) =>
       withRollback(async (tx) => {
         const org = await createOrganization(tx)
         const resetter = role === 'owner' ? org.owner : (await createMember(tx, org, { role })).user
-        const ada = await createSuperAdmin(tx, {}, { organization: org, role: 'sales' })
+        const ada = await legacySuperAdminMember(tx, org)
         await tx.insert(twoFactors).values({ userId: ada.id, secret: 'x', backupCodes: 'x' })
         const [member] = await tx.select().from(members).where(eq(members.userId, ada.id))
         const { client } = clientAs(tx, resetter, { activeOrganizationId: org.id })
@@ -236,7 +252,7 @@ describe('members', () => {
           client.members.resetTwoStep({ memberId: member?.id ?? '' }),
         ).rejects.toMatchObject({
           code: 'FORBIDDEN',
-          message: 'Vento staff reset two-step with Vento.',
+          message: 'Vento Real Estate staff reset two-step with Vento Real Estate.',
         })
         expect(
           await tx.select().from(twoFactors).where(eq(twoFactors.userId, ada.id)),

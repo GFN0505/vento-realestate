@@ -11,6 +11,7 @@ import {
   sessions,
   users,
 } from '@/db/schema'
+import { recordAudit } from '@/modules/audit/audit.service'
 import { recordDelivery } from '@/modules/invitations/delivery'
 import { withRollback } from './db'
 import {
@@ -461,6 +462,26 @@ describe('Vento console isolation', () => {
       expect(after.plan?.limits).toEqual(before.plan?.limits)
       const trailB = await tx.select().from(auditEvents).where(eq(auditEvents.organizationId, b.id))
       expect(trailB.filter((e) => e.action.startsWith('plan.'))).toEqual([])
+    }))
+
+  it("shows one organization's account activity without a row of another's", () =>
+    withRollback(async (tx) => {
+      const a = await createOrganization(tx, { name: 'Alpha Homes Ltd' })
+      const b = await createOrganization(tx, { name: 'Beta Homes Ltd' })
+      for (const org of [a, b]) {
+        await recordAudit(tx, {
+          organizationId: org.id,
+          action: 'invitation.accepted',
+          actor: { userId: null, name: 'x' },
+          target: { type: 'member' },
+        })
+      }
+      const admin = await createSuperAdmin(tx)
+      const { client } = consoleClientAs(tx, admin)
+      const card = await client.console.organizations.accountActivity({ id: a.id })
+      expect(card.feed.length).toBeGreaterThan(0)
+      expect(JSON.stringify(card)).not.toContain(b.id)
+      expect(JSON.stringify(card)).not.toContain('Beta Homes Ltd')
     }))
 
   it("reads one organization's detail without another's people or records", () =>

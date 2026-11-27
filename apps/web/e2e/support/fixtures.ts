@@ -267,20 +267,60 @@ export const sessionExpiry = (email: string) =>
 // Vento console (admin-console plan §13). Fixtures never change global stages except
 // `flagStage`, which only releases.spec.ts uses, to put back the keys it owns.
 
-export type SuperAdminState = 'member' | 'no-org' | 'revoked' | 'two-step-reset'
+export type SuperAdminState = 'active' | 'revoked' | 'two-step-reset'
+/**
+ * Slice 1 names, kept so older specs still run: since 1b every super-admin is a staff account
+ * with no organization (decision 0023), so both mean `active`.
+ */
+type LegacySuperAdminState = 'member' | 'no-org'
 
 export type SuperAdminFixture = Credentials & {
   userId: string
   totpSecret: string
   backupCodes: string[]
-  /** null for `no-org`: signing in lands on the console. */
+  /** Always null since 1b: staff accounts have no organization; signing in lands on the console. */
   organizationName: string | null
   state: SuperAdminState
 }
 
-/** A Vento super-admin: owner of an internal organization, or with no organization at all. */
-export const createSuperAdminFixture = (state: SuperAdminState = 'member') =>
-  runFixture<SuperAdminFixture>('super-admin', state)
+/** A super-admin: a staff account made through the real staff sign-up (admin-console plan §1b.17). */
+export const createSuperAdminFixture = (
+  state: SuperAdminState | LegacySuperAdminState = 'active',
+) =>
+  runFixture<SuperAdminFixture>(
+    'super-admin',
+    state === 'member' || state === 'no-org' ? 'active' : state,
+  )
+
+export type StaffInvitationState = 'pending' | 'expired' | 'withdrawn' | 'accepted' | 'started'
+
+/** A staff invitation and its link (J-ADM-05); `started` has a password set (resume). */
+export const createStaffInvitation = (
+  state: StaffInvitationState = 'pending',
+  inviterEmail?: string,
+) =>
+  runFixture<{ email: string; name: string; link: string; inviterName: string | null }>(
+    'staff-invitation',
+    state,
+    ...(inviterEmail ? [inviterEmail] : []),
+  )
+
+/** A customer account on this email: the staff sign-up's "got a customer account meanwhile". */
+export const createCustomerAccount = (email: string) =>
+  runFixture<{ email: string; userId: string }>('customer-account', email)
+
+/** Makes that staff invitation `hours` older (expiry without waiting). */
+export const ageStaffInvitation = (email: string, hours = 49) =>
+  runFixture<{ invitations: number }>('age-staff-invitation', email, String(hours))
+
+/**
+ * The Dashboard's queue (J-ADM-06): unique organization names for a trial ending in 2 days, people
+ * over the limit, no plan and nobody active for 18 days, plus an internal one that must never show.
+ */
+export const createDashboardFixture = () =>
+  runFixture<{ trial: string; overLimit: string; noPlan: string; quiet: string; internal: string }>(
+    'dashboard',
+  )
 
 /** Closes the console window on every session: 16 minutes idle, or opened 8 hours ago. */
 export const ageConsole = (email: string, how: 'idle' | 'max' = 'idle') =>

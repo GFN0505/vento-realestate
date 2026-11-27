@@ -6,7 +6,6 @@ import {
   members,
   organizationPlans,
   passkeys,
-  platformAdmins,
   sessions,
   signInLocks,
   users,
@@ -18,7 +17,7 @@ import { loadSnapshot } from '@/platform/snapshot'
 import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail } from '@/test/db'
 import { TEST_PASSWORD } from '@/test/factories'
-import { onboard, signUpVerified } from '@/test/flows'
+import { joinAsStaff, onboard, signUpVerified } from '@/test/flows'
 import { type SoftAuthenticator, softAuthenticator } from '@/test/soft-authenticator'
 
 type App = ReturnType<typeof testApp>['app']
@@ -254,25 +253,11 @@ describe('signing in with a passkey', () => {
     expect(await sessionCount(userId)).toBe(0)
   })
 
-  it('lets a Vento super-admin with no organization in, to land on the console', async () => {
-    const { app, b, userId } = await person()
+  it('lets a super-admin (a staff account, no organization) in, to land on the console', async () => {
+    const { app } = testApp()
+    const b = browser(app)
+    await joinAsStaff(b)
     const { key } = await addPasskey(b)
-    await db.update(users).set({ twoFactorEnabled: true }).where(eq(users.id, userId))
-    const [membership] = await db.select().from(members).where(eq(members.userId, userId))
-    const [heir] = await db
-      .insert(users)
-      .values({ name: 'Bisi Lawal', email: uniqueEmail('bisi'), emailVerified: true })
-      .returning()
-    await db.insert(members).values({
-      organizationId: membership?.organizationId ?? '',
-      userId: heir?.id ?? '',
-      roleId: membership?.roleId ?? '',
-    })
-    await db
-      .update(members)
-      .set({ status: 'removed', removedAt: new Date() })
-      .where(eq(members.userId, userId))
-    await db.insert(platformAdmins).values({ userId, reason: 'Vento staff' })
     const { b: signedIn, res } = await passkeySignIn(app, key)
     expect(res.status).toBe(200)
     expect((await signedIn.rpc('account/me')).body).toMatchObject({

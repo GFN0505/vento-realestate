@@ -29,7 +29,7 @@ function unauthorized(reason: 'signed_out' | 'session_expired') {
   return new ORPCError('UNAUTHORIZED', {
     message:
       reason === 'session_expired'
-        ? 'Your session has ended. For security, Vento signs you out after 30 minutes without activity.'
+        ? 'Your session has ended. For security, Vento Real Estate signs you out after 30 minutes without activity.'
         : 'Please sign in',
     data: { reason },
   })
@@ -67,6 +67,7 @@ export async function authenticate(
     twoFactorEnabled: Boolean(u.twoFactorEnabled),
     twoStepSetupRequired: Boolean(u.twoStepSetupRequired),
     companyName: u.companyName ?? null,
+    accountKind: u.accountKind === 'staff' ? 'staff' : 'customer',
   }
   requestScope().auth.userId = user.id
   return { user, session }
@@ -93,6 +94,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  */
 export function memberMiddleware(enforceTwoStep: boolean) {
   return baseOs.$context<AuthedContext>().middleware(async ({ context, next, procedure }) => {
+    // A staff account has no organization to see: to it, customer data doesn't exist. Read from
+    // the session's user, so no query runs (the staff walk in procedure-guard.test.ts proves it).
+    if (context.user.accountKind === 'staff') throw notFound()
     const expected = context.headers.get(ORGANIZATION_HEADER)
     const active = context.session.activeOrganizationId
     if (expected && (!UUID.test(expected) || (active && expected !== active))) {

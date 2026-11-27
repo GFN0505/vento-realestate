@@ -1,5 +1,8 @@
-/** The console's next step after a refusal (an **End trial** link, **Change budget**). */
-export type PlatformNext = 'end_trial' | 'change_ai_budget'
+/**
+ * The console's next step after a refusal (an **End trial** link, **Change budget**, **Resend**
+ * on the staff invitation already open for that email).
+ */
+export type PlatformNext = 'end_trial' | 'change_ai_budget' | 'resend_invitation'
 
 /**
  * A refusal from a platform operation, shown as is by both channels. Messages never name a
@@ -20,6 +23,8 @@ export class PlatformError extends Error {
       organizationName?: string
       /** What wasn't found, for the command's own next step ("Run plans list…"). */
       missing?: 'plan'
+      /** `resend_invitation`: the open staff invitation to resend. */
+      invitationId?: string
     } = {},
   ) {
     super(message)

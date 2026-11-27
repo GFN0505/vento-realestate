@@ -141,6 +141,28 @@ export function describePlatformEvent(e: DescribableEvent): EventWords {
         summary: `Removed ${field(e.before, 'name') ?? 'someone'} as a super-admin`,
         change: null,
       }
+    case 'superadmin.invited': {
+      const name = field(e.after, 'name') ?? 'someone'
+      const email = field(e.after, 'email')
+      return { summary: `Invited ${name}${email ? ` (${email})` : ''}`, change: null }
+    }
+    case 'superadmin.invitation_resent':
+      return { summary: `Resent ${field(e.after, 'name') ?? 'someone'}'s invitation`, change: null }
+    case 'superadmin.invitation_withdrawn':
+      return {
+        summary: `Withdrew ${field(e.before, 'name') ?? 'someone'}'s invitation`,
+        change: null,
+      }
+    case 'superadmin.joined':
+      return {
+        summary: `${field(e.after, 'name') ?? 'Someone'} joined as a super-admin`,
+        change: null,
+      }
+    case 'superadmin.two_step_reset':
+      return {
+        summary: `Reset ${field(e.before, 'name') ?? 'someone'}'s two-step`,
+        change: null,
+      }
     default:
       return { summary: e.action, change: null }
   }

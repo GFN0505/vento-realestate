@@ -6,10 +6,9 @@ export const ACCOUNT_KINDS = ['customer', 'staff'] as const
 export type AccountKind = (typeof ACCOUNT_KINDS)[number]
 
 /**
- * The `users.account_kind` column as a Better Auth field (returned, never accepted on sign-up:
- * only the staff sign-up makes a staff account). Not yet in `authUserFields`: it joins them with
- * migration 0013 (admin-console plan §1b.3, step B1), since Better Auth reads every listed field.
- * Typed as a mutable array because Better Auth's enum type is `Array<LiteralString>`.
+ * The `users.account_kind` column (migration 0013) as a Better Auth field: returned, never
+ * accepted on sign-up, so only the staff sign-up makes a staff account. Typed as a mutable array
+ * because Better Auth's enum type is `Array<LiteralString>`.
  */
 export const accountKindUserField: {
   type: AccountKind[]
@@ -33,6 +32,7 @@ export const authUserFields = {
   lastActiveOrganizationId: { type: 'string', required: false, input: false },
   /** Set when an owner or admin resets someone's two-step; cleared when they set it up again. */
   twoStepSetupRequired: { type: 'boolean', required: false, input: false, defaultValue: false },
+  accountKind: accountKindUserField,
 } as const
 
 /**

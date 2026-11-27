@@ -150,5 +150,11 @@ export async function get(db: DbOrTx, key: FeatureKey, now = new Date()): Promis
       organization: { id: o.organizationId, name: o.organizationName },
     })),
     recentChanges: recent.map(toActivityRow),
+    planVersions: snapshot.latestPlans.map((p) => ({
+      key: p.planKey,
+      name: p.planName,
+      version: p.version,
+      included: p.features.has(key),
+    })),
   }
 }

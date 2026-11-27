@@ -53,7 +53,7 @@ export type BreakGlassChange = {
 
 /** The console is the way to change things; the commands are kept for when it's down. */
 export const BREAK_GLASS_REFUSAL =
-  'Make this change in the Vento console. If the console is down, add --break-glass.'
+  'Make this change in the Vento Real Estate console. If the console is down, add --break-glass.'
 
 export type Parsed = {
   positionals: string[]
@@ -68,6 +68,8 @@ export type Parsed = {
   version?: string
   from?: string
   name?: string
+  /** `superadmin invite`: who to invite. */
+  email?: string
   sort?: string
   default: boolean
   bootstrap: boolean
@@ -92,6 +94,7 @@ export function parse(args: string[]): Parsed {
       version: { type: 'string' },
       from: { type: 'string' },
       name: { type: 'string' },
+      email: { type: 'string' },
       sort: { type: 'string' },
       default: { type: 'boolean', default: false },
       bootstrap: { type: 'boolean', default: false },

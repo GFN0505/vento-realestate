@@ -40,7 +40,7 @@ describe('at the same moment', () => {
     const { done, refused } = outcome(results)
     expect(done).toBe(1)
     expect(refused).toEqual([
-      expect.objectContaining({ message: "You're no longer a Vento super-admin." }),
+      expect.objectContaining({ message: "You're no longer a Vento Real Estate super-admin." }),
     ])
   })
 

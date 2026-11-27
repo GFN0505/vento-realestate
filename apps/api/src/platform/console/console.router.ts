@@ -1,11 +1,23 @@
+import { AUTH_ERROR_CODES } from '@vento/shared'
+import { publicRateLimit } from '@/access/middleware'
 import type { AuthServerApi } from '@/auth/hooks/deps'
-import { sendAll } from '@/email/mailer'
-import { notFound } from '@/lib/errors'
-import { consoleWindow, superAdmin, superAdminAnyTwoStep } from '@/orpc'
+import type { BaseContext } from '@/context'
+import { type EmailMessage, sendAll } from '@/email/mailer'
+import { errorSummary } from '@/lib/error-summary'
+import { badRequest } from '@/lib/errors'
+import { logger } from '@/lib/logger'
+import { consoleWindow, os, superAdmin, superAdminAnyTwoStep } from '@/orpc'
 import {
-  grantSuperAdmin,
-  previewGrant,
+  inviteSuperAdmin,
+  previewInvite,
+  previewWithdraw,
+  resendStaffInvitation,
+  withdrawStaffInvitation,
+} from '../operations/staff-invitations'
+import {
+  previewResetTwoStep,
   previewRevoke,
+  resetSuperAdminTwoStep,
   revokeSuperAdmin,
 } from '../operations/super-admin'
 import * as access from './access.service'
@@ -25,6 +37,8 @@ import {
   setStageChange,
   startTrialChange,
 } from './changes'
+import * as dashboard from './dashboard.service'
+import * as join from './join.service'
 import * as organizations from './organizations.service'
 import * as plans from './plans.service'
 import * as releases from './releases.service'
@@ -49,14 +63,6 @@ function accessContext(context: AccessRequest): access.AccessContext {
  */
 const orgs = consoleWindow.console.organizations
 
-/**
- * Slice 1b procedures whose contract is in but whose code isn't yet (admin-console plan §1b.18,
- * steps B3 and B4). They answer like a procedure that doesn't exist, behind the full console
- * chain, so nothing is reachable early. `join.*` move to public procedures with their code (B3).
- */
-const notBuiltYet = (): never => {
-  throw notFound()
-}
 const sa = consoleWindow.console.superAdmins
 
 /**
@@ -66,7 +72,7 @@ const sa = consoleWindow.console.superAdmins
  */
 export const consoleRouter = {
   dashboard: {
-    get: consoleWindow.console.dashboard.get.handler(notBuiltYet),
+    get: consoleWindow.console.dashboard.get.handler(({ context }) => dashboard.get(context.db)),
   },
   access: {
     status: superAdminAnyTwoStep.console.access.status.handler(({ context }) =>
@@ -92,7 +98,9 @@ export const consoleRouter = {
     endedOverrides: orgs.endedOverrides.handler(({ input, context }) =>
       organizations.endedOverrides(context.db, input),
     ),
-    accountActivity: orgs.accountActivity.handler(notBuiltYet),
+    accountActivity: orgs.accountActivity.handler(({ input, context }) =>
+      organizations.accountActivity(context.db, input.id),
+    ),
     changePlan: {
       preview: orgs.changePlan.preview.handler(({ input, context }) =>
         changePlanChange.preview(context.db, input),
@@ -246,60 +254,102 @@ export const consoleRouter = {
     },
   },
   superAdmins: {
-    list: consoleWindow.console.superAdmins.list.handler(({ context }) =>
-      superAdmins.list(context.db, context.user.id),
-    ),
-    invitations: sa.invitations.handler(notBuiltYet),
+    list: sa.list.handler(({ context }) => superAdmins.list(context.db, context.user.id)),
+    invitations: sa.invitations.handler(({ context }) => superAdmins.invitations(context.db)),
     invite: {
-      preview: sa.invite.preview.handler(notBuiltYet),
-      apply: sa.invite.apply.handler(notBuiltYet),
-    },
-    resendInvitation: sa.resendInvitation.handler(notBuiltYet),
-    withdrawInvitation: {
-      preview: sa.withdrawInvitation.preview.handler(notBuiltYet),
-      apply: sa.withdrawInvitation.apply.handler(notBuiltYet),
-    },
-    resetTwoStep: {
-      preview: sa.resetTwoStep.preview.handler(notBuiltYet),
-      apply: sa.resetTwoStep.apply.handler(notBuiltYet),
-    },
-    add: {
-      preview: consoleWindow.console.superAdmins.add.preview.handler(({ input, context }) =>
-        previewGrant(context.db, { email: input.email }),
-      ),
-      apply: consoleWindow.console.superAdmins.add.apply.handler(async ({ input, context }) => {
-        let ran = false
+      preview: sa.invite.preview.handler(({ input, context }) => previewInvite(context.db, input)),
+      apply: sa.invite.apply.handler(async ({ input, context }) => {
+        let emails: EmailMessage[] = []
         const done = await applyOnce(
           context.db,
           context.admin,
-          { path: 'superAdmins.add.apply', input },
+          { path: 'superAdmins.invite.apply', input },
           async (actor) => {
-            const message = await grantSuperAdmin(context.db, actor, {
+            const result = await inviteSuperAdmin(context.db, actor, {
               email: input.email,
+              name: input.name,
               reason: input.reason,
               operator: actor.operator,
             })
             // Only once it has committed: a twin request that replays never sends again (R4).
-            ran = true
-            return message
+            emails = result.emails
+            return result.done
+          },
+        )
+        await sendAll(context.mailer, emails)
+        return done
+      }),
+    },
+    resendInvitation: sa.resendInvitation.handler(async ({ input, context }) => {
+      let emails: EmailMessage[] = []
+      const done = await applyOnce(
+        context.db,
+        context.admin,
+        { path: 'superAdmins.resendInvitation', input },
+        async (actor) => {
+          const result = await resendStaffInvitation(context.db, actor, input)
+          emails = result.emails
+          return result.done
+        },
+      )
+      await sendAll(context.mailer, emails)
+      return done
+    }),
+    withdrawInvitation: {
+      preview: sa.withdrawInvitation.preview.handler(({ input, context }) =>
+        previewWithdraw(context.db, input),
+      ),
+      apply: sa.withdrawInvitation.apply.handler(({ input, context }) =>
+        applyOnce(
+          context.db,
+          context.admin,
+          { path: 'superAdmins.withdrawInvitation.apply', input },
+          async (actor) =>
+            (
+              await withdrawStaffInvitation(context.db, actor, {
+                invitationId: input.invitationId,
+                reason: input.reason,
+              })
+            ).done,
+        ),
+      ),
+    },
+    resetTwoStep: {
+      preview: sa.resetTwoStep.preview.handler(({ input, context }) =>
+        previewResetTwoStep(context.db, context.admin, { userId: input.userId }),
+      ),
+      apply: sa.resetTwoStep.apply.handler(async ({ input, context }) => {
+        let reset: Awaited<ReturnType<typeof resetSuperAdminTwoStep>> | null = null
+        const done = await applyOnce(
+          context.db,
+          context.admin,
+          { path: 'superAdmins.resetTwoStep.apply', input },
+          async (actor) => {
+            reset = await resetSuperAdminTwoStep(context.db, actor, {
+              userId: input.userId,
+              reason: input.reason,
+            })
+            return reset.done
           },
         )
         // After the commit, and only the first time: a replay sends nothing again.
-        if (ran) {
+        const result = reset as Awaited<ReturnType<typeof resetSuperAdminTwoStep>> | null
+        if (result) {
           const actor = consoleActor(context.admin)
           await sendAll(
             context.mailer,
-            await superAdmins.addedEmails(context.db, actor, input, input.reason),
+            await superAdmins.resetEmails(context.db, actor, result.person, input.reason),
           )
+          await requestResetLink(context, result.person.email)
         }
         return done
       }),
     },
     remove: {
-      preview: consoleWindow.console.superAdmins.remove.preview.handler(({ input, context }) =>
+      preview: sa.remove.preview.handler(({ input, context }) =>
         previewRevoke(context.db, context.admin, { userId: input.userId }),
       ),
-      apply: consoleWindow.console.superAdmins.remove.apply.handler(async ({ input, context }) => {
+      apply: sa.remove.apply.handler(async ({ input, context }) => {
         let ran = false
         const done = await applyOnce(
           context.db,
@@ -334,7 +384,67 @@ export const consoleRouter = {
     ),
   },
   join: {
-    get: consoleWindow.console.join.get.handler(notBuiltYet),
-    start: consoleWindow.console.join.start.handler(notBuiltYet),
+    get: os.console.join.get
+      .use(publicRateLimit('staffJoinGet', 20))
+      .handler(({ input, context }) => join.get(context.db, input.token)),
+    start: os.console.join.start
+      .use(publicRateLimit('staffJoinStart', 10))
+      .handler(async ({ input, context }) => {
+        const { email } = await join.start(context.db, input)
+        try {
+          // Better Auth makes the session and cookie; the sign-in guard lets a joining account in.
+          const { headers } = await context.auth.api.signInEmail({
+            body: { email, password: input.password, rememberMe: false },
+            headers: context.headers,
+            returnHeaders: true,
+          })
+          for (const cookie of headers.getSetCookie()) {
+            context.resHeaders?.append('set-cookie', cookie)
+          }
+        } catch (error) {
+          if (isWrongPassword(error)) {
+            throw badRequest('wrong_password', 'That password is wrong. Try again.')
+          }
+          if (isLocked(error)) throw error
+          logger.error('Sign-in after starting a staff sign-up failed', {
+            requestId: context.requestId,
+            ...errorSummary(error),
+          })
+          return { next: 'sign_in' as const }
+        }
+        return { next: 'two_step' as const }
+      }),
   },
 }
+
+/**
+ * The staff sign-up answers without a session (admin-console plan §1b.11). Spread into
+ * `PUBLIC_PROCEDURES`; the access walks treat them as public.
+ */
+export const CONSOLE_PUBLIC_PROCEDURES = ['console.join.get', 'console.join.start'] as const
+
+/** After a console reset: Better Auth's 30-minute, single-use password link. */
+async function requestResetLink(
+  context: Pick<BaseContext, 'auth' | 'requestId'>,
+  email: string,
+): Promise<void> {
+  try {
+    await context.auth.api.requestPasswordReset({
+      body: { email, redirectTo: '/reset-password' },
+    })
+  } catch (error) {
+    // The reset is done; they can still use "Forgot password" to get a link.
+    logger.error('Reset link after a super-admin two-step reset not sent', {
+      requestId: context.requestId,
+      ...errorSummary(error),
+    })
+  }
+}
+
+function authErrorCode(error: unknown): string | null {
+  const body = (error as { body?: { code?: unknown } } | null)?.body
+  return typeof body?.code === 'string' ? body.code : null
+}
+const isWrongPassword = (error: unknown) =>
+  authErrorCode(error) === AUTH_ERROR_CODES.INVALID_EMAIL_OR_PASSWORD
+const isLocked = (error: unknown) => authErrorCode(error) === AUTH_ERROR_CODES.ACCOUNT_LOCKED

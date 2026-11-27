@@ -4,7 +4,10 @@ import type { DbOrTx } from '@/db/client'
 import { organizations, platformAuditEvents } from '@/db/schema'
 import { recordAudit } from '@/modules/audit/audit.service'
 
-/** Where a platform change came from (admin-console plan §6.3). */
+/**
+ * Where a platform change came from (admin-console plan §6.3). `account` is a staff person's own
+ * account event (platform/staff-account-events.ts), never a change.
+ */
 export type PlatformChannel = 'console' | 'command' | 'scheduled'
 
 /** Who made a platform change, from where, and (console) the key that makes a retry safe. */
@@ -23,10 +26,13 @@ export type PlatformActor = {
 
 export const SCHEDULED_ACTOR: PlatformActor = {
   userId: null,
-  name: 'Vento (scheduled)',
+  name: 'Vento Real Estate (scheduled)',
   channel: 'scheduled',
   operator: null,
 }
+
+/** The scheduled actor's name now and before 1b: old rows are append-only and keep theirs. */
+export const SCHEDULED_ACTOR_NAMES: readonly string[] = [SCHEDULED_ACTOR.name, 'Vento (scheduled)']
 
 export type PlatformAuditAction =
   | 'release.stage_changed'
@@ -46,6 +52,11 @@ export type PlatformAuditAction =
   | 'plan.override_cleared'
   | 'superadmin.granted'
   | 'superadmin.revoked'
+  | 'superadmin.invited'
+  | 'superadmin.invitation_resent'
+  | 'superadmin.invitation_withdrawn'
+  | 'superadmin.joined'
+  | 'superadmin.two_step_reset'
 
 /** Vento's own trail. Call inside the change's transaction. */
 export async function recordPlatformAudit(
@@ -53,7 +64,7 @@ export async function recordPlatformAudit(
   input: {
     actor: PlatformActor
     action: PlatformAuditAction
-    targetType: 'feature' | 'plan' | 'organization' | 'user'
+    targetType: 'feature' | 'plan' | 'organization' | 'user' | 'staff_invitation'
     targetKey: string | null
     organizationId?: string | null
     before?: Record<string, unknown> | null
@@ -88,6 +99,9 @@ export async function recordPlatformAudit(
   })
 }
 
+/** The actor on a customer's own trail for every platform change (before 1b: "Vento"). */
+export const ORGANIZATION_NOTICE_ACTOR = 'Vento Real Estate'
+
 /** The change a console idempotency key already made: who, and the answer it gave. */
 export async function findByIdempotencyKey(
   db: DbOrTx,
@@ -110,8 +124,8 @@ export async function findByIdempotencyKey(
 }
 
 /**
- * The organization's own trail, in plain words ("Vento moved your organization to Growth").
- * The actor is "Vento": never the staff member, and never Vento's internal reason.
+ * The organization's own trail, in plain words ("Vento Real Estate moved your organization to
+ * Growth"). The actor is "Vento Real Estate": never the staff member, nor the internal reason.
  */
 export async function recordOrganizationNotice(
   db: DbOrTx,
@@ -130,7 +144,7 @@ export async function recordOrganizationNotice(
   await recordAudit(db, {
     organizationId: input.organizationId,
     action: input.action,
-    actor: { userId: null, name: 'Vento' },
+    actor: { userId: null, name: ORGANIZATION_NOTICE_ACTOR },
     target: { type: 'organization', id: input.organizationId, label: org?.name ?? null },
     before: input.before ?? null,
     after: input.after ?? null,

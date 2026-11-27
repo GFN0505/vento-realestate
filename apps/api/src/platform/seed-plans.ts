@@ -14,7 +14,7 @@ export const STARTING_PLANS = [starter, growth, enterprise].map((p) => planDefin
 
 export const SETUP_ACTOR: PlatformActor = {
   userId: null,
-  name: 'Vento (setup)',
+  name: 'Vento Real Estate (setup)',
   channel: 'command',
   operator: null,
 }

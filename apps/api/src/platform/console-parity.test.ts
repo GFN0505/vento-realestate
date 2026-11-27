@@ -8,12 +8,11 @@ import { type DbOrTx, db as pool } from '@/db/client'
 import { auditEvents, platformAuditEvents } from '@/db/schema'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { router } from '@/router'
-import { withRollback } from '@/test/db'
+import { uniqueEmail, withRollback } from '@/test/db'
 import {
   addAddOnRow,
   createOrganization,
   createSuperAdmin,
-  createUser,
   setOverride,
   setStage,
   type TestOrg,
@@ -36,8 +35,8 @@ type Fixture = {
   /** Another active super-admin: told about every break-glass change. */
   other: TestUser
   org: TestOrg
-  /** Has two-step, not a super-admin yet. */
-  newcomer: TestUser
+  /** An email with no account yet, to invite. */
+  newcomerEmail: string
   /** A super-admin to remove. */
   leaving: TestUser
 }
@@ -48,7 +47,7 @@ type Case = {
   command: (f: Fixture) => string[]
   /** The console preview input; apply adds expected, reason and a key. */
   input: (f: Fixture) => Record<string, unknown>
-  /** Bootstrap publishes and assigns several things: refusal and email only. */
+  /** Bootstrap publishes and assigns several things; reset-two-step is command-only. */
   compare?: false
 }
 
@@ -142,13 +141,18 @@ const CASES: Record<ChangeCommandId, Case> = {
     input: () => ({}),
     compare: false,
   },
-  'superadmin grant': {
-    command: (f) => ['superadmin', 'grant', f.newcomer.email],
-    input: (f) => ({ email: f.newcomer.email }),
+  'superadmin invite': {
+    command: (f) => ['superadmin', 'invite', '--email', f.newcomerEmail, '--name', 'Tunde Bello'],
+    input: (f) => ({ email: f.newcomerEmail, name: 'Tunde Bello' }),
   },
   'superadmin revoke': {
     command: (f) => ['superadmin', 'revoke', f.leaving.email],
     input: (f) => ({ userId: f.leaving.id }),
+  },
+  'superadmin reset-two-step': {
+    command: (f) => ['superadmin', 'reset-two-step', f.leaving.email],
+    input: (f) => ({ userId: f.leaving.id }),
+    compare: false,
   },
 }
 
@@ -160,7 +164,7 @@ async function fixture(tx: DbOrTx, change: Case): Promise<Fixture> {
     admin: await createSuperAdmin(tx),
     other: await createSuperAdmin(tx, { name: 'Bola Ade' }),
     org: await createOrganization(tx, { name: 'Parity Homes Ltd', planKey: 'starter' }),
-    newcomer: await createUser(tx, { name: 'Tunde Bello', twoFactorEnabled: true }),
+    newcomerEmail: uniqueEmail('tunde'),
     leaving: await createSuperAdmin(tx, { name: 'Kemi Ojo' }),
   }
   await change.setup?.(tx, f)
@@ -227,7 +231,9 @@ async function trailOf(tx: DbOrTx, f: Fixture) {
   const notices = await tx
     .select()
     .from(auditEvents)
-    .where(and(eq(auditEvents.organizationId, f.org.id), eq(auditEvents.actorName, 'Vento')))
+    .where(
+      and(eq(auditEvents.organizationId, f.org.id), eq(auditEvents.actorName, 'Vento Real Estate')),
+    )
   return {
     channels: rows.map((r) => r.channel),
     platform: normalise(
@@ -247,12 +253,26 @@ async function trailOf(tx: DbOrTx, f: Fixture) {
   }
 }
 
+/** The console change a command matches, or null for a command-only one. */
+function consolePathOf(id: ChangeCommandId): string | null {
+  return CHANGE_COMMANDS[id].console
+}
+
 describe('the parity registry', () => {
-  it.each(IDS)('%s names a console change procedure', (id) => {
-    const node = procedureAt(router.console, CHANGE_COMMANDS[id].console) as unknown as {
+  it.each(IDS)('%s names a console change procedure (or its counterpart)', (id) => {
+    const entry = CHANGE_COMMANDS[id]
+    const path = entry.console ?? ('counterpart' in entry ? entry.counterpart : null)
+    expect(path).not.toBeNull()
+    const node = procedureAt(router.console, path ?? '') as unknown as {
       '~orpc': { meta: { area?: string } }
     }
     expect(node['~orpc'].meta.area).toBe('console')
+  })
+
+  it('has superadmin invite, the command-only reset-two-step, and no superadmin grant', () => {
+    expect(CHANGE_COMMANDS['superadmin invite'].console).toBe('superAdmins.invite.apply')
+    expect(CHANGE_COMMANDS['superadmin reset-two-step'].console).toBeNull()
+    expect(Object.keys(CHANGE_COMMANDS)).not.toContain('superadmin grant')
   })
 })
 
@@ -302,7 +322,7 @@ describe('break-glass', () => {
       })
       await withRollback(async (tx) => {
         const f = await fixture(tx, change)
-        await runConsole(tx, f, CHANGE_COMMANDS[id].console, change.input(f))
+        await runConsole(tx, f, consolePathOf(id) ?? '', change.input(f))
         viaConsole = await trailOf(tx, f)
       })
       expect(command?.channels).toEqual(['command'])

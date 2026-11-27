@@ -70,6 +70,7 @@ export function toConsoleError(error: PlatformError): ORPCError<string, unknown>
   }
   return conflict('platform_refused', error.message, {
     ...(error.extra.next && { next: error.extra.next }),
+    ...(error.extra.invitationId && { invitationId: error.extra.invitationId }),
   })
 }
 

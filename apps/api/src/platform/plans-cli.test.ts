@@ -284,7 +284,9 @@ describe('system commands', () => {
       const admin = await createSuperAdmin(tx)
       const refused = await run(tx, ['bootstrap'])
       expect(refused.code).toBe(1)
-      expect(refused.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+      expect(refused.io.errors).toEqual([
+        'Only Vento Real Estate super-admins can change flags and plans.',
+      ])
       const declined = await run(tx, ['bootstrap', ...by(admin.email)], [false])
       expect(declined.io.output.at(-1)).toBe('Nothing changed.')
       const done = await run(tx, ['bootstrap', ...by(admin.email)])
@@ -295,7 +297,9 @@ describe('system commands', () => {
     withRollback(async (tx) => {
       const byHand = await run(tx, ['notify-trials'])
       expect(byHand.code).toBe(1)
-      expect(byHand.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+      expect(byHand.io.errors).toEqual([
+        'Only Vento Real Estate super-admins can change flags and plans.',
+      ])
       const org = await createOrganization(tx, { planKey: 'starter' })
       const target = await findPlanVersion(tx, 'enterprise')
       const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
@@ -316,7 +320,10 @@ describe('system commands', () => {
             eq(platformAuditEvents.action, 'plan.trial_ended'),
           ),
         )
-      expect(event).toMatchObject({ actorName: 'Vento (scheduled)', operator: 'ada@ops-laptop' })
+      expect(event).toMatchObject({
+        actorName: 'Vento Real Estate (scheduled)',
+        operator: 'ada@ops-laptop',
+      })
     }))
 })
 

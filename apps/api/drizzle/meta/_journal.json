@@ -92,6 +92,20 @@
       "when": 1795729613252,
       "tag": "0012_second_factor_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795738641570,
+      "tag": "0013_staff_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795738650535,
+      "tag": "0014_staff_account_guards",
+      "breakpoints": true
     }
   ]
 }

@@ -3,17 +3,25 @@ import { symmetricEncrypt } from 'better-auth/crypto'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
-import { auditEvents, passkeys, sessions, twoFactors, verifications } from '@/db/schema'
+import {
+  accounts,
+  passkeys,
+  platformAuditEvents,
+  sessions,
+  twoFactors,
+  verifications,
+} from '@/db/schema'
 import { createMemoryTransport } from '@/email/transports/memory'
 import { env } from '@/env'
 import { createRateLimiter } from '@/lib/rate-limit'
-import { router } from '@/router'
+import { PUBLIC_PROCEDURES, router } from '@/router'
 import { totpFromUri } from '@/test/auth-client'
 import { countingDb } from '@/test/counting-db'
 import { withRollback } from '@/test/db'
 import {
   createOrganization,
   createSession,
+  createStaffAccount,
   createSuperAdmin,
   createUser,
   setStage,
@@ -23,6 +31,7 @@ import { type ConsoleWindowState, clientAs, consoleClientAs } from '@/test/route
 import { type SoftAuthenticator, softAuthenticator } from '@/test/soft-authenticator'
 import type { AccessContext } from './console/access.service'
 import * as access from './console/access.service'
+import { CONSOLE_PUBLIC_PROCEDURES } from './console/console.router'
 import { liveFeatureStore } from './feature-store'
 import { revokeSuperAdmin } from './operations/super-admin'
 
@@ -42,7 +51,11 @@ function procedureAt(client: object, path: string): Callable {
     .reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], client) as Callable
 }
 
-const consolePaths = procedurePaths(router).filter((p) => p.startsWith('console.'))
+const isConsolePublic = (p: string) => (CONSOLE_PUBLIC_PROCEDURES as readonly string[]).includes(p)
+// The staff sign-up's two procedures are public (admin-console plan §1b.12): checked on their own.
+const consolePaths = procedurePaths(router).filter(
+  (p) => p.startsWith('console.') && !isConsolePublic(p),
+)
 const windowed = consolePaths.filter((p) => !p.startsWith('console.access.'))
 const WRITES = ['insert', 'update', 'delete', 'transaction', 'execute']
 
@@ -106,6 +119,16 @@ describe('the console access walk', () => {
       }),
     )
   }
+
+  it('lists the staff sign-up procedures as public, and they answer without a session', () =>
+    withRollback(async (tx) => {
+      for (const path of CONSOLE_PUBLIC_PROCEDURES) expect(PUBLIC_PROCEDURES).toContain(path)
+      const { client } = clientAs(tx, null)
+      await expect(client.console.join.get({ token: 'x'.repeat(43) })).resolves.toMatchObject({
+        status: 'expired',
+        email: null,
+      })
+    }))
 
   it('ignores the tab-organization header', () =>
     withRollback(async (tx) => {
@@ -182,8 +205,7 @@ const wrongCode = {
 describe('confirming it is you with a code', () => {
   it('opens the window on this session and records it in their own trail', () =>
     withRollback(async (tx) => {
-      const org = await createOrganization(tx)
-      const admin = await createSuperAdmin(tx, {}, { organization: org })
+      const admin = await createSuperAdmin(tx)
       const session = await createSession(tx, admin)
       const { client } = consoleClientAs(tx, admin, {
         window: 'closed',
@@ -197,16 +219,21 @@ describe('confirming it is you with a code', () => {
       expect(row?.consoleOpenedAt).toBeInstanceOf(Date)
       expect(row?.secondFactorAt).toBeInstanceOf(Date)
       const [event] = await tx
-        .select({ metadata: auditEvents.metadata })
-        .from(auditEvents)
-        .where(and(eq(auditEvents.actorUserId, admin.id), eq(auditEvents.action, 'console.opened')))
-      expect(event?.metadata).toEqual({ method: 'code' })
+        .select({ metadata: platformAuditEvents.metadata, channel: platformAuditEvents.channel })
+        .from(platformAuditEvents)
+        .where(
+          and(
+            eq(platformAuditEvents.targetKey, admin.id),
+            eq(platformAuditEvents.action, 'console.opened'),
+          ),
+        )
+      // A staff account has no organization trail: its own events are on the platform trail.
+      expect(event).toEqual({ metadata: { method: 'code' }, channel: 'account' })
     }))
 
   it('refuses a wrong code, audits it, and the fifth locks sign-in and signs them out', () =>
     withRollback(async (tx) => {
-      const org = await createOrganization(tx)
-      const admin = await createSuperAdmin(tx, {}, { organization: org })
+      const admin = await createSuperAdmin(tx)
       await withTwoFactorRow(tx, admin)
       await createSession(tx, admin)
       const { client, mailer } = consoleClientAs(tx, admin, {
@@ -224,12 +251,12 @@ describe('confirming it is you with a code', () => {
       expect(await tx.select().from(sessions).where(eq(sessions.userId, admin.id))).toEqual([])
       expect(mailer.to(admin.email).length).toBeGreaterThan(0)
       const failures = await tx
-        .select({ metadata: auditEvents.metadata })
-        .from(auditEvents)
+        .select({ metadata: platformAuditEvents.metadata })
+        .from(platformAuditEvents)
         .where(
           and(
-            eq(auditEvents.actorUserId, admin.id),
-            eq(auditEvents.action, 'auth.two_step_failed'),
+            eq(platformAuditEvents.targetKey, admin.id),
+            eq(platformAuditEvents.action, 'auth.two_step_failed'),
           ),
         )
       expect(failures[0]?.metadata).toEqual({ method: 'totp', during: 'console' })
@@ -371,23 +398,25 @@ describe('confirming it is you with a passkey', () => {
 })
 
 describe('removing a super-admin', () => {
-  it('closes their console on the next request and leaves their customer access alone', () =>
+  it('closes their staff account: no sessions, factors or password, and no console', () =>
     withRollback(async (tx) => {
-      const org = await createOrganization(tx)
       const ada = await createSuperAdmin(tx)
-      const tunde = await createSuperAdmin(tx, { name: 'Tunde Ola' }, { organization: org })
-      const session = await createSession(tx, tunde, { consoleOpenedAt: new Date() })
+      const tunde = await createStaffAccount(tx, { name: 'Tunde Ola' })
+      await withTwoFactorRow(tx, tunde)
+      await createSession(tx, tunde, { consoleOpenedAt: new Date() })
       await revokeSuperAdmin(
         tx,
         { userId: ada.id, name: ada.name, channel: 'console', operator: 'console' },
-        { userId: tunde.id, reason: 'Left Vento' },
+        { userId: tunde.id, reason: 'Left Vento Real Estate' },
       )
-      const [row] = await tx.select().from(sessions).where(eq(sessions.id, session.id))
-      expect(row?.consoleOpenedAt).toBeNull()
-      const { client } = consoleClientAs(tx, tunde, { activeOrganizationId: org.id })
+      expect(await tx.select().from(sessions).where(eq(sessions.userId, tunde.id))).toEqual([])
+      expect(await tx.select().from(twoFactors).where(eq(twoFactors.userId, tunde.id))).toEqual([])
+      expect(await tx.select().from(accounts).where(eq(accounts.userId, tunde.id))).toEqual([])
+      const { client } = consoleClientAs(tx, tunde)
       await expect(client.console.plans.list()).rejects.toMatchObject(plainNotFound)
-      const customer = clientAs(tx, tunde, { activeOrganizationId: org.id })
-      await expect(customer.client.account.me()).resolves.toMatchObject({ console: null })
+      await expect(clientAs(tx, tunde).client.account.me()).resolves.toMatchObject({
+        console: null,
+      })
     }))
 })
 

@@ -1,26 +1,24 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
-import {
-  members,
-  organizationPlans,
-  platformAdmins,
-  sessions,
-  twoFactors,
-  users,
-} from '@/db/schema'
+import { members, organizationPlans, sessions, twoFactors, users } from '@/db/schema'
 import { browser, testApp } from '@/test/auth-client'
 import { uniqueEmail } from '@/test/db'
 import { TEST_PASSWORD } from '@/test/factories'
-import { onboard, setUpTwoStep, signUpVerified } from '@/test/flows'
+import { joinAsStaff, onboard, setUpTwoStep, signUpVerified } from '@/test/flows'
 
 // Audit H1: a password and a live session must not make a new second factor that opens the
 // Vento console. These commit (Better Auth runs on the pool), so each makes its own person.
 
 async function person(superAdmin: boolean) {
   const { app, mailer } = testApp()
-  const email = uniqueEmail('factor')
   const b = browser(app)
+  if (superAdmin) {
+    // A staff account through the real staff sign-up (decision 0023).
+    const { email, userId } = await joinAsStaff(b)
+    return { b, email, userId, mailer }
+  }
+  const email = uniqueEmail('factor')
   await signUpVerified(b, mailer, email)
   await onboard(b, `Factor Homes ${uniqueEmail('o')}`.slice(0, 60))
   await setUpTwoStep(b)
@@ -32,7 +30,6 @@ async function person(superAdmin: boolean) {
     .update(organizationPlans)
     .set({ releaseGroup: 'internal' })
     .where(eq(organizationPlans.organizationId, membership?.organizationId ?? ''))
-  if (superAdmin) await db.insert(platformAdmins).values({ userId, reason: 'test' })
   return { b, email, userId, mailer }
 }
 

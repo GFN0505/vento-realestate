@@ -65,3 +65,11 @@ export const CONSOLE_ADMIN_ACTIVITY_WRITE_MS = MINUTE
 export const CONSOLE_CONFIRM_PER_MINUTE = 10
 /** How long a console passkey challenge stays valid. */
 export const CONSOLE_PASSKEY_CHALLENGE_MS = 2 * MINUTE
+
+// Staff invitations (admin-console spec 1b, approved by the owner on 27 Nov 2026).
+/** A staff invitation link works this long after it's sent (customers get 7 days). */
+export const STAFF_INVITATION_TTL_MS = 48 * HOUR
+/** Resend replaces the link at most this often. */
+export const STAFF_INVITATION_RESEND_MS = MINUTE
+/** At most this many open staff invitations at once (bootstrap aside). */
+export const STAFF_INVITATIONS_OPEN_MAX = 5

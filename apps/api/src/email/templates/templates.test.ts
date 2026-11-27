@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { invitationEmail } from './invitation'
+import { staffInvitationEmail, superAdminRemovedEmail } from './platform-notices'
 import {
   backupCodeUsedAlert,
   newOwnerAlert,
@@ -11,7 +12,7 @@ import {
   twoStepResetAlert,
 } from './security-alert'
 import { trialEndingEmail } from './trial-ending'
-import { verifyEmail } from './verify-email'
+import { existingStaffAccountSignUp, verifyEmail } from './verify-email'
 
 describe('email templates', () => {
   it('puts both the link and the 6-digit code in the verification email', () => {
@@ -161,5 +162,28 @@ describe('email templates', () => {
       const alert = newSignInAlert({ device: 'Safari on iPhone', place: null, ...at, ...urls })
       expect(alert.text).toContain('from Safari on iPhone. If this was you')
     })
+  })
+
+  it('invites to the staff console with the link and when it stops working', () => {
+    const email = staffInvitationEmail({
+      byName: 'Ada Okafor',
+      until: '29 Nov 2026, 14:30',
+      url: 'http://localhost/staff-invitation/abc',
+    })
+    expect(email.subject).toBe('Ada Okafor invited you to the Vento Real Estate console')
+    expect(email.text).toContain('This link works until 29 Nov 2026, 14:30.')
+    expect(email.text).toContain('http://localhost/staff-invitation/abc')
+    expect(email.text).toContain('Nothing happens unless you accept.')
+  })
+
+  it('says a removed super-admin’s staff account is closed', () => {
+    const email = superAdminRemovedEmail({ byName: 'Ada Okafor', at: '14:30 on 27 Nov 2026' })
+    expect(email.subject).toBe("You're no longer a Vento Real Estate super-admin")
+    expect(email.text).toContain('Your staff account is closed.')
+  })
+
+  it('tells a staff account someone tried to sign up as a customer', () => {
+    const email = existingStaffAccountSignUp({ name: 'Ada', signInUrl: 'http://localhost/sign-in' })
+    expect(email.text).toContain("It's a staff account")
   })
 })

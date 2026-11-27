@@ -470,6 +470,13 @@ export const releaseDetail = z.object({
   overrides: z.array(featureOverride.extend({ organization: organizationRef })),
   /** The last 10 platform events on this feature. */
   recentChanges: z.array(activityRow).max(10),
+  /**
+   * Every live plan's latest version, in sort order, and whether it includes the feature: the
+   * feature page's *Included in* links and *Not in* (1b).
+   */
+  planVersions: z.array(
+    z.object({ key: z.string(), name, version: z.number().int().min(1), included: z.boolean() }),
+  ),
 })
 export type ReleaseDetail = z.infer<typeof releaseDetail>
 
@@ -527,18 +534,18 @@ export const superAdminRow = z.object({
   name,
   email: z.string(),
   since: datetime,
-  /** null = the bootstrap grant. */
+  /** Shown as **Invited by**; null = the bootstrap grant or invitation. */
   grantedByName: name.nullable(),
   lastConsoleAt: datetime.nullable(),
   /** No **Remove** on your own row. */
   isYou: z.boolean(),
+  /** ⋯ **Reset two-step**: not you, and two-step is on. */
+  canResetTwoStep: z.boolean(),
 })
 export type SuperAdminRow = z.infer<typeof superAdminRow>
 
 // The operations refuse duplicates and self-removal, so there's no before-state to compare.
 const noExpected = z.strictObject({})
-/** Slice 1's grant. Replaced by `inviteSuperAdmin`; removed together with its route (1b, B3). */
-export const addSuperAdmin = changeOf({ email }, noExpected)
 export const removeSuperAdmin = changeOf({ userId: id }, noExpected)
 
 // ── Staff invitations (1b) ───────────────────────────────────────────────────

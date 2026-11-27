@@ -4,6 +4,7 @@ import type { DbOrTx } from '@/db/client'
 import { auditEvents, members } from '@/db/schema'
 import { logger } from '@/lib/logger'
 import { requestScope } from '@/lib/request-scope'
+import { recordStaffAccountEvent } from '@/platform/staff-account-events'
 
 export type AuditActor = { userId: string | null; name: string }
 
@@ -61,7 +62,8 @@ export async function recordAudit(db: DbOrTx, input: AuditInput): Promise<void> 
 /**
  * Events about a person's account (sign-ins, lockouts, password and two-step changes) are
  * written once per organization they're an active member of, so each one's owners see them.
- * Before they belong to any organization, only a log line is kept, with no personal data.
+ * Before they belong to any organization, only a log line is kept, with no personal data;
+ * a staff account's events go to the platform trail instead.
  */
 export async function recordAccountEvent(
   db: DbOrTx,
@@ -76,6 +78,8 @@ export async function recordAccountEvent(
     .where(and(eq(members.userId, input.userId), eq(members.status, 'active')))
   const organizationIds = memberships.map((m) => m.organizationId)
   if (organizationIds.length === 0) {
+    // A staff account has no organization trail: its events go to the platform trail.
+    if (await recordStaffAccountEvent(db, input)) return 1
     logger.info('Account event before any organization', {
       action: input.action,
       requestId: requestScope().requestId,
