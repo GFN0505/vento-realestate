@@ -48,7 +48,7 @@ export function RoleSaveBar({
 }: Props) {
   const problem = error && !isHandledElsewhere(error) ? apiErrorMessage(error) : null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-3 pb-2 md:bottom-6 md:px-6 lg:pl-[calc(var(--sidebar-width)+2rem)]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-(--tabbar-height) z-30 px-3 pb-2 md:bottom-6 md:px-6 lg:pl-[calc(var(--sidebar-width)+2rem)]">
       <section
         aria-label="Unsaved changes"
         className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2.5 rounded-[14px] border border-sidebar-edge bg-sidebar px-4 dark:border-border dark:bg-muted py-3 text-sidebar-foreground shadow-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-200 sm:flex-row sm:items-center sm:gap-4 sm:py-2.5 sm:pr-2.5 sm:pl-5"

@@ -67,6 +67,15 @@ describe('ApprovalDetail', () => {
     )
   })
 
+  it('clears the reject error once Approve is pressed', async () => {
+    vi.mocked(client.approvals.decide).mockResolvedValue({ notice: 'Approved', ran: true })
+    renderDetail(testRequest())
+    await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
+    expect(screen.getByText('Enter a comment to reject.')).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Approve role change' }))
+    expect(screen.queryByText('Enter a comment to reject.')).toBeNull()
+  })
+
   it('shows your own request with Cancel my request instead of the buttons', () => {
     renderDetail(
       testRequest({

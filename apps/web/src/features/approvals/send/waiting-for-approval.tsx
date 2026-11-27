@@ -29,14 +29,14 @@ export function WaitingForApproval({
   return (
     <section
       aria-label="Approval"
-      className={cn('flex flex-col gap-3 rounded-[12px] border bg-card p-4', className)}
+      className={cn(
+        'flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[12px] border border-status-amber-border bg-status-amber-bg px-3.5 py-3',
+        className,
+      )}
     >
-      <div
-        role="status"
-        className="flex items-start gap-2.5 rounded-lg border border-status-amber-border bg-status-amber-bg px-3 py-2.5"
-      >
+      <div role="status" className="flex min-w-0 flex-1 items-start gap-2.5">
         <Clock3Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-status-amber-fg" />
-        <p className="min-w-0 flex-1 text-[13px] leading-snug">
+        <p className="min-w-0 text-[13px] leading-snug">
           <span className="font-semibold text-status-amber-fg">
             {waitingLine(pending.waitingFor)}
           </span>
@@ -46,7 +46,14 @@ export function WaitingForApproval({
           </span>
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
+        <Link
+          to="/approvals"
+          search={{ tab: pending.isOwn ? 'mine' : undefined, id: pending.requestId }}
+          className="rounded-sm px-1 font-semibold text-link text-xs underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-3"
+        >
+          See the request
+        </Link>
         {pending.isOwn && (
           <Button
             variant="outline"
@@ -61,13 +68,6 @@ export function WaitingForApproval({
             Cancel request
           </Button>
         )}
-        <Link
-          to="/approvals"
-          search={{ tab: pending.isOwn ? 'mine' : undefined, id: pending.requestId }}
-          className="rounded-sm px-1 font-semibold text-link text-xs underline-offset-4 outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:py-2"
-        >
-          See the request
-        </Link>
       </div>
     </section>
   )

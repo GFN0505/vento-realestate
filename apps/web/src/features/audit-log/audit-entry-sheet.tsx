@@ -10,9 +10,9 @@ import { HrefLink } from '@/components/href-link'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ChangesTable } from '@/features/approvals/changes-table'
 import { SheetFrame } from '@/features/team/sheet-frame'
 import { auditEntryQuery } from './audit-queries'
-import { Changes } from './audit-table'
 import { fullWhenText, whereText } from './audit-words'
 
 type Props = {
@@ -105,9 +105,17 @@ function EntryBody({
             <h3 id="audit-changes" className="font-heading font-semibold text-[15px]">
               Before → after
             </h3>
-            <div className="text-[13px] tabular-nums">
-              <Changes changes={entry.changes} />
-            </div>
+            {entry.changes.length > 0 ? (
+              <ChangesTable
+                changes={entry.changes.map((c) => ({
+                  field: c.label,
+                  before: c.before,
+                  after: c.after,
+                }))}
+              />
+            ) : (
+              <p className="text-[13px] text-muted-foreground">Nothing to compare.</p>
+            )}
           </section>
           {detail && (detail.approvedBy.length > 0 || detail.noApprover) && (
             <section

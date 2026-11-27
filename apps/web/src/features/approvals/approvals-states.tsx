@@ -72,6 +72,9 @@ export function ApprovalsEmpty({ tab, entityName, onAllEntities }: EmptyProps) {
   return (
     <EmptyState icon={InboxIcon} className="border-0">
       {EMPTY[tab]}
+      {tab === 'waiting' && (
+        <span className="block">Requests that need your approval appear here.</span>
+      )}
     </EmptyState>
   )
 }

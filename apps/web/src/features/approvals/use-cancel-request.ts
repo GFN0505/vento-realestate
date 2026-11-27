@@ -17,8 +17,8 @@ export function useCancelRequest(onCancelled?: () => void) {
       if (!connection.isOnline()) return Promise.reject(new Error(OFFLINE_SAVE_ERROR))
       return client.approvals.cancel({ id })
     },
-    onSuccess: ({ notice }) => {
-      toast.success(notice || APPROVAL_COPY.requestCancelled)
+    onSuccess: () => {
+      toast.success(APPROVAL_COPY.requestCancelled)
       refreshApprovals(queryClient)
       refreshRecords(queryClient)
       onCancelled?.()

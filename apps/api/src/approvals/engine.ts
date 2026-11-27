@@ -99,8 +99,6 @@ export async function requestOrRun<P, R extends ExecuteResult>(
   })
   if (!rule) return { ran: true, result: await plugin.execute(tx, ctx, payload, RAN_AT_ONCE) }
 
-  const reason = input.reason?.trim()
-  if (!reason) throw reasonRequired()
   const exclusions = await plugin.excluded(tx, ctx, payload)
   const firstStep = rule.steps[0] ?? []
   const gap = await chainGap(
@@ -128,6 +126,10 @@ export async function requestOrRun<P, R extends ExecuteResult>(
     return { ran: true, result: { ...result, emails: [...result.emails, ...alerts] } }
   }
 
+  // Asked only once a request will really be made: an action that goes ahead with nobody to
+  // approve (the only owner, a role change) needs no Why? (preview's proceedsWithoutApprover).
+  const reason = input.reason?.trim()
+  if (!reason) throw reasonRequired()
   const subject = plugin.subject(payload)
   const pending = await pendingRequestId(tx, ctx.organizationId, plugin.key, subject)
   if (pending) throw alreadyPending(pending)

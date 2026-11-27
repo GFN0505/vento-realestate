@@ -1,12 +1,13 @@
 import {
   cannotApproveInModuleText,
   MAX_APPROVAL_STEPS,
+  MODULE_LABELS,
   type PermissionModule,
   type Role,
   stepText,
 } from '@vento/shared'
-import { PlusIcon, XIcon } from 'lucide-react'
-import { useId } from 'react'
+import { CheckIcon, PlusIcon, XIcon } from 'lucide-react'
+import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -86,6 +87,12 @@ export function StepBuilder({ roles, module, value, onChange, error }: Props) {
           )
         })}
       </ol>
+      {roles.some((r) => !r.canApprove.includes(module)) && (
+        <p className="text-muted-foreground text-xs">
+          Dashed roles can't approve in {MODULE_LABELS[module]}. Give a role Approve there on its
+          page first; tap one to see why.
+        </p>
+      )}
       {value.length < MAX_APPROVAL_STEPS && (
         <Button
           variant="ghost"
@@ -115,13 +122,16 @@ function RoleChip({
   onToggle: (on: boolean) => void
 }) {
   const reasonId = useId()
+  // Tooltips don't open on touch: a tap shows the reason too.
+  const [showing, setShowing] = useState(false)
   if (reason) {
     return (
       <>
-        <Tooltip>
+        <Tooltip open={showing} onOpenChange={setShowing}>
           <TooltipTrigger asChild>
             <button
               type="button"
+              onClick={() => setShowing(true)}
               aria-disabled="true"
               aria-describedby={reasonId}
               className={cn(
@@ -148,10 +158,11 @@ function RoleChip({
       className={cn(
         chip,
         on
-          ? 'border-selected-border bg-selected text-selected-foreground'
+          ? 'border-primary bg-primary text-primary-foreground'
           : 'border-border bg-card text-foreground hover:bg-muted',
       )}
     >
+      {on && <CheckIcon aria-hidden className="-ml-0.5 size-3.5" strokeWidth={3} />}
       {role.name}
     </button>
   )

@@ -1,6 +1,6 @@
 import { AUDIT_MODULE_LABELS, type AuditRow } from '@vento/shared'
 import { Avatar } from '@/components/avatar'
-import { changeText, whenText, whereText } from './audit-words'
+import { changeText, whenText, whereText, whoAndWhat } from './audit-words'
 
 const th =
   'h-10 px-3 text-left align-middle font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em] first:pl-5'
@@ -122,9 +122,7 @@ export function AuditCards({ rows, onOpen }: Props) {
             onClick={() => onOpen(row)}
             className="flex min-h-16 w-full flex-col gap-1 rounded-[14px] border bg-card px-3.5 py-3 text-left outline-hidden active:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <span className="font-semibold text-sm">
-              {row.actor.name} · {row.what}
-            </span>
+            <span className="font-semibold text-sm">{whoAndWhat(row)}</span>
             <span className="text-muted-foreground text-xs tabular-nums">
               {row.changes.length > 0 ? `${row.changes.map(changeText).join('; ')} · ` : ''}
               {whenText(row.at)}

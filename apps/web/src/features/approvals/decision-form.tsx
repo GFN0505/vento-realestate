@@ -27,7 +27,7 @@ type Props = {
 export function DecisionForm({ detail, onDone, sticky = false }: Props) {
   const id = useId()
   const online = useOnline()
-  const decide = useDecide(onDone)
+  const decide = useDecide(onDone, { title: detail.summary.title, makerName: detail.makerName })
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -41,6 +41,7 @@ export function DecisionForm({ detail, onDone, sticky = false }: Props) {
 
   const approve = () => {
     if (disabled) return
+    setError(null)
     if (detail.irreversible) return setConfirming(true)
     decide.mutate({ ...base, decision: 'approve', comment: trimmed || undefined })
   }
@@ -68,7 +69,7 @@ export function DecisionForm({ detail, onDone, sticky = false }: Props) {
 
   const amount = detail.amount ? amountText(detail.amount).main : null
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${id}-comment`} className="font-semibold text-muted-foreground text-xs">
           Comment <span className="font-normal">(required to reject)</span>
@@ -89,15 +90,20 @@ export function DecisionForm({ detail, onDone, sticky = false }: Props) {
             if (error && event.target.value.trim()) setError(null)
           }}
         />
-        <FieldError id={`${id}-error`} role="alert">
-          {error}
-        </FieldError>
+        {/* Room kept for the error, so the buttons never jump when it shows. */}
+        <div className="min-h-5">
+          <FieldError id={`${id}-error`} role="alert">
+            {error}
+          </FieldError>
+        </div>
       </div>
       <div
         className={cn(
-          'flex flex-col gap-2',
-          sticky &&
-            'fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 border-t bg-card px-4 pt-3 pb-3 shadow-lift md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none',
+          // Always in reach: above the tabs on phones, at the foot of the pane on larger screens.
+          'z-30 flex flex-col gap-2 border-t bg-card',
+          sticky
+            ? 'fixed inset-x-0 bottom-(--tabbar-height) px-4 py-3'
+            : 'sticky bottom-0 -mx-5 -mb-5 rounded-b-lg px-5 py-3 lg:-mx-6 lg:px-6',
         )}
       >
         {!online && (

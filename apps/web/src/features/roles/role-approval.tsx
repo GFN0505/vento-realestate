@@ -20,7 +20,8 @@ export function useRoleApproval(roleId: string, canEdit: boolean) {
   const queryClient = useQueryClient()
   const options = approvalPreviewQuery('access.role.update', { type: 'role', id: roleId })
   const preview = useQuery({ ...options, enabled: canEdit })
-  const data = preview.data?.needed ? preview.data : null
+  // Nobody else could approve (a one-owner organization): the save goes ahead, noted in the log.
+  const data = preview.data?.needed && !preview.data.proceedsWithoutApprover ? preview.data : null
   return {
     needed: data !== null,
     chain: data?.chain ?? null,

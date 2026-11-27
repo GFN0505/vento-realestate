@@ -234,6 +234,7 @@ describe('access.role.update: changing a held role’s permissions', () => {
         chain: 'Needs approval by Owner or Admin.',
         policy: "Change a role's permissions needs approval by Owner or Admin.",
         blocked: null,
+        proceedsWithoutApprover: false,
         pendingRequestId: null,
       })
       expect(
@@ -279,6 +280,30 @@ describe('access.role.update: changing a held role’s permissions', () => {
       expect(preview).toMatchObject({
         needed: true,
         blocked: 'Nobody else can approve this. Ask an owner to add an approver to the rule.',
+        proceedsWithoutApprover: false,
       })
+    }))
+
+  it('previews a make-owner by the only owner as going ahead with nobody to approve', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      await seedDefaultRules(tx, org.id, org.ownerMemberId)
+      const grace = await createMember(tx, org, { role: 'admin', name: 'Grace Umeh' })
+      const preview = await clientAs(tx, org.owner).client.approvals.preview({
+        actionKey: 'access.member.make_owner',
+        subject: { type: 'member', id: grace.member.id },
+      })
+      expect(preview).toMatchObject({
+        needed: true,
+        blocked: null,
+        proceedsWithoutApprover: true,
+      })
+      // The engine agrees: it runs at once, with no request and no Why? needed.
+      const done = await clientAs(tx, org.owner).client.members.updateAccess({
+        memberId: grace.member.id,
+        roleId: org.roleIds.get('owner') ?? '',
+        entityIds: null,
+      })
+      expect(done.outcome).toMatchObject({ ran: true })
     }))
 })

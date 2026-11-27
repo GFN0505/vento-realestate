@@ -111,7 +111,11 @@ function Inbox({ phone }: { phone: boolean }) {
           )}
         </section>
         {showDetail && (
-          <section aria-label="Request detail" className={cn(card, 'p-5 lg:px-6')}>
+          // No overflow clipping here: the decision bar sticks to the foot of the window.
+          <section
+            aria-label="Request detail"
+            className="rounded-[10px] border bg-card p-5 lg:px-6"
+          >
             {selected ? (
               <ApprovalPane id={selected} onDecided={() => select(neighbourOf(ids, selected))} />
             ) : (

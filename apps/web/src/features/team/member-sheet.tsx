@@ -114,7 +114,7 @@ export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Pro
             form={form}
             save={save}
             confirmOwner={(run, role, entityIds) =>
-              actions.setConfirm({
+              actions.askOwner({
                 kind: 'owner',
                 row,
                 role,

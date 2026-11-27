@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { type AuditRow, OTHER_DETAILS_CHANGED } from '@vento/shared'
 import { describe, expect, it, vi } from 'vitest'
 import { AuditTable } from './audit-table'
-import { changeText, whereText } from './audit-words'
+import { changeText, whenText, whereText, whoAndWhat } from './audit-words'
 
 const row = (overrides: Partial<AuditRow> = {}): AuditRow => ({
   id: '01900000-0000-7000-8000-0000000000e1',
@@ -23,11 +23,14 @@ const row = (overrides: Partial<AuditRow> = {}): AuditRow => ({
 
 describe('AuditTable', () => {
   it('reads each row in plain words, Lagos time first', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T10:00:00.000Z'))
     render(<AuditTable rows={[row()]} onOpen={vi.fn()} />)
     const cells = within(screen.getAllByRole('row')[1] as HTMLElement).getAllByRole('cell')
     expect(cells[0]).toHaveTextContent('25 Nov 14:12')
     expect(screen.getByText('Approve in Finance: no → yes')).toBeVisible()
     expect(screen.getByText('Chrome on Mac · 102.89.34.x')).toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   it('shows unlabelled fields as Other details changed, never raw data', () => {
@@ -50,6 +53,22 @@ describe('AuditTable', () => {
 })
 
 describe('audit words', () => {
+  it('adds the year only when it is not this year', () => {
+    const now = new Date('2026-11-27T10:00:00.000Z')
+    expect(whenText('2026-11-25T13:12:00.000Z', now)).toBe('25 Nov 14:12')
+    expect(whenText('2025-11-25T13:12:00.000Z', now)).toBe('25 Nov 2025 14:12')
+  })
+
+  it('names Vento Real Estate once on a phone card', () => {
+    const vento = { actor: { userId: null, name: 'Vento Real Estate', kind: 'vento' as const } }
+    expect(whoAndWhat({ ...vento, what: 'Vento Real Estate moved you to Growth' })).toBe(
+      'Vento Real Estate moved you to Growth',
+    )
+    expect(whoAndWhat({ ...vento, what: 'Changed the plan' })).toBe(
+      'Vento Real Estate · Changed the plan',
+    )
+  })
+
   it('writes a missing side as a dash', () => {
     expect(changeText({ label: 'Role', before: null, after: 'Finance' })).toBe('Role: — → Finance')
   })

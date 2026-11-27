@@ -11,6 +11,7 @@ import { rolesQuery } from '@/features/preview/use-effective-permissions'
 import { toastApiError } from '@/lib/api-errors'
 import { errorReason } from '@/lib/error-data'
 import { client } from '@/lib/orpc'
+import { ownerPreviewQuery } from './owner-confirm'
 import { teamListKey } from './team-queries'
 import { UNDO_MS, useChangeRole } from './use-change-role'
 
@@ -72,6 +73,12 @@ export function useTeamActions(listKey: QueryKey) {
     `The invitation to ${row.email} is no longer open.`
 
   const changeRoleNow = useChangeRole(listKey)
+  /** Make owner opens once we know whether it needs approval, so it opens in its final form. */
+  const askOwner = (confirm: Extract<TeamConfirm, { kind: 'owner' }>) =>
+    void queryClient
+      .fetchQuery(ownerPreviewQuery(confirm.row.id))
+      .catch(() => undefined)
+      .finally(() => setConfirm(confirm))
   const navigate = useNavigate()
   const openRequest = (id: string) => void navigate({ to: '/approvals', search: { id } })
 
@@ -153,9 +160,10 @@ export function useTeamActions(listKey: QueryKey) {
     remove,
     resetTwoStep,
     /** From a row's role menu: saves at once with Undo, except Owner, which asks first. */
+    askOwner,
     changeRole(row: TeamMemberRow, role: RoleRef) {
       if (role.id === row.role.id) return
-      if (role.key === 'owner') setConfirm({ kind: 'owner', row, role })
+      if (role.key === 'owner') askOwner({ kind: 'owner', row, role })
       else changeRoleNow(row, role, { onError: (error) => failed(memberGone(row))(error) })
     },
     openRequest,

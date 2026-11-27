@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { BadgeCheckIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
 import { canView, navItem } from '@/features/shell/nav'
 import { cn } from '@/lib/utils'
@@ -25,15 +27,9 @@ export function waitingWords(count: number): string {
 export function CountPill({ count, className }: { count: number; className?: string }) {
   if (count <= 0) return null
   return (
-    <span
-      aria-hidden
-      className={cn(
-        'inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 font-semibold text-[11px] text-primary-foreground tabular-nums leading-none',
-        className,
-      )}
-    >
+    <Badge aria-hidden className={cn('px-1.5 tabular-nums', className)}>
       {count > 99 ? '99+' : count}
-    </span>
+    </Badge>
   )
 }
 
@@ -46,7 +42,7 @@ export function ApprovalsTopBarLink() {
     <Link
       to="/approvals"
       preload="intent"
-      className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border bg-card px-3 font-semibold text-[13px] outline-hidden transition-colors hover:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
+      className={buttonVariants({ variant: 'outline', size: 'sm' })}
     >
       <BadgeCheckIcon aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.8} />
       Approvals

@@ -60,6 +60,25 @@ export function AuditPage() {
   }, [unknownModule, navigate])
 
   const open = (id: string | undefined) => update({ open: id })
+  const exportButton = (compact: boolean) => (
+    <Button
+      variant="outline"
+      size={compact ? 'icon' : 'default'}
+      aria-label={compact ? 'Export CSV' : undefined}
+      onClick={() => exporter.mutate(auditFilters(search))}
+      disabled={exporter.isPending || problem !== null || !online}
+      aria-busy={exporter.isPending || undefined}
+      title={online ? undefined : "You're offline. Export when you're back online."}
+      className={compact ? 'size-11' : undefined}
+    >
+      {exporter.isPending ? (
+        <LoaderCircleIcon aria-hidden className="animate-spin" />
+      ) : (
+        <DownloadIcon aria-hidden />
+      )}
+      {!compact && 'Export CSV'}
+    </Button>
+  )
   const organization = me.organization?.name ?? 'your organization'
 
   return (
@@ -67,25 +86,11 @@ export function AuditPage() {
       <PageHeader
         title="Audit log"
         description={`Every change in ${organization}. Entries can't be edited or deleted.`}
-        actions={
-          <Button
-            variant="outline"
-            onClick={() => exporter.mutate(auditFilters(search))}
-            disabled={exporter.isPending || problem !== null || !online}
-            aria-busy={exporter.isPending || undefined}
-            title={online ? undefined : "You're offline. Export when you're back online."}
-            className="max-md:h-11"
-          >
-            {exporter.isPending ? (
-              <LoaderCircleIcon aria-hidden className="animate-spin" />
-            ) : (
-              <DownloadIcon aria-hidden />
-            )}
-            Export CSV
-          </Button>
-        }
+        actions={exportButton(false)}
+        // Phones: Export sits beside search.
+        className="[&>div:last-child]:max-md:hidden"
       />
-      <AuditToolbar search={search} update={update} />
+      <AuditToolbar search={search} update={update} exportAction={exportButton(true)} />
       <div
         aria-busy={list.isFetching || undefined}
         className={cn(

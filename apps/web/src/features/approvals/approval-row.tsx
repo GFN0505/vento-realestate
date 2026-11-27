@@ -21,7 +21,7 @@ export function ApprovalRowContent({ row, tab }: { row: ApprovalRequestRow; tab:
       <Avatar name={row.makerName} className="size-8 border bg-muted text-[11px] text-foreground" />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex items-baseline justify-between gap-2">
-          <span className="min-w-0 truncate font-semibold text-[13px]" title={row.title}>
+          <span className="min-w-0 font-semibold text-[13px] line-clamp-2" title={row.title}>
             {row.title}
           </span>
           {amount && (
@@ -29,7 +29,7 @@ export function ApprovalRowContent({ row, tab }: { row: ApprovalRequestRow; tab:
           )}
         </span>
         <span className="truncate text-muted-foreground text-xs group-aria-[current=true]:text-selected-foreground">
-          {row.makerName} · “{row.reason}”
+          {tab === 'mine' ? '' : `${row.makerName} · `}“{row.reason}”
         </span>
         <span className="flex min-w-0 flex-wrap items-center gap-2">
           <Badge variant="outline">{row.chip}</Badge>

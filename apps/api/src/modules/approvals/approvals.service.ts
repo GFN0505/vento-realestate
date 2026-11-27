@@ -424,19 +424,24 @@ export async function previewApproval(
   const meta = APPROVAL_ACTIONS[input.actionKey]
   // The same test requestOrRun applies, without the record's own exclusions (no payload here).
   let blocked: string | null = null
-  if (!(await mayProceedWithoutApprover(ctx.db, ctx, input.actionKey))) {
-    const gap = await chainGap(
-      ctx.db,
-      ctx.organizationId,
-      {
-        steps: rule.steps.map((step) => step.map((r) => r.id)),
-        module: meta.module,
-        entityId,
-        makerUserId: ctx.user.id,
-      },
-      [],
-    )
-    if (gap !== null) blocked = noApproverMessage(await entityName(ctx, entityId))
+  let proceedsWithoutApprover = false
+  const gap = await chainGap(
+    ctx.db,
+    ctx.organizationId,
+    {
+      steps: rule.steps.map((step) => step.map((r) => r.id)),
+      module: meta.module,
+      entityId,
+      makerUserId: ctx.user.id,
+    },
+    [],
+  )
+  if (gap !== null) {
+    if (await mayProceedWithoutApprover(ctx.db, ctx, input.actionKey)) {
+      proceedsWithoutApprover = true
+    } else {
+      blocked = noApproverMessage(await entityName(ctx, entityId))
+    }
   }
   return {
     needed: true,
@@ -448,6 +453,7 @@ export async function previewApproval(
       entityNames: rule.entities === 'all' ? 'all' : rule.entities.map((e) => e.name),
     }),
     blocked,
+    proceedsWithoutApprover,
     pendingRequestId: await pendingRequestId(
       ctx.db,
       ctx.organizationId,

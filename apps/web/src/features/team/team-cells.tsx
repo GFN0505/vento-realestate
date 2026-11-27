@@ -106,12 +106,17 @@ export function InvitationBadge({ row }: { row: TeamInvitationRow }) {
   return <StatusBadge tone="amber">Invited · expires {formatDayMonth(row.expiresAt)}</StatusBadge>
 }
 
-/** "Owner · waiting for approval": making them an owner waits for a second person (brick 4). */
+/**
+ * Making them an owner waits for a second person (brick 4): an amber badge, not colour alone,
+ * with the full words for hover and screen readers.
+ */
 export function OwnerPending({ row }: { row: { kind: string; pendingApproval?: unknown } }) {
   if (row.kind !== 'member' || !row.pendingApproval) return null
   return (
-    <span className="block truncate font-medium text-status-amber-fg text-xs">
-      Owner · waiting for approval
+    <span title="Owner · waiting for approval" className="mt-1 flex">
+      <StatusBadge tone="amber">
+        Owner · waiting<span className="sr-only"> for approval</span>
+      </StatusBadge>
     </span>
   )
 }

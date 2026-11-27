@@ -8,6 +8,16 @@ const when = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
   timeZone: 'Africa/Lagos',
 })
+const withYear = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Africa/Lagos',
+})
+const year = new Intl.DateTimeFormat('en-GB', { year: 'numeric', timeZone: 'Africa/Lagos' })
 const full = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -19,10 +29,17 @@ const full = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Africa/Lagos',
 })
 
-/** "25 Nov 14:12", Lagos time (board AuditLog). */
-export function whenText(iso: string): string {
+/** "25 Nov 14:12", Lagos time (board AuditLog); "25 Nov 2025 14:12" in another year. */
+export function whenText(iso: string, now: Date = new Date()): string {
   const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : when.format(d).replace(',', '')
+  if (Number.isNaN(d.getTime())) return iso
+  const format = year.format(d) === year.format(now) ? when : withYear
+  return format.format(d).replace(',', '')
+}
+
+/** A phone card's line: who, then what, without saying who twice ("Vento Real Estate moved…"). */
+export function whoAndWhat(row: Pick<AuditRow, 'actor' | 'what'>): string {
+  return row.what.startsWith(row.actor.name) ? row.what : `${row.actor.name} · ${row.what}`
 }
 
 /** "25 Nov 2026, 14:12:05 Lagos time", for the entry sheet. */

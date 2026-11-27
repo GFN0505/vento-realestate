@@ -16,6 +16,15 @@ import type { TeamConfirm } from './use-team-actions'
 
 type Owner = Extract<TeamConfirm, { kind: 'owner' }>
 
+/** A rule applies but nobody else can approve (the only owner): it goes ahead, noted. */
+export const NO_ONE_ELSE =
+  'No one else can approve this, so it takes effect now and is noted in the audit log.'
+
+/** The Make owner preview, fetched before the confirm opens so it opens in its final form. */
+export function ownerPreviewQuery(memberId: string) {
+  return approvalPreviewQuery('access.member.make_owner', { type: 'member', id: memberId })
+}
+
 type Props = {
   confirm: Owner | null
   open: boolean
@@ -25,18 +34,16 @@ type Props = {
 }
 
 /**
- * Make owner (spec 3b, brick 4). When the "Make someone an owner" rule applies, the confirm is
- * the Send for approval sheet instead: the row stays as it is until the last approver says yes.
- * Until we know which, Confirm waits; if we can't find out, it says so and offers Try again.
+ * Make owner (spec 3b, brick 4), in one step: when the "Make someone an owner" rule applies, the
+ * Send for approval sheet opens instead of the confirm, and the row stays as it is until the last
+ * approver says yes. When nobody else could approve (the only owner), the confirm says it takes
+ * effect now. If we can't find out which, it says so and offers Try again.
  * A refusal (e.g. "Nobody else can approve this…") stays in the dialog.
  */
 export function OwnerConfirm({ confirm, open, organization, onClose, openRequest }: Props) {
   const queryClient = useQueryClient()
   const row = confirm?.row
-  const options = approvalPreviewQuery('access.member.make_owner', {
-    type: 'member',
-    id: row?.id ?? '',
-  })
+  const options = ownerPreviewQuery(row?.id ?? '')
   const preview = useQuery({ ...options, enabled: open && row !== undefined })
   const apply = useMutation({
     mutationFn: ({ confirm, reason }: { confirm: Owner; reason?: string }) => {
@@ -73,8 +80,10 @@ export function OwnerConfirm({ confirm, open, organization, onClose, openRequest
     onClose()
   }
   const needed = preview.data?.needed ? preview.data : null
+  // The team page fetched the answer before opening; nothing flashes while it's on its way.
+  if (open && preview.isPending) return null
 
-  if (needed && confirm) {
+  if (needed && !needed.proceedsWithoutApprover && confirm) {
     return (
       <SendForApprovalSheet
         open={open}
@@ -106,15 +115,15 @@ export function OwnerConfirm({ confirm, open, organization, onClose, openRequest
       onOpenChange={(next) => !next && close()}
       title={row ? `Make ${row.name} an owner?` : ''}
       confirmLabel={preview.isError ? 'Try again' : 'Make owner'}
-      // Confirm waits until we know whether this needs approval first.
-      pending={open && (preview.isPending || apply.isPending || preview.isFetching)}
+      pending={open && (apply.isPending || preview.isFetching)}
       onConfirm={() => {
         if (preview.isError) return void preview.refetch()
         if (confirm) apply.mutate({ confirm })
       }}
     >
-      Owners can do everything in {organization}, including changing who has access and removing
-      other owners.
+      {needed?.proceedsWithoutApprover
+        ? NO_ONE_ELSE
+        : `Owners can do everything in ${organization}, including changing who has access and removing other owners.`}
       {problem && (
         <span role="alert" className="mt-2 block text-status-rose-fg">
           {problem}

@@ -85,7 +85,7 @@ export function RolesPage() {
         )}
         {items && !hasCustom && <NoCustomRoles canCreate={rights.create} onNew={() => newRole()} />}
         {rights.create && phone && (
-          <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-4 pb-2 md:hidden">
+          <div className="fixed inset-x-0 bottom-(--tabbar-height) z-30 px-4 pb-2 md:hidden">
             <NewRoleButton onClick={() => newRole()} className="h-11 w-full shadow-lg" />
           </div>
         )}

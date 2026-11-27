@@ -348,6 +348,12 @@ export const previewApprovalOutput = z.discriminatedUnion('needed', [
     policy: z.string(),
     /** Set when the action would be refused (nobody else can approve a money action). */
     blocked: z.string().nullable(),
+    /**
+     * A step has nobody to approve it, but the action may go ahead anyway (a role change, or the
+     * organization's only owner making an owner): it takes effect at once, noted in the audit log,
+     * so the web confirms instead of asking for approval.
+     */
+    proceedsWithoutApprover: z.boolean(),
     /** A request already waits for this record and action. */
     pendingRequestId: id.nullable(),
   }),

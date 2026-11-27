@@ -50,15 +50,17 @@ function dropFromWaiting(queryClient: QueryClient, id: string) {
  * expired request says what happened ("Aisha Bello approved this a moment ago.") and moves on
  * too. Offline nothing is sent or queued; the buttons say why they're off.
  */
-export function useDecide(onDone: () => void) {
+export function useDecide(onDone: () => void, words: { title: string; makerName: string }) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: DecideInput) => {
       if (!connection.isOnline()) return Promise.reject(new Error(OFFLINE_SAVE_ERROR))
       return client.approvals.decide(input)
     },
-    onSuccess: ({ notice }, input) => {
-      toast.success(notice)
+    onSuccess: (_, input) => {
+      // Short, past tense (ux-writing); the request names itself underneath.
+      if (input.decision === 'approve') toast.success('Approved', { description: words.title })
+      else toast.success('Rejected', { description: `${words.makerName} will see your comment` })
       dropFromWaiting(queryClient, input.requestId)
       refreshApprovals(queryClient)
       // Every decision moves the record on: it ran, it ended, or it now waits for the next step.

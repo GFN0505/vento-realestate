@@ -27,7 +27,7 @@ export function MobileTabs() {
   return (
     <nav
       aria-label="Tabs"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-(--tabbar-height) border-t bg-card px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
     >
       {tabs.map((item) => (
         <Link
