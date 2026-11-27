@@ -20,7 +20,7 @@ export function FilterChips<T extends string>({
   className?: string
 }) {
   return (
-    <fieldset aria-label={label} className={cn('flex items-center gap-1.5', className)}>
+    <fieldset aria-label={label} className={cn('flex min-w-0 items-center gap-1.5', className)}>
       {chips.map((chip) => {
         const on = chip.value === value
         return (

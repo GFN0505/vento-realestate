@@ -109,7 +109,7 @@ function ExpiredDialog({ email }: { email: string }) {
           <DialogTitle>Your session has ended</DialogTitle>
           <DialogDescription>
             {stage === 'password' ? (
-              'For security, Vento signs you out after 30 minutes without activity.'
+              'For security, Vento Real Estate signs you out after 30 minutes without activity.'
             ) : (
               <>
                 Enter the 6-digit code from your authenticator app for{' '}

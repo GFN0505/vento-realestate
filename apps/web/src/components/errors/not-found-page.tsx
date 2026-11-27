@@ -69,7 +69,7 @@ export function NotFoundPage() {
 /** Signed out: the same page without the shell, offering Sign in. */
 export function StandaloneNotFound() {
   useEffect(() => {
-    document.title = 'Page not found · Vento'
+    document.title = 'Page not found · Vento Real Estate'
   }, [])
   return (
     <ErrorState

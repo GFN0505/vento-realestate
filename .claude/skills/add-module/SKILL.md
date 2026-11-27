@@ -129,5 +129,8 @@ Add the module's contribution to every role home it serves (see `docs/release-pl
 ## 9. Setup checklist
 If the module needs a first-time setup step (e.g. "Connect Paystack", "Import buyers"), add one item in `apps/api/src/modules/checklist/items.ts` with its feature key, so it appears on Home only when the feature is available and the step is actionable.
 
+## 10. Vento console procedures (staff only)
+Customer modules never live in the console. If a module needs a staff screen, its contract uses `staff` from `@vento/shared/console` (meta `area: 'console'`) and its procedures are built on `consoleWindow` (`apps/api/src/orpc.ts`), never on `member`. A console procedure takes the organization by ID in its input; there is no tab organization. A staff account gets NOT_FOUND from every `member` procedure; the only public console procedures are the two `join.*` ones in `CONSOLE_PUBLIC_PROCEDURES`. See decisions 0021 and 0023.
+
 ## Done when
 `pnpm check && pnpm typecheck && pnpm test` pass, and the migration is generated and applied.

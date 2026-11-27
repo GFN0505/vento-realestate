@@ -68,7 +68,9 @@ describe('sign in', () => {
     const b = browser(app)
     await signIn(b, email)
     expect((await b.auth('/two-factor/verify-backup-code', { code })).status).toBe(200)
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: a backup code was used (9 left)')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: a backup code was used (9 left)',
+    )
     const again = browser(app)
     await signIn(again, email)
     expect((await again.auth('/two-factor/verify-backup-code', { code })).json.code).toBe(
@@ -134,7 +136,9 @@ describe('lockout', () => {
       Date.now() + 14 * 60_000,
     )
     expect(
-      mailer.to(email).filter((m) => m.subject === 'Vento: sign-in locked for 15 minutes'),
+      mailer
+        .to(email)
+        .filter((m) => m.subject === 'Vento Real Estate: sign-in locked for 15 minutes'),
     ).toHaveLength(1)
 
     const later = await signIn(browser(app), email)
@@ -157,7 +161,9 @@ describe('lockout', () => {
     expect(codes[9]).toBe('ACCOUNT_LOCKED')
     expect((await signIn(browser(app), email)).status).toBe(429)
     expect((await signIn(browser(app), email)).json.code).toBe('ACCOUNT_LOCKED')
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: sign-in locked for 15 minutes')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: sign-in locked for 15 minutes',
+    )
   })
 
   it('locks unknown emails the same way, so a lock reveals nothing', async () => {

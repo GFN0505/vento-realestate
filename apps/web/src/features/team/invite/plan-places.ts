@@ -30,9 +30,9 @@ export function planPlacesMessage(limit: PeopleLimit | null, rows: number): stri
   const left = placesLeft(limit)
   if (rows <= left) return null
   if (left === 0) {
-    return `All ${limit.included} places${onPlan(limit)} are taken. Talk to Vento for more.`
+    return `All ${limit.included} places${onPlan(limit)} are taken. Talk to Vento Real Estate for more.`
   }
-  return `You have ${places(left)} left${onPlan(limit)}. Talk to Vento for more.`
+  return `You have ${places(left)} left${onPlan(limit)}. Talk to Vento Real Estate for more.`
 }
 
 /** "8 of 10 people on your Starter plan" for the Team context line. */

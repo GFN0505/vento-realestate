@@ -5,7 +5,7 @@ import { type AuthUser, type ServiceContext, setActiveOrganization } from '@/acc
 import { syncSystemRoles } from '@/access/system-roles'
 import type { DbOrTx } from '@/db/client'
 import { entities, members, organizationPlans, organizations, users } from '@/db/schema'
-import { conflict } from '@/lib/errors'
+import { conflict, forbidden } from '@/lib/errors'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { insertEntity } from '@/modules/entities/entities.service'
 import { lockOrganization, toOrganization } from '@/modules/organization/organization.service'
@@ -21,7 +21,19 @@ export async function createOrganization(
   input: z.output<typeof createOrganizationInput>,
 ): Promise<Organization> {
   return db.transaction(async (tx) => {
-    await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.user.id)).for('update')
+    const [me] = await tx
+      .select({ accountKind: users.accountKind })
+      .from(users)
+      .where(eq(users.id, actor.user.id))
+      .for('update')
+    // Staff accounts never belong to an organization (decision 0023); trigger members_refuse_staff
+    // is the backstop.
+    if (me?.accountKind === 'staff') {
+      throw forbidden(
+        'staff_account',
+        "A Vento Real Estate staff account can't set up an organization. Use a customer account with a different email.",
+      )
+    }
     const [existing] = await tx
       .select({ name: organizations.name })
       .from(members)

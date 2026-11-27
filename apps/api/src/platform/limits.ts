@@ -28,8 +28,8 @@ export function planLimitMessage(input: LimitMessageInput): string {
     return `Your organization has reached its limit of ${amountOf(key, included)}.${ask}`
   }
   const talk = input.higherPlanName
-    ? `talk to Vento about ${input.higherPlanName}`
-    : 'talk to Vento'
+    ? `talk to Vento Real Estate about ${input.higherPlanName}`
+    : 'talk to Vento Real Estate'
   if (key === 'members') {
     const are = input.used === 1 ? 'is' : 'are'
     return `Your plan includes ${amountOf(key, included)}, and ${input.used} ${are} in or invited. ${LIMIT_WORDS[key].action} or ${talk}.`

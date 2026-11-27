@@ -32,6 +32,7 @@ import { recordAccountEvent } from '@/modules/audit/audit.service'
 import { organizationAvailability } from '@/platform/availability'
 import type { FeatureStore } from '@/platform/feature-store'
 import { planSummary } from '@/platform/plan-summary'
+import { activeSuperAdmin } from '@/platform/super-admins'
 
 async function hasEntity(db: DbOrTx, organizationId: string): Promise<boolean> {
   const [row] = await db
@@ -128,12 +129,17 @@ export async function getMe(
 ): Promise<Me> {
   const membership = await resolveMembership(db, user, session)
   const gate = gateFor(user, session, membership, new Date())
-  const [nextStep, organizations, { features, plan }, requiredBy] = await runQueries(db, [
+  const [step, organizations, { features, plan }, requiredBy, admin] = await runQueries(db, [
     () => nextStepFor(db, membership, gate),
     () => listActiveMemberships(db, user.id),
     () => featuresAndPlan(db, membership, store),
     () => twoStepRequiredBy(db, user, membership),
+    () => activeSuperAdmin(db, user.id),
   ])
+  // A staff account never onboards (decision 0023): an active super-admin with two-step goes
+  // to the console; anyone else staff (joining, or after a reset) sets two-step up first.
+  const nextStep: NextStep =
+    user.accountKind === 'staff' ? (admin?.twoFactorEnabled ? 'console' : 'two_step_setup') : step
   // Only someone through every gate (onboarding, two-step) is using the organization.
   if (membership && nextStep === 'ready') await touchMemberActivity(db, membership.member)
   return {
@@ -171,6 +177,7 @@ export async function getMe(
     twoStepRequiredBy: requiredBy,
     twoStepSetupBy: gate.kind === 'grace' ? gate.deadline.toISOString() : null,
     canAddCompany: membership ? canAddCompany(membership.member) : false,
+    console: admin ? { twoStepOn: admin.twoFactorEnabled } : null,
   }
 }
 

@@ -65,9 +65,9 @@ if (total > BUDGET_KB * 1000) {
   process.exit(1)
 }
 
-// Code that must never reach Home's first load (plan 3c §7, 3d §8.3): the shared role rules, the
-// roles screens, the Company sheet, My security, and the WebAuthn code (it loads only when someone
-// starts a passkey action). A static import from the shell or Home would pull them in. Read from
+// Code that must never reach Home's first load (plan 3c §7, 3d §8.3, console §9.1): the shared role
+// rules, the roles screens, the Company sheet, My security, the WebAuthn code (it loads only when
+// someone starts a passkey action), and anything of the Vento console: customers never download it. A static import from the shell or Home would pull them in. Read from
 // each first-load chunk's sourcemap, so a rename or minification can't hide it.
 const FORBIDDEN = [
   'access/role-rules.ts',
@@ -77,6 +77,9 @@ const FORBIDDEN = [
   'lib/passkey-client.ts',
   '@simplewebauthn/browser',
   '@better-auth/passkey',
+  'features/console/',
+  'packages/shared/src/console/',
+  '@simplewebauthn/server',
 ]
 const leaks = []
 for (const row of rows) {

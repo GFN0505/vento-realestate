@@ -31,6 +31,17 @@
  *   tsx src/test/e2e-fixtures.ts age-reauth <email>     makes that person's password confirmations 10 minutes old ("Confirm it's you" asks again)
  *   tsx src/test/e2e-fixtures.ts session-expiry <email> days until the person's longest-lived session expires, and whether it is persistent
  *   tsx src/test/e2e-fixtures.ts force-reset <email>    marks a password reset as required without removing passkeys (the race path)
+ *   tsx src/test/e2e-fixtures.ts super-admin <active|revoked|two-step-reset>  a super-admin: a staff account through the real staff sign-up, no organization
+ *   tsx src/test/e2e-fixtures.ts staff-invitation <pending|expired|withdrawn|accepted|started> [inviterEmail]  a staff invitation and its link
+ *   tsx src/test/e2e-fixtures.ts customer-account <email>  a customer account on that email (the staff sign-up's "customer account meanwhile")
+ *   tsx src/test/e2e-fixtures.ts age-staff-invitation <email> <hours>  makes that staff invitation older (expiry without waiting)
+ *   tsx src/test/e2e-fixtures.ts expire-staff-invitations  expires every open staff invitation (the cap of 5 is global)
+ *   tsx src/test/e2e-fixtures.ts dashboard            four standard organizations for the Dashboard queue, an internal one that must never show, a break-glass row; prints the names
+ *   tsx src/test/e2e-fixtures.ts age-console <email> <idle|max>  closes that person's console window (16 minutes idle, or opened 8 hours ago)
+ *   tsx src/test/e2e-fixtures.ts age-second-factor <email>  makes that person's last code or passkey 10 minutes old (the console asks again)
+ *   tsx src/test/e2e-fixtures.ts age-passkeys <email>  makes that person's passkeys 20 minutes old (added before the aged proof, so they may open the console)
+ *   tsx src/test/e2e-fixtures.ts flag-stage <flag> <off|internal|pilot|on>  sets a global release stage (releases.spec.ts only, to restore its own keys)
+ *   tsx src/test/e2e-fixtures.ts platform-activity <email>  a break-glass row by that super-admin in Vento's activity (channel command)
  *
  * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
  * every organization was before feature flags. Fixtures only change per-organization data, never
@@ -38,6 +49,8 @@
  *
  * Prints one JSON line. Emails are unique per run, so specs never share or collide with seed data.
  */
+
+import type { PlatformActor } from '@/platform/platform-audit'
 
 // Quiet logs so stdout stays one JSON line; set before the app modules read the environment.
 process.env.LOG_LEVEL ??= 'error'
@@ -77,7 +90,12 @@ async function makeInternal(ownerEmail: string) {
     .where(eq(organizationPlans.organizationId, row.organizationId))
 }
 
-const E2E_ACTOR = { userId: null, name: 'Vento (e2e)', operator: 'e2e' }
+const E2E_ACTOR: PlatformActor = {
+  userId: null,
+  name: 'Vento (e2e)',
+  channel: 'command',
+  operator: 'e2e',
+}
 const E2E_REASON = 'e2e fixture'
 
 async function publishPlans() {
@@ -928,6 +946,286 @@ async function forceReset(email: string | undefined) {
   return { email }
 }
 
+type SuperAdminState = 'active' | 'revoked' | 'two-step-reset'
+
+/**
+ * A super-admin to sign in as (admin-console plan §1b.17): a staff account made through the real
+ * staff sign-up, with no organization. `revoked` is a removed one (staff account closed);
+ * `two-step-reset` keeps the password and must set two-step up again.
+ */
+async function createSuperAdminFixture(state: string | undefined) {
+  const allowed: SuperAdminState[] = ['active', 'revoked', 'two-step-reset']
+  if (!allowed.includes(state as SuperAdminState)) {
+    throw new Error(`super-admin needs one of: ${allowed.join(', ')}`)
+  }
+  const { db } = await import('@/db/client')
+  const { platformAdmins } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const { testApp, browser } = await import('./auth-client')
+  const { joinAsStaff } = await import('./flows')
+  const { TEST_PASSWORD } = await import('./factories')
+  const { closeStaffAccount } = await import('@/platform/staff-accounts')
+  const { clearSecondFactors } = await import('@/auth/clear-second-factors')
+  const b = browser(testApp().app)
+  const joined = await joinAsStaff(b, 'Ada Okafor')
+  const totpSecret = new URL(joined.totpURI).searchParams.get('secret') ?? ''
+  if (state === 'revoked') {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(platformAdmins)
+        .set({ revokedAt: new Date() })
+        .where(eq(platformAdmins.userId, joined.userId))
+      await closeStaffAccount(tx, joined.userId)
+    })
+  }
+  if (state === 'two-step-reset') {
+    await db.transaction((tx) =>
+      clearSecondFactors(tx, joined.userId, { mode: 'reset_keep_password' }),
+    )
+  }
+  return {
+    email: joined.email,
+    password: TEST_PASSWORD,
+    totpSecret,
+    backupCodes: joined.backupCodes,
+    organizationName: null,
+    userId: joined.userId,
+    state,
+  }
+}
+
+const STAFF_INVITATION_STATES = ['pending', 'expired', 'withdrawn', 'accepted', 'started'] as const
+
+/** A staff invitation in a given state and its link (from the token it just made). */
+async function staffInvitationFixture(state: string | undefined, inviterEmail: string | undefined) {
+  if (!STAFF_INVITATION_STATES.includes(state as (typeof STAFF_INVITATION_STATES)[number])) {
+    throw new Error(`staff-invitation needs one of: ${STAFF_INVITATION_STATES.join(', ')}`)
+  }
+  const { db } = await import('@/db/client')
+  const { users } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const { createStaffInvitation } = await import('./factories')
+  const { uniqueEmail } = await import('./db')
+  const { staffInvitationLink } = await import('@/platform/operations/staff-invitations')
+  const [inviter] = inviterEmail
+    ? await db.select().from(users).where(eq(users.email, inviterEmail.toLowerCase()))
+    : []
+  const invitation = await createStaffInvitation(db, {
+    email: uniqueEmail('e2e.staff'),
+    name: 'Tunde Bello',
+    invitedBy: inviter ?? null,
+    status:
+      state === 'started' ? 'pending' : (state as 'pending' | 'expired' | 'withdrawn' | 'accepted'),
+    started: state === 'started',
+  })
+  return {
+    email: invitation.email,
+    name: invitation.name,
+    link: staffInvitationLink(invitation.token),
+    inviterName: inviter?.name ?? null,
+  }
+}
+
+/** A customer account on this email (the staff sign-up's "got a customer account meanwhile"). */
+async function customerAccount(email: string | undefined) {
+  if (!email) throw new Error('customer-account needs an email')
+  const { db } = await import('@/db/client')
+  const { createUser, TEST_PASSWORD } = await import('./factories')
+  const user = await createUser(db, { email: email.toLowerCase(), password: TEST_PASSWORD })
+  return { email: user.email, userId: user.id }
+}
+
+/** Makes a staff invitation `hours` older, so it expires without waiting. */
+async function ageStaffInvitation(email: string | undefined, hours: string | undefined) {
+  const { db } = await import('@/db/client')
+  const { staffInvitations } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const h = Number(hours ?? '49')
+  if (!email || !Number.isFinite(h)) throw new Error('age-staff-invitation needs <email> <hours>')
+  const shift = sql`make_interval(hours => ${h})`
+  const rows = await db
+    .update(staffInvitations)
+    .set({
+      expiresAt: sql`${staffInvitations.expiresAt} - ${shift}`,
+      lastSentAt: sql`${staffInvitations.lastSentAt} - ${shift}`,
+      createdAt: sql`${staffInvitations.createdAt} - ${shift}`,
+    })
+    .where(eq(staffInvitations.email, email.toLowerCase()))
+    .returning({ id: staffInvitations.id })
+  return { email, invitations: rows.length }
+}
+
+/**
+ * Expires every open staff invitation (49 hours older). The cap of 5 open invitations is global, so
+ * the e2e run clears the ones earlier runs and fixtures left before it starts.
+ */
+async function expireStaffInvitations() {
+  const { db } = await import('@/db/client')
+  const { staffInvitations } = await import('@/db/schema')
+  const { and, eq, gt, sql } = await import('drizzle-orm')
+  const shift = sql`make_interval(hours => 49)`
+  const rows = await db
+    .update(staffInvitations)
+    .set({
+      expiresAt: sql`${staffInvitations.expiresAt} - ${shift}`,
+      lastSentAt: sql`${staffInvitations.lastSentAt} - ${shift}`,
+      createdAt: sql`${staffInvitations.createdAt} - ${shift}`,
+    })
+    .where(and(eq(staffInvitations.status, 'pending'), gt(staffInvitations.expiresAt, sql`now()`)))
+    .returning({ id: staffInvitations.id })
+  return { invitations: rows.length }
+}
+
+/**
+ * The Dashboard's queue (J-ADM-06): four standard organizations with unique names (trial ending in
+ * 2 days, people over the limit, no plan, nobody active for 18 days), one internal organization
+ * with all of these (it must never appear), and a break-glass row. Prints the names.
+ */
+async function dashboardFixture(withCommand?: string) {
+  const { db } = await import('@/db/client')
+  const { members, organizations, platformAuditEvents } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const {
+    createMember: addMember,
+    createOrganization,
+    createSuperAdmin,
+  } = await import('./factories')
+  const { findPlanVersion } = await import('@/platform/operations/common')
+  const { startTrial } = await import('@/platform/operations/plans')
+  const { SETUP_ACTOR } = await import('@/platform/seed-plans')
+  const tag = Date.now().toString(36)
+  const names = {
+    trial: `Lekki Partners ${tag} Ltd`,
+    overLimit: `Parkview Homes ${tag}`,
+    noPlan: `Abuja Heights ${tag} Ltd`,
+    quiet: `Lekki Pearl Estates ${tag}`,
+    internal: `Vento Real Estate QA ${tag}`,
+  }
+  const enterprise = await findPlanVersion(db, 'enterprise')
+  const trialFor = async (org: { id: string; name: string }) =>
+    startTrial(db, SETUP_ACTOR, { organization: org, target: enterprise, days: 2, reason: 'e2e' })
+  const quietFor = async (id: string) => {
+    const old = new Date(Date.now() - 20 * 24 * 3600_000)
+    await db.update(organizations).set({ createdAt: old }).where(eq(organizations.id, id))
+    await db
+      .update(members)
+      .set({ lastActiveAt: new Date(Date.now() - 18 * 24 * 3600_000) })
+      .where(eq(members.organizationId, id))
+  }
+  const trial = await createOrganization(db, { name: names.trial, planKey: 'starter' })
+  await trialFor(trial)
+  const over = await createOrganization(db, { name: names.overLimit, planKey: 'starter' })
+  // Far over the Starter limit, so it ranks first among organizations over a limit.
+  for (let i = 0; i < 40; i++) await addMember(db, over, { role: 'viewer', name: `Viewer ${i}` })
+  await createOrganization(db, { name: names.noPlan, releaseGroup: 'standard' })
+  const quiet = await createOrganization(db, { name: names.quiet, planKey: 'starter' })
+  await quietFor(quiet.id)
+  const internal = await createOrganization(db, { name: names.internal })
+  await trialFor(internal)
+  for (let i = 0; i < 10; i++)
+    await addMember(db, internal, { role: 'viewer', name: `Viewer ${i}` })
+  await quietFor(internal.id)
+  if (withCommand === 'command') {
+    const ada = await createSuperAdmin(db, { name: 'Ada Okafor' })
+    await db.insert(platformAuditEvents).values({
+      actorUserId: ada.id,
+      actorName: ada.name,
+      operator: 'ada@api-1',
+      channel: 'command',
+      action: 'release.stage_changed',
+      targetType: 'feature',
+      targetKey: 'sales',
+      before: { stage: 'on' },
+      after: { stage: 'off' },
+      reason: 'e2e break-glass',
+    })
+  }
+  return names
+}
+
+/** Closes the console window on every session: idle (16 minutes) or past the 8-hour limit. */
+async function ageConsole(email: string | undefined, how: string | undefined) {
+  if (how !== 'idle' && how !== 'max') throw new Error('age-console needs idle or max')
+  const { db, user } = await userByEmail(email)
+  const { sessions } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(sessions)
+    .set(
+      how === 'idle'
+        ? { consoleActiveAt: sql`now() - interval '16 minutes'` }
+        : {
+            consoleOpenedAt: sql`now() - interval '8 hours 1 minute'`,
+            consoleActiveAt: sql`now()`,
+          },
+    )
+    .where(eq(sessions.userId, user.id))
+    .returning({ id: sessions.id })
+  return { email, sessions: aged.length }
+}
+
+/** The last code or passkey proven 10 minutes ago: opening the console asks again. */
+async function ageSecondFactor(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { sessions } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(sessions)
+    .set({ secondFactorAt: sql`now() - interval '10 minutes'` })
+    .where(eq(sessions.userId, user.id))
+    .returning({ id: sessions.id })
+  return { email, sessions: aged.length }
+}
+
+/** Passkeys added 20 minutes ago: older than an aged proof, so Use passkey may open the console. */
+async function agePasskeys(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { passkeys } = await import('@/db/schema')
+  const { eq, sql } = await import('drizzle-orm')
+  const aged = await db
+    .update(passkeys)
+    .set({ createdAt: sql`now() - interval '20 minutes'` })
+    .where(eq(passkeys.userId, user.id))
+    .returning({ id: passkeys.id })
+  return { email, passkeys: aged.length }
+}
+
+/**
+ * A global release stage. Only releases.spec.ts may use it, on the keys it owns, to put them back
+ * (fixtures otherwise never change global stages, so specs can run in parallel).
+ */
+async function flagStage(key: string | undefined, stage: string | undefined) {
+  const { isFeatureKey, RELEASE_STAGES } = await import('@vento/shared')
+  if (!key || !isFeatureKey(key)) throw new Error(`unknown flag ${key}`)
+  if (!(RELEASE_STAGES as readonly string[]).includes(stage ?? '')) {
+    throw new Error(`stage must be one of ${RELEASE_STAGES.join(', ')}`)
+  }
+  const { db } = await import('@/db/client')
+  const { featureReleases } = await import('@/db/schema')
+  const value = stage as (typeof RELEASE_STAGES)[number]
+  await db
+    .insert(featureReleases)
+    .values({ featureKey: key, stage: value, reason: 'e2e restore' })
+    .onConflictDoUpdate({ target: featureReleases.featureKey, set: { stage: value } })
+  return { key, stage: value }
+}
+
+/** A break-glass change by that super-admin, as the command line records it. */
+async function platformActivity(email: string | undefined) {
+  const { db, user } = await userByEmail(email)
+  const { recordPlatformAudit } = await import('@/platform/platform-audit')
+  await recordPlatformAudit(db, {
+    actor: { userId: user.id, name: user.name, channel: 'command', operator: 'ada@ops-laptop' },
+    action: 'release.stage_changed',
+    targetType: 'feature',
+    targetKey: 'documents.contracts',
+    before: { stage: 'internal' },
+    after: { stage: 'internal' },
+    reason: 'e2e break-glass fixture',
+  })
+  return { email }
+}
+
 async function main() {
   const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
@@ -960,6 +1258,17 @@ async function main() {
     'age-reauth': () => ageReauth(arg),
     'session-expiry': () => sessionExpiry(arg),
     'force-reset': () => forceReset(arg),
+    'super-admin': () => createSuperAdminFixture(arg),
+    'staff-invitation': () => staffInvitationFixture(arg, arg2),
+    'customer-account': () => customerAccount(arg),
+    'age-staff-invitation': () => ageStaffInvitation(arg, arg2),
+    'expire-staff-invitations': () => expireStaffInvitations(),
+    dashboard: () => dashboardFixture(arg),
+    'age-console': () => ageConsole(arg, arg2),
+    'age-second-factor': () => ageSecondFactor(arg),
+    'age-passkeys': () => agePasskeys(arg),
+    'flag-stage': () => flagStage(arg, arg2),
+    'platform-activity': () => platformActivity(arg),
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

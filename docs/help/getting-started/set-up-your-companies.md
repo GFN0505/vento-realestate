@@ -16,12 +16,12 @@ A company is a separate registered company, like the SPV you set up for one esta
 Each RC number can belong to only one company. If an archived company already has it, choose **Restore it instead**.
 
 **Archive a company that's wound up**
-On its row, open ⋯ and choose **Archive**. **Undo** in the message brings it back. If someone can only see that company, Vento names them first. Archiving your holding company always asks first. You can't archive your last active company.
+On its row, open ⋯ and choose **Archive**. **Undo** in the message brings it back. If someone can only see that company, Vento Real Estate names them first. Archiving your holding company always asks first. You can't archive your last active company.
 
 **Bring one back**
 Choose **Archived** above the list, then **Restore** on its row. It counts towards your plan again.
 
 **If your plan is full**
-Owners see how many companies their plan allows. Archive one you no longer use, or **Talk to Vento** about a bigger plan. Admins see which owner to ask.
+Owners see how many companies their plan allows. Archive one you no longer use, or **Talk to Vento Real Estate** about a bigger plan. Admins see which owner to ask.
 
 Related: *Make a role that fits the job* · *Invite your team*

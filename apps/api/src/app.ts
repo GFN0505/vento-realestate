@@ -14,6 +14,7 @@ import type { Db } from '@/db/client'
 import { createMailer, type Mailer } from '@/email/mailer'
 import { env } from '@/env'
 import { CLIENT_IP_HEADER, maskIp, resolveClientIp, userAgentLabel } from '@/lib/client-ip'
+import { isCrossSite } from '@/lib/csrf'
 import { errorSummary } from '@/lib/error-summary'
 import { logger } from '@/lib/logger'
 import { createRateLimiter, type RateLimiter } from '@/lib/rate-limit'
@@ -146,6 +147,20 @@ export function createApp(deps: AppDeps): Hono {
 
   // JSON calls are small; file uploads get their own endpoints with their own limits.
   app.use('/rpc/*', bodyLimit({ maxSize: 1024 * 1024 }))
+
+  // Only the web app's own pages may call procedures from a browser (audit M3). Better Auth checks
+  // its own routes against trustedOrigins.
+  app.use('/rpc/*', async (c, next) => {
+    if (
+      c.req.method !== 'GET' &&
+      c.req.method !== 'HEAD' &&
+      isCrossSite(c.req.raw.headers, env.WEB_ORIGIN)
+    ) {
+      logger.warn('Refused a cross-site call', { requestId: c.get('requestId'), path: c.req.path })
+      return c.json({ message: "This request didn't come from Vento Real Estate." }, 403)
+    }
+    await next()
+  })
 
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpc.handle(c.req.raw, {

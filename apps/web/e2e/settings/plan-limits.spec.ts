@@ -12,7 +12,7 @@ test.describe.configure({ timeout: 90_000 })
 
 const three = () => ['one', 'two', 'three'].map((n) => uniqueAddress(`limit${n}`))
 
-test('an owner on Starter sees places left, Talk to Vento, and Send disabled until the rows fit', async ({
+test('an owner on Starter sees places left, Talk to Vento Real Estate, and Send disabled until the rows fit', async ({
   page,
 }) => {
   const team = await createStarterTeamFixture(2)
@@ -25,7 +25,7 @@ test('an owner on Starter sees places left, Talk to Vento, and Send disabled unt
   await chooseRole(sheet, 'Sales')
 
   await expect(sheet.getByText(/You have 2 places left on your Starter plan/)).toBeVisible()
-  await expect(sheet.getByRole('link', { name: 'Talk to Vento' })).toBeVisible()
+  await expect(sheet.getByRole('link', { name: 'Talk to Vento Real Estate' })).toBeVisible()
   await expect(sheet.getByRole('button', { name: 'Send 3 invitations' })).toBeDisabled()
 
   await expect(sheet.getByText('No place left on your plan')).toBeVisible()
@@ -35,7 +35,7 @@ test('an owner on Starter sees places left, Talk to Vento, and Send disabled unt
   // The row that didn't fit stays for the owner to deal with.
   await expect(sheet.getByText('No place left on your plan')).toBeVisible()
   await expect(page.getByText('5 of 5 people on your Starter plan')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Talk to Vento' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Talk to Vento Real Estate' })).toBeVisible()
 })
 
 test('an owner at the limit is told all places are taken and cannot send', async ({ page }) => {

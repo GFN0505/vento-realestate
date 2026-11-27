@@ -7,7 +7,7 @@ import { ErrorState, ErrorText } from './error-state'
 /** Board OfflinePage: a page whose data hasn't loaded. Retries by itself on reconnect. */
 export function OfflinePage({ onRetry }: { onRetry: () => void }) {
   useEffect(() => {
-    document.title = "You're offline · Vento"
+    document.title = "You're offline · Vento Real Estate"
     return connection.onReconnect(onRetry)
   }, [onRetry])
 

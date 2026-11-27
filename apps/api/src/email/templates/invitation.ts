@@ -13,8 +13,8 @@ export function invitationEmail(p: {
 }): RenderedEmail {
   const access = p.entities === 'all' ? 'All companies' : p.entities.join(', ')
   return renderEmail(
-    `${p.inviterName} invited you to ${p.organizationName} on Vento`,
-    `Join ${p.organizationName} on Vento`,
+    `${p.inviterName} invited you to ${p.organizationName} on Vento Real Estate`,
+    `Join ${p.organizationName} on Vento Real Estate`,
     [
       {
         kind: 'p',

@@ -73,7 +73,7 @@ export function AuthHeader({ title, children }: { title: string; children?: Reac
 /** Small print under the main button: links to the neighbouring screens. */
 export function AuthFootnote({ children }: { children: ReactNode }) {
   return (
-    <p className="text-muted-foreground text-xs leading-normal [&_a]:text-link [&_a:hover]:text-link-hover [&_a]:underline-offset-4 [&_a:hover]:underline [&_button]:text-link [&_button:hover]:underline max-lg:[&_a]:inline-flex max-lg:[&_a]:min-h-11 max-lg:[&_a]:items-center max-lg:[&_button]:inline-flex max-lg:[&_button]:min-h-11 max-lg:[&_button]:items-center">
+    <p className="text-muted-foreground text-xs leading-normal [&_a]:text-link [&_a:hover]:text-link-hover [&_a]:underline [&_a]:underline-offset-4 [&_button]:text-link [&_button]:underline [&_button]:underline-offset-4 max-lg:[&_a]:inline-flex max-lg:[&_a]:min-h-11 max-lg:[&_a]:items-center max-lg:[&_button]:inline-flex max-lg:[&_button]:min-h-11 max-lg:[&_button]:items-center">
       {children}
     </p>
   )

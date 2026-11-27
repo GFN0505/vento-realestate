@@ -56,7 +56,9 @@ test.describe('reaching My security', () => {
     await expect(page).toHaveURL(/\/settings\/security$/)
     await expect(page.getByRole('heading', { name: 'My security', level: 1 })).toBeVisible()
     await expect(page.getByText(grace.email, { exact: true })).toBeVisible()
-    await expect(page.getByText('This is your Vento account in every organization')).toBeVisible()
+    await expect(
+      page.getByText('This is your Vento Real Estate account in every organization'),
+    ).toBeVisible()
   })
 
   test('the command palette offers Go to My security, Change password and Turn on two-step to a member without two-step', async ({

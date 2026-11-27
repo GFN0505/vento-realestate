@@ -62,7 +62,7 @@ export function trialLosing(
   ).map(featureLabel)
 }
 
-async function limitUses(
+export async function limitUses(
   db: DbOrTx,
   availability: OrganizationAvailability,
 ): Promise<PlanLimitUse[]> {

@@ -5,7 +5,7 @@
 **Starts from:** Invitation on WhatsApp/email after subscribing.
 
 **Steps**
-1. *Portal sign in / invite:* a one-time code by WhatsApp, SMS or email; no password to forget from abroad. The portal carries the developer's brand, not Vento's.
+1. *Portal sign in / invite:* a one-time code by WhatsApp, SMS or email; no password to forget from abroad. The portal carries the developer's brand, not Vento Real Estate's.
 2. *My units and payment progress:* unit, % paid, next instalment amount and date, overdue highlighted.
 3. "Pay now" → amount (next instalment pre-filled) → Paystack checkout (card or transfer to the dedicated virtual account) → *payment result*.
 4. Receipt on WhatsApp and in *Statement of account and receipts*.

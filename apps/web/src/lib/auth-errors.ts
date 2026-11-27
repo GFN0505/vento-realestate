@@ -44,7 +44,7 @@ export const COPY = {
   wrongPassword: AUTH_ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD,
   wrongCode: AUTH_ERROR_MESSAGES.INVALID_CODE,
   wrongBackupCode: "That backup code didn't match, or it has been used already.",
-  wrongEmailCode: "That code didn't match. Check the newest email from Vento.",
+  wrongEmailCode: "That code didn't match. Check the newest email from Vento Real Estate.",
   emailCodeExpired: 'That code has expired. Send a new one.',
   twoStepTimedOut: 'That took too long. Sign in again to get a new two-step check.',
   tooManyRequests: 'Too many tries. Wait a minute and try again.',
@@ -114,6 +114,9 @@ export function authErrorMessage(error: AuthClientError, step: Step = 'general')
       return AUTH_ERROR_MESSAGES.TERMS_NOT_ACCEPTED
     case C.VERIFICATION_RESEND_LIMITED:
       return COPY.tooManyRequests
+    // A super-admin minting a new second factor needs a fresh code or passkey, not a password.
+    case C.SECOND_FACTOR_REQUIRED:
+      return AUTH_ERROR_MESSAGES.SECOND_FACTOR_REQUIRED
   }
   if (error.status === 429) return COPY.tooManyRequests
   if (error.status === 401 && step === 'sign-in') return COPY.wrongPassword

@@ -9,7 +9,7 @@ import { findPlanVersion } from './operations/common'
 import { startTrial } from './operations/plans'
 import { loadSnapshot } from './snapshot'
 
-const ACTOR = { userId: null, name: 'Test', operator: null }
+const ACTOR = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
 
 describe('account.me features', () => {
   it('gives an internal organization every flag at internal, all as early access', () =>
@@ -81,7 +81,7 @@ describe('account.me plan (owners)', () => {
       const { plan } = await client.account.me()
       expect(plan?.upgradeHints).toEqual([
         { key: 'sales.commissions', label: 'Commissions', availableOn: 'Growth' },
-        { key: 'ai.ask', label: 'Ask Vento', availableOn: 'the AI add-on' },
+        { key: 'ai.ask', label: 'Ask', availableOn: 'the AI add-on' },
       ])
     }))
 

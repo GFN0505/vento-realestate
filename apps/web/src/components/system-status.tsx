@@ -23,7 +23,7 @@ export function SystemStatus(props: Props) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Vento</h1>
+        <h1 className="text-2xl font-semibold">Vento Real Estate</h1>
         <p className="text-sm opacity-70">
           The foundation is running. Screens arrive brick by brick.
         </p>

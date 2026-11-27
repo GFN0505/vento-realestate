@@ -28,6 +28,7 @@ import {
   rolePermissions,
   roles,
   sessions,
+  staffInvitations,
   users,
 } from '@/db/schema'
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
@@ -322,19 +323,117 @@ export async function reloadUser(db: DbOrTx, id: string) {
   return row
 }
 
-/** A Vento super-admin (two-step on), for the flag and plan commands. */
+/**
+ * A Vento Real Estate super-admin: an active staff account (two-step on unless overridden).
+ * `revoked` leaves only a revoked row. Staff are never members (decision 0023).
+ */
 export async function createSuperAdmin(
   db: DbOrTx,
-  overrides: Partial<typeof users.$inferInsert> = {},
+  overrides: Partial<typeof users.$inferInsert> & { password?: string } = {},
+  options: { revoked?: boolean } = {},
 ): Promise<TestUser> {
   const user = await createUser(db, {
     name: 'Ada Okafor',
     email: uniqueEmail('ada'),
     twoFactorEnabled: true,
     ...overrides,
+    accountKind: 'staff',
   })
-  await db.insert(platformAdmins).values({ userId: user.id, reason: 'test' })
+  await db.insert(platformAdmins).values({
+    userId: user.id,
+    reason: 'test',
+    ...(options.revoked && { revokedAt: new Date() }),
+  })
   return user
+}
+
+export type StaffInvitationState = 'pending' | 'expired' | 'withdrawn' | 'accepted'
+
+/**
+ * A staff invitation (and its token). `started` links a joining staff account with a password, as
+ * `join.start` leaves it; `accepted` makes that account an active super-admin.
+ */
+export async function createStaffInvitation(
+  db: DbOrTx,
+  options: {
+    status?: StaffInvitationState
+    started?: boolean
+    invitedBy?: TestUser | null
+    email?: string
+    name?: string
+    lastSentAt?: Date
+  } = {},
+): Promise<{ id: string; token: string; email: string; name: string; user: TestUser | null }> {
+  const status = options.status ?? 'pending'
+  const email = options.email ?? uniqueEmail('tunde')
+  const name = options.name ?? 'Tunde Bello'
+  const now = Date.now()
+  const { token, tokenHash } = newInvitationToken()
+  const started = options.started || status === 'accepted'
+  const user = started
+    ? await createUser(db, {
+        name,
+        email,
+        accountKind: 'staff',
+        password: TEST_PASSWORD,
+        twoFactorEnabled: status === 'accepted',
+      })
+    : null
+  const [row] = await db
+    .insert(staffInvitations)
+    .values({
+      email,
+      name,
+      reason: 'Joins the release rota',
+      invitedByUserId: options.invitedBy?.id ?? null,
+      // No inviter means the bootstrap invitation, as in real data.
+      bootstrap: !options.invitedBy,
+      status: status === 'expired' ? 'pending' : status,
+      tokenHash,
+      expiresAt: new Date(status === 'expired' ? now - 60_000 : now + 48 * 60 * 60_000),
+      lastSentAt: options.lastSentAt ?? new Date(now - 2 * 60_000),
+      userId: user?.id ?? null,
+      startedAt: user ? new Date(now - 60_000) : null,
+      respondedAt: status === 'accepted' || status === 'withdrawn' ? new Date(now) : null,
+    })
+    .returning({ id: staffInvitations.id })
+  if (!row) throw new Error('staff invitation insert failed')
+  if (status === 'accepted' && user) {
+    await db.insert(platformAdmins).values({ userId: user.id, reason: 'Joins the release rota' })
+  }
+  return { id: row.id, token, email, name, user }
+}
+
+/**
+ * A staff account in a given state: `active` (a super-admin), `joining` (a started, pending
+ * invitation) or `closed` (a removed super-admin: revoked row, no password, no two-step).
+ */
+export async function createStaffAccount(
+  db: DbOrTx,
+  options: {
+    state?: 'active' | 'joining' | 'closed'
+    twoFactorEnabled?: boolean
+    name?: string
+  } = {},
+): Promise<TestUser> {
+  const state = options.state ?? 'active'
+  if (state === 'joining') {
+    const { user } = await createStaffInvitation(db, { started: true, name: options.name })
+    if (!user) throw new Error('joining account missing')
+    return user
+  }
+  if (state === 'closed') {
+    return createSuperAdmin(
+      db,
+      { twoFactorEnabled: false, ...(options.name && { name: options.name }) },
+      { revoked: true },
+    )
+  }
+  return createSuperAdmin(db, {
+    twoFactorEnabled: options.twoFactorEnabled ?? true,
+    password: TEST_PASSWORD,
+    ...(options.name && { name: options.name }),
+  })
 }
 
 /**

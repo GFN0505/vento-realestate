@@ -1,6 +1,6 @@
 # User journeys
 
-Step-by-step walkthroughs of what real people do in Vento, from the first click to "done". They are the bridge between the product (`docs/PRODUCT.md`), the screens (`docs/design/SCREENS.md`) and the tests: **every journey becomes a Playwright end-to-end test** and, once shipped, a help-centre article.
+Step-by-step walkthroughs of what real people do in Vento Real Estate, from the first click to "done". They are the bridge between the product (`docs/PRODUCT.md`), the screens (`docs/design/SCREENS.md`) and the tests: **every journey becomes a Playwright end-to-end test** and, once shipped, a help-centre article.
 
 Start with [the golden thread](00-golden-thread.md): one fictional developer taken from buying land to managing the finished estate. It touches every module and doubles as the demo script and the seed data for local development.
 
@@ -76,10 +76,14 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-RLT-01 | Realtor registers a lead and tracks commission | Realtor | [10-buyer-and-realtor-portals](10-buyer-and-realtor-portals.md) | draft |
 | J-AI-01 | Read a scanned C of O with AI | Land & legal | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-AI-02 | Match a bank statement with AI | Finance officer | [11-ai-add-on](11-ai-add-on.md) | draft |
-| J-AI-03 | Ask Vento a question | Any member | [11-ai-add-on](11-ai-add-on.md) | draft |
+| J-AI-03 | Ask a question (Ask) | Any member | [11-ai-add-on](11-ai-add-on.md) | draft |
 | J-AI-04 | Turn on AI and set a budget | Owner | [11-ai-add-on](11-ai-add-on.md) | draft |
-| J-ADM-01 | Release a feature, stage by stage | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (commands; console in R2) |
-| J-ADM-02 | Put an organization on a plan, start a trial, record a deal | Vento super-admin | [12-vento-admin](12-vento-admin.md) | built (commands; console in R2) |
+| J-ADM-01 | Release a feature, stage by stage | Super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; commands are break-glass; e2e being written) |
+| J-ADM-02 | Put an organization on a plan, start a trial, record a deal | Super-admin | [12-vento-admin](12-vento-admin.md) | built (console, slice 1, on `feat/admin-console`; commands are break-glass; e2e being written) |
+| J-ADM-03 | Invite and manage super-admins, review platform activity | Super-admin | [12-vento-admin](12-vento-admin.md) | built (1b on `feat/admin-console`, PR #9, awaiting review; e2e being written) |
+| J-ADM-05 | Join as a super-admin (staff sign-up) | Invited staff member | [12-vento-admin](12-vento-admin.md) | built (1b on `feat/admin-console`, PR #9, awaiting review; e2e being written) |
+| J-ADM-06 | Start the day on the Dashboard | Super-admin | [12-vento-admin](12-vento-admin.md) | built (1b on `feat/admin-console`, PR #9, awaiting review; e2e being written) |
+| J-ADM-07 | Manage my staff sign-in (My account) | Super-admin | [12-vento-admin](12-vento-admin.md) | built (1b on `feat/admin-console`, PR #9, awaiting review; e2e being written) |
 
 ## Assumptions to confirm
 Writing these journeys meant picking defaults the product docs don't settle. The approved designs settled some of them (now written into the journeys and `docs/design/DESIGN-NOTES.md`). Each is a setting or rule, not hard-coded.
@@ -107,7 +111,7 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Permit expiry alerts at **60, 30 and 7 days**.
 - The two ₦5m thresholds above are design defaults; the AML one must match current SCUML/NFIU rules.
 - (Brick 3a) The sidebar and mobile tabs are **derived from the role's view permissions**, with a fixed tab priority per role.
-- (Brick 3a) Modules not built yet show a **"Soon" tag and a Coming soon page** until each ships. *(Superseded by the approved feature-flags spec: "Soon" only in Vento's internal organizations; customers see only features released to them and in their plan.)*
+- (Brick 3a) Modules not built yet show a **"Soon" tag and a Coming soon page** until each ships. *(Superseded by the approved feature-flags spec: "Soon" only in Vento Real Estate's internal organizations; customers see only features released to them and in their plan.)*
 
 **Settled by the owner (26 Nov 2026, release plan and feature-flags spec)**
 - Features not available to an organization answer **"not found"** and appear nowhere; owners alone see **"Available on Growth"** at the point of need (⌘K, limit messages).
@@ -123,7 +127,7 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - An admin **limited to some entities can't change, reset or remove** someone with wider access, and sees only the entity names within their own limit.
 - Invitations can be **resent once a minute**; **last active** is shown by day to owners and admins.
 - The setup checklist is **hidden per person**, back from ⌘K, and stays hidden once hidden.
-- Email: Postmark sends from **`no-reply@mail.{Vento's domain}`**, invitations as "{Organization} via Vento" with the inviter as Reply-To; **staging emails only allowed addresses**; only **invitations** are marked when an email bounces.
+- Email: Postmark sends from **`no-reply@realestate.ventoerp.com`**, invitations as "{Organization} via Vento Real Estate" with the inviter as Reply-To; **staging emails only allowed addresses**; only **invitations** are marked when an email bounces.
 
 **Still need the owner's yes (brick 3c, [roles-and-organization](../specs/roles-and-organization.md) open questions)**
 - Entities are called **companies** on every screen ("Company: All companies", *Settings → Companies*, "Company access"); code and DOMAIN keep "entity".
@@ -147,3 +151,23 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Sessions show a **city and country from an offline lookup** (no outside service, full IP never stored); no "unusual location" warning.
 - **My profile is the name only**; phone with the WhatsApp digest, no photos, email change later.
 - A **passkey offer once per device** after a password sign-in; up to **10 passkeys** each.
+
+**Settled by the owner (26 Nov 2026, [admin-console](../specs/admin-console.md) spec and plan)**
+- The Vento Real Estate console is at **`/console`** on the web app's origin; entering needs a passkey or code from the last **5 minutes**; the console window closes after **15 minutes** without console activity or **8 hours**.
+- Console defaults: trial **30 days** (at most **90**), AI **₦150,000 a month**, a reason of at least **3 characters** on every change.
+- Change commands are **break-glass** (`--break-glass`), and every break-glass change emails all other super-admins.
+
+**Still need the owner's yes (admin-console build)**
+- Every console change sheet has a **Review** step between its fields and the confirm, so a plan change is 5 clicks from *Organizations* instead of the spec's 4.
+- *Activity* filters by organization only from an organization's **See all** link, not from a drop-down.
+
+**Settled by the owner (27 Nov 2026, admin-console slice 1b)**
+- Super-admins are **staff-only accounts** added by invitation; sign-in lands on the console **Dashboard**; the product is always **Vento Real Estate** at `realestate.ventoerp.com` (decisions 0022 and 0023).
+- Staff accounts stay out of **every** organization, internal ones included; existing super-admins who are members **stop being super-admins at deploy** and re-join by invitation.
+- Staff invitations last **48 hours**, at most **5 open**.
+- The Dashboard leaves **internal organizations** out of its numbers and feed.
+- Short forms of the name: the logo lockup counts as the full name; "Staff · all customers" on the console's phone top bar; "Ask Vento" becomes **"Ask"**.
+- A break-glass `superadmin reset-two-step` for a super-admin locked out while the console is down, **your own included** from the host, so a lone super-admin who lost phone and backup codes isn't locked out (the security inbox is always told; the console never resets your own).
+
+**Still need the owner's yes (admin-console slice 1b)**
+- "Gone quiet" is **14 days** without member activity; the queue shows at most 8 rows.

@@ -52,6 +52,8 @@ const ZERO_AAGUID = Buffer.alloc(16)
 
 export type SoftAuthenticator = {
   credentialId: string
+  /** The COSE public key as the passkey table stores it (base64), for seeding a stored passkey. */
+  publicKey: string
   /** The answer to /passkey/generate-register-options, for /passkey/verify-registration. */
   register(
     options: { challenge: string },
@@ -95,6 +97,7 @@ export function softAuthenticator(origin: string): SoftAuthenticator {
 
   return {
     credentialId: b64url(credential),
+    publicKey: coseKey(publicKey).toString('base64'),
     register(options, opts = {}) {
       const length = Buffer.alloc(2)
       length.writeUInt16BE(credential.length)

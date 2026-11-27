@@ -83,7 +83,7 @@ describe('reset password', () => {
         .from(sessions)
         .where(eq(sessions.userId, user?.id ?? '')),
     ).toHaveLength(0)
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: your password was changed')
+    expect(mailer.to(email).at(-1)?.subject).toBe('Vento Real Estate: your password was changed')
     expect(
       (await browser(app).auth('/reset-password', { token, newPassword: 'Another-new-pass-5' }))
         .json.code,

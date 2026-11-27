@@ -131,7 +131,7 @@ test('signing up with an email that already has an account looks the same and em
 
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
   const notice = await newestEmail(member.email, 'existing_account')
-  expect(notice.subject).toBe('Someone tried to create a Vento account with your email')
+  expect(notice.subject).toBe('Someone tried to create a Vento Real Estate account with your email')
   expect(notice.text).toContain('Your account is unchanged')
 })
 

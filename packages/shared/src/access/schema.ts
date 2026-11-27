@@ -159,6 +159,8 @@ export const invitationPreview = z.object({
   expiresOn: isoDate,
   /** An account already uses this email: show "Sign in" instead of name and password. */
   hasAccount: z.boolean(),
+  /** That account is a Vento Real Estate staff account: it can't join (decision 0023). */
+  staffAccount: z.boolean(),
 })
 export type InvitationPreview = z.infer<typeof invitationPreview>
 

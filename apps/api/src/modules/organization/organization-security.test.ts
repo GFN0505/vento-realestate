@@ -109,7 +109,8 @@ describe('organization.setTwoStepRequired', () => {
       const { client, mailer } = owner(tx, org)
       await client.organization.setTwoStepRequired({ required: true, seenChangedAt: null })
       await client.organization.setTwoStepRequired({ required: false, seenChangedAt: null })
-      const subject = 'Vento: two-step is no longer required for everyone in Vento Homes Ltd'
+      const subject =
+        'Vento Real Estate: two-step is no longer required for everyone in Vento Homes Ltd'
       expect(mailer.to(org.owner.email).at(-1)?.subject).toBe(subject)
       expect(mailer.to(second.email).at(-1)?.subject).toBe(subject)
     }))

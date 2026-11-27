@@ -1,10 +1,14 @@
 import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@vento/shared'
 import { eq } from 'drizzle-orm'
+import type { DbOrTx } from '@/db/client'
 import { twoFactors } from '@/db/schema'
+import { sendAll } from '@/email/mailer'
 import { backupCodeUsedAlert } from '@/email/templates/security-alert'
 import { formatDate, formatTime } from '@/lib/format'
 import { requestScope } from '@/lib/request-scope'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
+import { completeStaffJoin } from '@/platform/operations/staff-invitations'
+import { recordTotpStep } from '../second-factor'
 import {
   activeLockUntil,
   clearTwoStepSetupRequired,
@@ -51,6 +55,14 @@ export async function beforeTwoStepVerify(
   if (until) throw lockedError(until)
 }
 
+/** Makes a joining staff account a super-admin once its code is proven (decision 0023). */
+async function joinIfStaffSignUp(deps: AuthDeps, userId: string): Promise<void> {
+  const scope = requestScope()
+  const operator = `console · ${scope.userAgentSummary ?? 'Unknown browser'} · ${scope.ipMasked ?? 'unknown network'}`
+  const joined = await completeStaffJoin(deps.db, userId, operator)
+  await sendAll(deps.mailer, joined.emails)
+}
+
 async function twoStepLockedUntil(deps: AuthDeps, userId: string): Promise<Date | null> {
   const [row] = await deps.db
     .select({ lockedUntil: twoFactors.lockedUntil })
@@ -64,15 +76,22 @@ export async function afterTwoStepVerify(
   ctx: SignInContext,
   input: { method: 'totp' | 'backup_code'; returned: unknown },
 ): Promise<Response | undefined> {
-  const { twoStepMode, userId, wasTwoFactorEnabled } = requestScope().auth
+  const { twoStepMode, userId, wasTwoFactorEnabled, totpStep } = requestScope().auth
   if (!userId) return
   const user = await findUserById(deps.db, userId)
   if (!user) return
   const code = errorCode(input.returned)
 
+  // The accepted code's step can't be used again (audit L4).
+  if (!code && twoStepMode === 'sign_in' && input.method === 'totp' && totpStep !== undefined) {
+    await recordTotpStep(deps.db, user.id, totpStep)
+  }
   if (twoStepMode === 'setup') {
     if (!code && input.method === 'totp' && !wasTwoFactorEnabled) {
       await clearTwoStepSetupRequired(deps.db, user.id)
+      // The staff sign-up: verifying the code is what makes them a super-admin (decision 0023).
+      // First, so the account event below already reaches the platform trail.
+      if (user.accountKind === 'staff') await joinIfStaffSignUp(deps, user.id)
       await recordAccountEvent(deps.db, {
         userId: user.id,
         action: 'two_step.enabled',
@@ -104,11 +123,18 @@ export async function afterTwoStepVerify(
   }
   if (code) return
 
+  // A staff sign-up whose join didn't land at set-up (the hook failed): two-step is proven now,
+  // so finish it (a no-op unless its invitation is still open; review minor).
+  if (user.accountKind === 'staff') await joinIfStaffSignUp(deps, user.id)
   await afterSignIn(deps, ctx, user, input.method)
   if (input.method === 'backup_code') await onBackupCodeUsed(deps, user)
 }
 
-async function onBackupCodeUsed(deps: AuthDeps, user: IdentityUser): Promise<void> {
+/** Audits a used backup code and emails how many are left (sign-in and the console). */
+export async function onBackupCodeUsed(
+  deps: Pick<AuthDeps, 'mailer' | 'api'> & { db: DbOrTx },
+  user: Pick<IdentityUser, 'id' | 'name' | 'email'>,
+): Promise<void> {
   const { backupCodes } = await deps.api().viewBackupCodes({ body: { userId: user.id } })
   const now = new Date()
   await recordAccountEvent(deps.db, {

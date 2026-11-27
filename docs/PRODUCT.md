@@ -93,7 +93,7 @@ AI is an **add-on**, off by default. Each organization switches on the features 
 |---|---|---|
 | **Document reading** | Extracts fields from scanned title documents, survey plans, deeds, bank tellers, receipts and contractor invoices, fills in the record and flags mismatches | Fields are shown as suggestions to accept or edit |
 | **Payment matching** | Suggests the buyer and instalment for each line of an imported bank statement, with a confidence level | Finance confirms each match (or bulk-confirms high-confidence ones) |
-| **Ask Vento** | Plain-English questions in ⌘K ("UK buyers in Lekki Gardens 60+ days overdue") answered with a table of real records and actions | Read-only; actions still go through normal permissions and approvals |
+| **Ask** (with the AI marker; was "Ask Vento", decision 0022) | Plain-English questions in ⌘K ("UK buyers in Lekki Gardens 60+ days overdue") answered with a table of real records and actions | Read-only; actions still go through normal permissions and approvals |
 | **Drafting** | Drafts letters, reminders, board-pack commentary, and reviews contracts against templates to flag risky clauses | Always a draft for a person to edit and send |
 | **Voice and photo site diary** | Turns a voice note (English or Pidgin) and photos into a structured diary entry | The engineer reviews before saving |
 | **Predictions** | Buyer default-risk score, 13-week cash-flow forecast, budget overrun early warning | Shown as signals with the reasons behind them, never automatic actions |

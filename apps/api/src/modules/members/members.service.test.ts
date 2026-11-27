@@ -1,9 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { db } from '@/db/client'
-import { auditEvents, members, sessions, twoFactors, users } from '@/db/schema'
+import { type DbOrTx, db } from '@/db/client'
+import { auditEvents, members, platformAdmins, sessions, twoFactors, users } from '@/db/schema'
 import { createInvitations } from '@/modules/invitations/invitations.service'
-import { uniqueEmail, withRollback } from '@/test/db'
+import { uniqueSuffix, withRollback } from '@/test/db'
 import {
   contextFor,
   createCustomRole,
@@ -12,10 +12,26 @@ import {
   createOfficeManager,
   createOrganization,
   createSession,
+  createUser,
   reloadUser,
+  type TestOrg,
 } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 import { removeMember, resetMemberTwoStep, updateMemberAccess } from './members.service'
+
+/**
+ * A super-admin who is also a member, as existed before migration 0014. Only inside a rolled-back
+ * test transaction: the guards that now forbid it are switched off for the insert.
+ */
+async function legacySuperAdminMember(tx: DbOrTx, org: TestOrg) {
+  const ada = await createUser(tx, { name: 'Ada Okafor', twoFactorEnabled: true })
+  // Triggers off for this transaction only (no table lock); the test database role is a superuser.
+  await tx.execute(sql`set local session_replication_role = replica`)
+  await tx.insert(platformAdmins).values({ userId: ada.id, reason: 'test' })
+  await tx.execute(sql`set local session_replication_role = origin`)
+  await createMember(tx, org, { role: 'sales', user: ada })
+  return ada
+}
 
 describe('members', () => {
   it('applies a role change on the very next request', () =>
@@ -188,7 +204,9 @@ describe('members', () => {
         aisha.member.id,
       )
       expect(result.resetPasswordFor).toBe(aisha.user.email)
-      expect(result.emails[0]?.subject).toBe('Vento: your two-step sign-in was reset by Kemi Admin')
+      expect(result.emails[0]?.subject).toBe(
+        'Vento Real Estate: your two-step sign-in was reset by Kemi Admin',
+      )
       expect(result.emails[0]?.text).toContain(
         "set a new password with the link we've just emailed you",
       )
@@ -219,6 +237,32 @@ describe('members', () => {
         { body: { email: aisha.user.email, redirectTo: '/reset-password' } },
       ])
     }))
+
+  // Audit M1: whoever in the organization may reset two-step, a super-admin's stays. Staff can't
+  // be members since 0014, so this backstop needs the pre-1b state, built with the guard off.
+  it.each(['owner', 'admin'] as const)(
+    'refuses a %s resetting a Vento Real Estate super-admin’s two-step, and changes nothing',
+    (role) =>
+      withRollback(async (tx) => {
+        const org = await createOrganization(tx)
+        const resetter = role === 'owner' ? org.owner : (await createMember(tx, org, { role })).user
+        const ada = await legacySuperAdminMember(tx, org)
+        await tx.insert(twoFactors).values({ userId: ada.id, secret: 'x', backupCodes: 'x' })
+        const [member] = await tx.select().from(members).where(eq(members.userId, ada.id))
+        const { client } = clientAs(tx, resetter, { activeOrganizationId: org.id })
+        await expect(
+          client.members.resetTwoStep({ memberId: member?.id ?? '' }),
+        ).rejects.toMatchObject({
+          code: 'FORBIDDEN',
+          message: 'Vento Real Estate staff reset two-step with Vento Real Estate.',
+        })
+        expect(
+          await tx.select().from(twoFactors).where(eq(twoFactors.userId, ada.id)),
+        ).toHaveLength(1)
+        const [user] = await tx.select().from(users).where(eq(users.id, ada.id))
+        expect(user?.twoFactorEnabled).toBe(true)
+      }),
+  )
 
   it('keeps a limited admin within their own entities when changing access', () =>
     withRollback(async (tx) => {
@@ -314,7 +358,7 @@ describe('members from the Team page', () => {
         entityIds: null,
       })
       expect(result.row).toMatchObject({ id: aisha.member.id, role: { key: 'owner' } })
-      const subject = 'Vento: Aisha Bello is now an owner of Vento Homes Ltd'
+      const subject = 'Vento Real Estate: Aisha Bello is now an owner of Vento Homes Ltd'
       for (const person of [org.owner, second.user, aisha.user]) {
         expect(mailer.to(person.email).map((m) => m.subject)).toEqual([subject])
       }
@@ -370,7 +414,7 @@ describe('two owners removing each other at the same moment', () => {
   // Real commits on separate connections: the only way to prove the organization lock
   // serialises them (the test database is recreated each run).
   it('lets one succeed and refuses the other, who is no longer a member', async () => {
-    const org = await createOrganization(db, { name: `Owner Race ${uniqueEmail('org')}` })
+    const org = await createOrganization(db, { name: `Owner Race ${uniqueSuffix()}` })
     const second = await createMember(db, org, { role: 'owner', name: 'Ngozi Adeyemi' })
     // Both loaded their access before either acted, as two open browsers would have.
     const firstCtx = await contextFor(db, org.owner, org)

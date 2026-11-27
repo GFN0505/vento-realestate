@@ -25,7 +25,7 @@ describe('plan places', () => {
 
   it('leads with the places left and the way to get more', () => {
     expect(planPlacesMessage(starter(8), 3)).toBe(
-      'You have 2 places left on your Starter plan. Talk to Vento for more.',
+      'You have 2 places left on your Starter plan. Talk to Vento Real Estate for more.',
     )
   })
 

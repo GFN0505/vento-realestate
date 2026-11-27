@@ -10,13 +10,17 @@ export function signInLockedAlert(p: {
   resetUrl: string
 }): RenderedEmail {
   const what = p.reason === 'two_step' ? '5 wrong codes' : '10 wrong passwords'
-  return renderEmail('Vento: sign-in locked for 15 minutes', 'Sign-in locked for 15 minutes', [
-    {
-      kind: 'p',
-      text: `Someone entered ${what} for your Vento account at ${p.at} on ${p.on}. Sign-in is locked until ${p.lockedUntil}. If this wasn't you, reset your password now: ${p.resetUrl}`,
-    },
-    { kind: 'button', label: 'Reset password', url: p.resetUrl },
-  ])
+  return renderEmail(
+    'Vento Real Estate: sign-in locked for 15 minutes',
+    'Sign-in locked for 15 minutes',
+    [
+      {
+        kind: 'p',
+        text: `Someone entered ${what} for your Vento Real Estate account at ${p.at} on ${p.on}. Sign-in is locked until ${p.lockedUntil}. If this wasn't you, reset your password now: ${p.resetUrl}`,
+      },
+      { kind: 'button', label: 'Reset password', url: p.resetUrl },
+    ],
+  )
 }
 
 export function passwordChangedAlert(p: {
@@ -25,10 +29,10 @@ export function passwordChangedAlert(p: {
   resetUrl: string
   viaReset: boolean
 }): RenderedEmail {
-  return renderEmail('Vento: your password was changed', 'Your password was changed', [
+  return renderEmail('Vento Real Estate: your password was changed', 'Your password was changed', [
     {
       kind: 'p',
-      text: `Your Vento password was ${p.viaReset ? 'reset' : 'changed'} at ${p.at} on ${p.on}.${p.viaReset ? ' You were signed out on your other devices.' : ''}`,
+      text: `Your Vento Real Estate password was ${p.viaReset ? 'reset' : 'changed'} at ${p.at} on ${p.on}.${p.viaReset ? ' You were signed out on your other devices.' : ''}`,
     },
     { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
   ])
@@ -36,12 +40,12 @@ export function passwordChangedAlert(p: {
 
 export function twoStepResetAlert(p: { byName: string }): RenderedEmail {
   return renderEmail(
-    `Vento: your two-step sign-in was reset by ${p.byName}`,
+    `Vento Real Estate: your two-step sign-in was reset by ${p.byName}`,
     'Your two-step sign-in was reset',
     [
       {
         kind: 'p',
-        text: `${p.byName} reset two-step sign-in for your Vento account and signed you out everywhere.`,
+        text: `${p.byName} reset two-step sign-in for your Vento Real Estate account and signed you out everywhere.`,
       },
       {
         kind: 'p',
@@ -57,13 +61,17 @@ export function twoStepDisabledAlert(p: {
   on: string
   resetUrl: string
 }): RenderedEmail {
-  return renderEmail('Vento: two-step sign-in was turned off', 'Two-step sign-in was turned off', [
-    {
-      kind: 'p',
-      text: `Two-step sign-in was turned off for your Vento account at ${p.at} on ${p.on}.`,
-    },
-    { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
-  ])
+  return renderEmail(
+    'Vento Real Estate: two-step sign-in was turned off',
+    'Two-step sign-in was turned off',
+    [
+      {
+        kind: 'p',
+        text: `Two-step sign-in was turned off for your Vento Real Estate account at ${p.at} on ${p.on}.`,
+      },
+      { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
+    ],
+  )
 }
 
 export function backupCodeUsedAlert(p: {
@@ -72,13 +80,17 @@ export function backupCodeUsedAlert(p: {
   on: string
   resetUrl: string
 }): RenderedEmail {
-  return renderEmail(`Vento: a backup code was used (${p.left} left)`, 'A backup code was used', [
-    {
-      kind: 'p',
-      text: `A backup code was used to sign in to your Vento account at ${p.at} on ${p.on}. You have ${p.left} left.`,
-    },
-    { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
-  ])
+  return renderEmail(
+    `Vento Real Estate: a backup code was used (${p.left} left)`,
+    'A backup code was used',
+    [
+      {
+        kind: 'p',
+        text: `A backup code was used to sign in to your Vento Real Estate account at ${p.at} on ${p.on}. You have ${p.left} left.`,
+      },
+      { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
+    ],
+  )
 }
 
 /** To every owner, the new one included, whenever someone becomes an owner. Can't be muted. */
@@ -91,7 +103,7 @@ export function newOwnerAlert(p: {
   teamUrl: string
 }): RenderedEmail {
   return renderEmail(
-    `Vento: ${p.newOwnerName} is now an owner of ${p.organizationName}`,
+    `Vento Real Estate: ${p.newOwnerName} is now an owner of ${p.organizationName}`,
     `${p.newOwnerName} is now an owner`,
     [
       {
@@ -113,13 +125,17 @@ export function newSignInAlert(p: {
   securityUrl: string
 }): RenderedEmail {
   const near = p.place ? `, near ${p.place}` : ''
-  return renderEmail(`Vento: new sign-in on ${p.device}`, 'New sign-in to your account', [
-    {
-      kind: 'p',
-      text: `Your Vento account was signed in to at ${p.at} on ${p.on} from ${p.device}${near}. If this was you, there's nothing to do. If it wasn't, reset your password and sign that device out: ${p.securityUrl}`,
-    },
-    { kind: 'button', label: 'Check My security', url: p.securityUrl },
-  ])
+  return renderEmail(
+    `Vento Real Estate: new sign-in on ${p.device}`,
+    'New sign-in to your account',
+    [
+      {
+        kind: 'p',
+        text: `Your Vento Real Estate account was signed in to at ${p.at} on ${p.on} from ${p.device}${near}. If this was you, there's nothing to do. If it wasn't, reset your password and sign that device out: ${p.securityUrl}`,
+      },
+      { kind: 'button', label: 'Check My security', url: p.securityUrl },
+    ],
+  )
 }
 
 export function passkeyAddedAlert(p: {
@@ -129,13 +145,17 @@ export function passkeyAddedAlert(p: {
   securityUrl: string
   resetUrl: string
 }): RenderedEmail {
-  return renderEmail('Vento: a passkey was added to your account', 'A passkey was added', [
-    {
-      kind: 'p',
-      text: `A passkey (${p.name}) was added at ${p.at} on ${p.on}. It can sign in to your account without a password. If this wasn't you, remove it and reset your password: ${p.resetUrl}`,
-    },
-    { kind: 'button', label: 'Check My security', url: p.securityUrl },
-  ])
+  return renderEmail(
+    'Vento Real Estate: a passkey was added to your account',
+    'A passkey was added',
+    [
+      {
+        kind: 'p',
+        text: `A passkey (${p.name}) was added at ${p.at} on ${p.on}. It can sign in to your account without a password. If this wasn't you, remove it and reset your password: ${p.resetUrl}`,
+      },
+      { kind: 'button', label: 'Check My security', url: p.securityUrl },
+    ],
+  )
 }
 
 export function passkeyRemovedAlert(p: {
@@ -145,13 +165,17 @@ export function passkeyRemovedAlert(p: {
   securityUrl: string
   resetUrl: string
 }): RenderedEmail {
-  return renderEmail('Vento: a passkey was removed from your account', 'A passkey was removed', [
-    {
-      kind: 'p',
-      text: `The passkey ${p.name} was removed at ${p.at} on ${p.on}. If this wasn't you, reset your password now: ${p.resetUrl}`,
-    },
-    { kind: 'button', label: 'Check My security', url: p.securityUrl },
-  ])
+  return renderEmail(
+    'Vento Real Estate: a passkey was removed from your account',
+    'A passkey was removed',
+    [
+      {
+        kind: 'p',
+        text: `The passkey ${p.name} was removed at ${p.at} on ${p.on}. If this wasn't you, reset your password now: ${p.resetUrl}`,
+      },
+      { kind: 'button', label: 'Check My security', url: p.securityUrl },
+    ],
+  )
 }
 
 /** To every owner when "Require two-step sign-in for everyone" is turned off. */
@@ -163,7 +187,7 @@ export function twoStepNoLongerRequiredAlert(p: {
   organizationUrl: string
 }): RenderedEmail {
   return renderEmail(
-    `Vento: two-step is no longer required for everyone in ${p.organizationName}`,
+    `Vento Real Estate: two-step is no longer required for everyone in ${p.organizationName}`,
     'Two-step is no longer required for everyone',
     [
       {
@@ -183,11 +207,34 @@ export function passkeyCopiedAlert(p: {
   securityUrl: string
   resetUrl: string
 }): RenderedEmail {
-  return renderEmail('Vento: a passkey may have been copied', 'A passkey may have been copied', [
-    {
-      kind: 'p',
-      text: `At ${p.at} on ${p.on} someone tried to sign in with your passkey ${p.name}, but it looked like a copy of the key, so we refused it. If you didn't just sign in on two devices at once, remove this passkey and reset your password: ${p.resetUrl}`,
-    },
-    { kind: 'button', label: 'Check My security', url: p.securityUrl },
-  ])
+  return renderEmail(
+    'Vento Real Estate: a passkey may have been copied',
+    'A passkey may have been copied',
+    [
+      {
+        kind: 'p',
+        text: `At ${p.at} on ${p.on} someone tried to sign in with your passkey ${p.name}, but it looked like a copy of the key, so we refused it. If you didn't just sign in on two devices at once, remove this passkey and reset your password: ${p.resetUrl}`,
+      },
+      { kind: 'button', label: 'Check My security', url: p.securityUrl },
+    ],
+  )
+}
+
+/** New backup codes replace the old ones: said at once, since they can sign in instead of a code. */
+export function backupCodesRegeneratedAlert(p: {
+  at: string
+  on: string
+  resetUrl: string
+}): RenderedEmail {
+  return renderEmail(
+    'Vento Real Estate: new backup codes were made',
+    'New backup codes were made',
+    [
+      {
+        kind: 'p',
+        text: `New backup codes were made for your Vento Real Estate account at ${p.at} on ${p.on}. Your old codes no longer work.`,
+      },
+      { kind: 'p', text: `If this wasn't you, reset your password now: ${p.resetUrl}` },
+    ],
+  )
 }

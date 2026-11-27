@@ -39,7 +39,8 @@ async function run(
 ) {
   const io = memoryIo(answers)
   const mailer = createMemoryTransport()
-  const code = await runCommand('plans', args, {
+  // Change commands are break-glass now (admin-console plan §7); console-parity.test.ts covers the refusal.
+  const code = await runCommand('plans', [...args, '--break-glass'], {
     db,
     io,
     operator: 'ada@ops-laptop',
@@ -83,7 +84,7 @@ describe('pnpm plans', () => {
         .where(eq(organizationPlans.organizationId, org.id))
       expect(row?.planVersionId).toBe(starter.versionId)
       expect(await notices(tx, org, 'plan.assigned')).toEqual([
-        'Vento moved your organization to Starter',
+        'Vento Real Estate moved your organization to Starter',
       ])
       const [platform] = await tx
         .select()
@@ -146,7 +147,7 @@ describe('pnpm plans', () => {
         true,
       )
       expect(await notices(tx, org, 'plan.trial_started')).toEqual([
-        'Vento started a 30-day Enterprise trial (ends 2 Jan 2027)',
+        'Vento Real Estate started a 30-day Enterprise trial (ends 2 Jan 2027)',
       ])
     }))
 
@@ -173,7 +174,7 @@ describe('pnpm plans', () => {
         )
       expect(live).toEqual([])
       expect(await notices(tx, org, 'plan.trial_cancelled')).toEqual([
-        'Vento ended your Enterprise trial',
+        'Vento Real Estate ended your Enterprise trial',
       ])
     }))
 
@@ -195,7 +196,7 @@ describe('pnpm plans', () => {
       )
       const { io } = await run(tx, ['publish', 'growth', '--from', file, ...by(admin.email)])
       expect(io.output.at(-1)).toBe(
-        'Growth version 2 is published. Organizations on earlier versions stay there until you assign them.',
+        'Growth version 2 is published. Organizations on earlier versions stay there until you move them.',
       )
       const [row] = await tx
         .select()
@@ -237,10 +238,12 @@ describe('pnpm plans', () => {
       const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
       await run(tx, ['addon', org.name, 'ai', '--budget', '150000', ...by(admin.email)])
       expect(await notices(tx, org, 'plan.add_on_added')).toEqual([
-        'Vento added AI (₦150,000 a month)',
+        'Vento Real Estate added AI (₦150,000 a month)',
       ])
       await run(tx, ['addon', org.name, 'ai', '--remove', ...by(admin.email)])
-      expect(await notices(tx, org, 'plan.add_on_removed')).toEqual(['Vento removed AI'])
+      expect(await notices(tx, org, 'plan.add_on_removed')).toEqual([
+        'Vento Real Estate removed AI',
+      ])
     }))
 
   it('records a negotiated limit and a feature until a date', () =>
@@ -259,10 +262,10 @@ describe('pnpm plans', () => {
         ...by(admin.email),
       ])
       expect(await notices(tx, org, 'plan.limit_overridden')).toEqual([
-        'Vento set your limit to 8 active projects',
+        'Vento Real Estate set your limit to 8 active projects',
       ])
       expect(await notices(tx, org, 'plan.feature_overridden')).toEqual([
-        'Vento added Commissions to your organization (until 31 Jan 2027)',
+        'Vento Real Estate added Commissions to your organization (until 31 Jan 2027)',
       ])
       const { code, io } = await run(tx, [
         'override',
@@ -283,7 +286,9 @@ describe('system commands', () => {
       const admin = await createSuperAdmin(tx)
       const refused = await run(tx, ['bootstrap'])
       expect(refused.code).toBe(1)
-      expect(refused.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+      expect(refused.io.errors).toEqual([
+        'Only Vento Real Estate super-admins can change flags and plans.',
+      ])
       const declined = await run(tx, ['bootstrap', ...by(admin.email)], [false])
       expect(declined.io.output.at(-1)).toBe('Nothing changed.')
       const done = await run(tx, ['bootstrap', ...by(admin.email)])
@@ -294,10 +299,12 @@ describe('system commands', () => {
     withRollback(async (tx) => {
       const byHand = await run(tx, ['notify-trials'])
       expect(byHand.code).toBe(1)
-      expect(byHand.io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+      expect(byHand.io.errors).toEqual([
+        'Only Vento Real Estate super-admins can change flags and plans.',
+      ])
       const org = await createOrganization(tx, { planKey: 'starter' })
       const target = await findPlanVersion(tx, 'enterprise')
-      const actor = { userId: null, name: 'Test', operator: null }
+      const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
       await startTrial(
         tx,
         actor,
@@ -315,12 +322,15 @@ describe('system commands', () => {
             eq(platformAuditEvents.action, 'plan.trial_ended'),
           ),
         )
-      expect(event).toMatchObject({ actorName: 'Vento (scheduled)', operator: 'ada@ops-laptop' })
+      expect(event).toMatchObject({
+        actorName: 'Vento Real Estate (scheduled)',
+        operator: 'ada@ops-laptop',
+      })
     }))
 })
 
 describe('trials after earlier ones lapse', () => {
-  const actor = { userId: null, name: 'Test', operator: null }
+  const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
 
   it('starts a second trial after the first has expired', () =>
     withRollback(async (tx) => {
@@ -401,7 +411,7 @@ describe('trials after earlier ones lapse', () => {
         ...by(admin.email),
       ])
       expect(code).toBe(1)
-      expect(io.errors).toEqual(['Write --until as YYYY-MM-DD, e.g. 2027-01-31.'])
+      expect(io.errors).toEqual(['Write the end date as YYYY-MM-DD, e.g. 2027-01-31.'])
     }))
 })
 
@@ -410,7 +420,7 @@ describe('plans notify-trials', () => {
     withRollback(async (tx) => {
       const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
       const target = await findPlanVersion(tx, 'enterprise')
-      const actor = { userId: null, name: 'Test', operator: null }
+      const actor = { userId: null, name: 'Test', channel: 'command' as const, operator: null }
       await startTrial(
         tx,
         actor,

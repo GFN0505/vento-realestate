@@ -38,7 +38,7 @@ export const AUDIT_ACTIONS = [
   /** A passkey signed with a counter that went backwards: it may have been copied. */
   'passkey.suspected_clone',
   'account.name_changed',
-  // Written by Vento's platform operations (feature flags and plans), actor "Vento".
+  // Written by Vento Real Estate's platform operations (feature flags and plans), actor "Vento Real Estate".
   'plan.assigned',
   'plan.trial_started',
   'plan.trial_ended',
@@ -51,6 +51,10 @@ export const AUDIT_ACTIONS = [
   'release.group_changed',
   'release.override_set',
   'release.override_cleared',
+  /** Organization trail: "Vento changed your AI budget to ₦250,000 a month". */
+  'plan.add_on_changed',
+  /** The person's own account trail: they opened the Vento console (with the proof used). */
+  'console.opened',
 ] as const
 export const auditAction = z.enum(AUDIT_ACTIONS)
 export type AuditAction = z.infer<typeof auditAction>

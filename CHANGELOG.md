@@ -21,7 +21,11 @@ User-visible changes, newest first, written for customers. Format: [Keep a Chang
 
 ### Changed
 - "Entity" is now "Company" everywhere you read it.
+- The product is called Vento Real Estate everywhere: on every page, in emails (sender, subject and footer), in your audit trail ("Vento Real Estate moved your organization to Growth"), on **Talk to Vento Real Estate**, and in your authenticator app for new two-step set-ups (existing entries keep their old name until you set two-step up again). The web address is realestate.ventoerp.com.
+- Inviting people: an email that belongs to a Vento Real Estate staff account can't be invited to your organization. That row says so ("… is a Vento Real Estate staff account and can't join an organization. Use a different email."), and the rest of the invitations still go.
 
 ### Security
+- Changes Vento Real Estate makes to your plan or features now require a staff member's two-step sign-in and are recorded with who made them. Your audit trail still shows them as "Vento Real Estate", in plain words. Staff who can make these changes can't turn off their own two-step sign-in.
+- Vento Real Estate staff now use separate staff accounts, never your organization's member list: a staff account can't join or create an organization.
 - Unused sign-in endpoints are switched off, and wrong two-step codes are counted everywhere.
 - Keyboard focus is visible on every button again.
