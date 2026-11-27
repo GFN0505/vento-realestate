@@ -49,6 +49,15 @@ jobs:
       EMAIL_DEV_DIR: .mail
       # Many sign-ins from one IP in e2e.
       AUTH_RATE_LIMIT: "off"
+      # Local S3-compatible storage started below (decision 0025). Throwaway CI-only values, the
+      # same as docker-compose.yml. They switch on the S3 contract test; STORAGE_DRIVER=s3 is set
+      # only on the e2e step, so service tests keep the in-memory driver.
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: vento-local
+      S3_ACCESS_KEY_ID: vento
+      S3_SECRET_ACCESS_KEY: vento-local-secret
+      S3_FORCE_PATH_STYLE: "true"
 
     steps:
       - uses: actions/checkout@v7
@@ -68,6 +77,27 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # A service container can't pass the start command and the init script, so docker run it.
+      # Same image digest as docker-compose.yml; the container is healthy once the bucket exists.
+      - name: Start object storage
+        run: |
+          docker run -d --name vento-storage --network host \
+            -e MINIO_ROOT_USER=vento -e MINIO_ROOT_PASSWORD=vento-local-secret \
+            -e STORAGE_BUCKET=vento-local \
+            -e MINIO_API_CORS_ALLOW_ORIGIN=http://localhost:5173 \
+            -e MINIO_API_STALE_UPLOADS_EXPIRY=24h \
+            -v "$PWD/docker/storage-init.sh:/storage-init.sh:ro" \
+            --health-cmd "test -f /tmp/storage-ready" --health-interval 2s --health-retries 30 \
+            --entrypoint sh \
+            cgr.dev/chainguard/minio:latest@sha256:b288eaa709ba2f799a39e9a8ceda71a08fabf90109b12c90badba9afff29485c \
+            /storage-init.sh
+          for i in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' vento-storage)" = healthy ] && exit 0
+            sleep 2
+          done
+          docker logs vento-storage
+          exit 1
+
       - name: Migrate
         run: pnpm db:migrate
 
@@ -86,6 +116,12 @@ jobs:
 
       - name: End-to-end tests
         run: pnpm e2e
+        env:
+          STORAGE_DRIVER: s3
+
+      - name: Storage logs
+        if: failure()
+        run: docker logs vento-storage || true
 
       - name: Upload Playwright report
         if: failure()

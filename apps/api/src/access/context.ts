@@ -12,6 +12,7 @@ import type { DbOrTx } from '@/db/client'
 import { rawTimestamp } from '@/db/raw'
 import { members, organizations, roles, sessions, users } from '@/db/schema'
 import type { OrganizationAvailability } from '@/platform/availability'
+import type { Storage } from '@/storage'
 
 /** The signed-in person, from Better Auth's user row. */
 export type AuthUser = {
@@ -78,6 +79,8 @@ export type ServiceContext = {
   sessionId: string | null
   /** What's available to the organization (and its limits), from the in-memory snapshot. */
   features: OrganizationAvailability
+  /** Private file storage (decision 0025): signing links and checking uploads. */
+  storage: Storage
 }
 
 /** The audit actor for a service call: the signed-in person, by id and name at the time. */

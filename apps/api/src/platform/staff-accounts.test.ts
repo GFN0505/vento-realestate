@@ -88,6 +88,8 @@ describe('discarding unfinished staff accounts', () => {
           'audit_events.actor_user_id',
           'entities.archived_by_user_id',
           'feature_releases.changed_by_user_id',
+          // Uploads come only through `member` procedures, which staff accounts never reach.
+          'files.uploaded_by_user_id',
           'invitations.invited_by_user_id',
           'members.removed_by_user_id',
           'members.user_id',

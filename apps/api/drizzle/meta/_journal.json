@@ -127,6 +127,20 @@
       "when": 1795798742522,
       "tag": "0017_approvals_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795821883838,
+      "tag": "0018_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795821884256,
+      "tag": "0019_files_guards",
+      "breakpoints": true
     }
   ]
 }

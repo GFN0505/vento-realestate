@@ -16,9 +16,12 @@
     "flags": "tsx src/platform/cli/main.ts flags",
     "plans": "tsx src/platform/cli/main.ts plans",
     "superadmin": "tsx src/platform/cli/main.ts superadmin",
-    "approvals": "tsx src/platform/cli/main.ts approvals"
+    "approvals": "tsx src/platform/cli/main.ts approvals",
+    "files": "tsx src/platform/cli/main.ts files"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1177.0",
+    "@aws-sdk/s3-request-presigner": "^3.1177.0",
     "@better-auth/drizzle-adapter": "1.7.28",
     "@better-auth/passkey": "1.7.28",
     "@hono/node-server": "^2.1.11",

@@ -7,6 +7,7 @@ import { createMemoryTransport, type MemoryMailer } from '@/email/transports/mem
 import { createRateLimiter } from '@/lib/rate-limit'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
 import { router } from '@/router'
+import { createMemoryStorage, type MemoryStorage } from '@/storage/memory-driver'
 import type { TestUser } from './factories'
 
 /**
@@ -28,6 +29,8 @@ export function clientAs(
     features?: FeatureStore
     /** Turn the in-memory rate limiter on (off by default, like the test environment). */
     rateLimit?: boolean
+    /** Shared with the test, to upload parts and look at objects; a fresh one by default. */
+    storage?: MemoryStorage
     /** Session fields beyond the defaults (a fresh session entered now, never confirmed). */
     session?: {
       createdAt?: Date
@@ -40,7 +43,11 @@ export function clientAs(
   } = {},
 ) {
   const context = testContext(db, user, options)
-  return { client: createRouterClient(router, { context }), mailer: context.mailer as MemoryMailer }
+  return {
+    client: createRouterClient(router, { context }),
+    mailer: context.mailer as MemoryMailer,
+    storage: context.storage as MemoryStorage,
+  }
 }
 
 /** The context `clientAs` passes, for test-only routers (the feature probe). */
@@ -85,6 +92,7 @@ export function testContext(
     ),
     auth,
     mailer,
+    storage: options.storage ?? createMemoryStorage(),
     rateLimiter: createRateLimiter(options.rateLimit ?? false),
     featureStore: options.features ?? liveFeatureStore(db),
   }

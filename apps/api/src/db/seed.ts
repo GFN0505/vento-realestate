@@ -31,6 +31,7 @@ import { assignPlan } from '@/platform/operations/plans'
 import { setReleaseOverride } from '@/platform/operations/release'
 import { bootstrapStartingData, SETUP_ACTOR } from '@/platform/seed-plans'
 import { availabilityForOrganization } from '@/platform/snapshot'
+import { createStorage } from '@/storage'
 import { type DbOrTx, db, pool } from './client'
 import {
   accounts,
@@ -663,6 +664,10 @@ async function seedLekki(passwordHash: string) {
 // waits for Olumide, and about forty audit events over the last 7 days make the log read like the
 // board.
 
+// One client for the whole run: nothing connects until the first call. Nothing in the seed
+// touches files yet; land's seed (PR 2) puts sample documents here.
+const seedStorage = createStorage(env)
+
 /** The service context of a seeded person in Vento Homes Ltd, as the middleware would build it. */
 async function contextAs(email: string, organizationId: string): Promise<ServiceContext> {
   const [user] = await db
@@ -680,6 +685,7 @@ async function contextAs(email: string, organizationId: string): Promise<Service
     member: membership.member,
     sessionId: null,
     features: await availabilityForOrganization(db, organizationId),
+    storage: seedStorage,
   }
 }
 

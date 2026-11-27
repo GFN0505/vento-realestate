@@ -21,5 +21,6 @@ export function serviceContext(context: MemberRequestContext): ServiceContext {
     member: context.member,
     sessionId: context.session.id,
     features: context.features,
+    storage: context.storage,
   }
 }

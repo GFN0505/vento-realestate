@@ -2,6 +2,7 @@ import { PlatformError } from '../platform-error'
 import { approvalsCommand } from './approvals'
 import { announceBreakGlass } from './break-glass'
 import { type BreakGlassChange, type CommandDeps, parse } from './context'
+import { filesCommand } from './files'
 import { flagsCommand } from './flags'
 import { plansCommand } from './plans'
 import { superadminCommand } from './superadmin'
@@ -11,6 +12,7 @@ const COMMANDS = {
   plans: plansCommand,
   superadmin: superadminCommand,
   approvals: approvalsCommand,
+  files: filesCommand,
 }
 export type CommandGroup = keyof typeof COMMANDS
 
@@ -22,7 +24,9 @@ export async function runCommand(
 ): Promise<number> {
   const handler = COMMANDS[group as CommandGroup]
   if (!handler) {
-    deps.io.error(`Unknown command group "${group}". Use flags, plans, superadmin or approvals.`)
+    deps.io.error(
+      `Unknown command group "${group}". Use flags, plans, superadmin, approvals or files.`,
+    )
     return 2
   }
   let parsed: ReturnType<typeof parse>

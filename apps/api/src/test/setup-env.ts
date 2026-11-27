@@ -19,3 +19,5 @@ process.env.LOG_LEVEL = process.env.TEST_LOG_LEVEL ?? 'warn'
 // Emails stay in memory, no per-IP limits between tests.
 process.env.EMAIL_TRANSPORT = 'memory'
 process.env.AUTH_RATE_LIMIT = 'off'
+// Files stay in memory too (decision 0025); storage.s3.test.ts reaches the bucket on its own.
+process.env.STORAGE_DRIVER = 'memory'

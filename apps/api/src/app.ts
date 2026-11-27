@@ -22,10 +22,12 @@ import { requestScope, runWithRequestScope } from '@/lib/request-scope'
 import { checkHealth } from '@/modules/health/health.service'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
 import { router } from '@/router'
+import { createStorage, type Storage } from '@/storage'
 
 export type AppDeps = {
   db: Db
   mailer?: Mailer
+  storage?: Storage
   auth?: Auth
   rateLimiter?: RateLimiter
   /** The server passes its refreshing store; tests default to one that reads on every call. */
@@ -53,6 +55,7 @@ function trustedHeaders(c: Context): Headers {
 export function createApp(deps: AppDeps): Hono {
   const { db } = deps
   const mailer = deps.mailer ?? createMailer(env)
+  const storage = deps.storage ?? createStorage(env)
   const auth = deps.auth ?? createAuth({ db, mailer })
   const rateLimiter = deps.rateLimiter ?? createRateLimiter()
   const features = deps.features ?? liveFeatureStore(db)
@@ -171,6 +174,7 @@ export function createApp(deps: AppDeps): Hono {
         headers: trustedHeaders(c),
         auth,
         mailer,
+        storage,
         rateLimiter,
         featureStore: features,
       },

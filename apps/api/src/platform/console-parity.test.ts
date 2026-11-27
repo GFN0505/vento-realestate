@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { type DbOrTx, db as pool } from '@/db/client'
 import { auditEvents, platformAuditEvents } from '@/db/schema'
@@ -337,7 +337,10 @@ describe('break-glass with no other super-admin', () => {
   it('tells the security inbox, and the --by person', () =>
     withRollback(async (tx) => {
       // Other tests commit super-admins; revoked here (rolled back) so this one is alone.
+      // The lock stops a test file running in parallel from adding one before the command
+      // counts them (it was flaky under a full run).
       const { platformAdmins } = await import('@/db/schema')
+      await tx.execute(sql`lock table platform_admins in exclusive mode`)
       await tx.update(platformAdmins).set({ revokedAt: new Date() })
       const admin = await createSuperAdmin(tx)
       const target = await createOrganization(tx, { planKey: 'starter' })

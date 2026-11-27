@@ -7,6 +7,7 @@ import {
   approvalRules,
   auditEvents,
   entities,
+  files,
   invitations,
   members,
   organizations,
@@ -18,16 +19,19 @@ import {
 import { lagosIsoDate } from '@/lib/format'
 import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
 import { recordAudit } from '@/modules/audit/audit.service'
+import { attachFile, signDownload } from '@/modules/files/files.records'
 import { recordDelivery } from '@/modules/invitations/delivery'
 import { uniqueSuffix, withRollback } from './db'
 import {
   addAddOnRow,
   archiveEntityRow,
+  contextFor,
   createCustomRole,
   createEntity,
   createInvitation,
   createMember,
   createOrganization,
+  createReadyFile,
   createSession,
   createSuperAdmin,
   createUser,
@@ -604,5 +608,59 @@ describe('organization isolation: approvals and audit (brick 4)', () => {
           subject: { type: 'role', id: theirRole.id },
         }),
       ).toEqual({ needed: false })
+    }))
+})
+
+describe('organization isolation: files (decision 0025)', () => {
+  it('answers not found for their uploads and files, changing nothing', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: `Other Developer ${uniqueSuffix()}` })
+      const { client: theirClient, storage } = clientAs(tx, theirs.owner)
+      const started = await theirClient.files.startUpload({
+        purpose: 'title_document',
+        name: 'Their survey plan.pdf',
+        size: 100,
+        type: 'application/pdf',
+      })
+      const theirReady = await createReadyFile(tx, theirs, { uploadedBy: theirs.owner, storage })
+      const { client } = clientAs(tx, mine.owner, { storage })
+      const parts = [{ partNumber: 1, etag: '"x"' }]
+      const attempts: [string, () => Promise<unknown>][] = [
+        [
+          'files.signParts',
+          () => client.files.signParts({ fileId: started.fileId, partNumbers: [1] }),
+        ],
+        [
+          'files.completeUpload',
+          () => client.files.completeUpload({ fileId: started.fileId, parts }),
+        ],
+        ['files.abortUpload', () => client.files.abortUpload({ fileId: started.fileId })],
+        ['files.abortUpload (ready)', () => client.files.abortUpload({ fileId: theirReady.id })],
+      ]
+      for (const [name, attempt] of attempts) {
+        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      const ctx = await contextFor(tx, mine.owner, mine, storage)
+      await expect(
+        signDownload(ctx, theirReady.id, {
+          purpose: 'title_document',
+          disposition: 'attachment',
+          filename: 'x',
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(attachFile(tx, ctx, theirReady.id, 'title_document')).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+        data: { reason: 'file_unavailable' },
+      })
+      const rows = await tx.select().from(files).where(eq(files.organizationId, theirs.id))
+      expect(rows.map((r) => [r.status, r.attachedAt])).toEqual(
+        expect.arrayContaining([
+          ['uploading', null],
+          ['ready', null],
+        ]),
+      )
+      expect(rows).toHaveLength(2)
+      expect(storage.hasObject(theirReady.objectKey)).toBe(true)
     }))
 })

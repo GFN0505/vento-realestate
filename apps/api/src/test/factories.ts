@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { ApprovalActionKey, PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
   customRolePluralName,
@@ -7,7 +8,7 @@ import {
   PERMISSION_MODULES,
 } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { loadMembership, type ServiceContext } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import type { DbOrTx } from '@/db/client'
@@ -19,6 +20,7 @@ import {
   approvalRules,
   entities,
   featureReleases,
+  files,
   invitationEntityLimits,
   invitations,
   memberEntityLimits,
@@ -40,6 +42,8 @@ import type { OverrideKind } from '@/platform/availability'
 import { findPlanVersion } from '@/platform/operations/common'
 import { seedPlans } from '@/platform/seed-plans'
 import { availabilityForOrganization } from '@/platform/snapshot'
+import { incomingKey, keptKey, type Storage } from '@/storage'
+import { createMemoryStorage } from '@/storage/memory-driver'
 import { uniqueEmail } from './db'
 
 // Meets every password rule; apps/web/e2e signs up with the same literal.
@@ -260,6 +264,7 @@ export async function contextFor(
   db: DbOrTx,
   user: TestUser,
   org: Pick<TestOrg, 'id'>,
+  storage: Storage = createMemoryStorage(),
 ): Promise<ServiceContext> {
   const membership = await loadMembership(db, user.id, org.id)
   if (!membership || membership.organizationId !== org.id) throw new Error('not a member')
@@ -271,6 +276,7 @@ export async function contextFor(
     member: membership.member,
     sessionId: null,
     features: await availabilityForOrganization(db, membership.organizationId),
+    storage,
   }
 }
 
@@ -566,4 +572,55 @@ export async function createApprovalRule(
       .values(entityIds.map((entityId) => ({ organizationId: org.id, ruleId: rule.id, entityId })))
   }
   return rule.id
+}
+
+/** A small real PDF's first bytes, enough for the content check. */
+export const SAMPLE_PDF = new TextEncoder().encode('%PDF-1.7\n% Fictional sample\n%%EOF\n')
+
+/**
+ * A finished, checked upload (status ready, not attached), as `files.completeUpload` leaves it.
+ * Pass `storage` to put the bytes in the bucket too; `attached` marks it held by a record;
+ * `createdAt` back-dates it for the sweep.
+ */
+export async function createReadyFile(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id'>,
+  options: {
+    uploadedBy: Pick<TestUser, 'id'>
+    storage?: Storage
+    bytes?: Uint8Array
+    attached?: boolean
+    createdAt?: Date
+    /** Defaults to `createdAt`. */
+    completedAt?: Date
+    originalName?: string
+  },
+) {
+  const bytes = options.bytes ?? SAMPLE_PDF
+  const [idRow] = (await db.execute<{ id: string }>(sql`select uuidv7() as id`)).rows
+  if (!idRow) throw new Error('uuidv7() returned nothing')
+  // An attached file lives under kept/ (as attachFile leaves it); a free one under incoming/.
+  const key = options.attached ? keptKey(org.id, idRow.id) : incomingKey(org.id, idRow.id)
+  const [row] = await db
+    .insert(files)
+    .values({
+      id: idRow.id,
+      organizationId: org.id,
+      purpose: 'title_document',
+      status: 'ready',
+      objectKey: key,
+      originalName: options.originalName ?? 'Survey plan.pdf',
+      declaredType: 'application/pdf',
+      contentType: 'application/pdf',
+      sizeBytes: bytes.length,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      uploadedByUserId: options.uploadedBy.id,
+      completedAt: options.completedAt ?? options.createdAt ?? new Date(),
+      attachedAt: options.attached ? new Date() : null,
+      ...(options.createdAt ? { createdAt: options.createdAt } : {}),
+    })
+    .returning()
+  if (!row) throw new Error('file insert failed')
+  if (options.storage) await options.storage.putObject(key, bytes, 'application/pdf')
+  return row
 }

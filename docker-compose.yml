@@ -1,4 +1,5 @@
-# Local development database only. Credentials here are local placeholders, not secrets.
+# Local development services only (Postgres, S3-compatible storage). Credentials here are local
+# placeholders, not secrets.
 services:
   postgres:
     image: postgres:18-alpine
@@ -8,7 +9,7 @@ services:
       POSTGRES_PASSWORD: vento
       POSTGRES_DB: vento
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - vento-pgdata:/var/lib/postgresql
       - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -18,5 +19,37 @@ services:
       timeout: 3s
       retries: 30
 
+  # S3-compatible object storage (decision 0025). MinIO stopped publishing community images in
+  # Oct 2025; this is Chainguard's free build, pinned by digest (resolved 2026-11-27, minio
+  # RELEASE.2026-11-23). To bump: docker pull cgr.dev/chainguard/minio:latest, read the digest from
+  # `docker inspect --format '{{index .RepoDigests 0}}'`, run the contract test, then update here
+  # and in .github/workflows/ci.yml.
+  storage:
+    image: cgr.dev/chainguard/minio:latest@sha256:b288eaa709ba2f799a39e9a8ceda71a08fabf90109b12c90badba9afff29485c
+    container_name: vento-storage
+    # Starts the server, then creates the bucket (see the script); ready once the bucket exists.
+    entrypoint: ["sh", "/storage-init.sh"]
+    environment:
+      MINIO_ROOT_USER: vento
+      MINIO_ROOT_PASSWORD: vento-local-secret
+      STORAGE_BUCKET: vento-local
+      # Server-wide CORS (MinIO has no per-bucket CORS). 5173 = pnpm dev and CI e2e; 5193 = local
+      # e2e (apps/web/playwright.config.ts). Exposes ETag by default.
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173,http://localhost:5193
+      # MinIO can't take the 1-day abort lifecycle rule; this is its own equivalent.
+      MINIO_API_STALE_UPLOADS_EXPIRY: 24h
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - vento-storage:/data
+      - ./docker/storage-init.sh:/storage-init.sh:ro
+    healthcheck:
+      # Set by the init script once the server answers and the bucket is configured.
+      test: ["CMD", "test", "-f", "/tmp/storage-ready"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
 volumes:
   vento-pgdata:
+  vento-storage:

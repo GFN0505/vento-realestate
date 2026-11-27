@@ -24,7 +24,8 @@
     "flags": "pnpm --silent --filter @vento/api flags",
     "plans": "pnpm --silent --filter @vento/api plans",
     "superadmin": "pnpm --silent --filter @vento/api superadmin",
-    "approvals": "pnpm --silent --filter @vento/api approvals"
+    "approvals": "pnpm --silent --filter @vento/api approvals",
+    "files": "pnpm --silent --filter @vento/api files"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",

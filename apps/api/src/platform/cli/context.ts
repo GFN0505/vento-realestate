@@ -18,6 +18,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { platformAuditEvents } from '@/db/schema'
 import type { Mailer } from '@/email/mailer'
+import type { Storage } from '@/storage'
 import type { PlatformActor } from '../platform-audit'
 import { PlatformError } from '../platform-error'
 import { requireSuperAdmin } from '../super-admins'
@@ -31,6 +32,8 @@ export type CommandDeps = {
   /** `os-user@host`, recorded on every platform audit event. */
   operator: string | null
   mailer: Mailer
+  /** The bucket, for `files sweep`; other commands don't need it. */
+  storage?: Storage
   now: () => Date
   /** Running from the scheduler (VENTO_CRON=1): `notify-trials` needs no `--by`. */
   scheduled?: boolean
