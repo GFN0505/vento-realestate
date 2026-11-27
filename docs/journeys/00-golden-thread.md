@@ -8,7 +8,7 @@ One fictional developer, followed through every module. Use it to:
 The names, companies and figures match the approved designs (`docs/design/DESIGN-NOTES.md`, *Fictional world*), so screenshots of the app line up with the boards. All of it is fictional.
 
 ## The cast
-| Who | Role in Vento |
+| Who | Role in Vento Real Estate |
 |---|---|
 | **Vento Homes Ltd** | Organization (the developer group) and holding entity, 12 Admiralty Way, Lekki Phase 1 |
 | **Victoria Gardens Dev. Ltd** | Entity (SPV) that owns Victoria Gardens Phase 2, its bank accounts and its ledger |

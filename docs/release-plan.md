@@ -34,7 +34,7 @@ That is the thread from `PRODUCT.md`, `Land parcel → Project → Units → Sub
 ### Platform (always on, not flagged)
 | In | Why |
 |---|---|
-| Accounts, two-step, roles, invitations, entities (bricks 2a, 3b, 3c) | Without them, no team can use Vento safely. Already built or approved. |
+| Accounts, two-step, roles, invitations, entities (bricks 2a, 3b, 3c) | Without them, no team can use Vento Real Estate safely. Already built or approved. |
 | App shell, ⌘K, error pages (3a) | Needed to find your way around. In build. |
 | My security: two-step settings, backup codes, sessions (3d) | Finance and MD accounts need it. **Passkeys ship at `pilot`** (flag `platform.passkeys`) and are switched on for everyone after the security audit. |
 | **Maker-checker approvals** with default rules, Approvals inbox, approval notifications (brick 4) | Money moves in Release 1. Receipt reversals, refunds, cancellations, price list changes, reschedules, purchase orders and manual journals each need a second person. |
@@ -74,10 +74,10 @@ These are recommendations for grouping and order. Each feature is released when 
 
 | Release | Name | What it unlocks for the customer | Main contents | Journeys |
 |---|---|---|---|---|
-| **R2** | Sell more, chase less | Sales grows without hiring more people, and buyers hear from Vento where they read: WhatsApp. | Leads pipeline, realtor portal and **commissions** (paid with WHT), construction-linked plans and milestone billing, unit transfer, interactive estate layout, two-way WhatsApp and SMS fallback, reminder schedule settings, daily digest, e-KYC, buyer portal extras, self-service NDPA export | J-SAL-02, J-SAL-08, J-RLT-01, J-PRJ-04, J-CMP-01 (e-KYC) |
+| **R2** | Sell more, chase less | Sales grows without hiring more people, and buyers hear from Vento Real Estate where they read: WhatsApp. | Leads pipeline, realtor portal and **commissions** (paid with WHT), construction-linked plans and milestone billing, unit transfer, interactive estate layout, two-way WhatsApp and SMS fallback, reminder schedule settings, daily digest, e-KYC, buyer portal extras, self-service NDPA export | J-SAL-02, J-SAL-08, J-RLT-01, J-PRJ-04, J-CMP-01 (e-KYC) |
 | **R3** | Close the books, brief the board | Finance stops exporting to the outside accountant, and the MD gets a board pack. | Period close and lock, financial statements, intercompany entries, construction facilities and drawdowns, IFRS 15 revenue recognition, tax summary. Documents in full: template editor, contract register, e-signature. UBO register, SCUML/NFIU records. Board pack, IRR/ROI, land bank valuations, report library. | J-FIN-07, J-FIN-08, J-DOC-01, J-EXE-03 |
-| **R4** | Hand over and run | The developer keeps the relationship after handover, and the whole company is on Vento. | Handover checklist and certificate, Estates (service charge, utilities, maintenance, assets), HR & payroll (PAYE under the 2025 acts, pension, NHF, NSITF, ITF), leave, professional memberships | J-SAL-07 (handover), J-FAC-01, J-FAC-02, J-HR-01 to J-HR-03 |
-| **AI** | Add-on, released per feature | Less typing and matching, for customers who turn it on. | Each feature is releasable once its eval passes (`ai-features` skill). Likely order: payment matching (extends statement import), document reading, voice site diary (extends the Release 1 diary), drafting, Ask Vento, predictions and anomalies (once there's history). | J-AI-01 to J-AI-04 |
+| **R4** | Hand over and run | The developer keeps the relationship after handover, and the whole company is on Vento Real Estate. | Handover checklist and certificate, Estates (service charge, utilities, maintenance, assets), HR & payroll (PAYE under the 2025 acts, pension, NHF, NSITF, ITF), leave, professional memberships | J-SAL-07 (handover), J-FAC-01, J-FAC-02, J-HR-01 to J-HR-03 |
+| **AI** | Add-on, released per feature | Less typing and matching, for customers who turn it on. | Each feature is releasable once its eval passes (`ai-features` skill). Likely order: payment matching (extends statement import), document reading, voice site diary (extends the Release 1 diary), drafting, Ask, predictions and anomalies (once there's history). | J-AI-01 to J-AI-04 |
 
 **Why this order.** R2 makes the Release 1 job cheaper to run and brings in more sales. R3 needs the costs and receipts from Release 1 before the statements and IFRS 15 mean anything. R4 serves projects that have been handed over, and payroll, which customers already handle elsewhere.
 
@@ -87,7 +87,7 @@ These are recommendations for grouping and order. Each feature is released when 
 
 The full rules are in the [feature flags spec](specs/feature-flags.md). In short:
 
-1. **Everything merged goes to production, switched off for customers.** A new feature starts at stage `internal`: Vento staff and Vento's own organizations (the seeded Vento Homes Ltd demo) can use it. Customers can't see it, and its API answers "not found".
+1. **Everything merged goes to production, switched off for customers.** A new feature starts at stage `internal`: Vento Real Estate staff and its own internal organizations (the seeded Vento Homes Ltd demo) can use it. Customers can't see it, and its API answers "not found".
 2. **Pilot (optional).** The owner can put chosen organizations in the `pilot` group and move a feature to stage `pilot` to let them use it early, with an "Early access" tag. There are no fixed thresholds for pilots; they're a choice, not a step every feature must pass.
 3. **Release.** Moving a feature's flag to `on` *is* the release, together with release notes, the help article and the journey status changing to `built`. No deploy is needed.
 4. **Rollback.** Setting a flag to `off` hides the feature from everyone within 30 seconds. Data is never deleted, and inbound money (Paystack webhooks) is always recorded.
@@ -148,14 +148,14 @@ Before the first customer goes live, Vento also needs:
 
 ## 7. What this changes elsewhere
 - `docs/PRODUCT.md`: a pointer to this plan.
-- `docs/DOMAIN.md`: terms *Feature*, *Available*, *Releasable*, *Release*, *Release stage*, *Release group*, *Feature flag*, *Early access*, *Plan*, *Entitlement*, *Limit*, *Add-on*, *Override*, *Trial*, *Vento super-admin*.
+- `docs/DOMAIN.md`: terms *Feature*, *Available*, *Releasable*, *Release*, *Release stage*, *Release group*, *Feature flag*, *Early access*, *Plan*, *Entitlement*, *Limit*, *Add-on*, *Override*, *Trial*, *Super-admin*.
 - Brick 3a's `nav.ts` `status` field gives way to flags (see the flag spec).
 - Specs for J-SAL-07, J-FIN-03, J-CMP-01 and J-CMP-02 must say what Release 1 covers and what comes later.
 
 ---
 
 ## 8. Build order
-The build follows the dependencies, not the release grouping, and continues through every module: shell and settings (3a–3d), feature flags and plans, **the Vento admin console right after 3d** (owner's decision 26 Nov 2026: organizations, plans and trials, releases, AI usage, failed jobs, read-only support access; clearly separate from customer workspaces; real two-step sign-in for admin actions, replacing `--by` attribution), approvals and audit (brick 4), then the modules along the thread (land, projects and site, sales, finance, compliance, documents, buyer portal, reports), then R2–R4 features and the AI add-on. A module can be built well before it is released, and stays at `internal` until the owner releases it.
+The build follows the dependencies, not the release grouping, and continues through every module: shell and settings (3a–3d), feature flags and plans, **the Vento Real Estate console right after 3d** (owner's decision 26 Nov 2026: organizations, plans and trials, releases, AI usage, failed jobs, read-only support access; clearly separate from customer workspaces; real two-step sign-in for admin actions, replacing `--by` attribution), approvals and audit (brick 4), then the modules along the thread (land, projects and site, sales, finance, compliance, documents, buyer portal, reports), then R2–R4 features and the AI add-on. A module can be built well before it is released, and stays at `internal` until the owner releases it.
 
 **Role homes grow with each module (owner's rule, 26 Nov 2026).** Every role lands on a home made for its job, with one anatomy (DESIGN-NOTES "Role homes"): four numbers for the role, a work queue sorted by due date then impact, and two job-specific panels. Each module brick adds its own numbers, queue items and panels to the role homes it serves (e.g. Sales adds overdue buyers to the Sales and MD homes; Projects adds today's diary and deliveries to the project manager and site homes). Everything on Home follows the location filter: **All entities** shows the group-wide view with a per-entity breakdown; choosing one entity shows only that entity's numbers, queue and panels; members limited to one entity see it automatically; Projects adds a project/site filter for project managers and site engineers. No separate dashboard project at the end.
 
@@ -179,6 +179,6 @@ The build follows the dependencies, not the release grouping, and continues thro
 13. Pilots are optional; if used, two or three developers, Enterprise at no charge while piloting.
 14. Feature flags and plans are built as the next slice after 3a (before 3b).
 15. Three plans (Starter, Growth, Enterprise) as in section 5, with the owner free to rename and reprice them.
-16. Features outside an organization's plan are hidden from everyone's navigation; owners alone see "Available on Growth" in ⌘K and limit messages, with **Talk to Vento**.
+16. Features outside an organization's plan are hidden from everyone's navigation; owners alone see "Available on Growth" in ⌘K and limit messages, with **Talk to Vento Real Estate**.
 17. Security and compliance are in every plan.
 18. The flag spec's defaults are approved: NOT_FOUND for unavailable features, "Early access" tag, "Soon" only in internal organizations, no second approver while fewer than four super-admins, customers told of changes in their audit trail, 30-second propagation, plan versions keep existing customers on their deal.

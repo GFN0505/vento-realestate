@@ -1,6 +1,6 @@
 # Documentation map
 
-Everything about Vento that isn't code lives in `docs/`. If you're new, read in this order: **PRODUCT → DOMAIN → journeys/00-golden-thread → SCREENS**.
+Everything about Vento Real Estate that isn't code lives in `docs/`. If you're new, read in this order: **PRODUCT → DOMAIN → journeys/00-golden-thread → SCREENS**.
 
 | Document | What it answers | Owner (agent) | Update when |
 |---|---|---|---|

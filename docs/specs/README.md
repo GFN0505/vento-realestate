@@ -12,6 +12,6 @@ A spec links to the journeys it adds or changes (`docs/journeys/`), the screens 
 | [Team (brick 3b)](team.md) | Platform | J-ONB-02, J-ONB-06, J-ONB-01 | shipped (PR #5) |
 | [Roles and organization (brick 3c)](roles-and-organization.md) | Platform | J-ONB-07, J-ONB-08, J-ONB-01, J-ONB-05 | shipped (PR #7) |
 | [My security and passkeys (brick 3d)](my-security.md) | Platform | J-ONB-04, J-ONB-09, J-ONB-10, J-ONB-06 | approved |
-| [Vento Real Estate console (super-admin)](admin-console.md) | Platform | J-ADM-01, J-ADM-02, J-ADM-03, J-ADM-05, J-ADM-06, J-ADM-07, J-ADM-04, J-ONB-11 | in build (slice 1 built on `feat/admin-console`; slice 1b, staff accounts, invitations, Dashboard and naming, added 27 Nov 2026 for the same PR; slice 2 in the console backlog) |
+| [Vento Real Estate console (super-admin)](admin-console.md) | Platform | J-ADM-01, J-ADM-02, J-ADM-03, J-ADM-05, J-ADM-06, J-ADM-07, J-ADM-04, J-ONB-11 | in build (slices 1 and 1b built on `feat/admin-console`, PR #9, awaiting review; 1b: staff accounts, invitations, Dashboard, My account and naming, decisions 0022 and 0023; slice 2 in the console backlog) |
 
 Status: `draft` · `approved` (owner agreed, ready to plan) · `in build` · `shipped` · `dropped`

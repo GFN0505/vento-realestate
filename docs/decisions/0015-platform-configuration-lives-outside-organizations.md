@@ -1,7 +1,7 @@
 # 0015 · Platform configuration lives outside organizations
 
 - **Date:** 2026-11-26
-- **Status:** accepted; the section "Trust model until the console" is superseded by [0021](0021-the-console-is-a-separate-area-behind-fresh-two-step.md) (see "Trust model" below)
+- **Status:** accepted; the section "Trust model until the console" is superseded by [0021](0021-the-console-is-a-separate-area-behind-fresh-two-step.md) (see "Trust model" below); who a super-admin is, amended by [0023](0023-staff-accounts-are-separate-from-customer-accounts.md)
 
 ## Context
 Feature flags and plans (docs/specs/feature-flags.md) need data that belongs to Vento, not to any customer: the release stage of each feature, the plans and their versions, who is a Vento super-admin, and the trail of changes to all of these. Non-negotiable 1 says every domain table has an organizationId. Statutory rules (decision 0005) are the same kind of data, shared by all organizations and versioned.
@@ -16,6 +16,8 @@ Until the R2 super-admin console brings real sign-in, the commands run on the AP
 
 ### Trust model (amended 26 Nov 2026 by decision 0021)
 Host access stays limited to super-admins, but day-to-day changes need a real sign-in in the Vento console (decision 0021). The commands refuse changes without `--break-glass`; a break-glass change is attributed by `--by` and the operator as before and emails every other super-admin.
+
+*Amended 27 Nov 2026 by decision 0023:* a super-admin is a staff account, never a role on a customer account (decision 0023).
 
 ### Staff names in the platform trail
 Platform audit rows keep the staff member's name and operator permanently, even though they are append-only. The basis is accountability (NDPA: legitimate interest in a reliable record of who changed a customer's access or terms): without it, a change to what a customer can use or pays for can't be explained or challenged. Only the name, the operator string and the reason are kept, never contact details, and customers' own trails show "Vento", not the person.

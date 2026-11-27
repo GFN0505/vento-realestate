@@ -20,12 +20,14 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0012](0012-uuidv7-and-same-organization-keys.md) | Database-generated UUID v7 ids and same-organization foreign keys | accepted |
 | [0013](0013-tab-organization-guard.md) | Each tab names its organization; the server refuses a mismatch | accepted |
 | [0014](0014-entity-is-a-view-filter.md) | The current entity is a view filter in the URL, never an access input | accepted |
-| [0015](0015-platform-configuration-lives-outside-organizations.md) | Platform configuration lives outside organizations | accepted (trust model amended by 0021) |
+| [0015](0015-platform-configuration-lives-outside-organizations.md) | Platform configuration lives outside organizations | accepted (trust model amended by 0021; super-admins by 0023) |
 | [0016](0016-feature-availability-declared-in-the-contract-enforced-in-me.md) | Feature availability: declared in the contract, enforced in member, read from memory | accepted |
 | [0017](0017-transactional-email-through-postmark-with-delivery-tracked-o.md) | Transactional email through Postmark, with delivery tracked on invitations | accepted |
 | [0018](0018-entities-are-called-companies-on-screen.md) | Entities are called companies on screen; code keeps "entity" | accepted |
-| [0019](0019-passkeys-count-as-two-step.md) | Passkeys count as two-step; the authenticator app stays the fallback | accepted |
+| [0019](0019-passkeys-count-as-two-step.md) | Passkeys count as two-step; the authenticator app stays the fallback | accepted (host updated by 0022) |
 | [0020](0020-approximate-place-from-an-offline-ip-database.md) | Approximate place from an offline IP database, looked up once at sign-in | accepted |
-| [0021](0021-the-console-is-a-separate-area-behind-fresh-two-step.md) | The console is a separate area on the same origin, behind fresh two-step | accepted (amends 0015's trust model) |
+| [0021](0021-the-console-is-a-separate-area-behind-fresh-two-step.md) | The console is a separate area on the same origin, behind fresh two-step | accepted (amends 0015's trust model; entry path amended by 0023, host by 0022) |
+| [0022](0022-the-product-is-always-called-vento-real-estate.md) | The product is always called Vento Real Estate | accepted |
+| [0023](0023-staff-accounts-are-separate-from-customer-accounts.md) | Staff accounts are separate from customer accounts and join by invitation | accepted (amends 0015 and 0021) |
 
 Template: [0000-template.md](0000-template.md)

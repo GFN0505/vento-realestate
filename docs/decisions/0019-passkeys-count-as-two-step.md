@@ -2,6 +2,7 @@
 
 - **Date:** 2026-11-26
 - **Status:** accepted (owner, 26 Nov 2026, with the brick 3d plan)
+- *Amended 27 Nov 2026 by decision [0022](0022-the-product-is-always-called-vento-real-estate.md):* the production host is `realestate.ventoerp.com`, so passkeys are bound to it. The move from the earlier planned host cost nothing: no passkeys existed there.
 
 ## Context
 Brick 3d adds passkeys (Face ID, Touch ID, a fingerprint, Windows Hello or the device PIN) through Better Auth's passkey plugin. Two-step sign-in (decision 0010, brick 2a) is an authenticator-app code after the password, required by some roles and, from 3d, by an organization-wide setting. We had to decide whether a passkey sign-in also has to pass the code step, whether a passkey can replace the app for people who are required to use two-step, and which web domain the passkeys are bound to. All three are hard to reverse: once people sign in with passkeys every day, adding a code step back or forcing the app on them is a visible step backwards, and passkeys can't be moved to another domain.
@@ -14,7 +15,7 @@ Brick 3d adds passkeys (Face ID, Touch ID, a fingerprint, Windows Hello or the d
 
 ## Consequences
 - Every sign-in path we add later (buyer portal, realtor portal) must say whether it counts as two-step, and the gating middleware must keep treating "two-step on" as "the app is set up", not "signed in with a second factor".
-- Changing the production host name (for example from `app.ventoerp.com` to another domain) makes every passkey stop working. People fall back to password and code and add new passkeys; the release notes must warn them. A move to a shared parent domain (`rpID: 'ventoerp.com'`) needs a new record.
+- Changing the production host name (for example from `realestate.ventoerp.com` to another domain) makes every passkey stop working. People fall back to password and code and add new passkeys; the release notes must warn them. A move to a shared parent domain (`rpID: 'ventoerp.com'`) needs a new record.
 - The security agent audits the passkey routes before `platform.passkeys` moves beyond `pilot`.
 - A required member can't go passkey-only. Passkey-only accounts, and requiring passkeys for an organization, stay out of scope.
 
