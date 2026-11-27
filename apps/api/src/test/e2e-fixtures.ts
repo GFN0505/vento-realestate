@@ -24,6 +24,7 @@
  *   tsx src/test/e2e-fixtures.ts companies [starter]    holding, Parkview, Lekki (two people only there), archived Ikoyi Crest; owner, Parkview-only admin, sales
  *   tsx src/test/e2e-fixtures.ts custom-role [name]     a custom role from Project manager held by one member, plus a viewer to give it to
  *   tsx src/test/e2e-fixtures.ts role-editor            an "Office manager" custom role (Settings, Sales; no Finance) with its holder, an admin and a sales member
+ *   tsx src/test/e2e-fixtures.ts approvals-team [pending]        two owners, an admin, an office manager who may edit roles, a "Site engineer" role held by one person, the two default approval rules, and a few audited changes (brick 4)
  *   tsx src/test/e2e-fixtures.ts no-company             a member limited only to an archived company
  *   tsx src/test/e2e-fixtures.ts security-team          owner, admin, finance (two-step on), sales and viewer (password only) in an internal organization (brick 3d)
  *   tsx src/test/e2e-fixtures.ts fill-passkeys <email> <total>  adds stored passkeys until the person has `total` (limit tests)
@@ -50,6 +51,7 @@
  * Prints one JSON line. Emails are unique per run, so specs never share or collide with seed data.
  */
 
+import type { PermissionSet } from '@vento/shared'
 import type { PlatformActor } from '@/platform/platform-audit'
 
 // Quiet logs so stdout stays one JSON line; set before the app modules read the environment.
@@ -744,9 +746,17 @@ async function createCustomRoleFixture(name: string | undefined) {
   const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.roles.owner')
   const org = await f.createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
   await f.createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  // Project manager's Approve ticks would make two-step mandatory (decision 0024); the roles
+  // journeys start from a role with none, so two-step is the holder's to choose.
+  const permissions = Object.fromEntries(
+    Object.entries(defaultPermissions(defaultRole('project_manager'))).map(([module, actions]) => [
+      module,
+      actions.filter((action) => action !== 'approve'),
+    ]),
+  ) as PermissionSet
   const role = await f.createCustomRole(db, org, {
     name: name ?? 'Site supervisor',
-    permissions: defaultPermissions(defaultRole('project_manager')),
+    permissions,
   })
   const bayo = await passwordUser(db, 'Bayo Ogunleye', 'e2e.roles.holder')
   await f.createMember(db, org, { role: 'viewer', roleId: role.id, user: bayo })
@@ -791,6 +801,81 @@ async function createRoleEditor() {
   }
 }
 
+/**
+ * Brick 4: "Vento Homes" where approval rules apply. Olumide and Aisha are owners, Ibrahim is an
+ * admin (all three can approve), Kunle holds a custom "Office manager" role (Settings edit, so he
+ * can ask for a role change but not approve), and Halima holds "Site engineer". The two default
+ * rules exist (role changes: Owner or Admin; making an owner: Owner), as onboarding makes them.
+ * Everyone who approves or edits has two-step on. A couple of audited changes give the log rows.
+ */
+async function createApprovalsTeam(withRequest = false) {
+  const { db } = await import('@/db/client')
+  const { defaultPermissions, defaultRole } = await import('@vento/shared')
+  const f = await import('./factories')
+  const suffix = Date.now().toString(36)
+  const olumide = await passwordUser(db, 'Olumide Bankole', 'e2e.appr.olumide')
+  const org = await f.createOrganization(db, { name: `Vento Homes ${suffix}`, owner: olumide })
+  await f.createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
+  const parkview = await f.createEntity(db, org, { name: 'Parkview Residences SPV Ltd' })
+  const aisha = await passwordUser(db, 'Aisha Bello', 'e2e.appr.aisha')
+  await f.createMember(db, org, { role: 'owner', user: aisha })
+  const ibrahim = await passwordUser(db, 'Ibrahim Musa', 'e2e.appr.ibrahim')
+  await f.createMember(db, org, { role: 'admin', user: ibrahim })
+  const kunle = await passwordUser(db, 'Kunle Ojo', 'e2e.appr.kunle')
+  const office = await f.createOfficeManager(db, org, kunle)
+  const site = await f.createCustomRole(db, org, {
+    name: 'Site engineer',
+    // Within the Office manager's reach (Sales and what it sees), so Kunle can edit it.
+    permissions: defaultPermissions(defaultRole('sales')),
+  })
+  const halima = await passwordUser(db, 'Halima Yusuf', 'e2e.appr.halima')
+  await f.createMember(db, org, { role: 'viewer', roleId: site.id, user: halima })
+  const chidi = await passwordUser(db, 'Chidi Okafor', 'e2e.appr.chidi')
+  await f.createMember(db, org, { role: 'viewer', user: chidi })
+  await f.createApprovalRule(db, org, {
+    actionKey: 'access.role.update',
+    steps: [['owner', 'admin']],
+  })
+  await f.createApprovalRule(db, org, { actionKey: 'access.member.make_owner', steps: [['owner']] })
+
+  const people = { olumide, aisha, ibrahim, kunle } as const
+  const secrets: Record<string, string> = {}
+  for (const [key, user] of Object.entries(people)) secrets[key] = await turnOnTwoStep(user.email)
+  const person = (key: keyof typeof people) => ({
+    email: people[key].email,
+    name: people[key].name,
+    totpSecret: secrets[key] ?? '',
+  })
+  // An audited change by an owner (Chidi becomes Sales), so the log has a row to open.
+  await setRole(chidi.email, 'sales')
+  // Optionally Kunle's request is already waiting (Site engineer loses Sales & CRM edit).
+  if (withRequest) {
+    const { updateRole } = await import('@/modules/roles/roles.service')
+    const { toggleCell } = await import('@vento/shared')
+    const ctx = await f.contextFor(db, kunle, org)
+    await updateRole(ctx, {
+      id: site.id,
+      version: 1,
+      permissions: toggleCell(defaultPermissions(defaultRole('sales')), 'sales', 'edit', false),
+      reason: 'Halima signs off site POs now',
+    })
+  }
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: f.TEST_PASSWORD,
+    parkview: { id: parkview.id, name: parkview.name },
+    role: { id: site.id, name: site.name },
+    officeRole: { id: office.role.id, name: office.role.name },
+    owner: person('olumide'),
+    secondOwner: person('aisha'),
+    admin: person('ibrahim'),
+    maker: person('kunle'),
+    holder: { email: halima.email, name: halima.name },
+    changed: { email: chidi.email, name: chidi.name },
+  }
+}
+
 /** Kunle can see only Ikoyi Crest, which is archived: "No company" and the Home card. */
 async function createNoCompany() {
   const { db } = await import('@/db/client')
@@ -801,7 +886,8 @@ async function createNoCompany() {
   await f.createEntity(db, org, { name: `Vento Homes ${suffix} Ltd`, type: 'holding' })
   const ikoyi = await f.archiveEntityRow(db, await f.createEntity(db, org, IKOYI), owner)
   const kunle = await passwordUser(db, 'Kunle Ojo', 'e2e.nocompany.member')
-  await f.createMember(db, org, { role: 'project_manager', user: kunle, entityIds: [ikoyi.id] })
+  // Sales needs no two-step (Project manager approves, so it does), keeping the sign-in simple.
+  await f.createMember(db, org, { role: 'sales', user: kunle, entityIds: [ikoyi.id] })
   return {
     organizationId: org.id,
     organizationName: org.name,
@@ -1251,6 +1337,7 @@ async function main() {
     companies: () => createCompanies(arg),
     'custom-role': () => createCustomRoleFixture(arg),
     'role-editor': createRoleEditor,
+    'approvals-team': () => createApprovalsTeam(arg === 'pending'),
     'no-company': createNoCompany,
     'security-team': createSecurityTeam,
     'fill-passkeys': () => fillPasskeys(arg, arg2),

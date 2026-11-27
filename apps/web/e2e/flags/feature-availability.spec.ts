@@ -89,13 +89,16 @@ async function expectNoModules(scope: Page | Locator, labels: readonly string[])
   }
 }
 
-/** `owner`: Settings is core (every plan), so an owner keeps it in the sidebar footer. */
+/**
+ * `owner`: Settings is core (every plan), so an owner keeps it in the sidebar footer, and owners
+ * approve, so Approvals (not a module, so no plan gates it) follows Home, as a tab on phones.
+ */
 async function expectNoModulesAnywhere(page: Page, mobile: boolean, owner = false) {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: HOME_GREETING })).toBeVisible()
   const shell = page.getByRole('navigation', { name: mobile ? 'Tabs' : 'Main' })
   await expect(shell.getByRole('link')).toHaveText(
-    owner && !mobile ? ['Home', 'Settings'] : ['Home'],
+    owner ? (mobile ? ['Home', 'Approvals'] : ['Home', 'Approvals', 'Settings']) : ['Home'],
   )
   await expectNoModules(page, MODULES)
   if (mobile) {
@@ -108,7 +111,7 @@ async function expectNoModulesAnywhere(page: Page, mobile: boolean, owner = fals
   await openPalette(page)
   await expect(
     page.getByRole('option', {
-      name: /^Go to (?!Home|Settings|Team|Organization|Companies|Roles|My security)/,
+      name: /^Go to (?!Home|Settings|Team|Organization|Companies|Roles|My security|Approval|Audit)/,
     }),
   ).toHaveCount(0)
   await page.getByPlaceholder('Type a page or action').fill('parcels')

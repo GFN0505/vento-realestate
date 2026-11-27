@@ -346,3 +346,27 @@ export const flagStage = (key: string, stage: 'off' | 'internal' | 'pilot' | 'on
 /** A break-glass change by that super-admin in Vento's activity (the rose Command line tag). */
 export const platformActivity = (email: string) =>
   runFixture<{ email: string }>('platform-activity', email)
+
+type ApprovalsPerson = { email: string; name: string; totpSecret: string }
+
+export type ApprovalsTeamFixture = {
+  organizationId: string
+  organizationName: string
+  password: string
+  parkview: { id: string; name: string }
+  role: { id: string; name: string }
+  officeRole: { id: string; name: string }
+  owner: ApprovalsPerson
+  secondOwner: ApprovalsPerson
+  admin: ApprovalsPerson
+  /** Holds Office manager: may edit roles (so must ask), cannot approve. */
+  maker: ApprovalsPerson
+  /** Holds the custom role "Site engineer". */
+  holder: { email: string; name: string }
+  /** Became Sales through an audited change. */
+  changed: { email: string; name: string }
+}
+
+/** Two owners, an admin, a role editor, "Site engineer" and the default approval rules (brick 4). */
+export const createApprovalsTeamFixture = (pending = false) =>
+  runFixture<ApprovalsTeamFixture>('approvals-team', ...(pending ? ['pending'] : []))
