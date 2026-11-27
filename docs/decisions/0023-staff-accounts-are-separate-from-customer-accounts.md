@@ -22,7 +22,7 @@ Until now a Vento Real Estate super-admin was any customer account with an extra
 - A staff member who wants to try the product as a customer needs a second email.
 - An unfinished staff sign-up can linger until the next staff-invitation action or sign-in attempt.
 - At deploy, the owner's own account may stop being a super-admin; the bootstrap invitation must be run straight after, and a second super-admin invited at once (RUNBOOK).
-- Nobody can reset their own two-step, from the console or the command line: the break-glass reset needs another active super-admin as `--by`. A lone super-admin who loses both phone and backup codes is locked out of the console, so production keeps at least two super-admins.
+- In the console nobody can reset their own two-step. From the host, `superadmin reset-two-step --break-glass` may reset your own (password kept, every session ended, two-step set up again before the console opens; the security inbox, the other super-admins and the person are emailed), so a lone super-admin who loses both phone and backup codes isn't locked out for good. Production still keeps at least two super-admins.
 - Turning a former staff email into a customer account needs a migration (the kind is fixed).
 
 ## Alternatives considered

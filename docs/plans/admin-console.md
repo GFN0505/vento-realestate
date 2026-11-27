@@ -770,7 +770,7 @@ PlatformAuditEvent  + channel 'account' rows: a staff person's own account event
 
 ### Invariants
 - **DB:** `staff_invitations_email_pending_unique` (one pending per email); `token_hash` unique; `email = lower(email)`; `char_length(reason) between 3 and 500`; `(user_id is null) = (started_at is null)`; `status <> 'accepted' or user_id is not null`; `status not in ('accepted','withdrawn') or responded_at is not null`; the three triggers above; `platform_admins_user_active_unique` and the append-only triggers unchanged.
-- **Service:** a staff account is a super-admin only after a verified code; at most 5 open invitations; the fourth-super-admin note counts active plus open; nobody resets their own two-step or removes themselves; there's always one active super-admin; every invite, resend, withdraw, join, reset and removal takes the existing `pg_advisory_xact_lock(hashtext('platform_admins'))`, so the counts are serial.
+- **Service:** a staff account is a super-admin only after a verified code; at most 5 open invitations; the fourth-super-admin note counts active plus open; nobody resets their own two-step in the console (the host's break-glass `reset-two-step` may, see "1b owner's answer") or removes themselves; there's always one active super-admin; every invite, resend, withdraw, join, reset and removal takes the existing `pg_advisory_xact_lock(hashtext('platform_admins'))`, so the counts are serial.
 
 ## 1b.3 Database
 

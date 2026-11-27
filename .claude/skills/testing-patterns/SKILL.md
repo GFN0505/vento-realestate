@@ -57,6 +57,8 @@ Query by role and label (`getByRole('button', { name: 'Save subscription' })`). 
 
 ## Console (super-admin)
 - API: `consoleClientAs(...)` in `apps/api/src/test/router-client.ts` calls console procedures as a super-admin with an open console window; `createSuperAdmin(...)` in `factories.ts` makes one (it can also make a revoked one). The access walk in `procedure-guard.test.ts` covers every `area: 'console'` procedure automatically.
+- Staff accounts (decision 0023): `createStaffAccount({ state: 'active' | 'joining' | 'closed' })`, `createStaffInvitation({ status, started, invitedBy })` and `createSuperAdmin` (a staff account, no organization) in `factories.ts`; `joinAsStaff(b)` in `flows.ts` runs the real staff sign-up over HTTP. Tests that change `platform_admins` or `staff_invitations` take the `platform_admins` advisory lock first; a test needing the pre-1b state uses `SET LOCAL session_replication_role = replica`.
+- e2e fixtures: `super-admin <active|revoked|two-step-reset>`, `staff-invitation`, `customer-account`, `age-staff-invitation`, `dashboard`.
 - e2e: console specs live in `apps/web/e2e/console/`. A spec that changes a global release stage restores it afterwards, runs serially, and uses only stage keys no other spec uses.
 
 ## Naming and style

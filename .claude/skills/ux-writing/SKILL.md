@@ -20,6 +20,11 @@ Clear, warm, professional. Like a capable colleague, not a robot or a salesperso
 9. **Respect money and privacy.** Reminders never shame. Never show a buyer's balance, delinquency or KYC details to anyone who isn't authorised.
 10. **Say "company", never "entity"** on screen, in emails and in help (decision 0018). "Entity" stays in code, the API and DOMAIN.md. An estate or site is a project, not a company.
 
+## Product name
+- Always "Vento Real Estate", never "Vento" alone: other Vento products exist (decision 0022). Possessive: "Vento Real Estate's".
+- Three approved short forms: the logo lockup "Vento | REAL ESTATE", "Staff · all customers" on the console's phone top bar, and "Ask" for the AI feature.
+- The copy tests (`apps/web/src/test/brand-copy.test.ts`, `apps/api/src/test/brand-copy.test.ts`) fail on a bare "Vento" in code, emails and help. An exception goes in `BRAND_ALLOW` in `packages/shared/src/brand/bare-vento.ts`, with its reason.
+
 ## Patterns
 | Situation | Pattern | Example |
 |---|---|---|

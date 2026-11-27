@@ -21,6 +21,7 @@ Start with `git diff main...HEAD --stat`, then read each changed file **and** it
 
 Console: every `console.*` contract path is built on `staff` (`area: 'console'`) and its procedure on `consoleWindow`, never `member`; `apps/api/src/platform/console/` never imports buyer, finance or document tables:
 `grep -rnE "schema/(buyer|finance|document|subscription|receipt)" apps/api/src/platform/console/` should return nothing.
+Staff accounts: a staff account gets NOT_FOUND from every customer (`member`) procedure (the staff walk in `procedure-guard.test.ts` covers new ones); every staff-invitation write takes the `platform_admins` lock first; Dashboard queries never select `actor_name`, `target_label`, IP or device from `audit_events`; the brand-copy tests stay green.
 
 ## 3. Money and dates
 - No `number` maths on money. Look for `parseFloat`, `Number(`, `+` and `*` near amount fields.
