@@ -42,7 +42,7 @@ describe('plan limits: entities', () => {
       await expect(client.entities.create(spv('Third SPV Ltd'))).rejects.toMatchObject({
         code: 'FORBIDDEN',
         message:
-          'Your Starter plan includes 2 active companies. Archive one, or talk to Vento about Growth.',
+          'Your Starter plan includes 2 active companies. Archive one, or talk to Vento Real Estate about Growth.',
         data: { reason: 'plan_limit', limit: 'entities', included: 2 },
       })
       expect(await auditCount(tx, org, 'entity.created')).toBe(0)
@@ -82,7 +82,7 @@ describe('plan limits: entities', () => {
       await client.entities.create(spv('Third SPV Ltd'))
       await expect(client.entities.create(spv('Fourth SPV Ltd'))).rejects.toMatchObject({
         message:
-          'Your plan includes 3 active companies. Archive one, or talk to Vento about Growth.',
+          'Your plan includes 3 active companies. Archive one, or talk to Vento Real Estate about Growth.',
         data: { included: 3 },
       })
     }))
@@ -137,7 +137,7 @@ describe('plan limits: people', () => {
       await expect(client.invitations.create(invite(org, 3))).rejects.toMatchObject({
         code: 'FORBIDDEN',
         message:
-          'Your plan includes 10 people, and 8 are in or invited. Remove someone or talk to Vento about Growth.',
+          'Your plan includes 10 people, and 8 are in or invited. Remove someone or talk to Vento Real Estate about Growth.',
         data: { reason: 'plan_limit', limit: 'members', included: 10 },
       })
       const rows = await tx.select().from(invitations).where(eq(invitations.organizationId, org.id))
@@ -212,7 +212,9 @@ describe('planLimitMessage', () => {
         higherPlanName: null,
         ownerName: null,
       }),
-    ).toBe('Your Starter plan includes 1 active project. Archive a project or talk to Vento.')
+    ).toBe(
+      'Your Starter plan includes 1 active project. Archive a project or talk to Vento Real Estate.',
+    )
   })
 })
 

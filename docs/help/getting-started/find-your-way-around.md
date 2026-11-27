@@ -1,10 +1,10 @@
 # Find your way around
 
-After you sign in you land on **Home**: your key numbers (they fill in as each part of Vento goes live) and the parts of Vento you can open.
+After you sign in you land on **Home**: your key numbers (they fill in as each part of Vento Real Estate goes live) and the parts of Vento Real Estate you can open.
 
 **The side panel**
 - Shows only what your role can open. If you need something that isn't there, ask an owner or admin.
-- Drag its edge to make it wider or narrower, or press `[` to collapse it to icons. Vento remembers your choice on this device.
+- Drag its edge to make it wider or narrower, or press `[` to collapse it to icons. Vento Real Estate remembers your choice on this device.
 - At the top: your organization. If you belong to more than one developer group, click it to switch.
 
 **Find anything fast**
@@ -20,7 +20,7 @@ After you sign in you land on **Home**: your key numbers (they fill in as each p
 **If something goes wrong**
 - *"You don't have access"*: the page names who can give you access.
 - *"Something went wrong"*: quote the reference shown (like ERR-7F3A-1126) when you contact support.
-- *"You're offline"*: Vento reconnects by itself when your connection returns.
+- *"You're offline"*: Vento Real Estate reconnects by itself when your connection returns.
 
 **Owners and admins:** *Preview as role* in your menu shows what another role sees, without changing anyone's access. A banner reminds you until you stop.
 

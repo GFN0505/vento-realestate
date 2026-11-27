@@ -19,6 +19,9 @@ export const SETUP_ACTOR: PlatformActor = {
   operator: null,
 }
 
+/** The setup actor's name now and before 1b (old rows are append-only and keep theirs). */
+export const SETUP_ACTOR_NAMES: readonly string[] = [SETUP_ACTOR.name, 'Vento (setup)', 'Bootstrap']
+
 /** Publishes each starting plan that doesn't exist yet. Safe to run again: existing plans are left alone. */
 export async function seedPlans(db: DbOrTx, actor: PlatformActor = SETUP_ACTOR): Promise<string[]> {
   const published: string[] = []

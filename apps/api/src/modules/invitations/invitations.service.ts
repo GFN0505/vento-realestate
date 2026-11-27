@@ -145,7 +145,7 @@ function invitationMessage(
   return {
     to: row.email,
     tag: 'invitation',
-    fromName: displayName(`${d.organizationName} via Vento`),
+    fromName: displayName(`${d.organizationName} via Vento Real Estate`),
     replyTo: { name: displayName(sender.name), email: sender.email },
     metadata: { invitationId: row.id },
     ...invitationEmail({

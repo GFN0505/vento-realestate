@@ -17,6 +17,14 @@ export const BRAND_ALLOW: readonly BrandAllowance[] = [
     why: 'The logo lockup counts as the full name (short form a, owner 27 Nov 2026).',
   },
   {
+    phrase: 'Vento (scheduled)',
+    why: 'The scheduled actor on rows written before 1b (append-only): matched when read, never shown as new copy.',
+  },
+  {
+    phrase: 'Vento (setup)',
+    why: 'The setup actor on rows written before 1b (append-only): matched when read, never shown as new copy.',
+  },
+  {
     file: 'apps/web/src/components/vento-mark.tsx',
     line: 'Vento',
     why: 'The wordmark: it sits beside its "Real Estate" descriptor, so the lockup reads in full.',
@@ -30,10 +38,12 @@ export type BareVento = {
   text: string
 }
 
-// "Vento" as a whole word, not followed by "Real Estate" (a line break or &nbsp; may sit between
-// them in wrapped JSX or email HTML). Case-sensitive, so `@vento/*`, `VENTO_*` and `vento_app` never
+// "Vento" as a whole word, not followed by "Real Estate". A line break, &nbsp; or markup may sit
+// between them (wrapped JSX, the email header's `Vento <span …>Real Estate</span>` lockup): the
+// visible words still read in full. Case-sensitive, so `@vento/*`, `VENTO_*` and `vento_app` never
 // match; nor do identifiers like `VentoMark` or `talkToVento`, which have no word boundary there.
-const BARE_VENTO = /\bVento\b(?!(?:\s|&nbsp;)+Real(?:\s|&nbsp;)+Estate\b)/g
+const GAP = String.raw`(?:\s|&nbsp;|<[^<>]*>)+`
+const BARE_VENTO = new RegExp(String.raw`\bVento\b(?!${GAP}Real${GAP}Estate\b)`, 'g')
 
 /** Same length, same line breaks: indexes and line numbers still point at the original. */
 function blankOut(text: string): string {

@@ -127,7 +127,7 @@ describe('changing the AI budget', () => {
           ),
         )
       expect(notices).toEqual([
-        { metadata: { message: 'Vento changed your AI budget to ₦250,000 a month' } },
+        { metadata: { message: 'Vento Real Estate changed your AI budget to ₦250,000 a month' } },
       ])
     }))
 

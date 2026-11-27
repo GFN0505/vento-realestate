@@ -12,7 +12,7 @@ type Topic = {
 /** The message Vento receives, so nobody has to ask which organization or plan. */
 export function talkToVentoMessage({ organizationName, planName, about }: Topic): string {
   return [
-    `Hello Vento, I'd like to talk about ${about}.`,
+    `Hello Vento Real Estate, I'd like to talk about ${about}.`,
     '',
     `Organization: ${organizationName}`,
     ...(planName ? [`Plan: ${planName}`] : []),

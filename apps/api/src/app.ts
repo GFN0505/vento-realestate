@@ -157,7 +157,7 @@ export function createApp(deps: AppDeps): Hono {
       isCrossSite(c.req.raw.headers, env.WEB_ORIGIN)
     ) {
       logger.warn('Refused a cross-site call', { requestId: c.get('requestId'), path: c.req.path })
-      return c.json({ message: "This request didn't come from Vento." }, 403)
+      return c.json({ message: "This request didn't come from Vento Real Estate." }, 403)
     }
     await next()
   })

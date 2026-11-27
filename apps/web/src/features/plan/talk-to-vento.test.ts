@@ -8,10 +8,10 @@ const topic = {
   about: 'Commissions',
 }
 
-describe('Talk to Vento', () => {
+describe('Talk to Vento Real Estate', () => {
   it('fills in the organization, plan and topic', () => {
     expect(talkToVentoMessage(topic)).toBe(
-      "Hello Vento, I'd like to talk about Commissions.\n\nOrganization: Lekki Partners Ltd\nPlan: Starter",
+      "Hello Vento Real Estate, I'd like to talk about Commissions.\n\nOrganization: Lekki Partners Ltd\nPlan: Starter",
     )
   })
 
@@ -27,12 +27,12 @@ describe('Talk to Vento', () => {
     expect(decodeURIComponent(href.split('body=')[1] ?? '')).toBe(talkToVentoMessage(topic))
   })
 
-  it('opens WhatsApp with digits only when Vento has a number', () => {
+  it('opens WhatsApp with digits only when Vento Real Estate has a number', () => {
     const href = talkToVentoHref({
       ...topic,
       contact: { ...topic.contact, whatsapp: '+234 803 000 0000' },
     })
-    expect(href).toMatch(/^https:\/\/wa\.me\/2348030000000\?text=Hello%20Vento/)
+    expect(href).toMatch(/^https:\/\/wa\.me\/2348030000000\?text=Hello%20Vento%20Real%20Estate/)
   })
 
   it('encodes characters that would break the link', () => {

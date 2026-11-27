@@ -204,7 +204,9 @@ describe('members', () => {
         aisha.member.id,
       )
       expect(result.resetPasswordFor).toBe(aisha.user.email)
-      expect(result.emails[0]?.subject).toBe('Vento: your two-step sign-in was reset by Kemi Admin')
+      expect(result.emails[0]?.subject).toBe(
+        'Vento Real Estate: your two-step sign-in was reset by Kemi Admin',
+      )
       expect(result.emails[0]?.text).toContain(
         "set a new password with the link we've just emailed you",
       )
@@ -239,7 +241,7 @@ describe('members', () => {
   // Audit M1: whoever in the organization may reset two-step, a super-admin's stays. Staff can't
   // be members since 0014, so this backstop needs the pre-1b state, built with the guard off.
   it.each(['owner', 'admin'] as const)(
-    'refuses a %s resetting a Vento super-admin’s two-step, and changes nothing',
+    'refuses a %s resetting a Vento Real Estate super-admin’s two-step, and changes nothing',
     (role) =>
       withRollback(async (tx) => {
         const org = await createOrganization(tx)
@@ -356,7 +358,7 @@ describe('members from the Team page', () => {
         entityIds: null,
       })
       expect(result.row).toMatchObject({ id: aisha.member.id, role: { key: 'owner' } })
-      const subject = 'Vento: Aisha Bello is now an owner of Vento Homes Ltd'
+      const subject = 'Vento Real Estate: Aisha Bello is now an owner of Vento Homes Ltd'
       for (const person of [org.owner, second.user, aisha.user]) {
         expect(mailer.to(person.email).map((m) => m.subject)).toEqual([subject])
       }

@@ -179,7 +179,7 @@ export function PasswordStep({
         </div>
       )}
       <AuthFootnote>
-        New to Vento? <Link to="/sign-up">Create an account</Link>
+        New to Vento Real Estate? <Link to="/sign-up">Create an account</Link>
       </AuthFootnote>
     </form>
   )

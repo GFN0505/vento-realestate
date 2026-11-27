@@ -50,7 +50,7 @@ export const PLANS_HELP = `Usage: pnpm plans <command>
   notify-trials                          daily from cron (VENTO_CRON=1); by hand needs --by
   bootstrap                              starting plans; internal organizations without a plan go on Enterprise
                                          (needs --break-glass, --by and --reason once any super-admin exists)
-Make changes in the Vento console. If it's down, changes need --break-glass, --reason "…" and
+Make changes in the Vento Real Estate console. If it's down, changes need --break-glass, --reason "…" and
 --by <super-admin email> (the other super-admins are emailed); --yes skips the question.`
 
 function describeLimits(limits: Record<string, unknown>): string {

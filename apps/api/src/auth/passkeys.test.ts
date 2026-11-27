@@ -104,7 +104,9 @@ describe('adding a passkey', () => {
     const [row] = await db.select().from(passkeys).where(eq(passkeys.userId, userId))
     expect(row?.name).toBe('iCloud Keychain · Mac')
     expect((await actions(userId)).map((a) => a.action)).toContain('passkey.added')
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: a passkey was added to your account')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: a passkey was added to your account',
+    )
   })
 
   it('refuses a passkey that skipped Face ID, fingerprint or PIN', async () => {
@@ -307,7 +309,8 @@ describe('signing in with a passkey', () => {
     const { app, b, mailer, email } = await person()
     const { key } = await addPasskey(b)
     const { b: phone } = await passkeySignIn(app, key)
-    const alerts = () => mailer.to(email).filter((m) => m.subject.startsWith('Vento: new sign-in'))
+    const alerts = () =>
+      mailer.to(email).filter((m) => m.subject.startsWith('Vento Real Estate: new sign-in'))
     expect(alerts()).toHaveLength(1)
     expect(alerts()[0]?.text).not.toMatch(/\d+\.\d+\.\d+/)
     const options = await phone.authGet('/passkey/generate-authenticate-options')
@@ -429,7 +432,9 @@ describe('security audit fixes', () => {
         ),
       )
     expect(audited.length).toBeGreaterThan(0)
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: a passkey may have been copied')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: a passkey may have been copied',
+    )
   })
 
   it('ignores a low counter with a forged signature', async () => {

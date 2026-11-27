@@ -1,6 +1,6 @@
 import { FEATURE_KEYS } from '@vento/shared'
 import type { AttentionItem, Dashboard } from '@vento/shared/console'
-import { and, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, isNotNull, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
 import { runQueries } from '@/db/run-queries'
 import { organizations, platformAuditEvents } from '@/db/schema'
@@ -8,6 +8,7 @@ import { stageOf } from '../availability'
 import { addDays, lagosToday } from '../dates'
 import { describePlatformEvent } from '../operations/describe'
 import { SCHEDULED_ACTOR_NAMES } from '../platform-audit'
+import { SETUP_ACTOR_NAMES } from '../seed-plans'
 import { loadSnapshot } from '../snapshot'
 import { ACTIVITY_COLUMNS, notAccountEvent, toActivityRow } from './activity.service'
 import { customerFeed, NOT_INTERNAL } from './customer-activity'
@@ -76,14 +77,17 @@ type Listed<T> = { rows: T[]; total: number }
 
 /** Command-line changes in 7 days (legacy rows with no channel count, scheduled ones don't). */
 async function commandLine(db: DbOrTx, since: Date, limit: number): Promise<Listed<AttentionItem>> {
-  const scheduled = sql.join(
-    SCHEDULED_ACTOR_NAMES.map((name) => sql`${name}`),
+  const automatic = sql.join(
+    [...SCHEDULED_ACTOR_NAMES, ...SETUP_ACTOR_NAMES].map((name) => sql`${name}`),
     sql`, `,
   )
+  // Only break-glass counts: a person ran it. Setup, migrations, the seed and scheduled runs have
+  // no actor user (migration 0014's "Vento Real Estate (setup)" rows among them).
   const where = and(
     gte(platformAuditEvents.createdAt, since),
-    sql`(${platformAuditEvents.channel} = 'command' or (${platformAuditEvents.channel} is null
-      and ${platformAuditEvents.actorName} not in (${scheduled})))`,
+    isNotNull(platformAuditEvents.actorUserId),
+    sql`${platformAuditEvents.actorName} not in (${automatic})`,
+    sql`(${platformAuditEvents.channel} = 'command' or ${platformAuditEvents.channel} is null)`,
   )
   const [rows, total] = await runQueries(db, [
     () =>

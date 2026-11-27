@@ -169,7 +169,7 @@ describe('pnpm flags', () => {
       expect(notices[0]).toMatchObject({
         actorName: 'Vento Real Estate',
         actorUserId: null,
-        metadata: { message: 'Vento turned on Buyer portal for your organization' },
+        metadata: { message: 'Vento Real Estate turned on Buyer portal for your organization' },
       })
       expect(JSON.stringify(notices[0])).not.toContain('Pilot agreement signed')
     }))
@@ -210,7 +210,7 @@ describe('pnpm flags', () => {
           ),
         )
       expect(notice?.metadata).toEqual({
-        message: 'Vento gave your organization early access to new features',
+        message: 'Vento Real Estate gave your organization early access to new features',
       })
     }))
 

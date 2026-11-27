@@ -8,7 +8,7 @@ describe('SystemStatus', () => {
   it('shows the API and database as connected when both are up', () => {
     render(<SystemStatus state="ready" health={{ status: 'ok', database: 'up', time }} />)
 
-    expect(screen.getByRole('heading', { name: 'Vento' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Vento Real Estate' })).toBeInTheDocument()
     expect(screen.getAllByText('Connected')).toHaveLength(2)
   })
 

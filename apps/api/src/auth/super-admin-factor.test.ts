@@ -67,7 +67,7 @@ describe('new backup codes', () => {
     expect(res.status).toBe(200)
     const [row] = await db.select().from(twoFactors).where(eq(twoFactors.userId, userId))
     expect(row?.backupCodesUnprovenAt).toBeNull()
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: new backup codes were made')
+    expect(mailer.to(email).at(-1)?.subject).toBe('Vento Real Estate: new backup codes were made')
   })
 
   it('made with only a password by anyone else are marked, so they never open the console', async () => {

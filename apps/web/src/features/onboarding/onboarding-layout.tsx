@@ -72,7 +72,7 @@ export function OnboardingLayout({ step, children }: { step: 1 | 2; children: Re
       </aside>
       <header className="border-b bg-card px-[18px] py-3 lg:hidden">
         <div className="flex min-h-10 items-center">
-          <span className="font-heading font-semibold text-[17px]">Set up Vento</span>
+          <span className="font-heading font-semibold text-[17px]">Set up Vento Real Estate</span>
         </div>
       </header>
       <main className="flex flex-1 justify-center px-[18px] pt-3.5 pb-28 lg:px-10 lg:py-14">

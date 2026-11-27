@@ -401,7 +401,7 @@ export async function assignPlan(
       await recordOrganizationNotice(tx, {
         organizationId: org.id,
         action: 'plan.trial_cancelled',
-        message: `Vento ended your ${(await planNameOfVersion(tx, trial.planVersionId))?.replace(/ v\d+$/, '') ?? ''} trial`,
+        message: `Vento Real Estate ended your ${(await planNameOfVersion(tx, trial.planVersionId))?.replace(/ v\d+$/, '') ?? ''} trial`,
       })
     }
     await tx
@@ -425,7 +425,7 @@ export async function assignPlan(
     await recordOrganizationNotice(tx, {
       organizationId: org.id,
       action: 'plan.assigned',
-      message: `Vento moved your organization to ${target.planName}`,
+      message: `Vento Real Estate moved your organization to ${target.planName}`,
       before,
       after,
     })
@@ -623,7 +623,7 @@ export async function startTrial(
     await recordOrganizationNotice(tx, {
       organizationId: org.id,
       action: 'plan.trial_started',
-      message: `Vento started a ${input.days}-day ${target.planName} trial (ends ${formatIsoDate(endsOn)})`,
+      message: `Vento Real Estate started a ${input.days}-day ${target.planName} trial (ends ${formatIsoDate(endsOn)})`,
       after: { plan: target.planName, endsOn },
     })
     return done
@@ -691,7 +691,7 @@ export async function endTrial(
     await recordOrganizationNotice(tx, {
       organizationId: org.id,
       action: 'plan.trial_cancelled',
-      message: `Vento ended your ${planName} trial`,
+      message: `Vento Real Estate ended your ${planName} trial`,
     })
   })
   return done
@@ -832,7 +832,7 @@ export async function addAddOn(
     await recordOrganizationNotice(tx, {
       organizationId: org.id,
       action: 'plan.add_on_added',
-      message: `Vento added ${def.label} (${naira(input.budget)} a month)`,
+      message: `Vento Real Estate added ${def.label} (${naira(input.budget)} a month)`,
       after: { addOn: input.addOn },
     })
   })
@@ -923,7 +923,7 @@ export async function changeAddOnBudget(
     await recordOrganizationNotice(tx, {
       organizationId: org.id,
       action: 'plan.add_on_changed',
-      message: `Vento changed your ${def.label} budget to ${naira(input.budget)} a month`,
+      message: `Vento Real Estate changed your ${def.label} budget to ${naira(input.budget)} a month`,
       before: { budget: existing.budget },
       after: { budget: input.budget },
     })
@@ -998,7 +998,7 @@ export async function removeAddOn(
     await recordOrganizationNotice(tx, {
       organizationId: org.id,
       action: 'plan.add_on_removed',
-      message: `Vento removed ${def.label}`,
+      message: `Vento Real Estate removed ${def.label}`,
     })
   })
   return done
@@ -1117,10 +1117,10 @@ export async function setFeatureOverride(
       action: input.value === 'clear' ? 'plan.override_cleared' : 'plan.feature_overridden',
       message:
         input.value === 'clear'
-          ? `Vento's exception for ${label} ended`
+          ? `Vento Real Estate's exception for ${label} ended`
           : input.value === 'on'
-            ? `Vento added ${label} to your organization${until}`
-            : `Vento removed ${label} from your organization${until}`,
+            ? `Vento Real Estate added ${label} to your organization${until}`
+            : `Vento Real Estate removed ${label} from your organization${until}`,
       before,
       after,
     })
@@ -1149,9 +1149,9 @@ function shown(key: LimitKey, value: string | null): string {
 }
 
 function limitSentence(key: LimitKey, value: string | null): string {
-  if (value === null) return `Vento removed your limit on ${LIMIT_WORDS[key].many}`
-  if (key === 'ai_budget') return `Vento set your AI budget to ${naira(value)} a month`
-  return `Vento set your limit to ${new Decimal(value).toFixed(0)} ${LIMIT_WORDS[key].many}`
+  if (value === null) return `Vento Real Estate removed your limit on ${LIMIT_WORDS[key].many}`
+  if (key === 'ai_budget') return `Vento Real Estate set your AI budget to ${naira(value)} a month`
+  return `Vento Real Estate set your limit to ${new Decimal(value).toFixed(0)} ${LIMIT_WORDS[key].many}`
 }
 
 export async function previewLimitOverride(
@@ -1259,7 +1259,7 @@ export async function setLimitOverride(
       action: value === 'clear' ? 'plan.override_cleared' : 'plan.limit_overridden',
       message:
         value === 'clear'
-          ? `Vento's exception for ${LIMIT_WORDS[key].many} ended`
+          ? `Vento Real Estate's exception for ${LIMIT_WORDS[key].many} ended`
           : limitSentence(key, value),
       before,
       after,

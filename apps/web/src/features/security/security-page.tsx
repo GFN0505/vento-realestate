@@ -19,10 +19,10 @@ export function SecurityPage({ intent, onIntentHandled }: Props) {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-6">
       <PageHeader
         title="My security"
-        description="How you sign in to Vento and where you're signed in."
+        description="How you sign in to Vento Real Estate and where you're signed in."
       />
       <SecurityCards
-        accountLine="This is your Vento account in every organization you belong to."
+        accountLine="This is your Vento Real Estate account in every organization you belong to."
         intent={intent}
         onIntentHandled={onIntentHandled}
       />

@@ -77,7 +77,7 @@ export function EntitySwitcher({ compact = false }: { compact?: boolean }) {
   const me = useMe()
   const current = useCurrentEntity()
   const canAdd = useCanAddCompany()
-  const organization = me.organization?.name ?? 'Vento'
+  const organization = me.organization?.name ?? 'Vento Real Estate'
   const label = switcherLabel(current)
 
   if (current.status === 'pending' && !current.locked) {

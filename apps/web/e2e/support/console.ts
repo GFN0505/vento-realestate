@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, type Locator, type Page } from '@playwright/test'
 import { nextTotpCode, totpCode } from './totp'
 
-export const STAFF_LABEL = 'Vento staff · all customers'
+export const STAFF_LABEL = 'Vento Real Estate staff · all customers'
 
 /** Signs in with a code (which counts as fresh proof) and opens the console without a prompt. */
 export async function signInToConsole(

@@ -16,7 +16,7 @@ export function ServerErrorPage({
   onRetry: () => void
 }) {
   useEffect(() => {
-    document.title = 'Something went wrong · Vento'
+    document.title = 'Something went wrong · Vento Real Estate'
   }, [])
 
   async function copy() {

@@ -20,6 +20,8 @@ describe('findBareVento', () => {
     expect(findBareVento("Vento Real Estate's exception ended")).toEqual([])
     expect(findBareVento('Talk to Vento\n          Real Estate')).toEqual([])
     expect(findBareVento('Vento&nbsp;Real Estate')).toEqual([])
+    expect(findBareVento('Vento <span style="font-size:11px">Real Estate</span>')).toEqual([])
+    expect(findBareVento('Vento</strong> Real Estate')).toEqual([])
   })
 
   it('ignores code names, package names and environment keys', () => {

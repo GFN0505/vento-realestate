@@ -101,7 +101,7 @@ export const FEATURES = {
   // AI add-on. Prerequisites beyond the spec's example are placeholders until the AI spec.
   'ai.document_extraction': ai('Document reading'),
   'ai.payment_matching': ai('Payment matching', ['finance.bank_import']),
-  'ai.ask': ai('Ask Vento'),
+  'ai.ask': ai('Ask'),
   'ai.drafting': ai('Drafting', ['documents']),
   'ai.site_diary_voice': ai('Voice site diary', ['projects.site_diary']),
   'ai.predictions': ai('Predictions'),

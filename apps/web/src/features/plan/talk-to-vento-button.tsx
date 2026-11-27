@@ -20,7 +20,7 @@ export function TalkToVentoButton({ about, className }: { about: string; classNa
   return (
     <Button asChild variant="outline" size="sm" className={className}>
       <a href={href} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-        Talk to Vento
+        Talk to Vento Real Estate
       </a>
     </Button>
   )

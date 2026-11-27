@@ -84,7 +84,7 @@ describe('pnpm plans', () => {
         .where(eq(organizationPlans.organizationId, org.id))
       expect(row?.planVersionId).toBe(starter.versionId)
       expect(await notices(tx, org, 'plan.assigned')).toEqual([
-        'Vento moved your organization to Starter',
+        'Vento Real Estate moved your organization to Starter',
       ])
       const [platform] = await tx
         .select()
@@ -147,7 +147,7 @@ describe('pnpm plans', () => {
         true,
       )
       expect(await notices(tx, org, 'plan.trial_started')).toEqual([
-        'Vento started a 30-day Enterprise trial (ends 2 Jan 2027)',
+        'Vento Real Estate started a 30-day Enterprise trial (ends 2 Jan 2027)',
       ])
     }))
 
@@ -174,7 +174,7 @@ describe('pnpm plans', () => {
         )
       expect(live).toEqual([])
       expect(await notices(tx, org, 'plan.trial_cancelled')).toEqual([
-        'Vento ended your Enterprise trial',
+        'Vento Real Estate ended your Enterprise trial',
       ])
     }))
 
@@ -238,10 +238,12 @@ describe('pnpm plans', () => {
       const org = await createOrganization(tx, { name: 'Lekki Partners Ltd', planKey: 'starter' })
       await run(tx, ['addon', org.name, 'ai', '--budget', '150000', ...by(admin.email)])
       expect(await notices(tx, org, 'plan.add_on_added')).toEqual([
-        'Vento added AI (₦150,000 a month)',
+        'Vento Real Estate added AI (₦150,000 a month)',
       ])
       await run(tx, ['addon', org.name, 'ai', '--remove', ...by(admin.email)])
-      expect(await notices(tx, org, 'plan.add_on_removed')).toEqual(['Vento removed AI'])
+      expect(await notices(tx, org, 'plan.add_on_removed')).toEqual([
+        'Vento Real Estate removed AI',
+      ])
     }))
 
   it('records a negotiated limit and a feature until a date', () =>
@@ -260,10 +262,10 @@ describe('pnpm plans', () => {
         ...by(admin.email),
       ])
       expect(await notices(tx, org, 'plan.limit_overridden')).toEqual([
-        'Vento set your limit to 8 active projects',
+        'Vento Real Estate set your limit to 8 active projects',
       ])
       expect(await notices(tx, org, 'plan.feature_overridden')).toEqual([
-        'Vento added Commissions to your organization (until 31 Jan 2027)',
+        'Vento Real Estate added Commissions to your organization (until 31 Jan 2027)',
       ])
       const { code, io } = await run(tx, [
         'override',

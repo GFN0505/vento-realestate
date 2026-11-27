@@ -59,7 +59,9 @@ describe('email templates', () => {
       expiresOn: '2 Dec 2026',
       url: 'http://localhost/accept',
     })
-    expect(email.subject).toBe('Olumide Bankole invited you to Vento Homes Ltd on Vento')
+    expect(email.subject).toBe(
+      'Olumide Bankole invited you to Vento Homes Ltd on Vento Real Estate',
+    )
     expect(email.text).toContain('as Finance')
     expect(email.text).toContain('Parkview Residences SPV Ltd')
     expect(email.text).toContain('Can approve: Sales & CRM, Finance, HR & payroll')
@@ -68,11 +70,11 @@ describe('email templates', () => {
 
   it('uses the spec subjects for security alerts', () => {
     expect(twoStepResetAlert({ byName: 'Olumide Bankole' }).subject).toBe(
-      'Vento: your two-step sign-in was reset by Olumide Bankole',
+      'Vento Real Estate: your two-step sign-in was reset by Olumide Bankole',
     )
     expect(
       backupCodeUsedAlert({ left: 9, at: '10:30', on: '25 Nov 2026', resetUrl: 'x' }).subject,
-    ).toBe('Vento: a backup code was used (9 left)')
+    ).toBe('Vento Real Estate: a backup code was used (9 left)')
   })
 
   it('writes the lockout body from the spec', () => {
@@ -83,9 +85,9 @@ describe('email templates', () => {
       lockedUntil: '10:45',
       resetUrl: 'http://localhost/forgot-password',
     })
-    expect(email.subject).toBe('Vento: sign-in locked for 15 minutes')
+    expect(email.subject).toBe('Vento Real Estate: sign-in locked for 15 minutes')
     expect(email.text).toContain(
-      "Someone entered 5 wrong codes for your Vento account at 10:30 on 25 Nov 2026. Sign-in is locked until 10:45. If this wasn't you, reset your password now: http://localhost/forgot-password",
+      "Someone entered 5 wrong codes for your Vento Real Estate account at 10:30 on 25 Nov 2026. Sign-in is locked until 10:45. If this wasn't you, reset your password now: http://localhost/forgot-password",
     )
   })
 
@@ -101,9 +103,9 @@ describe('email templates', () => {
       'Your Enterprise trial ends on 2 Jan 2027. After that, the board pack is no longer available. Your data stays.',
     )
     expect(email.text).toContain(
-      'Questions about your plan? Contact Vento: mailto:support@vento.ng',
+      'Questions about your plan? Contact Vento Real Estate: mailto:support@vento.ng',
     )
-    expect(email.html).not.toContain('Talk to Vento')
+    expect(email.html).not.toContain('Talk to Vento Real Estate')
   })
 
   it('tells every owner who was made an owner, by whom and when', () => {
@@ -115,7 +117,7 @@ describe('email templates', () => {
       on: '26 Nov 2026',
       teamUrl: 'http://localhost/settings/team',
     })
-    expect(email.subject).toBe('Vento: Aisha Bello is now an owner of Vento Homes Ltd')
+    expect(email.subject).toBe('Vento Real Estate: Aisha Bello is now an owner of Vento Homes Ltd')
     expect(email.text).toContain(
       'Olumide Bankole made Aisha Bello an owner of Vento Homes Ltd at 10:30 on 26 Nov 2026. Owners can do everything, including changing who has access.',
     )
@@ -144,16 +146,16 @@ describe('email templates', () => {
 
     it('uses the spec subjects', () => {
       expect(alerts.map((a) => a.subject)).toEqual([
-        'Vento: new sign-in on Chrome on Mac',
-        'Vento: a passkey was added to your account',
-        'Vento: a passkey was removed from your account',
-        'Vento: two-step is no longer required for everyone in Vento Homes Ltd',
+        'Vento Real Estate: new sign-in on Chrome on Mac',
+        'Vento Real Estate: a passkey was added to your account',
+        'Vento Real Estate: a passkey was removed from your account',
+        'Vento Real Estate: two-step is no longer required for everyone in Vento Homes Ltd',
       ])
     })
 
     it('writes the new sign-in body from the spec, with the place but no IP address', () => {
       expect(alerts[0]?.text).toContain(
-        'Your Vento account was signed in to at 08:12 on 26 Nov 2026 from Chrome on Mac, near Lekki, Lagos.',
+        'Your Vento Real Estate account was signed in to at 08:12 on 26 Nov 2026 from Chrome on Mac, near Lekki, Lagos.',
       )
       for (const alert of alerts) expect(alert.text).not.toMatch(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\b/)
     })

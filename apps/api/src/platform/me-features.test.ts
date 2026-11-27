@@ -81,7 +81,7 @@ describe('account.me plan (owners)', () => {
       const { plan } = await client.account.me()
       expect(plan?.upgradeHints).toEqual([
         { key: 'sales.commissions', label: 'Commissions', availableOn: 'Growth' },
-        { key: 'ai.ask', label: 'Ask Vento', availableOn: 'the AI add-on' },
+        { key: 'ai.ask', label: 'Ask', availableOn: 'the AI add-on' },
       ])
     }))
 

@@ -34,7 +34,7 @@ export const FLAGS_HELP = `Usage: pnpm flags <command>
   stage <flag> <off|internal|pilot|on>   release stage for everyone
   group <organization> <standard|pilot|internal>
   override <organization> <flag> <on|off|clear> [--until YYYY-MM-DD]
-Make changes in the Vento console. If it's down, changes need --break-glass, --reason "…" and
+Make changes in the Vento Real Estate console. If it's down, changes need --break-glass, --reason "…" and
 --by <super-admin email> (the other super-admins are emailed); --yes skips the question.`
 
 async function list(deps: CommandDeps): Promise<void> {

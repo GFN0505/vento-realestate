@@ -72,7 +72,7 @@ export function VentoMark({
           Vento
         </span>
       ) : (
-        <span className="sr-only">Vento</span>
+        <span className="sr-only">Vento Real Estate</span>
       )}
       {wordmark && descriptor && (
         <span

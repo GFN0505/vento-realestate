@@ -260,7 +260,7 @@ async function verifyCode(
     // Checked before the code is used, so it isn't spent and doesn't count towards a lock.
     throw badRequest(
       'wrong_code',
-      "These backup codes were made with only your password, so they can't open the Vento console. Use your authenticator app or a passkey.",
+      "These backup codes were made with only your password, so they can't open the Vento Real Estate console. Use your authenticator app or a passkey.",
     )
   }
   const step =

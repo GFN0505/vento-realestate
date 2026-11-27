@@ -151,7 +151,7 @@ describe('Needs attention', () => {
       ])
     }))
 
-  it('shows command-line changes, including old rows with no channel, but not scheduled runs', () =>
+  it('shows break-glass changes by a person, including old rows with no channel, but never setup, seed or scheduled rows', () =>
     fixed(async (tx) => {
       const ada = await createSuperAdmin(tx)
       const row = {
@@ -169,9 +169,13 @@ describe('Needs attention', () => {
           before: { stage: 'on' },
           after: { stage: 'off' },
         },
-        { ...row, actorName: 'Legacy Person', channel: null },
+        { ...row, actorUserId: ada.id, actorName: 'Legacy Person', channel: null },
         { ...row, actorName: 'Vento (scheduled)', channel: null },
         { ...row, actorName: 'Vento Real Estate (scheduled)', channel: 'scheduled' },
+        // Migration 0014 and the seed write command rows with no person behind them.
+        { ...row, actorName: 'Vento Real Estate (setup)', channel: 'command' },
+        { ...row, actorName: 'Vento (setup)', channel: null },
+        { ...row, actorName: 'Seed Person', channel: 'command' },
       ])
       const cli = (await queueFor(tx)).filter((i) => i.kind === 'command_line')
       const names = cli.map((i) => (i.kind === 'command_line' ? i.actorName : ''))
@@ -179,11 +183,34 @@ describe('Needs attention', () => {
       expect(names).toContain('Legacy Person')
       expect(names).not.toContain('Vento (scheduled)')
       expect(names).not.toContain('Vento Real Estate (scheduled)')
+      expect(names).not.toContain('Vento Real Estate (setup)')
+      expect(names).not.toContain('Vento (setup)')
+      expect(names).not.toContain('Seed Person')
       expect(
         cli.find((i) => i.kind === 'command_line' && i.actorName === 'Ada Okafor'),
       ).toMatchObject({
         summary: 'Moved Sales to off',
       })
+    }))
+
+  it('leaves rows with no person out of the command-line count too', () =>
+    fixed(async (tx) => {
+      const count = async () => {
+        const queue = await attentionQueue(tx, new Date(), await loadSnapshot(tx))
+        return queue.lists[0]?.total ?? 0
+      }
+      const before = await count()
+      const row = { action: 'superadmin.revoked', targetType: 'user', reason: 'Setup' }
+      await tx.insert(platformAuditEvents).values([
+        { ...row, actorName: 'Vento Real Estate (setup)', channel: 'command' },
+        { ...row, actorName: 'Someone', channel: 'command' },
+      ])
+      expect(await count()).toBe(before)
+      const ada = await createSuperAdmin(tx)
+      await tx
+        .insert(platformAuditEvents)
+        .values({ ...row, actorUserId: ada.id, actorName: ada.name, channel: 'command' })
+      expect(await count()).toBe(before + 1)
     }))
 
   it('shows at most 8 rows, then how many more', () =>

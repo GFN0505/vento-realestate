@@ -275,7 +275,9 @@ describe('confirming it is you with a code', () => {
       await expect(
         client.console.access.confirm({ method: 'backup_code', code: 'abcde-fghij' }),
       ).resolves.toMatchObject({ window: 'open' })
-      expect(mailer.to(admin.email).at(-1)?.subject).toBe('Vento: a backup code was used (2 left)')
+      expect(mailer.to(admin.email).at(-1)?.subject).toBe(
+        'Vento Real Estate: a backup code was used (2 left)',
+      )
     }))
 
   it('never takes a password', () =>
@@ -525,7 +527,7 @@ describe('console confirm limits (L3, L4)', () => {
         secret: await symmetricEncrypt({ key: 'test-key', data: `base32:${secret}` }),
         backupCodes: 'x',
       })
-      const code = totpFromUri(`otpauth://totp/Vento:x?secret=${secret}`)
+      const code = totpFromUri(`otpauth://totp/Vento Real Estate:x?secret=${secret}`)
       const ctx = await accessContext(tx, admin, { totpKey: async () => 'test-key' })
       await expect(access.confirm(ctx, { method: 'code', code })).resolves.toMatchObject({
         window: 'open',

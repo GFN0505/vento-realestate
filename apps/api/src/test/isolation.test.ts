@@ -434,7 +434,7 @@ describe('feature and plan isolation', () => {
     }))
 })
 
-describe('Vento console isolation', () => {
+describe('Vento Real Estate console isolation', () => {
   it("changes organization A without touching B's features, limits or trail", () =>
     withRollback(async (tx) => {
       const admin = await createSuperAdmin(tx)

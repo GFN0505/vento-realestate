@@ -44,7 +44,7 @@ export const COPY = {
   wrongPassword: AUTH_ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD,
   wrongCode: AUTH_ERROR_MESSAGES.INVALID_CODE,
   wrongBackupCode: "That backup code didn't match, or it has been used already.",
-  wrongEmailCode: "That code didn't match. Check the newest email from Vento.",
+  wrongEmailCode: "That code didn't match. Check the newest email from Vento Real Estate.",
   emailCodeExpired: 'That code has expired. Send a new one.',
   twoStepTimedOut: 'That took too long. Sign in again to get a new two-step check.',
   tooManyRequests: 'Too many tries. Wait a minute and try again.',

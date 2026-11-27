@@ -81,7 +81,7 @@ function AcceptInvitationPage() {
         <AcceptSignedIn token={token} preview={preview} me={me} onAccepted={accepted} />
       ) : preview.hasAccount ? (
         <>
-          <FormAlert variant="info" title="You already use Vento.">
+          <FormAlert variant="info" title="You already use Vento Real Estate.">
             Sign in as {preview.email} to accept.
           </FormAlert>
           <Button size="lg" className="w-full" asChild>

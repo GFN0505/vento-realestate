@@ -154,7 +154,7 @@ describe('changes', () => {
       expect(notice).toMatchObject({
         actorName: 'Vento Real Estate',
         actorUserId: null,
-        metadata: { message: 'Vento moved your organization to Growth' },
+        metadata: { message: 'Vento Real Estate moved your organization to Growth' },
       })
       expect(JSON.stringify(notice)).not.toContain(admin.name)
       expect(JSON.stringify(notice)).not.toContain(why.reason)

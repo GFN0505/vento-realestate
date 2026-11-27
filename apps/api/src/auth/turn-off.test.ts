@@ -49,7 +49,9 @@ describe('turning two-step off', () => {
     expect(res.status).toBe(200)
     const [row] = await db.select().from(users).where(eq(users.id, user.id))
     expect(row?.twoFactorEnabled).toBe(false)
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: two-step sign-in was turned off')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: two-step sign-in was turned off',
+    )
   })
 
   it('accepts a backup code instead of the app', async () => {
@@ -80,7 +82,9 @@ describe('turning two-step off', () => {
     expect(results.at(-1)?.status).toBe(429)
     expect(results.at(-1)?.json.code).toBe('ACCOUNT_LOCKED')
     expect(await db.select().from(sessions).where(eq(sessions.userId, user.id))).toEqual([])
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: sign-in locked for 15 minutes')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: sign-in locked for 15 minutes',
+    )
   })
 
   it('is refused while the role requires it, naming the role and organization', async () => {
@@ -152,12 +156,15 @@ describe('new sign-in alerts', () => {
       name: `Alert Homes ${uniqueEmail('o')}`.slice(0, 60),
     })
     await createMember(db, org, { role: 'sales', user: user as TestUser })
-    const alerts = () => mailer.to(email).filter((m) => m.subject.startsWith('Vento: new sign-in'))
+    const alerts = () =>
+      mailer.to(email).filter((m) => m.subject.startsWith('Vento Real Estate: new sign-in'))
     expect(alerts()).toHaveLength(0)
     await signIn(laptop, email)
     expect(alerts()).toHaveLength(0)
     await signIn(browser(app, 'Mozilla/5.0 (iPhone) Safari/604.1'), email)
-    expect(alerts().map((m) => m.subject)).toEqual(['Vento: new sign-in on Safari on iPhone'])
+    expect(alerts().map((m) => m.subject)).toEqual([
+      'Vento Real Estate: new sign-in on Safari on iPhone',
+    ])
   })
 })
 

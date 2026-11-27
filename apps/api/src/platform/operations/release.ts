@@ -296,7 +296,7 @@ export async function setReleaseGroup(
       message:
         input.group === 'standard'
           ? "Your organization's early access ended"
-          : 'Vento gave your organization early access to new features',
+          : 'Vento Real Estate gave your organization early access to new features',
       before: { releaseGroup: current.releaseGroup },
       after: { releaseGroup: input.group },
     })
@@ -465,8 +465,8 @@ export async function setReleaseOverride(
       action: input.value === 'clear' ? 'release.override_cleared' : 'release.override_set',
       message:
         input.value === 'clear'
-          ? `Vento's exception for ${label} ended`
-          : `Vento turned ${input.value} ${label} for your organization${until}`,
+          ? `Vento Real Estate's exception for ${label} ended`
+          : `Vento Real Estate turned ${input.value} ${label} for your organization${until}`,
       before,
       after,
     })

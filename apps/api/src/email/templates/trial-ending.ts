@@ -20,7 +20,7 @@ export function trialEndingEmail(p: {
       : ` After that, ${listOf(p.losing)} ${p.losing.length === 1 ? 'is' : 'are'} no longer available.`
   return renderEmail(subject, subject, [
     { kind: 'p', text: `Your ${p.planName} trial ends on ${p.endsOn}.${after} Your data stays.` },
-    { kind: 'small', text: `Questions about your plan? Contact Vento: ${p.talkUrl}` },
+    { kind: 'small', text: `Questions about your plan? Contact Vento Real Estate: ${p.talkUrl}` },
   ])
 }
 
