@@ -1,4 +1,24 @@
 /**
+ * A customer account or a Vento Real Estate staff account (decision 0023). Fixed when the account
+ * is made: a database trigger refuses any change, and one email is only ever one kind.
+ */
+export const ACCOUNT_KINDS = ['customer', 'staff'] as const
+export type AccountKind = (typeof ACCOUNT_KINDS)[number]
+
+/**
+ * The `users.account_kind` column as a Better Auth field (returned, never accepted on sign-up:
+ * only the staff sign-up makes a staff account). Not yet in `authUserFields`: it joins them with
+ * migration 0013 (admin-console plan §1b.3, step B1), since Better Auth reads every listed field.
+ * Typed as a mutable array because Better Auth's enum type is `Array<LiteralString>`.
+ */
+export const accountKindUserField: {
+  type: AccountKind[]
+  required: true
+  input: false
+  defaultValue: 'customer'
+} = { type: [...ACCOUNT_KINDS], required: true, input: false, defaultValue: 'customer' }
+
+/**
  * Extra columns Better Auth keeps on its user and session rows. The API passes these to
  * `betterAuth({ user: { additionalFields } })` and the web passes them to
  * `inferAdditionalFields`, so both sides agree on names and which ones sign-up accepts.
@@ -16,7 +36,7 @@ export const authUserFields = {
 } as const
 
 /**
- * The Vento console's session columns (docs/plans/admin-console.md §3, migration 0011), spread
+ * The console's session columns (docs/plans/admin-console.md §3, migration 0011), spread
  * into `authSessionFields`. No defaultValue, for the same reason as `persistent`: a rotated
  * session must carry them over (or have the server clear them), never be reset by a default.
  */

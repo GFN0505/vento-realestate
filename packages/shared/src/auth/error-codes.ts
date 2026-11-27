@@ -42,7 +42,7 @@ export const AUTH_ERROR_CODES = {
   /** 403 on /passkey/generate-register-options: "Confirm it's you" first (account.confirmPassword). */
   REAUTH_REQUIRED: 'REAUTH_REQUIRED',
   /**
-   * 403 for a Vento super-admin on /two-factor/generate-backup-codes and the passkey registration
+   * 403 for a super-admin on /two-factor/generate-backup-codes and the passkey registration
    * endpoints when no code or passkey was proven on this session in the last 5 minutes: a
    * password alone can't mint a new second factor that opens the console.
    */
@@ -129,7 +129,7 @@ export const AUTH_ERROR_MESSAGES: Record<
   PASSKEY_LIMIT: 'You can have up to 10 passkeys. Remove one you no longer use.',
   REAUTH_REQUIRED: 'Enter your password to continue.',
   SECOND_FACTOR_REQUIRED:
-    'As a Vento super-admin, confirm this with your authenticator app or a passkey: sign out, sign in again with two-step, then try within 5 minutes.',
+    'As a Vento Real Estate super-admin, confirm this with your authenticator app or a passkey: sign out, sign in again with two-step, then try within 5 minutes.',
   TWO_FACTOR_NOT_ENABLED: 'Two-step is off now. The page is up to date.',
   TWO_STEP_ALREADY_ON: 'Two-step is already on. The page is up to date.',
 }

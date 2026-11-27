@@ -40,6 +40,8 @@ export const forbiddenReason = z.enum([
   'own_role',
   /** The caller's own membership or role changed during the request: reload to continue. */
   'access_changed',
+  /** A Vento Real Estate staff account can't create or join an organization (decision 0023). */
+  'staff_account',
 ])
 export type ForbiddenReason = z.infer<typeof forbiddenReason>
 
@@ -76,10 +78,17 @@ export const conflictReason = z.enum([
    * shows the message; it reloads into the session's organization with a notice.
    */
   'organization_changed',
-  /** A Vento console change the platform operation refused; `message` is its own sentence. */
+  /** A Vento Real Estate console change the platform operation refused; `message` is its own sentence. */
   'platform_refused',
   /** The console change was previewed against a state that has since moved; `changedByName` says who. */
   'platform_stale',
+  /**
+   * Customer invite or resend to an email that is a Vento Real Estate staff account, or accepting
+   * a customer invitation with one; `staffAccounts` lists the emails on invite.
+   */
+  'staff_account',
+  /** Staff sign-up: the invited email got a customer account after the invitation was sent. */
+  'staff_customer_account',
 ])
 export type ConflictReason = z.infer<typeof conflictReason>
 
@@ -120,7 +129,7 @@ export const errorMap = {
     status: 404,
     message: "We couldn't find that. It may have been removed.",
     /**
-     * Only ever set for an active Vento super-admin, so the console can open "Confirm it's you" or
+     * Only ever set for an active super-admin, so the console can open "Confirm it's you" or
      * the two-step set-up in one round trip. Everyone else gets no data.
      */
     data: z
@@ -149,8 +158,14 @@ export const errorMap = {
       holders: z
         .object({ members: z.number().int().min(0), invited: z.number().int().min(0) })
         .optional(),
-      /** `platform_refused`: the console's next step, e.g. an **End trial** link. */
-      next: z.enum(['end_trial', 'change_ai_budget']).optional(),
+      /** `staff_account` on invitations.create: every email that is a staff account. */
+      staffAccounts: z.array(z.string()).optional(),
+      /**
+       * `platform_refused`: the console's next step, e.g. an **End trial** link, or **Resend** on
+       * the staff invitation already open for that email (`invitationId`).
+       */
+      next: z.enum(['end_trial', 'change_ai_budget', 'resend_invitation']).optional(),
+      invitationId: id.optional(),
     }),
   },
   TOO_MANY_REQUESTS: {
@@ -172,13 +187,13 @@ export type ForbiddenData = z.infer<(typeof errorMap)['FORBIDDEN']['data']>
 /** The data of a CONFLICT error, e.g. `{ reason: 'already_invited', alreadyInvited: [...] }`. */
 export type ConflictData = z.infer<(typeof errorMap)['CONFLICT']['data']>
 
-/** The data of a NOT_FOUND error; only the Vento console sends any. */
+/** The data of a NOT_FOUND error; only the Vento Real Estate console sends any. */
 export type NotFoundData = z.infer<(typeof errorMap)['NOT_FOUND']['data']>
 
 /**
  * Procedure metadata (decision 0016). `feature` is the catalog key the procedure belongs to, or
  * null for platform procedures with no flag. The server gates on it; a test checks every
- * procedure declares it. `area: 'console'` marks Vento console procedures (decision 0021), and
+ * procedure declares it. `area: 'console'` marks console procedures (decision 0021), and
  * only those: a walk test checks both directions.
  */
 export type ProcedureMeta = { feature?: FeatureKey | null; area?: 'console' }

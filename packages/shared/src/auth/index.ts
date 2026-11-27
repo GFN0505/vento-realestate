@@ -5,7 +5,15 @@ export {
   PASSWORD_ERROR_CODES,
   PASSWORD_RULE_ERROR_CODES,
 } from './error-codes'
-export { AUTH_BASE_PATH, authSessionFields, authUserFields, consoleSessionFields } from './fields'
+export type { AccountKind } from './fields'
+export {
+  ACCOUNT_KINDS,
+  AUTH_BASE_PATH,
+  accountKindUserField,
+  authSessionFields,
+  authUserFields,
+  consoleSessionFields,
+} from './fields'
 export type { LocalPasswordChecks, PasswordRuleKey } from './password-rules'
 export {
   CURRENT_TERMS_VERSION,

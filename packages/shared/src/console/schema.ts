@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { email } from '../access/schema'
+import { accountName } from '../account/security'
+import { PASSWORD_MAX_LENGTH } from '../auth/password-rules'
 import { Decimal } from '../common/decimal'
 import { money } from '../common/money'
 import { id, isoDate, paginated, paginationInput } from '../common/schemas'
@@ -16,7 +18,7 @@ import {
   releaseStage,
 } from '../features/schema'
 
-// The Vento console's schemas (docs/plans/admin-console.md §5). Only `@vento/shared/console`
+// The Vento Real Estate console's schemas (docs/plans/admin-console.md §5, §1b.11). Only `@vento/shared/console`
 // exports them, so the customer web can't pull them into its bundle.
 
 const datetime = z.iso.datetime()
@@ -535,5 +537,228 @@ export type SuperAdminRow = z.infer<typeof superAdminRow>
 
 // The operations refuse duplicates and self-removal, so there's no before-state to compare.
 const noExpected = z.strictObject({})
+/** Slice 1's grant. Replaced by `inviteSuperAdmin`; removed together with its route (1b, B3). */
 export const addSuperAdmin = changeOf({ email }, noExpected)
 export const removeSuperAdmin = changeOf({ userId: id }, noExpected)
+
+// ── Staff invitations (1b) ───────────────────────────────────────────────────
+
+/**
+ * Invite someone to become a super-admin. The operation refuses a customer account's email, an
+ * active super-admin, an open invitation (`next: 'resend_invitation'`) and a sixth open one.
+ */
+export const inviteSuperAdmin = changeOf({ email, name: accountName }, noExpected)
+
+/**
+ * An open staff invitation on the Super-admins page. `expired` is worked out when read (48 hours
+ * after it was last sent); it can still be resent or withdrawn.
+ */
+export const staffInvitationRow = z.object({
+  id,
+  email: z.string(),
+  name,
+  /** null = the bootstrap invitation from the command line. */
+  invitedByName: name.nullable(),
+  expiresAt: datetime,
+  status: z.enum(['pending', 'expired']),
+  /** **Resend** is disabled until then (once a minute). */
+  resendableAt: datetime,
+})
+export type StaffInvitationRow = z.infer<typeof staffInvitationRow>
+
+/** Resending has no confirm step: a new link, a fresh 48 hours, the invitation's own reason. */
+export const resendStaffInvitationInput = z.strictObject({
+  invitationId: id,
+  idempotencyKey: z.uuid(),
+})
+
+/** `expected` catches an invitation accepted or withdrawn since the confirm opened. */
+export const withdrawStaffInvitation = changeOf(
+  { invitationId: id },
+  z.object({ status: z.literal('pending') }),
+)
+
+/** Another super-admin's lost two-step. Refused on your own row and for anyone not a super-admin. */
+export const resetSuperAdminTwoStep = changeOf({ userId: id }, noExpected)
+
+// ── Staff sign-up (1b, public) ───────────────────────────────────────────────
+
+/** The token from the link. Its length is only a bound; an unknown token reads as expired. */
+export const staffInvitationToken = z.string().min(1).max(200)
+export const staffJoinGetInput = z.strictObject({ token: staffInvitationToken })
+
+/** `customer_account`: the email got a customer account after the invitation was sent. */
+export const staffJoinStatus = z.enum([
+  'pending',
+  'expired',
+  'withdrawn',
+  'accepted',
+  'customer_account',
+])
+export type StaffJoinStatus = z.infer<typeof staffJoinStatus>
+
+/**
+ * What the staff sign-up page shows. A token we don't recognise answers `expired` with every
+ * other field null, so a guessed link learns nothing.
+ */
+export const staffJoinPreview = z.object({
+  status: staffJoinStatus,
+  email: z.string().nullable(),
+  name: name.nullable(),
+  /** null = the bootstrap invitation, or an unknown link. */
+  inviterName: name.nullable(),
+  expiresAt: datetime.nullable(),
+  /** The password was set on an earlier visit: ask only for it and go on at two-step. */
+  resume: z.boolean(),
+})
+export type StaffJoinPreview = z.infer<typeof staffJoinPreview>
+
+/**
+ * Step 1. A new account checks the password rules on the server (BAD_REQUEST with the rule's
+ * reason); on resume it's the password already set, and `name` is ignored.
+ */
+export const staffJoinStartInput = z.strictObject({
+  token: staffInvitationToken,
+  name: accountName.optional(),
+  password: z
+    .string()
+    .min(1, { message: 'Enter your password' })
+    .max(PASSWORD_MAX_LENGTH, { message: `Use ${PASSWORD_MAX_LENGTH} characters or fewer` }),
+})
+export type StaffJoinStartInput = z.infer<typeof staffJoinStartInput>
+
+/** `sign_in`: the account was made but signing in failed (rare); send them to sign in. */
+export const staffJoinStartOutput = z.object({ next: z.enum(['two_step', 'sign_in']) })
+
+// ── Dashboard (1b) ───────────────────────────────────────────────────────────
+// Account-level facts only: counts, dates and organization names. Nothing here can carry a
+// member's name or email, an IP or a device, so the Dashboard can't leak them (spec, NDPA).
+// Internal organizations are left out of every number, queue row and feed row.
+
+/** One Needs attention row, each with the one action that resolves it. In spec order. */
+export const attentionItem = z.discriminatedUnion('kind', [
+  /** A command-line change in the last 7 days ("Ada Okafor moved Sales to off"). Opens Activity. */
+  z.object({
+    kind: z.literal('command_line'),
+    eventId: id,
+    at: datetime,
+    actorName: name,
+    summary: z.string(),
+  }),
+  /** "Lekki Partners Ltd · Enterprise trial ends in 2 days". */
+  z.object({
+    kind: z.literal('trial_ending'),
+    organization: organizationRef,
+    planName: name,
+    endsOn: isoDate,
+  }),
+  /** "Parkview Homes · People 17 of 15": the limit with the largest excess. */
+  z.object({
+    kind: z.literal('over_limit'),
+    organization: organizationRef,
+    limit: countLimitKey,
+    used: count,
+    included: count,
+  }),
+  /** **Choose a plan**. */
+  z.object({ kind: z.literal('no_plan'), organization: organizationRef }),
+  /** "nobody active for 18 days" (counted from creation when nobody was ever active). */
+  z.object({ kind: z.literal('quiet'), organization: organizationRef, days: count }),
+])
+export type AttentionItem = z.infer<typeof attentionItem>
+
+/** The notable customer account events the feed shows, from their audit actions. */
+export const customerActivityKind = z.enum([
+  /** `organization.created` */
+  'signed_up',
+  /** `entity.created` */
+  'added_company',
+  /** `invitation.accepted` */
+  'people_joined',
+  /** `member.removed` */
+  'people_removed',
+  /** `member.access_changed` to the owner role */
+  'new_owner',
+  /** `two_step.reset` */
+  'two_step_reset',
+  /** `auth.locked_out` */
+  'sign_in_locked',
+  /** `passkey.suspected_clone` */
+  'possible_copied_passkey',
+])
+export type CustomerActivityKind = z.infer<typeof customerActivityKind>
+
+/** Events of one kind, for one organization, on one Lagos day: "3 people joined · today". */
+export const feedRow = z.object({
+  organization: organizationRef,
+  kind: customerActivityKind,
+  day: isoDate,
+  count: z.number().int().min(1),
+  latestAt: datetime,
+})
+export type FeedRow = z.infer<typeof feedRow>
+
+const ATTENTION_ROWS_SHOWN = 8
+const FEED_ROWS_SHOWN = 15
+const RECENT_CHANGES_SHOWN = 5
+
+export const dashboard = z.object({
+  /** "214 organizations · 3,912 people" (distinct people with an active membership). */
+  header: z.object({ organizations: count, people: count }),
+  numbers: z.object({
+    organizations: count,
+    newLast7Days: count,
+    activePeople: count,
+    activeOrganizations: count,
+    trialsEndingSoon: count,
+    overLimit: count,
+    /** "5 more at a limit": at a limit exactly, not over one. */
+    atLimit: count,
+  }),
+  attention: z.object({
+    items: z.array(attentionItem).max(ATTENTION_ROWS_SHOWN),
+    /** "and 6 more": the rows left after the first 8. */
+    more: count,
+  }),
+  activity: z.object({
+    /** Last 7 days. */
+    summary: z.object({
+      newOrganizations: count,
+      invitationsSent: count,
+      invitationsAccepted: count,
+      trialsStarted: count,
+      /** A count only: never who. */
+      signUpsNotFinished: count,
+    }),
+    /** Newest first. */
+    feed: z.array(feedRow).max(FEED_ROWS_SHOWN),
+  }),
+  plans: z.object({
+    /** Live plans in sort order; versions newest first. */
+    byPlan: z.array(
+      z.object({
+        key: z.string(),
+        name,
+        total: count,
+        versions: z.array(z.object({ version: z.number().int().min(1), organizations: count })),
+      }),
+    ),
+    internal: count,
+    noPlan: count,
+    atPilot: z.array(featureKey),
+    recent: z.array(activityRow).max(RECENT_CHANGES_SHOWN),
+  }),
+})
+export type Dashboard = z.infer<typeof dashboard>
+
+const ACCOUNT_ACTIVITY_ROWS_SHOWN = 30
+/** Organization detail's Account activity card: "9 of 11 people active in the last 7 days". */
+export const accountActivity = z.object({
+  people: count,
+  activeLast7Days: count,
+  /** null = nobody has been active yet. */
+  lastActiveAt: datetime.nullable(),
+  /** This organization's feed rows for 30 days, newest first. */
+  feed: z.array(feedRow).max(ACCOUNT_ACTIVITY_ROWS_SHOWN),
+})
+export type AccountActivity = z.infer<typeof accountActivity>

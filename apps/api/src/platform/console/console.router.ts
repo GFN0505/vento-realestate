@@ -1,5 +1,6 @@
 import type { AuthServerApi } from '@/auth/hooks/deps'
 import { sendAll } from '@/email/mailer'
+import { notFound } from '@/lib/errors'
 import { consoleWindow, superAdmin, superAdminAnyTwoStep } from '@/orpc'
 import {
   grantSuperAdmin,
@@ -49,11 +50,24 @@ function accessContext(context: AccessRequest): access.AccessContext {
 const orgs = consoleWindow.console.organizations
 
 /**
+ * Slice 1b procedures whose contract is in but whose code isn't yet (admin-console plan §1b.18,
+ * steps B3 and B4). They answer like a procedure that doesn't exist, behind the full console
+ * chain, so nothing is reachable early. `join.*` move to public procedures with their code (B3).
+ */
+const notBuiltYet = (): never => {
+  throw notFound()
+}
+const sa = consoleWindow.console.superAdmins
+
+/**
  * The Vento console. `access.*` sits on the super-admin check only, so the console can ask
  * "Confirm it's you"; everything else is on `consoleWindow` (session → active super-admin with
  * two-step → open window → platform errors as shared errors).
  */
 export const consoleRouter = {
+  dashboard: {
+    get: consoleWindow.console.dashboard.get.handler(notBuiltYet),
+  },
   access: {
     status: superAdminAnyTwoStep.console.access.status.handler(({ context }) =>
       access.status(accessContext(context)),
@@ -78,6 +92,7 @@ export const consoleRouter = {
     endedOverrides: orgs.endedOverrides.handler(({ input, context }) =>
       organizations.endedOverrides(context.db, input),
     ),
+    accountActivity: orgs.accountActivity.handler(notBuiltYet),
     changePlan: {
       preview: orgs.changePlan.preview.handler(({ input, context }) =>
         changePlanChange.preview(context.db, input),
@@ -234,6 +249,20 @@ export const consoleRouter = {
     list: consoleWindow.console.superAdmins.list.handler(({ context }) =>
       superAdmins.list(context.db, context.user.id),
     ),
+    invitations: sa.invitations.handler(notBuiltYet),
+    invite: {
+      preview: sa.invite.preview.handler(notBuiltYet),
+      apply: sa.invite.apply.handler(notBuiltYet),
+    },
+    resendInvitation: sa.resendInvitation.handler(notBuiltYet),
+    withdrawInvitation: {
+      preview: sa.withdrawInvitation.preview.handler(notBuiltYet),
+      apply: sa.withdrawInvitation.apply.handler(notBuiltYet),
+    },
+    resetTwoStep: {
+      preview: sa.resetTwoStep.preview.handler(notBuiltYet),
+      apply: sa.resetTwoStep.apply.handler(notBuiltYet),
+    },
     add: {
       preview: consoleWindow.console.superAdmins.add.preview.handler(({ input, context }) =>
         previewGrant(context.db, { email: input.email }),
@@ -303,5 +332,9 @@ export const consoleRouter = {
     people: consoleWindow.console.activity.people.handler(({ context }) =>
       activity.people(context.db),
     ),
+  },
+  join: {
+    get: consoleWindow.console.join.get.handler(notBuiltYet),
+    start: consoleWindow.console.join.start.handler(notBuiltYet),
   },
 }

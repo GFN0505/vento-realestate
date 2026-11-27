@@ -12,7 +12,7 @@ export function twoStepRefusal(req: TwoStepRequirement): string {
     case 'reset':
       return 'Your two-step was reset, so set it up again before changing it.'
     case 'super_admin':
-      return "Two-step is required because you're a Vento super-admin, so it can't be turned off."
+      return "Two-step is required for Vento Real Estate staff, so it can't be turned off."
   }
 }
 
@@ -26,6 +26,6 @@ export function twoStepRequiredLine(req: TwoStepRequirement): string {
     case 'reset':
       return 'Required after a reset by an owner or admin'
     case 'super_admin':
-      return "Required because you're a Vento super-admin"
+      return 'Required for Vento Real Estate staff'
   }
 }

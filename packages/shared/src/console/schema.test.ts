@@ -4,13 +4,21 @@ import { errorMap } from '../common/errors'
 import { consoleContract } from './contract'
 import {
   addAi,
+  attentionItem,
   confirmInput,
+  dashboard,
+  feedRow,
+  inviteSuperAdmin,
   limitValue,
   listActivityInput,
   reason,
   setOverride,
+  staffJoinGetInput,
+  staffJoinPreview,
+  staffJoinStartInput,
   startTrial,
   trialDays,
+  withdrawStaffInvitation,
 } from './schema'
 
 const orgId = '0193f2a0-0000-7000-8000-000000000001'
@@ -174,6 +182,104 @@ describe('activity filters', () => {
   })
 })
 
+describe('staff invitation inputs', () => {
+  it('lower-cases and trims the email and trims the name', () => {
+    const input = inviteSuperAdmin.previewInput.parse({
+      email: '  Tunde@VentoERP.com ',
+      name: ' Tunde Bello ',
+    })
+    expect(input).toEqual({ email: 'tunde@ventoerp.com', name: 'Tunde Bello' })
+  })
+
+  it('refuses an email that is not an address and a one-letter name', () => {
+    const badEmail = inviteSuperAdmin.previewInput.safeParse({ email: 'tunde', name: 'Tunde' })
+    expect(firstMessage(badEmail)).toBe('Enter a valid email address, like aisha@ventohomes.ng')
+    const badName = inviteSuperAdmin.previewInput.safeParse({ email: 'a@b.ng', name: 'T' })
+    expect(firstMessage(badName)).toBe('Enter your name')
+  })
+
+  it('needs a reason and a key to send it', () => {
+    const fields = { email: 'tunde@ventoerp.com', name: 'Tunde Bello', expected: {} }
+    expect(
+      inviteSuperAdmin.applyInput.safeParse({
+        ...fields,
+        reason: 'Joins the release rota',
+        idempotencyKey: key,
+      }).success,
+    ).toBe(true)
+    expect(inviteSuperAdmin.applyInput.safeParse(fields).success).toBe(false)
+  })
+
+  it('withdraws only an invitation still pending when the confirm opened', () => {
+    const fields = { invitationId: orgId, reason: 'Wrong email', idempotencyKey: key }
+    const pending = { ...fields, expected: { status: 'pending' } }
+    const accepted = { ...fields, expected: { status: 'accepted' } }
+    expect(withdrawStaffInvitation.applyInput.safeParse(pending).success).toBe(true)
+    expect(withdrawStaffInvitation.applyInput.safeParse(accepted).success).toBe(false)
+  })
+})
+
+describe('staff sign-up inputs', () => {
+  it('bounds the token length', () => {
+    expect(staffJoinGetInput.safeParse({ token: 'a'.repeat(43) }).success).toBe(true)
+    expect(staffJoinGetInput.safeParse({ token: '' }).success).toBe(false)
+    expect(staffJoinGetInput.safeParse({ token: 'a'.repeat(201) }).success).toBe(false)
+  })
+
+  it('takes a password, and a name only when there is one', () => {
+    const token = 'a'.repeat(43)
+    expect(staffJoinStartInput.safeParse({ token, password: 'x' }).success).toBe(true)
+    expect(
+      staffJoinStartInput.safeParse({ token, name: 'Tunde Bello', password: 'x' }).success,
+    ).toBe(true)
+    expect(firstMessage(staffJoinStartInput.safeParse({ token, password: '' }))).toBe(
+      'Enter your password',
+    )
+    expect(staffJoinStartInput.safeParse({ token, password: 'a'.repeat(129) }).success).toBe(false)
+  })
+
+  it('answers an unknown link as expired with nothing else', () => {
+    const unknown = {
+      status: 'expired',
+      email: null,
+      name: null,
+      inviterName: null,
+      expiresAt: null,
+      resume: false,
+    }
+    expect(staffJoinPreview.safeParse(unknown).success).toBe(true)
+  })
+})
+
+describe('dashboard', () => {
+  const organization = { id: orgId, name: 'Parkview Homes' }
+
+  it('describes each Needs attention row by its kind', () => {
+    const over = { kind: 'over_limit', organization, limit: 'members', used: 17, included: 15 }
+    expect(attentionItem.safeParse(over).success).toBe(true)
+    expect(attentionItem.safeParse({ kind: 'quiet', organization, days: 18 }).success).toBe(true)
+    expect(attentionItem.safeParse({ kind: 'no_plan', organization }).success).toBe(true)
+    expect(attentionItem.safeParse({ kind: 'quiet', organization }).success).toBe(false)
+  })
+
+  it('keeps feed rows to organization, kind, count and time', () => {
+    const row = {
+      organization,
+      kind: 'people_joined',
+      day: '2026-11-27',
+      count: 3,
+      latestAt: '2026-11-27T10:00:00.000Z',
+    }
+    expect(feedRow.parse({ ...row, actorName: 'Olumide Bankole', ip: '102.89.34.1' })).toEqual(row)
+  })
+
+  it('caps the queue at 8 rows', () => {
+    const items = Array.from({ length: 9 }, () => ({ kind: 'no_plan', organization }))
+    const result = dashboard.shape.attention.safeParse({ items, more: 0 })
+    expect(result.success).toBe(false)
+  })
+})
+
 describe('console contract', () => {
   type Node = { '~orpc'?: { meta: { feature?: unknown; area?: unknown } } }
   function procedures(node: unknown): Node[] {
@@ -194,6 +300,17 @@ describe('shared errors for the console', () => {
     expect(data.safeParse(undefined).success).toBe(true)
     expect(data.safeParse({ reason: 'console_window_closed' }).success).toBe(true)
     expect(data.safeParse({ reason: 'permission' }).success).toBe(false)
+  })
+
+  it('lets a refused invite offer Resend on the open invitation', () => {
+    const data = { reason: 'platform_refused', next: 'resend_invitation', invitationId: orgId }
+    expect(errorMap.CONFLICT.data.safeParse(data).success).toBe(true)
+  })
+
+  it('lists the staff emails a customer invite refused', () => {
+    const data = { reason: 'staff_account', staffAccounts: ['tunde@ventoerp.com'] }
+    expect(errorMap.CONFLICT.data.safeParse(data).success).toBe(true)
+    expect(errorMap.FORBIDDEN.data.safeParse({ reason: 'staff_account' }).success).toBe(true)
   })
 })
 
