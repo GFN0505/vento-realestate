@@ -125,7 +125,7 @@ export function DecisionForm({ detail, onDone, sticky = false }: Props) {
             aria-busy={pending || undefined}
             aria-keyshortcuts="a"
             aria-describedby={online ? undefined : `${id}-offline`}
-            className="max-md:h-11 max-md:flex-[2]"
+            className="max-md:h-11 max-md:flex-1"
           >
             {pending && decide.variables?.decision === 'approve' && (
               <LoaderCircleIcon aria-hidden className="animate-spin" />

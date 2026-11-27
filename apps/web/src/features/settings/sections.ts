@@ -34,11 +34,7 @@ export type SettingsSection = {
   label: string
   /** The organization's sections, then the person's own (drawn after a divider). */
   group: 'organization' | 'personal'
-  /** One line for the phone list (board SettingsMobile). */
-  summary: string
   to: SettingsPath
-  /** Extra words ⌘K matches on. */
-  keywords: readonly string[]
   can: (access: SectionAccess) => boolean
 }
 
@@ -56,46 +52,35 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     key: 'organization',
     label: 'Organization',
     group: 'organization',
-    summary: 'Name, head office and financial year',
     to: '/settings/organization',
-    keywords: ['organization', 'profile', 'financial year', 'head office', 'group'],
     can: canViewSettings,
   },
   {
     key: 'companies',
     label: 'Companies',
     group: 'organization',
-    summary: 'Your holding company and SPVs',
     to: '/settings/companies',
-    // "entity" stays a keyword so people who say it still find the page (decision 0018).
-    keywords: ['companies', 'spv', 'entity', 'entities', 'rc number', 'tin', 'vat'],
     can: canViewSettings,
   },
   {
     key: 'team',
     label: 'Team',
     group: 'organization',
-    summary: 'People, invitations and what each one can see',
     to: '/settings/team',
-    keywords: ['members', 'people', 'users', 'invite', 'invitations', 'staff'],
     can: canViewSettings,
   },
   {
     key: 'roles',
     label: 'Roles & permissions',
     group: 'organization',
-    summary: 'What each role can do',
     to: '/settings/roles',
-    keywords: ['roles', 'permissions', 'access', 'custom role', 'two-step'],
     can: canViewSettings,
   },
   {
     key: 'approval-rules',
     label: 'Approval rules',
     group: 'organization',
-    summary: 'Which changes need a second person',
     to: '/settings/approval-rules',
-    keywords: ['approvers', 'maker checker', 'limits'],
     // Owners edit; everyone else with Settings view reads (spec open question 1).
     can: canViewSettings,
   },
@@ -103,29 +88,14 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     key: 'audit-log',
     label: 'Audit log',
     group: 'organization',
-    summary: 'Who changed what, and when',
     to: '/settings/audit-log',
-    keywords: ['history', 'who changed', 'activity', 'export'],
     can: canSeeAuditLog,
   },
   {
     key: 'security',
     label: 'My security',
     group: 'personal',
-    summary: 'Password, two-step, passkeys and devices',
     to: '/settings/security',
-    keywords: [
-      'password',
-      'passkey',
-      'two-step',
-      'sessions',
-      'devices',
-      'sign out',
-      'backup codes',
-      'account',
-      'profile',
-      'name',
-    ],
     // Personal: no permission needed, also while previewing a role (spec).
     can: () => true,
   },

@@ -166,7 +166,7 @@ function RowLink({
       replace
       // Selection, not navigation: the open request is marked as current.
       aria-current={current ? 'true' : undefined}
-      className={approvalRowClass}
+      className={cn(approvalRowClass, current && 'border-l-primary bg-selected')}
     >
       {content}
     </Link>

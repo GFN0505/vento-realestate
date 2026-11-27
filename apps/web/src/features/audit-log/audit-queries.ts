@@ -1,6 +1,7 @@
 import { keepPreviousData } from '@tanstack/react-query'
 import { orpc } from '@/lib/orpc'
-import { type AuditSearch, auditListInput } from './audit-search'
+import { auditListInput } from './audit-range'
+import type { AuditSearch } from './audit-search'
 
 /** One page of entries, newest first. In the entry with the loader: no zod and no copy here. */
 export function auditListQuery(search: AuditSearch) {

@@ -34,7 +34,7 @@ export function DetailSkeleton() {
     <div aria-hidden className="flex flex-col gap-4">
       <Skeleton className="h-5 w-2/3" />
       <Skeleton className="h-3 w-32" />
-      <Skeleton className="h-28 w-full rounded-[10px]" />
+      <Skeleton className="h-24 w-full rounded-[10px]" />
       <Skeleton className="h-14 w-full rounded-[10px]" />
       <Skeleton className="h-3 w-3/4" />
       <div className="flex flex-col gap-3">

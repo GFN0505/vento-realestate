@@ -30,16 +30,8 @@ type Props = {
 export function RulesTable({ groups, onEdit, onDelete }: Props) {
   return (
     <div className="overflow-hidden rounded-[10px] border bg-card">
-      <table className="w-full table-fixed text-[13px]">
+      <table className="w-full text-[13px]">
         <caption className="sr-only">Approval rules</caption>
-        <colgroup>
-          <col className="w-[26%]" />
-          <col className="w-[14%]" />
-          <col className="w-[22%]" />
-          <col className="w-[17%]" />
-          <col className="w-[21%]" />
-          {onEdit && <col className="w-12" />}
-        </colgroup>
         <thead className="border-b bg-muted/40">
           <tr>
             {['Action', 'When', 'Approved by', 'Companies', 'Extra condition'].map((label) => (
@@ -123,7 +115,7 @@ export function RulesTable({ groups, onEdit, onDelete }: Props) {
                 <tr>
                   <td
                     colSpan={onEdit ? 6 : 5}
-                    className="bg-muted/20 px-5 py-2 text-muted-foreground text-xs"
+                    className="bg-muted/40 px-5 py-2 text-muted-foreground text-xs"
                   >
                     {group.belowThreshold}
                   </td>

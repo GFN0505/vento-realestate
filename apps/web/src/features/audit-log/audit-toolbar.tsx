@@ -7,8 +7,8 @@ import { SearchField } from '@/components/search-field'
 import { Input } from '@/components/ui/input'
 import { entitiesQuery } from '@/features/entity/use-current-entity'
 import { orpc } from '@/lib/orpc'
-import { rangeProblem } from './audit-range'
-import { type AuditSearch, addDays, auditRange, lagosToday } from './audit-search'
+import { addDays, auditRange, lagosToday, rangeProblem } from './audit-range'
+import type { AuditSearch } from './audit-search'
 
 type Props = {
   search: AuditSearch
@@ -152,7 +152,7 @@ export function AuditToolbar({ search, update }: Props) {
               type="button"
               aria-label="Show every entry"
               onClick={() => set({ target: undefined, targetId: undefined, about: undefined })}
-              className="inline-flex size-6 items-center justify-center rounded-full outline-hidden hover:bg-card focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:size-9"
+              className="inline-flex size-6 items-center justify-center rounded-full outline-hidden hover:bg-card focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring max-md:size-11"
             >
               <XIcon aria-hidden className="size-3.5" />
             </button>

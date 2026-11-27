@@ -6,7 +6,7 @@ import { ageText, amountText, requestState } from './approval-words'
 
 /** The row's look, shared by the list's links (desktop: `?id=`, phones: `/approvals/$id`). */
 export const approvalRowClass =
-  'flex w-full gap-3 border-b border-l-[3px] border-l-transparent px-4 py-3.5 text-left outline-hidden transition-colors last:border-b-0 hover:bg-muted/60 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring aria-[current=true]:border-l-brand aria-[current=true]:bg-selected'
+  'flex w-full gap-3 border-b border-l-[3px] border-l-transparent px-4 py-3.5 text-left outline-hidden transition-colors last:border-b-0 hover:bg-muted/60 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
 
 /**
  * ApprovalRow (board Approvals): the maker's initials, the title and amount, who asked and why,

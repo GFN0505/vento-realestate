@@ -16,9 +16,7 @@ const fake = (label: string): SettingsSection => ({
   key: 'team',
   label,
   group: 'organization',
-  summary: '',
   to: '/settings/team',
-  keywords: [],
   can: () => true,
 })
 

@@ -11,14 +11,9 @@ export function ChangesTable({ changes }: { changes: readonly ApprovalChange[] }
   if (changes.length === 0) return null
   return (
     <div className="overflow-hidden rounded-[10px] border">
-      <table className="w-full table-fixed text-[13px]">
+      <table className="w-full text-[13px]">
         <caption className="sr-only">What changes</caption>
-        <colgroup>
-          <col className="w-[30%]" />
-          <col className="w-[35%]" />
-          <col className="w-[35%]" />
-        </colgroup>
-        <thead className="bg-muted/50">
+        <thead className="bg-muted/40">
           <tr>
             {['Field', 'Before', 'After'].map((label) => (
               <th
@@ -39,11 +34,11 @@ export function ChangesTable({ changes }: { changes: readonly ApprovalChange[] }
               <th scope="row" className="px-3 py-2.5 text-left font-normal text-muted-foreground">
                 {change.field}
               </th>
-              <td className="break-words px-3 py-2.5 text-muted-foreground">
+              <td className="px-3 py-2.5 text-muted-foreground">
                 {change.before === null ? DASH : <del>{change.before}</del>}
               </td>
-              <td className="break-words px-3 py-2.5 font-semibold">
-                {change.after === null ? DASH : <ins className="no-underline">{change.after}</ins>}
+              <td className="px-3 py-2.5 font-semibold">
+                {change.after === null ? DASH : change.after}
               </td>
             </tr>
           ))}

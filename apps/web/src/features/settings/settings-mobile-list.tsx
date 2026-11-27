@@ -3,6 +3,7 @@ import { ChevronRightIcon } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useMe } from '@/features/preview/use-effective-permissions'
 import { usePageTitle } from '@/features/shell/use-page-title'
+import { SECTION_COPY } from './section-copy'
 import type { SettingsSection } from './sections'
 
 /**
@@ -33,7 +34,9 @@ export function SettingsMobileList({ sections }: { sections: readonly SettingsSe
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="font-semibold text-sm">{section.label}</span>
-                <span className="text-muted-foreground text-xs">{section.summary}</span>
+                <span className="text-muted-foreground text-xs">
+                  {SECTION_COPY[section.key].summary}
+                </span>
               </span>
               <ChevronRightIcon aria-hidden className="size-4 text-muted-foreground" />
             </Link>

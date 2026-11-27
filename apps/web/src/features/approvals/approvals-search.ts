@@ -1,4 +1,5 @@
 import type { ApprovalsTab, ListApprovalsInput } from '@vento/shared'
+import { oneOf, pageParam, uuidParam } from '@/lib/search-params'
 
 /*
  * The inbox address: `/approvals?tab=mine&id=<request id>&page=2`. Hand-written, not zod: route
@@ -16,16 +17,11 @@ export type ApprovalsSearch = {
 
 export const APPROVALS_PAGE_SIZE = 25
 
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 export function validateApprovalsSearch(search: Record<string, unknown>): ApprovalsSearch {
-  const page = Number(search.page)
-  const tab = search.tab === 'mine' || search.tab === 'decided' ? search.tab : undefined
-  const id = typeof search.id === 'string' && UUID.test(search.id) ? search.id : undefined
   return {
-    tab,
-    id,
-    page: Number.isInteger(page) && page > 1 && page < 10_000 ? page : undefined,
+    tab: oneOf(search.tab, ['mine', 'decided'] as const),
+    id: uuidParam(search.id),
+    page: pageParam(search.page),
   }
 }
 
@@ -33,7 +29,7 @@ export function validateApprovalsSearch(search: Record<string, unknown>): Approv
 export function approvalsListInput(search: ApprovalsSearch): ListApprovalsInput {
   return {
     tab: search.tab ?? 'waiting',
-    entityId: search.entity && UUID.test(search.entity) ? search.entity : undefined,
+    entityId: uuidParam(search.entity),
     page: search.page ?? 1,
     pageSize: APPROVALS_PAGE_SIZE,
   }

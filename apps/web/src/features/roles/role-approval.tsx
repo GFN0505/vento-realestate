@@ -9,10 +9,12 @@ import {
 import { ruleTitle } from '@/features/approval-rules/rules-cards'
 import { approvalRulesQuery } from '@/features/approval-rules/rules-queries'
 import { approvalPreviewQuery } from '@/features/approvals/send/approval-preview'
+import { roleQuery } from '@/features/settings/role-queries'
 
 /**
  * Whether saving this role's permissions needs approval (a rule applies and someone holds the
- * role), by whom, and whether a request already waits. Only asked when the viewer can edit.
+ * role), and by whom. Only asked when the viewer can edit and nothing waits already (a waiting
+ * request comes with the role as `pendingApproval`).
  */
 export function useRoleApproval(roleId: string, canEdit: boolean) {
   const queryClient = useQueryClient()
@@ -23,8 +25,11 @@ export function useRoleApproval(roleId: string, canEdit: boolean) {
     needed: data !== null,
     chain: data?.chain ?? null,
     blocked: data?.blocked ?? null,
-    pendingId: data?.pendingRequestId ?? null,
-    refresh: () => void queryClient.invalidateQueries({ queryKey: options.queryKey }),
+    /** After sending: the role (now with `pendingApproval`) and the preview catch up. */
+    refresh: () => {
+      void queryClient.invalidateQueries({ queryKey: options.queryKey })
+      void queryClient.invalidateQueries({ queryKey: roleQuery(roleId).queryKey })
+    },
   }
 }
 

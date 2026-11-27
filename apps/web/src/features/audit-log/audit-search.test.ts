@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { rangeProblem } from './audit-range'
-import { auditListInput, auditRange, validateAuditSearch } from './audit-search'
+import { auditListInput, auditRange, rangeProblem } from './audit-range'
+import { validateAuditSearch } from './audit-search'
 
 const now = new Date('2026-11-27T10:00:00.000Z')
 

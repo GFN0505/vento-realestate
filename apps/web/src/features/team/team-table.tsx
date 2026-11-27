@@ -2,7 +2,14 @@ import type { TeamInvitationRow, TeamMemberRow } from '@vento/shared'
 import { lastActiveLabel } from './last-active'
 import { RoleMenu } from './role-menu'
 import { RowMenu } from './row-menu'
-import { AccessText, InvitationBadge, PersonAvatar, TwoStepBadge, YouTag } from './team-cells'
+import {
+  AccessText,
+  InvitationBadge,
+  OwnerPending,
+  PersonAvatar,
+  TwoStepBadge,
+  YouTag,
+} from './team-cells'
 
 export type ListRow = TeamMemberRow | TeamInvitationRow
 
@@ -74,6 +81,7 @@ export function TeamTable({ rows, onOpen }: Props) {
                 ) : (
                   <span className="block truncate">{row.role.name}</span>
                 )}
+                <OwnerPending row={row} />
               </td>
               <td className={`${td} text-muted-foreground`}>
                 <AccessText access={row.access} className="block truncate" />

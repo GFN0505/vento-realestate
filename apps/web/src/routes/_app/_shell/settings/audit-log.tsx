@@ -7,6 +7,8 @@ import { validateAuditSearch } from '@/features/audit-log/audit-search'
 export const Route = createFileRoute('/_app/_shell/settings/audit-log')({
   // Organization-wide: the company switcher hides here (decision 0014).
   staticData: { module: 'settings', orgWide: true },
+  // The loader (the range and request) travels with the page's chunk, preloaded on hover.
+  codeSplitGroupings: [['loader', 'component']],
   beforeLoad: auditGuard,
   validateSearch: validateAuditSearch,
   // The open entry and its name aren't part of the list, so opening one never refetches it.

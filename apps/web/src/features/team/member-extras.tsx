@@ -1,27 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import type { TeamMemberRow } from '@vento/shared'
 import { HistoryIcon } from 'lucide-react'
-import { approvalPreviewQuery } from '@/features/approvals/send/approval-preview'
 import { WaitingForApproval } from '@/features/approvals/send/waiting-for-approval'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { canSeeAuditLog } from '@/features/settings/sections'
 
 /**
  * "Waiting for approval by Owner" while a request to make this member an owner waits (brick 4),
- * so nobody thinks it already happened.
+ * so nobody thinks it already happened. The row carries it as `pendingApproval`.
  */
-// TODO(contract): `teamMemberRow` has no `pendingApproval`, so the row can't read "Owner ·
-// waiting for approval" and this asks `approvals.preview` per open sheet instead.
 export function MemberOwnerRequest({ row }: { row: TeamMemberRow }) {
-  const asks = row.role.key !== 'owner' && row.can.changeAccess
-  const preview = useQuery({
-    ...approvalPreviewQuery('access.member.make_owner', { type: 'member', id: row.id }),
-    enabled: asks,
-  })
-  const pending = preview.data?.needed ? preview.data : null
-  if (!asks || !pending?.pendingRequestId) return null
-  return <WaitingForApproval requestId={pending.pendingRequestId} fallback={pending.chain} />
+  if (!row.pendingApproval) return null
+  return <WaitingForApproval pending={row.pendingApproval} />
 }
 
 /** **View history**: the audit log filtered to this member (owners and admins with every company). */

@@ -53,7 +53,7 @@ export function ApprovalDetail({ detail, onDecided, page = false }: Props) {
         )}
       </header>
       <ChangesTable changes={detail.summary.changes} />
-      <div className="flex items-start gap-3 rounded-[10px] bg-muted/60 px-3.5 py-3">
+      <div className="flex items-start gap-3 rounded-[10px] bg-muted/40 px-3.5 py-3">
         <Avatar
           name={detail.makerName}
           className="size-7 border bg-card text-[10px] text-foreground"

@@ -125,9 +125,10 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
   // Below xl the content column is too narrow for six columns: the list and its sheet instead.
   const compact = useMediaQuery(GRID_QUERY)
   const navigate = route.useNavigate()
-  const approval = useRoleApproval(role.id, rights.canEdit(role))
+  const pending = role.pendingApproval ?? null
   // While a request waits, the grid is read-only until it's decided (spec).
-  const editable = rights.canEdit(role) && approval.pendingId === null
+  const editable = rights.canEdit(role) && pending === null
+  const approval = useRoleApproval(role.id, editable)
   const draft = useRoleDraft(role)
   const [sending, setSending] = useState(false)
   const save = useSaveRole(undo.offer, {
@@ -204,9 +205,7 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
         }
       />
       {role.readOnly && <ReadOnlyNote>{role.readOnly.message}</ReadOnlyNote>}
-      {approval.pendingId && (
-        <WaitingForApproval requestId={approval.pendingId} fallback={approval.chain} />
-      )}
+      {pending && <WaitingForApproval pending={pending} />}
       {compact ? <PermissionsMobileList {...grid} /> : <PermissionsGrid {...grid} />}
       <RoleApprovesLine roleId={role.id} />
       <TwoStepField

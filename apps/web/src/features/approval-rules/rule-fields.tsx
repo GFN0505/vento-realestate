@@ -117,14 +117,14 @@ export function RuleFields({
         )}
       />
 
-      <div className="flex flex-col gap-2 rounded-[10px] bg-muted/50 px-3.5 py-3">
+      <div className="flex flex-col gap-2 rounded-[10px] bg-muted/40 px-3.5 py-3">
         <label htmlFor="rule-requester" className="flex items-center gap-3 text-[13px]">
           <Checkbox id="rule-requester" checked disabled />
           {APPROVAL_COPY.requesterCantApprove}
           <LockIcon aria-hidden className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
         </label>
         {meta.extraCondition && (
-          <p className="pl-[30px] text-muted-foreground text-xs">
+          <p className="pl-7 text-muted-foreground text-xs">
             Also: {meta.extraCondition.charAt(0).toLowerCase()}
             {meta.extraCondition.slice(1)}.
           </p>

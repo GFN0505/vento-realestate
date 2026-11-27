@@ -1,4 +1,5 @@
 import { orpc } from '@/lib/orpc'
+import { uuidParam } from '@/lib/search-params'
 
 /*
  * One role, for its page. In the entry with the route's loader: no zod and no copy here. The
@@ -11,10 +12,8 @@ export function roleQuery(id: string) {
 /** `?new=1&from=<role id>`: the New role dialog, so Back closes it and ⌘K can open it. */
 export type NewRoleSearch = { new?: true; from?: string }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 export function validateNewRoleSearch(search: Record<string, unknown>): NewRoleSearch {
   const open = search.new === true || search.new === 1 || search.new === '1'
-  const from = typeof search.from === 'string' && UUID.test(search.from) ? search.from : undefined
+  const from = uuidParam(search.from)
   return open ? { new: true, from } : {}
 }

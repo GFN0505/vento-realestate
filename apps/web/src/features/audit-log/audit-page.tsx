@@ -16,8 +16,14 @@ import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
 import { AuditEntrySheet } from './audit-entry-sheet'
 import { auditListQuery } from './audit-queries'
-import { hasAuditFilters, rangeProblem } from './audit-range'
-import { AUDIT_PAGE_SIZE, type AuditSearch, auditFilters, auditRange } from './audit-search'
+import {
+  AUDIT_PAGE_SIZE,
+  auditFilters,
+  auditRange,
+  hasAuditFilters,
+  rangeProblem,
+} from './audit-range'
+import type { AuditSearch } from './audit-search'
 import { AuditCards, AuditTable } from './audit-table'
 import { AuditToolbar } from './audit-toolbar'
 import { useAuditExport } from './use-audit-export'
@@ -153,8 +159,8 @@ function AuditSkeleton() {
       <div className="h-10 border-b bg-muted/40" />
       {[0, 1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="flex h-12 items-center gap-4 border-b px-5 last:border-b-0">
-          <Skeleton className="h-3.5 w-[11%]" />
-          <Skeleton className="h-3.5 w-[15%]" />
+          <Skeleton className="h-3.5 w-1/12" />
+          <Skeleton className="h-3.5 w-1/6" />
           <Skeleton className="h-3.5 w-1/4" />
           <Skeleton className="h-3.5 w-1/4" />
         </div>

@@ -12,12 +12,3 @@ export function approvalsGuard({ context }: { context: { queryClient: QueryClien
   const access = effectiveAccessFrom(context.queryClient)
   if (!access || !canView(access, navItem('approvals'))) throw notFound()
 }
-
-let visited = false
-
-/** True once per page load: the first visit waits for its rows, later ones keep the old rows. */
-export function firstApprovalsVisit(): boolean {
-  if (visited) return false
-  visited = true
-  return true
-}

@@ -28,9 +28,7 @@ export function Changes({ changes }: { changes: AuditRow['changes'] }) {
     <ul className="flex flex-col gap-0.5">
       {changes.map((change, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: fields never reorder within an entry.
-        <li key={index} className="break-words">
-          {changeText(change)}
-        </li>
+        <li key={index}>{changeText(change)}</li>
       ))}
     </ul>
   )
@@ -43,16 +41,8 @@ export function Changes({ changes }: { changes: AuditRow['changes'] }) {
 export function AuditTable({ rows, onOpen }: Props) {
   return (
     <div className="@container overflow-hidden rounded-[10px] border bg-card">
-      <table className="w-full table-fixed text-[13px]">
+      <table className="w-full text-[13px]">
         <caption className="sr-only">Audit log</caption>
-        <colgroup>
-          <col className="w-[13%]" />
-          <col className="w-[18%]" />
-          <col className="hidden @4xl:table-column @4xl:w-[12%]" />
-          <col className="w-[30%] @4xl:w-[22%]" />
-          <col className="w-[39%] @4xl:w-[22%]" />
-          <col className="hidden @4xl:table-column @4xl:w-[13%]" />
-        </colgroup>
         <thead className="border-b bg-muted/40">
           <tr>
             <th scope="col" className={th}>

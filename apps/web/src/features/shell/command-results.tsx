@@ -39,6 +39,7 @@ import {
   useEffectiveAccess,
   useMe,
 } from '@/features/preview/use-effective-permissions'
+import { SECTION_COPY } from '@/features/settings/section-copy'
 import { type SettingsKey, type SettingsPath, visibleSections } from '@/features/settings/sections'
 import type { SecurityIntent } from '@/features/settings/security-search'
 import { NAV_COPY } from '@/features/shell/nav-copy'
@@ -183,7 +184,11 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
             <CommandItem
               key={section.key}
               value={`go:settings:${section.key}`}
-              keywords={[`Go to ${section.label}`, 'settings', ...section.keywords]}
+              keywords={[
+                `Go to ${section.label}`,
+                'settings',
+                ...SECTION_COPY[section.key].keywords,
+              ]}
               onSelect={() => navigate(section.to)}
             >
               <Icon aria-hidden />

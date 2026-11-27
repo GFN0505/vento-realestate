@@ -105,3 +105,13 @@ export function InvitationBadge({ row }: { row: TeamInvitationRow }) {
   }
   return <StatusBadge tone="amber">Invited · expires {formatDayMonth(row.expiresAt)}</StatusBadge>
 }
+
+/** "Owner · waiting for approval": making them an owner waits for a second person (brick 4). */
+export function OwnerPending({ row }: { row: { kind: string; pendingApproval?: unknown } }) {
+  if (row.kind !== 'member' || !row.pendingApproval) return null
+  return (
+    <span className="block truncate font-medium text-status-amber-fg text-xs">
+      Owner · waiting for approval
+    </span>
+  )
+}
