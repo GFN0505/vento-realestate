@@ -28,7 +28,7 @@ const transport = createPostmarkTransport({
   stream: env.POSTMARK_MESSAGE_STREAM,
 })
 const message = {
-  subject: 'Vento email check',
+  subject: 'Vento Real Estate email check',
   html: '<p>Postmark transport check.</p>',
   text: 'Postmark transport check.',
   tag: 'invitation' as const,
@@ -38,8 +38,8 @@ const results = await transport.sendBatch([
   {
     ...message,
     to: 'check@blackhole.postmarkapp.com',
-    fromName: 'Vento "Check" via Vento',
-    replyTo: { name: 'Vento Check', email: 'reply@example.com' },
+    fromName: 'Acme "Check" via Vento Real Estate',
+    replyTo: { name: 'Acme Check', email: 'reply@example.com' },
     metadata: { invitationId: '01936f1e-8b2a-7c3d-9e4f-000000000000' },
   },
 ])
