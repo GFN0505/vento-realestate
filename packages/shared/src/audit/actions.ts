@@ -55,6 +55,17 @@ export const AUDIT_ACTIONS = [
   'plan.add_on_changed',
   /** The person's own account trail: they opened the Vento console (with the proof used). */
   'console.opened',
+  // Approvals and audit (brick 4). Approval events carry `metadata.module` and `metadata.entityId`.
+  'approval.requested',
+  'approval.step_approved',
+  'approval.approved',
+  'approval.rejected',
+  'approval.cancelled',
+  'approval.expired',
+  'approval_rule.created',
+  'approval_rule.updated',
+  'approval_rule.deleted',
+  'audit.exported',
 ] as const
 export const auditAction = z.enum(AUDIT_ACTIONS)
 export type AuditAction = z.infer<typeof auditAction>

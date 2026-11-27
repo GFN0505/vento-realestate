@@ -6,6 +6,7 @@ import {
   type MePlan,
   type Role,
   type SystemRoleKey,
+  toggleCell,
 } from '@vento/shared'
 
 /** The owner's plan block: Starter, with a Commissions hint and an email contact. */
@@ -52,6 +53,9 @@ export function testMe(roleKey: SystemRoleKey, overrides: Partial<Me> = {}): Me 
     // As the server computes it: settings create and all-companies access.
     canAddCompany: roleKey === 'owner' || roleKey === 'admin',
     console: null,
+    approvalsWaiting: 0,
+    // As the server computes it: the role can approve in some module.
+    canSeeApprovals: Object.values(defaultPermissions(role)).some((a) => a.includes('approve')),
     ...overrides,
   }
 }
@@ -95,7 +99,9 @@ export function testCustomRole(overrides: Partial<Role> = {}): Role {
     description: 'Based on Project manager',
     isSystem: false,
     requiresTwoStep: false,
-    permissions: defaultPermissions(base),
+    // Without Projects: Approve: any Approve locks two-step on (decision 0024), and this role
+    // stands for one that doesn't need it.
+    permissions: toggleCell(defaultPermissions(base), 'projects', 'approve', false),
     canApprove: [],
     version: 1,
     memberCount: 0,

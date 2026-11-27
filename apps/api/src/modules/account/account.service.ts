@@ -6,7 +6,7 @@ import type {
   SwitchOrganizationOutput,
   TwoStepRequirement,
 } from '@vento/shared'
-import { hasPermission } from '@vento/shared'
+import { approvableModules, hasPermission } from '@vento/shared'
 import { and, count, desc, eq, gt, ne } from 'drizzle-orm'
 import {
   type AuthSession,
@@ -178,6 +178,12 @@ export async function getMe(
     twoStepSetupBy: gate.kind === 'grace' ? gate.deadline.toISOString() : null,
     canAddCompany: membership ? canAddCompany(membership.member) : false,
     console: admin ? { twoStepOn: admin.twoFactorEnabled } : null,
+    // STUB (brick 4 build-order step 8): the waiting count and "made a request in the last 90
+    // days" need the approvals tables. Until then: nothing waits, and approvers see the inbox.
+    approvalsWaiting: 0,
+    canSeeApprovals: membership
+      ? approvableModules(membership.member.permissions).length > 0
+      : false,
   }
 }
 

@@ -104,7 +104,8 @@ describe('roles: creating', () => {
         name: 'Site engineer',
         pluralName: 'people with the Site engineer role',
         description: 'Based on Project manager',
-        requiresTwoStep: false,
+        // Project manager approves in Projects, so its copy needs two-step (decision 0024).
+        requiresTwoStep: true,
         permissions: pm(),
         version: 1,
         memberCount: 0,
@@ -226,9 +227,11 @@ describe('roles: saving', () => {
   it('refuses to turn two-step off for a role that can edit in Finance', () =>
     withRollback(async (tx) => {
       const { ctx, role } = await siteEngineer(tx)
-      const finance = toggleCell(role.permissions, 'finance', 'edit', true)
+      // Without Approve, so Finance: Edit alone is what locks two-step on.
+      const noApprove = toggleCell(role.permissions, 'projects', 'approve', false)
+      const finance = toggleCell(noApprove, 'finance', 'edit', true)
       await expect(
-        updateRole(ctx, { id: role.id, version: 1, permissions: finance }),
+        updateRole(ctx, { id: role.id, version: 1, permissions: finance, requiresTwoStep: false }),
       ).rejects.toMatchObject({
         code: 'BAD_REQUEST',
         data: { reason: 'role_needs_two_step' },
