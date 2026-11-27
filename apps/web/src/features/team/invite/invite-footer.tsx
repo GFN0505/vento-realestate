@@ -42,6 +42,8 @@ function errorText(error: unknown): string | null {
   // Clashes are marked on their rows (spec: on the row, never in a banner).
   if (reason === 'already_member' || reason === 'already_invited') return null
   if (reason === 'entity_unavailable') return ENTITY_UNAVAILABLE
+  // "Tell the approver why." sits on the Why? field.
+  if (reason === 'reason_required') return null
   if (error instanceof ORPCError && error.code === 'NOT_FOUND') return ENTITY_UNAVAILABLE
   return apiErrorMessage(error)
 }

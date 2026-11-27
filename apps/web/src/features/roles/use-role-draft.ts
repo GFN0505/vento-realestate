@@ -31,7 +31,8 @@ export function draftFrom(role: Role): RoleDraft {
 /** Everything the page derives from a draft against the saved role. Pure, for tests. */
 export function draftState(role: Role, draft: RoleDraft) {
   const changes = permissionChanges(role.permissions, draft.permissions)
-  // Locked on for a role that can manage money, payroll or people's access (spec question 4).
+  // Locked on for a role that can manage money, payroll or people's access (spec question 4), or
+  // approve anything (decision 0024).
   const twoStepLocked = roleNeedsTwoStep(draft.permissions)
   const requiresTwoStep = twoStepLocked || draft.twoStepChoice
   const name = draft.name.trim()

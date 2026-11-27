@@ -60,6 +60,11 @@ export function useChangeRole(listKey: QueryKey) {
         )
         // Other pages and filters (a role filter, the Invited chip) catch up in the background.
         void queryClient.invalidateQueries({ queryKey: teamListKey(), refetchType: 'none' })
+        // A rule sent it for approval after all: nothing changed yet, so no Undo.
+        if (result.outcome && !result.outcome.ran) {
+          toast.success(result.outcome.notice)
+          return
+        }
         const message = `${row.name} is now ${role.name}`
         if (!undo || previous.id === role.id) {
           toast.success(message)

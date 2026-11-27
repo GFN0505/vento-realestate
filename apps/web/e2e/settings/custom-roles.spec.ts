@@ -213,7 +213,9 @@ test.describe('on a laptop', () => {
       await expect(twoStep).toBeChecked()
       await expect(twoStep).toBeDisabled()
       await expect(
-        page.getByText("Required because this role can manage money, payroll or people's access."),
+        page.getByText(
+          "Required because this role can manage money, payroll or people's access, or approve anything.",
+        ),
       ).toBeVisible()
       await cell(page, 'Finance: Edit').click()
       await expect(twoStep).toBeEnabled()

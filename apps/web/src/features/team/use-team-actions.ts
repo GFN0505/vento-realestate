@@ -17,8 +17,19 @@ const STALE_REASONS = new Set(['already_member', 'invitation_not_pending', 'invi
 export type TeamConfirm =
   | { kind: 'remove'; row: TeamMemberRow }
   | { kind: 'reset'; row: TeamMemberRow }
-  /** `save`: the member sheet's own save (role and entities together); else the role alone. */
-  | { kind: 'owner'; row: TeamMemberRow; role: RoleRef; save?: () => void }
+  /**
+   * `save`: the member sheet's own save (role and entities together); else the role alone. When
+   * a rule applies, the confirm becomes Send for approval with these `entityIds`, and
+   * `onRequested` runs once the request is sent (the sheet closes).
+   */
+  | {
+      kind: 'owner'
+      row: TeamMemberRow
+      role: RoleRef
+      save?: () => void
+      entityIds?: string[] | null
+      onRequested?: () => void
+    }
 
 /**
  * Every change on the Team page, in one place so rows, menus, cards and sheets behave the same.

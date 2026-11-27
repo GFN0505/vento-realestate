@@ -56,6 +56,7 @@ export function effectiveAccess(
   const organization = {
     features: own ? featuresOf(me) : NO_FEATURES,
     internal: me.organization?.internal ?? false,
+    allEntities: own !== null && own.entityIds === null,
   }
   if (!own) {
     return {
@@ -71,6 +72,8 @@ export function effectiveAccess(
   const roleKey = role ? role.key : own.role.key
   return {
     ...organization,
+    // A preview narrows Approvals too: shown only if the previewed role approves somewhere.
+    approvals: me.canSeeApprovals && (!role || approvesSomewhere(role.permissions)),
     // Decision 12: a preview only narrows; never more than the member's own role can view.
     permissions: role ? intersectPermissions(role.permissions, own.permissions) : own.permissions,
     roleKey,
@@ -79,6 +82,10 @@ export function effectiveAccess(
     // The server sends `plan` to owners only; the role check covers a preview.
     showUpgradeHints: me.plan !== null && roleKey === 'owner',
   }
+}
+
+function approvesSomewhere(permissions: PermissionSet): boolean {
+  return Object.values(permissions).some((actions) => actions.includes('approve'))
 }
 
 /** For route guards, which run outside React. */

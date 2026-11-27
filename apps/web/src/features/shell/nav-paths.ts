@@ -4,6 +4,7 @@
  */
 export const NAV_PATHS = [
   '/',
+  '/approvals',
   '/land',
   '/projects',
   '/estates',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { type TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
+import { type RoleRef, type TeamMemberRow, updateMemberAccessInput } from '@vento/shared'
 import { CircleAlertIcon } from 'lucide-react'
 import { useRef } from 'react'
 import { Controller, type Resolver, type UseFormReturn, useForm } from 'react-hook-form'
@@ -47,8 +47,11 @@ type Props = {
   row: TeamMemberRow
   form: UseFormReturn<AccessValues>
   save: ReturnType<typeof useSaveAccess>
-  /** Owner asks first (spec); the confirm then runs this save. */
-  confirmOwner: (save: () => void) => void
+  /**
+   * Owner asks first (spec); the confirm then runs this save, or sends the same role and
+   * companies for approval when a rule applies (brick 4).
+   */
+  confirmOwner: (save: () => void, role: RoleRef, entityIds: string[] | null) => void
 }
 
 /** Role and entity access in the member sheet. */
@@ -66,13 +69,10 @@ export function MemberAccessForm({ row, form, save, confirmOwner }: Props) {
     (values) => {
       const role = grantable?.find((r) => r.id === values.roleId)
       if (!role) return
-      const run = () =>
-        save.mutate({
-          row,
-          role: { id: role.id, key: role.key, name: role.name },
-          entityIds: entityIdsOf(values.access),
-        })
-      if (role.key === 'owner' && row.role.key !== 'owner') confirmOwner(run)
+      const ref = { id: role.id, key: role.key, name: role.name }
+      const entityIds = entityIdsOf(values.access)
+      const run = () => save.mutate({ row, role: ref, entityIds })
+      if (role.key === 'owner' && row.role.key !== 'owner') confirmOwner(run, ref, entityIds)
       else run()
     },
     (errors) => {

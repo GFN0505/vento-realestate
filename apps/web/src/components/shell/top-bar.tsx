@@ -1,6 +1,7 @@
 import { useMatches } from '@tanstack/react-router'
 import { VentoMark } from '@/components/vento-mark'
 import { useMe } from '@/features/preview/use-effective-permissions'
+import { ApprovalsTopBarLink } from './approvals-count'
 import { EntitySwitcher } from './entity-switcher'
 import { NavSheet } from './nav-sheet'
 import { SearchButton } from './search-button'
@@ -21,6 +22,7 @@ export function TopBar() {
         {!organizationWide && <EntitySwitcher />}
         <SearchButton variant="bar" />
         <div className="flex-1" />
+        <ApprovalsTopBarLink />
         <div className="lg:hidden">
           <UserMenu variant="topbar" />
         </div>

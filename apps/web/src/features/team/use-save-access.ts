@@ -28,7 +28,12 @@ export function useSaveAccess(listKey: QueryKey, actions: TeamActions, onSaved: 
         replaceRow(data, row.id, () => result.row),
       )
       void queryClient.invalidateQueries({ queryKey: teamListKey(), refetchType: 'none' })
-      toast.success(`Access updated for ${row.name}`)
+      // A rule sent it for approval: the row is unchanged until it's approved.
+      toast.success(
+        result.outcome && !result.outcome.ran
+          ? result.outcome.notice
+          : `Access updated for ${row.name}`,
+      )
       onSaved()
     },
     onError: (error, { row }) => {

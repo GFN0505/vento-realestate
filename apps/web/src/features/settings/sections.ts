@@ -14,9 +14,20 @@ export type SettingsPath =
   | '/settings/companies'
   | '/settings/team'
   | '/settings/roles'
+  | '/settings/approval-rules'
+  | '/settings/audit-log'
   | '/settings/security'
 
-export type SettingsKey = 'organization' | 'companies' | 'team' | 'roles' | 'security'
+export type SettingsKey =
+  | 'organization'
+  | 'companies'
+  | 'team'
+  | 'roles'
+  | 'approval-rules'
+  | 'audit-log'
+  | 'security'
+
+type SectionAccess = Pick<NavAccess, 'permissions' | 'allEntities'>
 
 export type SettingsSection = {
   key: SettingsKey
@@ -28,11 +39,17 @@ export type SettingsSection = {
   to: SettingsPath
   /** Extra words ⌘K matches on. */
   keywords: readonly string[]
-  can: (access: Pick<NavAccess, 'permissions'>) => boolean
+  can: (access: SectionAccess) => boolean
 }
 
-const canViewSettings = (access: Pick<NavAccess, 'permissions'>) =>
-  can(access.permissions, 'settings', 'view')
+const canViewSettings = (access: SectionAccess) => can(access.permissions, 'settings', 'view')
+
+/**
+ * The audit log shows sign-ins and changes across companies: Settings edit and every company
+ * (spec open question 1). The server refuses anyone else.
+ */
+export const canSeeAuditLog = (access: SectionAccess) =>
+  can(access.permissions, 'settings', 'edit') && access.allEntities === true
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
@@ -73,6 +90,25 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     can: canViewSettings,
   },
   {
+    key: 'approval-rules',
+    label: 'Approval rules',
+    group: 'organization',
+    summary: 'Which changes need a second person',
+    to: '/settings/approval-rules',
+    keywords: ['approvers', 'maker checker', 'limits'],
+    // Owners edit; everyone else with Settings view reads (spec open question 1).
+    can: canViewSettings,
+  },
+  {
+    key: 'audit-log',
+    label: 'Audit log',
+    group: 'organization',
+    summary: 'Who changed what, and when',
+    to: '/settings/audit-log',
+    keywords: ['history', 'who changed', 'activity', 'export'],
+    can: canSeeAuditLog,
+  },
+  {
     key: 'security',
     label: 'My security',
     group: 'personal',
@@ -95,7 +131,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   },
 ]
 
-export function visibleSections(access: Pick<NavAccess, 'permissions'>): SettingsSection[] {
+export function visibleSections(access: SectionAccess): SettingsSection[] {
   return SETTINGS_SECTIONS.filter((section) => section.can(access))
 }
 

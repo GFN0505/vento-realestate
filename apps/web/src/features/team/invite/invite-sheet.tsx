@@ -16,6 +16,7 @@ import { EmailBox } from './email-box'
 import { InviteFooter } from './invite-footer'
 import { planInvite } from './invite-plan'
 import { InviteRows } from './invite-rows'
+import { OwnerApprovalField } from './owner-approval-field'
 import { peopleLimit, planPlacesMessage } from './plan-places'
 import { RoleField } from './role-for-everyone'
 import { inviteDraft, useInviteDraft } from './use-invite-draft'
@@ -202,6 +203,14 @@ export function InviteSheet() {
             entities={entities.data?.items}
             limits={limits}
             error={errors.entities}
+          />
+          <OwnerApprovalField
+            rows={plan.sendable}
+            batchRoleId={draft.roleId}
+            roles={grantable}
+            reason={draft.reason}
+            onReason={inviteDraft.setReason}
+            error={draft.error}
           />
         </form>
       </SheetFrame>

@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useEffectiveAccess } from '@/features/preview/use-effective-permissions'
 import { footerNav, type NavItem, type NavTag, navTag, sidebarSections } from '@/features/shell/nav'
 import { cn } from '@/lib/utils'
+import { CountPill, useApprovalsWaiting, waitingWords } from './approvals-count'
 
 type Props = {
   /** Icons only, with tooltips (desktop collapsed). */
@@ -13,6 +14,7 @@ type Props = {
 /** Home, then the modules the organization has and the role can view (decision 12). */
 export function SidebarNav({ collapsed = false, onNavigate }: Props) {
   const access = useEffectiveAccess()
+  const waiting = useApprovalsWaiting()
   return (
     <div className="flex flex-col gap-4">
       {sidebarSections(access).map((section, index) => (
@@ -32,6 +34,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: Props) {
               tag={navTag(access, item)}
               collapsed={collapsed}
               onNavigate={onNavigate}
+              count={item.key === 'approvals' ? waiting : 0}
             />
           ))}
         </fieldset>
@@ -75,11 +78,14 @@ function SidebarLink({
   tag,
   collapsed,
   onNavigate,
+  count = 0,
 }: {
   item: NavItem
   tag: NavTag | null
   collapsed: boolean
   onNavigate: (() => void) | undefined
+  /** Approvals waiting for this person. */
+  count?: number
 }) {
   const soon = tag === 'soon'
   const copy = tag ? TAG_COPY[tag] : null
@@ -95,7 +101,7 @@ function SidebarLink({
         // Unbuilt modules read quieter; the page itself says "Coming soon".
         soon ? 'text-sidebar-faint-foreground' : 'text-sidebar-muted-foreground',
         'data-[status=active]:bg-sidebar-active data-[status=active]:text-sidebar-foreground',
-        collapsed && 'justify-center px-0',
+        collapsed && 'relative justify-center px-0',
       )}
     >
       <item.icon
@@ -103,15 +109,21 @@ function SidebarLink({
         className="size-4 shrink-0 group-data-[status=active]:text-sidebar-active-icon"
         strokeWidth={1.75}
       />
+      {collapsed && count > 0 && (
+        <span aria-hidden className="absolute top-1.5 right-2 size-2 rounded-full bg-brand" />
+      )}
       {collapsed ? (
         <span className="sr-only">
           {item.label}
           {copy?.spoken}
+          {count > 0 && `, ${waitingWords(count)}`}
         </span>
       ) : (
         <>
           <span className="truncate">{item.label}</span>
           {copy && <span className="sr-only">{copy.spoken}</span>}
+          {count > 0 && <span className="sr-only">, {waitingWords(count)}</span>}
+          <CountPill count={count} className="ml-auto" />
           {soon && (
             // The word appears on hover or focus only, never as a row of pills.
             <span

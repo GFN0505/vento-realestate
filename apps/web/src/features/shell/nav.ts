@@ -1,5 +1,6 @@
 import type { FeatureKey, PermissionModule, PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
+  BadgeCheck,
   Building,
   Building2,
   ChartColumn,
@@ -29,6 +30,7 @@ export type { NavPath }
 
 export type NavKey =
   | 'home'
+  | 'approvals'
   | 'land'
   | 'projects'
   | 'estates'
@@ -61,6 +63,11 @@ export type NavItem = {
   group: NavGroup
   /** A few words for Home's workspace grid. */
   summary?: string
+  /**
+   * Shown only when `me` says so, whatever the role's permissions (Approvals: the role approves
+   * somewhere, or the person asked for an approval lately). Cosmetic: the server filters rows.
+   */
+  gate?: 'approvals'
 }
 
 export const NAV: readonly NavItem[] = [
@@ -73,6 +80,18 @@ export const NAV: readonly NavItem[] = [
     to: '/',
     icon: House,
     group: 'main',
+  },
+  {
+    // Not a module: a queue across modules (spec). Owners and admins get it as a phone tab.
+    key: 'approvals',
+    flag: null,
+    built: true,
+    module: null,
+    label: 'Approvals',
+    to: '/approvals',
+    icon: BadgeCheck,
+    group: 'main',
+    gate: 'approvals',
   },
   {
     key: 'land',
@@ -199,8 +218,9 @@ export const NAV: readonly NavItem[] = [
 
 /** Spec table "Mobile tabs": the modules after Home, in priority order, per built-in role. */
 export const MOBILE_TAB_PRIORITY: Record<SystemRoleKey, readonly NavKey[]> = {
-  owner: ['projects', 'sales', 'reports'],
-  admin: ['projects', 'sales', 'reports'],
+  // Brick 4: Approvals takes Sales' tab for owners and admins, who approve daily on a phone.
+  owner: ['approvals', 'projects', 'reports', 'sales'],
+  admin: ['approvals', 'projects', 'reports', 'sales'],
   land_legal: ['land', 'documents', 'compliance'],
   project_manager: ['projects', 'documents', 'compliance'],
   sales: ['sales', 'documents', 'compliance'],
@@ -219,6 +239,10 @@ export type NavAccess = {
   features: ReadonlyMap<FeatureKey, { earlyAccess: boolean }>
   /** Vento's own organizations: they also see unbuilt modules, tagged "Soon". */
   internal: boolean
+  /** `me.canSeeApprovals`, narrowed by a previewed role. Absent = hidden. */
+  approvals?: boolean
+  /** No company limits (organization-wide pages such as the audit log). Absent = limited. */
+  allEntities?: boolean
 }
 
 /** The organization has it: a typed link to anything else is a 404, whatever the role. */
@@ -231,8 +255,12 @@ export function isAvailable(access: NavAccess, item: NavItem): boolean {
 /** Available, and the role can view it (decision 12). */
 export function canView(access: NavAccess, item: NavItem): boolean {
   if (!isAvailable(access, item)) return false
+  if (item.gate === 'approvals' && access.approvals !== true) return false
   return item.module === null || can(access.permissions, item.module, 'view')
 }
+
+/** The sidebar's first group: Home and Approvals. */
+const OVERVIEW = new Set<NavKey>(['home', 'approvals'])
 
 export type NavTag = 'soon' | 'early_access'
 
@@ -255,16 +283,24 @@ export function visibleNav(access: NavAccess): NavItem[] {
 export function sidebarSections(access: NavAccess): { heading: string; items: NavItem[] }[] {
   const items = visibleNav(access).filter((i) => i.group !== 'footer')
   return [
-    { heading: 'Overview', items: items.filter((i) => i.key === 'home') },
-    { heading: 'Modules', items: items.filter((i) => i.key !== 'home') },
+    { heading: 'Overview', items: items.filter((i) => OVERVIEW.has(i.key)) },
+    { heading: 'Modules', items: items.filter((i) => !OVERVIEW.has(i.key)) },
   ].filter((section) => section.items.length > 0)
 }
 
-/** Home plus up to three modules; custom roles get their first three in sidebar order. */
+/**
+ * Home plus up to three modules; custom roles get their first three in sidebar order. Approvals
+ * is a tab only where the role's priority names it; everyone else finds it in More.
+ */
 export function mobileTabs(access: NavAccess, roleKey: SystemRoleKey | null): NavItem[] {
   const viewable = visibleNav(access)
-  const modules = viewable.filter((item) => item.module !== null && item.group !== 'footer')
   const priority = roleKey ? MOBILE_TAB_PRIORITY[roleKey] : null
+  const modules = viewable.filter(
+    (item) =>
+      item.group !== 'footer' &&
+      item.key !== 'home' &&
+      (item.key !== 'approvals' || priority?.includes('approvals') === true),
+  )
   const picked = priority
     ? priority.flatMap((key) => modules.filter((item) => item.key === key))
     : modules
@@ -277,9 +313,9 @@ export function footerNav(access: NavAccess): NavItem[] {
   return visibleNav(access).filter((item) => item.group === 'footer')
 }
 
-/** The modules for Home's "Your workspace" grid: the sidebar's entries, without Home. */
+/** The modules for Home's "Your workspace" grid: the sidebar's modules, without Overview. */
 export function workspaceModules(access: NavAccess): NavItem[] {
-  return visibleNav(access).filter((item) => item.group !== 'footer' && item.key !== 'home')
+  return visibleNav(access).filter((item) => item.group !== 'footer' && !OVERVIEW.has(item.key))
 }
 
 /** The role's modules that didn't fit in the tabs, for the More sheet. */

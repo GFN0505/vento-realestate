@@ -1,5 +1,5 @@
 import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Role, RoleList, UpdateRoleInput } from '@vento/shared'
+import type { RequestOutcome, Role, RoleList, UpdateRoleInput } from '@vento/shared'
 import { type RefObject, useState } from 'react'
 import { toast } from 'sonner'
 import { rolesQuery } from '@/features/preview/use-effective-permissions'
@@ -41,13 +41,26 @@ export function putRole(queryClient: QueryClient, saved: Role) {
   void queryClient.invalidateQueries({ queryKey: rolesQuery().queryKey })
 }
 
+type Waiting = Extract<RequestOutcome, { ran: false }>
+
+type ApprovalHandlers = {
+  /** A rule applied: the change waits for approval and the role is unchanged (brick 4). */
+  onRequested?: (outcome: Waiting) => void
+  /** The server wants a **Why?** first (a rule applies that the page didn't know about). */
+  onReasonRequired?: () => void
+}
+
 /**
  * Saves a role at once (spec question 8): no confirm, the bar already said who it reaches.
  * Someone else's save in between is refused ("… changed Site engineer a moment ago") and nothing
  * is overwritten. Offline, nothing changes and the ticks stay. Lives in the editor, which starts
- * again from each new version; Undo lives on the page (`useRoleUndo`).
+ * again from each new version; Undo lives on the page (`useRoleUndo`). When a rule applies, the
+ * same call carries the **Why?** and comes back as a request (no Undo: nothing changed yet).
  */
-export function useSaveRole(onSaved: (before: Role, saved: Role) => void) {
+export function useSaveRole(
+  onSaved: (before: Role, saved: Role) => void,
+  approval: ApprovalHandlers = {},
+) {
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<unknown>(null)
@@ -60,10 +73,18 @@ export function useSaveRole(onSaved: (before: Role, saved: Role) => void) {
     }
     setPending(true)
     try {
-      const { role } = await client.roles.update(input)
+      const { role, outcome } = await client.roles.update(input)
+      if (outcome && !outcome.ran) {
+        approval.onRequested?.(outcome)
+        return
+      }
       putRole(queryClient, role)
       onSaved(before, role)
     } catch (caught) {
+      if (errorReason(caught) === 'reason_required' && approval.onReasonRequired) {
+        approval.onReasonRequired()
+        return
+      }
       setError(caught)
     } finally {
       setPending(false)

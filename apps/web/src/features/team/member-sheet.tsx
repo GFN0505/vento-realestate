@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format'
 import { lastActiveLabel } from './last-active'
 import { MEMBER_FORM_ID, MemberAccessForm, useMemberAccessForm } from './member-access-form'
+import { MemberHistoryLink, MemberOwnerRequest } from './member-extras'
 import { SheetFrame } from './sheet-frame'
 import { AccessText, TwoStepBadge, YouTag } from './team-cells'
 import { useSaveAccess } from './use-save-access'
@@ -96,6 +97,8 @@ export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Pro
         )}
       </dl>
 
+      <MemberOwnerRequest row={row} />
+
       <section aria-labelledby="member-access" className="flex flex-col gap-4 border-t pt-5">
         <h3 id="member-access" className="font-heading font-semibold text-[15px]">
           Access
@@ -110,42 +113,52 @@ export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Pro
             row={row}
             form={form}
             save={save}
-            confirmOwner={(run) =>
-              actions.setConfirm({ kind: 'owner', row, role: row.role, save: run })
+            confirmOwner={(run, role, entityIds) =>
+              actions.setConfirm({
+                kind: 'owner',
+                row,
+                role,
+                save: run,
+                entityIds,
+                onRequested: () => {
+                  form.reset()
+                  closeGuard.current = null
+                  onClose()
+                },
+              })
             }
           />
         ) : null}
       </section>
 
-      {(row.can.resetTwoStep || row.can.remove) && (
-        <section
-          aria-label="Other actions"
-          className="mt-auto flex flex-col items-start gap-1 border-t pt-4"
-        >
-          {row.can.resetTwoStep && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => actions.setConfirm({ kind: 'reset', row })}
-              className="-ml-2.5 max-md:h-11"
-            >
-              <KeyRoundIcon aria-hidden />
-              Reset two-step
-            </Button>
-          )}
-          {row.can.remove && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => actions.setConfirm({ kind: 'remove', row })}
-              className="-ml-2.5 text-status-rose-fg hover:bg-status-rose-bg hover:text-status-rose-fg max-md:h-11"
-            >
-              <UserMinusIcon aria-hidden />
-              Remove from team
-            </Button>
-          )}
-        </section>
-      )}
+      <section
+        aria-label="Other actions"
+        className="mt-auto flex flex-col items-start gap-1 border-t pt-4 empty:hidden"
+      >
+        <MemberHistoryLink row={row} />
+        {row.can.resetTwoStep && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.setConfirm({ kind: 'reset', row })}
+            className="-ml-2.5 max-md:h-11"
+          >
+            <KeyRoundIcon aria-hidden />
+            Reset two-step
+          </Button>
+        )}
+        {row.can.remove && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.setConfirm({ kind: 'remove', row })}
+            className="-ml-2.5 text-status-rose-fg hover:bg-status-rose-bg hover:text-status-rose-fg max-md:h-11"
+          >
+            <UserMinusIcon aria-hidden />
+            Remove from team
+          </Button>
+        )}
+      </section>
 
       <ConfirmDialog
         open={discarding}

@@ -1,18 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { PERMISSION_MODULES, type RoleDetail, roleName } from '@vento/shared'
+import { type RoleDetail, roleName } from '@vento/shared'
 import { CloudOffIcon, SearchXIcon } from 'lucide-react'
 import { type RefObject, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { UnsavedChangesDialog } from '@/components/unsaved-changes-dialog'
-import { useMe } from '@/features/preview/use-effective-permissions'
+import { SendForApprovalSheet } from '@/features/approvals/send/send-for-approval-sheet'
+import { WaitingForApproval } from '@/features/approvals/send/waiting-for-approval'
+import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
 import { ReadOnlyNote } from '@/features/settings/read-only-note'
 import { roleQuery } from '@/features/settings/role-queries'
+import { canSeeAuditLog } from '@/features/settings/sections'
 import { usePageTitle } from '@/features/shell/use-page-title'
 import { errorReason, isNotFound } from '@/lib/error-data'
 import { reloadPage } from '@/lib/reload'
@@ -23,8 +25,10 @@ import { NewRoleDialog } from './new-role-dialog'
 import { PermissionsGrid } from './permissions-grid'
 import { PermissionsMobileList } from './permissions-mobile-list'
 import { RolePageMenu } from './role-actions'
+import { RoleApprovesLine, RoleChangeSummary, useRoleApproval } from './role-approval'
 import { RoleHeader } from './role-header'
 import { RoleSaveBar } from './role-save-bar'
+import { RoleSkeleton } from './role-skeleton'
 import { TwoStepField } from './two-step-field'
 import { useRoleRights } from './use-role-actions'
 import { updateFrom, useRoleDraft } from './use-role-draft'
@@ -116,13 +120,32 @@ type EditorProps = {
 
 function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
   const me = useMe()
+  const access = useEffectiveAccess()
   const rights = useRoleRights()
   // Below xl the content column is too narrow for six columns: the list and its sheet instead.
   const compact = useMediaQuery(GRID_QUERY)
   const navigate = route.useNavigate()
-  const editable = rights.canEdit(role)
+  const approval = useRoleApproval(role.id, rights.canEdit(role))
+  // While a request waits, the grid is read-only until it's decided (spec).
+  const editable = rights.canEdit(role) && approval.pendingId === null
   const draft = useRoleDraft(role)
-  const save = useSaveRole(undo.offer)
+  const [sending, setSending] = useState(false)
+  const save = useSaveRole(undo.offer, {
+    onRequested: (outcome) => {
+      // Nothing changed yet: the edits now live in the request, and the page shows it waiting.
+      setSending(false)
+      draft.discard()
+      toast.success(outcome.notice)
+      approval.refresh()
+    },
+    onReasonRequired: () => {
+      approval.refresh()
+      setSending(true)
+    },
+  })
+  // The rule guards permissions and two-step, never a rename (plan 6.3).
+  const guarded = draft.changes.length > 0 || draft.requiresTwoStep !== role.requiresTwoStep
+  const needsApproval = approval.needed && guarded
   const [deleting, setDeleting] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const dirty = editable && draft.dirty
@@ -137,6 +160,11 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
       return
     }
     setNameError(null)
+    if (needsApproval) {
+      save.clearError()
+      setSending(true)
+      return
+    }
     void save.save(role, updateFrom(role, draft.draft))
   }
   // A clash with another role's name belongs on the name.
@@ -166,18 +194,30 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
           rights.canDuplicate(role) ? () => void navigate({ search: { new: true } }) : null
         }
         onPreview={rights.preview && (() => rights.preview?.(role))}
-        menu={<RolePageMenu role={role} disabled={dirty} onDelete={() => setDeleting(true)} />}
+        menu={
+          <RolePageMenu
+            role={role}
+            disabled={dirty}
+            history={canSeeAuditLog(access)}
+            onDelete={() => setDeleting(true)}
+          />
+        }
       />
       {role.readOnly && <ReadOnlyNote>{role.readOnly.message}</ReadOnlyNote>}
+      {approval.pendingId && (
+        <WaitingForApproval requestId={approval.pendingId} fallback={approval.chain} />
+      )}
       {compact ? <PermissionsMobileList {...grid} /> : <PermissionsGrid {...grid} />}
+      <RoleApprovesLine roleId={role.id} />
       <TwoStepField
         checked={editable ? draft.requiresTwoStep : role.requiresTwoStep}
         locked={draft.twoStepLocked}
         onChange={editable ? draft.setTwoStep : null}
         requiredForEveryone={role.requiredForEveryone ? (me.organization?.name ?? '') : null}
       />
-      {(dirty || save.error !== null) && (
+      {(dirty || save.error !== null) && !sending && (
         <RoleSaveBar
+          sendForApproval={needsApproval}
           count={draft.count}
           people={role.memberCount}
           empty={draft.empty}
@@ -198,33 +238,24 @@ function RoleEditor({ role, undo, dirtyRef }: EditorProps) {
           onReload={() => (save.accessChanged ? reloadPage() : void save.reload(role.id))}
         />
       )}
+      <SendForApprovalSheet
+        open={sending}
+        onOpenChange={setSending}
+        summary={
+          <RoleChangeSummary
+            roleName={role.name}
+            changes={draft.changes}
+            twoStep={draft.requiresTwoStep !== role.requiresTwoStep ? draft.requiresTwoStep : null}
+          />
+        }
+        chain={approval.chain}
+        blocked={approval.blocked}
+        pending={save.pending}
+        error={save.error}
+        onSend={(reason) => void save.save(role, { ...updateFrom(role, draft.draft), reason })}
+      />
       <UnsavedChangesDialog guard={guard} title={`Discard changes to ${role.name}?`} />
       <DeleteRoleConfirm role={deleting ? role : null} onOpenChange={setDeleting} />
-    </div>
-  )
-}
-
-function RoleSkeleton() {
-  return (
-    <div aria-hidden className="flex flex-col gap-5">
-      <Skeleton className="h-4 w-36" />
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-3.5 w-72 max-w-full" />
-        <Skeleton className="h-3.5 w-24" />
-      </div>
-      <div className="overflow-hidden rounded-[12px] border bg-card">
-        <div className="h-11 border-b bg-muted/40" />
-        {PERMISSION_MODULES.map((m) => (
-          <div key={m} className="flex h-16 items-center gap-4 border-b px-5 last:border-b-0">
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Skeleton className="h-3.5 w-32" />
-              <Skeleton className="h-3 w-52 max-w-full" />
-            </div>
-            <Skeleton className="hidden h-5 w-1/2 md:block" />
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

@@ -10,7 +10,14 @@ export function saveBarLine(count: number, people: number): string {
   return `${changes} · applies to ${people} ${people === 1 ? 'person' : 'people'} on their next click`
 }
 
+/** The primary's words: a change a rule guards goes for approval instead (brick 4). */
+export function saveLabel(sendForApproval: boolean): string {
+  return sendForApproval ? 'Send for approval' : 'Save changes'
+}
+
 type Props = {
+  /** A rule applies: the primary reads **Send for approval** and opens the send sheet. */
+  sendForApproval?: boolean
   count: number
   people: number
   empty: boolean
@@ -28,6 +35,7 @@ type Props = {
  * something to save (CHANGES.md).
  */
 export function RoleSaveBar({
+  sendForApproval = false,
   count,
   people,
   empty,
@@ -83,7 +91,7 @@ export function RoleSaveBar({
                 className="h-10 flex-1 sm:flex-none"
               >
                 {pending && <LoaderCircleIcon aria-hidden className="animate-spin" />}
-                Save changes
+                {saveLabel(sendForApproval)}
               </Button>
             </>
           )}

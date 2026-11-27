@@ -36,7 +36,9 @@ describe('sidebar', () => {
   it.each(SYSTEM_ROLE_KEYS)('shows exactly the modules %s can view, in spec order', (key) => {
     const expected = NAV.filter(
       (i) =>
-        i.group !== 'footer' && (i.module === null || defaultRoleAllows(key, i.module, 'view')),
+        i.group !== 'footer' &&
+        i.gate === undefined &&
+        (i.module === null || defaultRoleAllows(key, i.module, 'view')),
     )
     const shown = sidebarSections(perms(key)).flatMap((s) => s.items)
     expect(labels(shown)).toEqual(labels(expected))
@@ -62,8 +64,9 @@ describe('sidebar', () => {
 
 describe('mobile tabs', () => {
   const expected: Record<SystemRoleKey, string[]> = {
-    owner: ['Home', 'Projects', 'Sales', 'Reports'],
-    admin: ['Home', 'Projects', 'Sales', 'Reports'],
+    // Without Approvals (it shows for everyone who approves); see 'approvals' below.
+    owner: ['Home', 'Projects', 'Reports', 'Sales'],
+    admin: ['Home', 'Projects', 'Reports', 'Sales'],
     land_legal: ['Home', 'Land & title', 'Documents', 'Compliance'],
     project_manager: ['Home', 'Projects', 'Documents', 'Compliance'],
     sales: ['Home', 'Sales', 'Documents', 'Compliance'],
@@ -102,6 +105,41 @@ describe('mobile tabs', () => {
       const more = labels(moreItems(perms(key), key))
       expect([...tabs, ...more].sort()).toEqual(labels(visibleNav(perms(key))).sort())
     }
+  })
+})
+
+describe('approvals', () => {
+  const withApprovals = (key: SystemRoleKey) => navAccess(rolePerms(key), { approvals: true })
+
+  it('sits under Home in the sidebar for people who can see it', () => {
+    expect(labels(sidebarSections(withApprovals('finance'))[0]?.items ?? [])).toEqual([
+      'Home',
+      'Approvals',
+    ])
+  })
+
+  it('appears nowhere for people who neither approve nor asked', () => {
+    expect(shownEverywhere(perms('sales'))).not.toContain('Approvals')
+  })
+
+  it("takes Sales' phone tab for owners and admins", () => {
+    for (const key of ['owner', 'admin'] as const) {
+      expect(labels(mobileTabs(withApprovals(key), key))).toEqual([
+        'Home',
+        'Approvals',
+        'Projects',
+        'Reports',
+      ])
+    }
+  })
+
+  it('lives in More for everyone else', () => {
+    expect(labels(mobileTabs(withApprovals('finance'), 'finance'))).not.toContain('Approvals')
+    expect(labels(moreItems(withApprovals('finance'), 'finance'))).toContain('Approvals')
+  })
+
+  it("stays out of Home's workspace grid", () => {
+    expect(labels(workspaceModules(withApprovals('owner')))).not.toContain('Approvals')
   })
 })
 
