@@ -41,7 +41,9 @@ describe('invitations', () => {
       const result = await createInvitations(ctx, { items, entityIds: [parkview.id] })
       expect(result).toMatchObject({ sent: 20, notice: 'Invitations sent to 20 people' })
       const email = result.emails[0]
-      expect(email?.subject).toBe('Olumide Bankole invited you to Vento Homes Ltd on Vento')
+      expect(email?.subject).toBe(
+        'Olumide Bankole invited you to Vento Homes Ltd on Vento Real Estate',
+      )
       expect(email?.text).toContain('as Finance')
       expect(email?.text).toContain('Access: Parkview Residences SPV Ltd')
       expect(email?.text).toContain('Can approve: Sales & CRM, Finance, HR & payroll')
@@ -201,7 +203,7 @@ describe('invitations', () => {
       })
     }))
 
-  it('lets an existing Vento user accept and belong to both organizations', () =>
+  it('lets an existing Vento Real Estate user accept and belong to both organizations', () =>
     withRollback(async (tx) => {
       const first = await createOrganization(tx)
       const aisha = await createMember(tx, first, { role: 'sales' })
@@ -396,7 +398,9 @@ describe('accepting as a new person: edge cases', () => {
 
 describe('invitations from the Team page', () => {
   it('keeps quotes, backslashes and line breaks out of the sender name', () => {
-    expect(displayName('Vento "Homes"\\\r\nLtd\u0007 via Vento')).toBe('Vento Homes Ltd via Vento')
+    expect(displayName('Vento "Homes"\\\r\nLtd\u0007 via Vento Real Estate')).toBe(
+      'Vento Homes Ltd via Vento Real Estate',
+    )
     expect(displayName('x'.repeat(80))).toHaveLength(60)
   })
 
@@ -440,7 +444,7 @@ describe('invitations from the Team page', () => {
       const [stored] = await tx.select().from(invitations).where(eq(invitations.email, email))
       expect(stored?.deliveryMessageId).toMatch(/^memory-/)
       expect(mailer.to(email)[0]).toMatchObject({
-        fromName: 'Vento Homes Ltd via Vento',
+        fromName: 'Vento Homes Ltd via Vento Real Estate',
         replyTo: { name: 'Olumide Bankole', email: org.owner.email },
         metadata: { invitationId: row?.id },
       })
@@ -603,7 +607,7 @@ describe('invitations from the Team page', () => {
       const { token } = await createInvitation(tx, org, { role: 'owner', email: invitee.email })
       const { client, mailer } = clientAs(tx, invitee)
       await client.invitations.accept({ token })
-      const subject = 'Vento: Aisha Bello is now an owner of Vento Homes Ltd'
+      const subject = 'Vento Real Estate: Aisha Bello is now an owner of Vento Homes Ltd'
       expect(mailer.to(org.owner.email).map((m) => m.subject)).toEqual([subject])
       expect(mailer.to(invitee.email).map((m) => m.subject)).toEqual([subject])
     }))

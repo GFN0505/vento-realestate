@@ -407,7 +407,7 @@ test.describe('on a laptop', () => {
   })
 
   test.describe('the plan limit', () => {
-    test('an owner at the limit gets the plan message instead of the form, with Talk to Vento', async ({
+    test('an owner at the limit gets the plan message instead of the form, with Talk to Vento Real Estate', async ({
       page,
     }) => {
       const fixture = createCompaniesFixture('starter')
@@ -418,7 +418,7 @@ test.describe('on a laptop', () => {
 
       const dialog = page.getByRole('dialog', { name: "All your plan's companies are in use" })
       await expect(dialog).toContainText('Your Starter plan includes 2 active companies.')
-      await expect(dialog.getByRole('link', { name: 'Talk to Vento' })).toBeVisible()
+      await expect(dialog.getByRole('link', { name: 'Talk to Vento Real Estate' })).toBeVisible()
       await expect(addSheet(page)).toHaveCount(0)
     })
 

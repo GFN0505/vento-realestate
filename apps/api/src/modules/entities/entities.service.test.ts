@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { loadMembership } from '@/access/context'
 import { db } from '@/db/client'
 import { auditEvents, entities } from '@/db/schema'
-import { uniqueEmail, withRollback } from '@/test/db'
+import { uniqueSuffix, withRollback } from '@/test/db'
 import {
   archiveEntityRow,
   contextFor,
@@ -242,7 +242,7 @@ describe('entities', () => {
       ).rejects.toMatchObject({
         data: { reason: 'plan_limit', limit: 'entities', included: 2 },
         message:
-          'Your Starter plan includes 2 active companies. Archive one, or talk to Vento about Growth.',
+          'Your Starter plan includes 2 active companies. Archive one, or talk to Vento Real Estate about Growth.',
       })
       await expect(
         restoreEntity(await contextFor(tx, admin.user, org), old.id),
@@ -292,7 +292,7 @@ describe('entities', () => {
 describe('restoring under concurrency', () => {
   it('lets exactly one of two simultaneous restores take the last company place', async () => {
     const org = await createOrganization(db, {
-      name: `Race Restore ${uniqueEmail('org')}`,
+      name: `Race Restore ${uniqueSuffix()}`,
       planKey: 'starter',
     })
     await createEntity(db, org, { name: 'Race Holding Ltd', type: 'holding' })

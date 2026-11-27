@@ -4,6 +4,7 @@ import { createApp } from '@/app'
 import type { Auth } from '@/auth/auth'
 import type { DbOrTx } from '@/db/client'
 import { createMemoryTransport } from '@/email/transports/memory'
+import { env } from '@/env'
 import { logger } from '@/lib/logger'
 
 /** A database that fails like Drizzle does: the query parameters (personal data) in the message. */
@@ -101,5 +102,37 @@ describe('the Postmark bounce webhook route', () => {
   it('exists and asks for credentials when Postmark is configured', async () => {
     vi.spyOn(logger, 'warn').mockImplementation(() => {})
     expect((await post('x'.repeat(32))).status).toBe(401)
+  })
+})
+
+describe('cross-site calls (audit M3)', () => {
+  const call = (headers: Record<string, string>) =>
+    app().request('/rpc/account/me', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: '{}',
+    })
+
+  it('refuses a procedure called from another origin', async () => {
+    expect((await call({ origin: 'https://evil.example' })).status).toBe(403)
+  })
+
+  it('refuses a browser request another site made, even a form post', async () => {
+    const res = await app().request('/rpc/account/me', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'sec-fetch-site': 'cross-site',
+      },
+      body: 'a=1',
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it("lets the web app's own pages through", async () => {
+    // This app has no real auth, so a call that gets through fails later; it isn't refused here.
+    const res = await call({ origin: env.WEB_ORIGIN, 'sec-fetch-site': 'same-origin' })
+    expect(res.status).not.toBe(403)
+    expect((await call({})).status).not.toBe(403)
   })
 })

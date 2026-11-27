@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  pgEnum,
   pgTable,
   text,
   uniqueIndex,
@@ -15,6 +16,12 @@ import { organizations } from './organization'
 // Identity tables, shaped as Better Auth 1.7 expects (plural, snake_case). They belong to a
 // person, not an organization, so they have no organization_id (decision 0010).
 // On a Better Auth upgrade, diff against `npx auth generate`; auth-schema.test.ts guards drift.
+
+/**
+ * A customer account or a Vento Real Estate staff account (decision 0023). Fixed at creation:
+ * trigger `users_account_kind_fixed` (0014) refuses any change.
+ */
+export const accountKind = pgEnum('account_kind', ['customer', 'staff'])
 
 export const users = pgTable(
   'users',
@@ -35,6 +42,7 @@ export const users = pgTable(
      * new password through the emailed link, so a reset alone never opens the account.
      */
     passwordResetRequired: boolean().notNull().default(false),
+    accountKind: accountKind().notNull().default('customer'),
     ...timestamps,
   },
   (t) => [
@@ -68,6 +76,15 @@ export const sessions = pgTable(
      * null reads as created_at.
      */
     organizationEnteredAt: timestamptz(),
+    /**
+     * The last passkey, authenticator code or backup code proven on this session (never a
+     * password). The Vento console opens without a prompt when it's under 5 minutes old.
+     */
+    secondFactorAt: timestamptz(),
+    /** The Vento console window opened on this session (closes 8 hours later at most). */
+    consoleOpenedAt: timestamptz(),
+    /** The last console request (the window closes after 15 minutes without one). */
+    consoleActiveAt: timestamptz(),
     ...timestamps,
   },
   (t) => [
@@ -125,6 +142,16 @@ export const twoFactors = pgTable(
     verified: boolean().notNull().default(true),
     failedVerificationCount: integer().notNull().default(0),
     lockedUntil: timestamptz(),
+    /**
+     * The 30-second step of the last authenticator code accepted. A code for that step or an
+     * earlier one is refused, so an observed code can't be replayed (audit L4).
+     */
+    lastTotpStep: integer(),
+    /**
+     * Set when backup codes were made on a session with no fresh code or passkey (a password
+     * alone): those codes can't open the Vento console (audit H1). Cleared by a proven set.
+     */
+    backupCodesUnprovenAt: timestamptz(),
     ...timestamps,
   },
   (t) => [

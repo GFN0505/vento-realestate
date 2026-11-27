@@ -10,6 +10,7 @@ import { organizationRouter } from '@/modules/organization/organization.router'
 import { rolesRouter } from '@/modules/roles/roles.router'
 import { teamRouter } from '@/modules/team/team.router'
 import { os } from '@/orpc'
+import { CONSOLE_PUBLIC_PROCEDURES, consoleRouter } from '@/platform/console/console.router'
 
 export const router = os.router({
   health: healthRouter,
@@ -23,6 +24,7 @@ export const router = os.router({
   access: accessRouter,
   team: teamRouter,
   checklist: checklistRouter,
+  console: consoleRouter,
 })
 export type Router = typeof router
 
@@ -33,4 +35,5 @@ export const PUBLIC_PROCEDURES = [
   'invitations.preview',
   'invitations.acceptAsNewUser',
   'invitations.decline',
+  ...CONSOLE_PUBLIC_PROCEDURES,
 ] as const

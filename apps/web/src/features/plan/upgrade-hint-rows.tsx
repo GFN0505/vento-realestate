@@ -44,7 +44,7 @@ export function UpgradeHintRows({ search, close }: { search: string; close: () =
               {availableOnText(hint)}
             </span>
           </span>
-          <CommandHint className="font-medium text-link">Talk to Vento</CommandHint>
+          <CommandHint className="font-medium text-link">Talk to Vento Real Estate</CommandHint>
         </CommandItem>
       ))}
     </CommandGroup>

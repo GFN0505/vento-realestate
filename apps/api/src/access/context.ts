@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server'
-import type { PermissionSet, SystemRoleKey } from '@vento/shared'
+import type { AccountKind, PermissionSet, SystemRoleKey } from '@vento/shared'
 import {
   emptyPermissionSet,
   PERMISSION_MODULES,
@@ -21,6 +21,8 @@ export type AuthUser = {
   twoFactorEnabled: boolean
   twoStepSetupRequired: boolean
   companyName: string | null
+  /** Staff accounts never reach organization data (decision 0023). */
+  accountKind: AccountKind
 }
 
 /** The current session row. */
@@ -35,6 +37,11 @@ export type AuthSession = {
   organizationEnteredAt: Date
   /** "Confirm it's you": when the password was last proven on this session. */
   reauthenticatedAt: Date | null
+  /** The last passkey, authenticator code or backup code proven on this session. */
+  secondFactorAt: Date | null
+  /** The Vento console window: when it opened and the last console request. */
+  consoleOpenedAt: Date | null
+  consoleActiveAt: Date | null
 }
 
 export type MemberContext = {

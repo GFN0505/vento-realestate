@@ -38,7 +38,7 @@ test('a server error shows the 500 page with a reference in the server log forma
   ).toBeVisible()
   await expect(page.getByText(REFERENCE)).toBeVisible()
   expect(REFERENCE).toMatch(/^ERR-[0-9A-F]{4}-\d{4}$/)
-  await expect(page).toHaveTitle('Something went wrong · Vento')
+  await expect(page).toHaveTitle('Something went wrong · Vento Real Estate')
 })
 
 test('Copy puts the reference on the clipboard and says so', async ({ as }) => {
@@ -94,7 +94,7 @@ test('a page whose first request never reaches the server shows the offline page
   await page.goto('/')
 
   await expect(page.getByRole('heading', { name: "You're offline" })).toBeVisible()
-  await expect(page).toHaveTitle("You're offline · Vento")
+  await expect(page).toHaveTitle("You're offline · Vento Real Estate")
 
   await page.unroute('**/rpc/account/me')
   await page.getByRole('button', { name: 'Try again' }).click()

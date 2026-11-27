@@ -5,6 +5,7 @@ export type {
   ConflictReason,
   ForbiddenData,
   ForbiddenReason,
+  NotFoundData,
   ProcedureMeta,
   UnauthorizedReason,
 } from './errors'

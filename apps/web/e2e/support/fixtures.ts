@@ -263,3 +263,86 @@ export const ageReauth = (email: string) => runFixture<{ sessions: number }>('ag
 /** Days until the person's newest session expires on the server, and whether it is persistent. */
 export const sessionExpiry = (email: string) =>
   runFixture<{ days: number; persistent: boolean }>('session-expiry', email)
+
+// Vento console (admin-console plan §13). Fixtures never change global stages except
+// `flagStage`, which only releases.spec.ts uses, to put back the keys it owns.
+
+export type SuperAdminState = 'active' | 'revoked' | 'two-step-reset'
+/**
+ * Slice 1 names, kept so older specs still run: since 1b every super-admin is a staff account
+ * with no organization (decision 0023), so both mean `active`.
+ */
+type LegacySuperAdminState = 'member' | 'no-org'
+
+export type SuperAdminFixture = Credentials & {
+  userId: string
+  totpSecret: string
+  backupCodes: string[]
+  /** Always null since 1b: staff accounts have no organization; signing in lands on the console. */
+  organizationName: string | null
+  state: SuperAdminState
+}
+
+/** A super-admin: a staff account made through the real staff sign-up (admin-console plan §1b.17). */
+export const createSuperAdminFixture = (
+  state: SuperAdminState | LegacySuperAdminState = 'active',
+) =>
+  runFixture<SuperAdminFixture>(
+    'super-admin',
+    state === 'member' || state === 'no-org' ? 'active' : state,
+  )
+
+export type StaffInvitationState = 'pending' | 'expired' | 'withdrawn' | 'accepted' | 'started'
+
+/** A staff invitation and its link (J-ADM-05); `started` has a password set (resume). */
+export const createStaffInvitation = (
+  state: StaffInvitationState = 'pending',
+  inviterEmail?: string,
+) =>
+  runFixture<{ email: string; name: string; link: string; inviterName: string | null }>(
+    'staff-invitation',
+    state,
+    ...(inviterEmail ? [inviterEmail] : []),
+  )
+
+/** A customer account on this email: the staff sign-up's "got a customer account meanwhile". */
+export const createCustomerAccount = (email: string) =>
+  runFixture<{ email: string; userId: string }>('customer-account', email)
+
+/** Makes that staff invitation `hours` older (expiry without waiting). */
+export const ageStaffInvitation = (email: string, hours = 49) =>
+  runFixture<{ invitations: number }>('age-staff-invitation', email, String(hours))
+
+/** Expires every open staff invitation: the cap of 5 open ones is global, so a run starts clean. */
+export const expireStaffInvitations = () =>
+  runFixture<{ invitations: number }>('expire-staff-invitations')
+
+/**
+ * The Dashboard's queue (J-ADM-06): unique organization names for a trial ending in 2 days, people
+ * over the limit, no plan and nobody active for 18 days, plus an internal one that must never show.
+ */
+export const createDashboardFixture = (withCommandLineChange = false) =>
+  runFixture<{ trial: string; overLimit: string; noPlan: string; quiet: string; internal: string }>(
+    'dashboard',
+    ...(withCommandLineChange ? ['command'] : []),
+  )
+
+/** Closes the console window on every session: 16 minutes idle, or opened 8 hours ago. */
+export const ageConsole = (email: string, how: 'idle' | 'max' = 'idle') =>
+  runFixture<{ sessions: number }>('age-console', email, how)
+
+/** The last code or passkey was 10 minutes ago: opening the console asks "Confirm it's you". */
+export const ageSecondFactor = (email: string) =>
+  runFixture<{ sessions: number }>('age-second-factor', email)
+
+/** The person's passkeys were added 20 minutes ago, before an aged proof: they may open the console. */
+export const agePasskeys = (email: string) =>
+  runFixture<{ passkeys: number }>('age-passkeys', email)
+
+/** releases.spec.ts only: sets (or restores) a global release stage on a key it owns. */
+export const flagStage = (key: string, stage: 'off' | 'internal' | 'pilot' | 'on') =>
+  afterSnapshotReload(runFixture<{ key: string; stage: string }>('flag-stage', key, stage))
+
+/** A break-glass change by that super-admin in Vento's activity (the rose Command line tag). */
+export const platformActivity = (email: string) =>
+  runFixture<{ email: string }>('platform-activity', email)

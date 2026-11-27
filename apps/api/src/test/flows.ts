@@ -1,7 +1,11 @@
 import { CURRENT_TERMS_VERSION } from '@vento/shared'
+import { eq } from 'drizzle-orm'
+import { db } from '@/db/client'
+import { users } from '@/db/schema'
 import type { createMemoryTransport } from '@/email/transports/memory'
 import { type browser, codeFromEmail, totpFromUri } from './auth-client'
-import { TEST_PASSWORD } from './factories'
+import { uniqueEmail } from './db'
+import { createStaffInvitation, TEST_PASSWORD } from './factories'
 
 type Browser = ReturnType<typeof browser>
 type Mailer = ReturnType<typeof createMemoryTransport>
@@ -44,4 +48,23 @@ export async function setUpTwoStep(b: Browser, password = TEST_PASSWORD) {
 
 export function signIn(b: Browser, email: string, password = TEST_PASSWORD, rememberMe = false) {
   return b.auth('/sign-in/email', { email, password, rememberMe })
+}
+
+/**
+ * The staff sign-up end to end (admin-console plan §1b.5): a committed invitation, `join.start`
+ * (name and password, signs in), then two-step through Better Auth, which makes them a super-admin.
+ * Ends signed in with a fresh code, as after the real sign-up.
+ */
+export async function joinAsStaff(b: Browser, name = 'Ada Okafor') {
+  const email = uniqueEmail('staff')
+  const invitation = await createStaffInvitation(db, { email, name })
+  const started = await b.rpc('console/join/start', {
+    token: invitation.token,
+    name,
+    password: TEST_PASSWORD,
+  })
+  if (started.status !== 200) throw new Error(`join.start failed: ${JSON.stringify(started.body)}`)
+  const twoStep = await setUpTwoStep(b)
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email))
+  return { email, userId: user?.id ?? '', invitationId: invitation.id, ...twoStep }
 }

@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { auditEvents, organizations } from '@/db/schema'
-import { uniqueEmail, withRollback } from '@/test/db'
+import { uniqueSuffix, withRollback } from '@/test/db'
 import { contextFor, createEntity, createMember, createOrganization } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 import { answerSingleCompany, updateOrganization } from './organization.service'
@@ -80,7 +80,7 @@ describe('organization profile', () => {
 
 describe('organization profile under concurrency', () => {
   it('keeps both of two simultaneous saves of different fields', async () => {
-    const org = await createOrganization(db, { name: `Race Org ${uniqueEmail('o')}`.slice(0, 60) })
+    const org = await createOrganization(db, { name: `Race Org ${uniqueSuffix()}`.slice(0, 60) })
     const admin = await createMember(db, org, { role: 'admin' })
     const client = (user: typeof org.owner) =>
       clientAs(db, user, { activeOrganizationId: org.id }).client

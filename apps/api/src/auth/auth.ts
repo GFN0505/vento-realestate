@@ -24,9 +24,16 @@ import { logger } from '@/lib/logger'
 import { lookupPlace } from '@/lib/place'
 import { requestScope } from '@/lib/request-scope'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
+import { discardIfUnfinished, staffAccountState } from '@/platform/staff-accounts'
 import { checkDevice } from './hooks/after-sign-in'
 import { onBackupCodesRegenerated, onPasswordChanged, onTwoStepDisabled } from './hooks/audit-hooks'
-import { type AuthDeps, type AuthServerApi, errorCode, errorResponse } from './hooks/deps'
+import {
+  type AuthDeps,
+  type AuthServerApi,
+  authError,
+  errorCode,
+  errorResponse,
+} from './hooks/deps'
 import {
   afterPasskeyRegistration,
   afterPasskeySignIn,
@@ -62,12 +69,14 @@ import {
   SESSION_MAX_MS,
   VERIFICATION_TTL_SECONDS,
 } from './policy'
+import { assertFreshFactorForSuperAdmin, totpStepOf } from './second-factor'
 import {
   clearPasswordResetRequired,
   findUserById,
   rememberPasswordHash,
   userIdForResetToken,
 } from './security-store'
+import { webAuthnSettings } from './webauthn-settings'
 
 /**
  * Better Auth routes we switch off: passwordless sign-ins that would skip two-step, and
@@ -140,12 +149,45 @@ const PASSWORD_SIGN_IN_PATHS = new Set([
   '/two-factor/verify-backup-code',
 ])
 
+/**
+ * Sign-ins and set-ups that just proved a passkey, an authenticator code or a backup code: the
+ * session records when (`second_factor_at`), so the Vento console can open without asking again.
+ * A password alone never counts.
+ */
+export const SECOND_FACTOR_PATHS = new Set([
+  '/two-factor/verify-totp',
+  '/two-factor/verify-backup-code',
+  '/passkey/verify-authentication',
+])
+
 /** Signed-in endpoints that check the password in the body: wrong ones count towards the lock. */
 const PASSWORD_CHECKED_PATHS = new Set([
   '/change-password',
   '/two-factor/enable',
   '/two-factor/generate-backup-codes',
 ])
+
+/**
+ * A staff account setting two-step up again after a reset (audit M1): the new code proves only
+ * the new authenticator, which whoever holds the password just made. It isn't fresh proof, so the
+ * console asks "Confirm it's you" with a code instead of opening on it. A staff sign-up's first
+ * set-up (no reset) still counts. Read before the after-hook clears the flag.
+ */
+async function setUpAfterStaffReset(db: Db, path: string, userId: string): Promise<boolean> {
+  if (path !== '/two-factor/verify-totp' || requestScope().auth.twoStepMode !== 'setup') {
+    return false
+  }
+  const [row] = await db
+    .select({ accountKind: users.accountKind, after: users.twoStepSetupRequired })
+    .from(users)
+    .where(eq(users.id, userId))
+  return row?.accountKind === 'staff' && row.after
+}
+
+/** Active super-admin or joining: the only staff accounts that may sign in. */
+async function staffMaySignIn(db: Db, userId: string): Promise<boolean> {
+  return (await staffAccountState(db, userId)) !== 'closed'
+}
 
 export type CreateAuthOptions = {
   db: Db
@@ -208,6 +250,7 @@ function hookSession(
     userId: found.user.id,
     activeOrganizationId: typeof active === 'string' ? active : null,
     reauthenticatedAt: optionalDate(found.session.reauthenticatedAt),
+    secondFactorAt: optionalDate(found.session.secondFactorAt),
   }
 }
 
@@ -224,8 +267,9 @@ export function createAuth(options: CreateAuthOptions) {
     features: options.features ?? liveFeatureStore(db),
   }
 
+  const webauthn = webAuthnSettings()
   const auth = betterAuth({
-    appName: 'Vento',
+    appName: 'Vento Real Estate',
     basePath: AUTH_BASE_PATH,
     baseURL: env.WEB_ORIGIN,
     trustedOrigins: [env.WEB_ORIGIN],
@@ -336,9 +380,25 @@ export function createAuth(options: CreateAuthOptions) {
                 .where(eq(users.id, session.userId))
               activeOrganizationId = user?.lastActiveOrganizationId ?? null
             }
+            // Changing the password makes a fresh session (not a rotation), so its proof comes
+            // from the session that made the request.
+            const previous: Record<string, unknown> | null = rotated
+              ? session
+              : path === '/change-password'
+                ? (ctx?.context.session?.session ?? null)
+                : null
+            const secondFactorAt =
+              SECOND_FACTOR_PATHS.has(path) &&
+              !(await setUpAfterStaffReset(db, path, session.userId))
+                ? new Date(now)
+                : optionalDate(previous?.secondFactorAt)
             return {
               data: {
                 ...session,
+                // A rotated session keeps its proof but never the console window: re-prove it.
+                secondFactorAt,
+                consoleOpenedAt: null,
+                consoleActiveAt: null,
                 persistent,
                 expiresAt: persistent ? session.expiresAt : new Date(now + SESSION_MAX_MS),
                 lastActiveAt: new Date(now),
@@ -391,7 +451,15 @@ export function createAuth(options: CreateAuthOptions) {
           case '/two-factor/generate-backup-codes': {
             // A locked account can't confirm anything with a password (plan question 11).
             const session = await getSessionFromCtx(ctx)
-            if (session) await assertNotLocked(deps, session.user.email)
+            if (!session) return
+            await assertNotLocked(deps, session.user.email)
+            // New backup codes are a way into the console: a super-admin proves a code first.
+            if (ctx.path === '/two-factor/generate-backup-codes') {
+              await assertFreshFactorForSuperAdmin(db, {
+                userId: session.user.id,
+                secondFactorAt: optionalDate(session.session.secondFactorAt),
+              })
+            }
             return
           }
           case '/passkey/generate-register-options':
@@ -446,7 +514,7 @@ export function createAuth(options: CreateAuthOptions) {
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code': {
             // Our turn-off guard is calling the verifier itself and keeps the books.
-            if (requestScope().auth.twoStepMode === 'turn_off') return
+            if (requestScope().auth.twoStepMode === 'in_place') return
             const session = await getSessionFromCtx(ctx)
             const sessionUser = session ? await findUserById(db, session.user.id) : null
             let pendingUserId: string | null = null
@@ -460,6 +528,24 @@ export function createAuth(options: CreateAuthOptions) {
               pendingUserId = row && row.expiresAt > new Date() ? row.value : null
             }
             await beforeTwoStepVerify(deps, { sessionUser, pendingUserId })
+            // At sign-in, a code already used (its step or an earlier one) is refused (audit L4).
+            // Not at set-up: that code can't sign anyone in, and a sign-in right after must work.
+            const code = bodyField(ctx.body, 'code')
+            if (
+              ctx.path === '/two-factor/verify-totp' &&
+              pendingUserId &&
+              typeof code === 'string'
+            ) {
+              const match = await totpStepOf(db, pendingUserId, code, ctx.context.secretConfig)
+              if (match?.replayed) {
+                throw authError(
+                  'UNAUTHORIZED',
+                  AUTH_ERROR_CODES.INVALID_CODE,
+                  AUTH_ERROR_MESSAGES.INVALID_CODE,
+                )
+              }
+              if (match) requestScope().auth.totpStep = match.step
+            }
             // "Trust this device" is not offered (spec departures), whatever a client sends.
             return { context: { body: { ...(ctx.body as object), trustDevice: false } } }
           }
@@ -488,12 +574,26 @@ export function createAuth(options: CreateAuthOptions) {
                 message: AUTH_ERROR_MESSAGES.PASSWORD_RESET_REQUIRED,
               })
             }
+            // A staff account that is neither a super-admin nor mid-way through its sign-up (the
+            // invitation expired, was withdrawn or resent) is refused exactly like a wrong
+            // password, and discarded (decision 0023).
+            if (user.accountKind === 'staff' && !(await staffMaySignIn(db, user.id))) {
+              await db.delete(sessions).where(eq(sessions.token, signedIn.session.token))
+              ctx.context.setNewSession(null)
+              await db.transaction((tx) => discardIfUnfinished(tx, user.id))
+              const lockedUntil = email ? await onPasswordFailure(deps, email) : null
+              if (lockedUntil) return lockedResponse(lockedUntil)
+              return errorResponse(401, {
+                code: AUTH_ERROR_CODES.INVALID_EMAIL_OR_PASSWORD,
+                message: AUTH_ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD,
+              })
+            }
             await onPasswordSuccess(deps, ctx, user)
             return
           }
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code':
-            if (requestScope().auth.twoStepMode === 'turn_off') return
+            if (requestScope().auth.twoStepMode === 'in_place') return
             return afterTwoStepVerify(deps, ctx, {
               method: ctx.path === '/two-factor/verify-totp' ? 'totp' : 'backup_code',
               returned,
@@ -544,7 +644,9 @@ export function createAuth(options: CreateAuthOptions) {
             await onTwoStepDisabled(deps, user)
             return
           case '/two-factor/generate-backup-codes':
-            await onBackupCodesRegenerated(deps, user)
+            await onBackupCodesRegenerated(deps, user, {
+              secondFactorAt: optionalDate(ctx.context.session?.session.secondFactorAt),
+            })
             return
         }
       }),
@@ -562,7 +664,8 @@ export function createAuth(options: CreateAuthOptions) {
         },
       }),
       twoFactor({
-        issuer: 'Vento',
+        // New authenticator entries only: existing ones keep the label they were made with.
+        issuer: 'Vento Real Estate',
         backupCodeOptions: { amount: 10, length: 10 },
         accountLockout: { maxFailedAttempts: 5, durationSeconds: 900 },
         twoFactorCookieMaxAge: 600,
@@ -570,10 +673,13 @@ export function createAuth(options: CreateAuthOptions) {
       // Decision 0019: bound to the web app's own host; every passkey must check the person
       // (user verification) and be findable without an email (resident key).
       passkey({
-        rpID: new URL(env.WEB_ORIGIN).hostname,
-        rpName: 'Vento',
-        origin: new URL(env.WEB_ORIGIN).origin,
-        authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+        rpID: webauthn.rpID,
+        rpName: webauthn.rpName,
+        origin: webauthn.origin,
+        authenticatorSelection: {
+          residentKey: 'required',
+          userVerification: webauthn.userVerification,
+        },
         registration: {
           requireSession: true,
           afterVerification: ({ verification }) => ({

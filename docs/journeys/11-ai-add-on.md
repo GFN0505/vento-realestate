@@ -8,7 +8,7 @@ Every journey here has a manual twin elsewhere. With AI off, the screens look th
 
 **Steps**
 1. Each AI feature available to the organization, with what it does, an example and an estimated monthly cost for this organization's volume. Toggle the ones wanted. Features not yet released to the organization aren't listed.
-2. Set the monthly budget, up to the add-on's `ai_budget` limit; alerts at 50/80/100% go to the owner. Raising the limit itself means talking to Vento until the billing screen ships.
+2. Set the monthly budget, up to the add-on's `ai_budget` limit; alerts at 50/80/100% go to the owner. Raising the limit itself means talking to Vento Real Estate until the billing screen ships.
 3. Usage meter shows spend by feature this month.
 
 **Watch for:** budget reached → features pause with "AI budget reached for November. You can keep working as normal, or raise the budget." Manual paths keep working.
@@ -35,12 +35,12 @@ Every journey here has a manual twin elsewhere. With AI off, the screens look th
 
 **Test:** `e2e/ai/payment-matching.spec.ts` **Status:** draft
 
-## J-AI-03 · Ask Vento a question
+## J-AI-03 · Ask a question (Ask)
 **Who / how often:** Any member.
 **Starts from:** ⌘K, typing a question.
 
 **Steps**
-1. "UK buyers in Parkview more than 60 days overdue" → *Ask Vento answers:* a table of real records, the filters it used (editable), and actions (send reminder, export).
+1. "UK buyers in Parkview more than 60 days overdue" → *Ask answers* (with the AI marker; decision 0022): a table of real records, the filters it used (editable), and actions (send reminder, export).
 2. If the question can't be answered from their permitted data: says so plainly.
 
 **Behind the scenes:** always says what the answer is based on ("14 subscriptions you have access to") and how it found them; answers only from data the member can see; read-only; usage metered.

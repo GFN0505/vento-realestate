@@ -14,8 +14,8 @@ export type RequestScope = {
   /** Facts Better Auth before-hooks hand to after-hooks for the same request. */
   auth: {
     userId?: string
-    /** `turn_off`: our turn-off guard is calling the verifiers itself and does the bookkeeping. */
-    twoStepMode?: 'sign_in' | 'setup' | 'turn_off'
+    /** `in_place`: we're calling the verifiers ourselves (turn-off, the console) and keep the books. */
+    twoStepMode?: 'sign_in' | 'setup' | 'in_place'
     wasTwoFactorEnabled?: boolean
     /** The resend endpoint already counted this request against the limit. */
     verificationCounted?: boolean
@@ -23,11 +23,18 @@ export type RequestScope = {
     rememberMe?: boolean
     /** The passkey sign-in challenge this request answers, read before the plugin consumes it. */
     passkeyChallenge?: string
+    /** The 30-second step of the authenticator code this request sends, once it's matched. */
+    totpStep?: number
     /**
      * A first sign-in (sign-up's automatic one, accepting an invitation): the browser is recorded
      * silently, with no "new sign-in" email.
      */
     firstSignIn?: boolean
+    /**
+     * A super-admin's reset sent this password link (console or command): the per-inbox hourly
+     * cap doesn't apply, so a reset never leaves someone with no way back in (audit L7).
+     */
+    adminResetLink?: boolean
   }
 }
 

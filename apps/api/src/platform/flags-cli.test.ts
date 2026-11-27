@@ -18,7 +18,8 @@ import { runCommand } from './cli/run'
 
 async function run(db: DbOrTx, args: string[], answers: boolean[] = [true]) {
   const io = memoryIo(answers)
-  const code = await runCommand('flags', args, {
+  // Change commands are break-glass now (admin-console plan §7); console-parity.test.ts covers the refusal.
+  const code = await runCommand('flags', [...args, '--break-glass'], {
     db,
     io,
     operator: 'ada@ops-laptop',
@@ -62,7 +63,9 @@ describe('pnpm flags', () => {
       for (const by of [owner.email, noTwoStep.email]) {
         const { code, io } = await run(tx, ['stage', 'sales', 'on', ...why, '--by', by])
         expect(code).toBe(1)
-        expect(io.errors).toEqual(['Only Vento super-admins can change flags and plans.'])
+        expect(io.errors).toEqual([
+          'Only Vento Real Estate super-admins can change flags and plans.',
+        ])
       }
       const { io } = await run(tx, ['stage', 'sales', 'on', '--by', admin.email])
       expect(io.errors).toEqual(['Add --reason so the audit trail says why.'])
@@ -164,9 +167,9 @@ describe('pnpm flags', () => {
         )
       expect(notices).toHaveLength(1)
       expect(notices[0]).toMatchObject({
-        actorName: 'Vento',
+        actorName: 'Vento Real Estate',
         actorUserId: null,
-        metadata: { message: 'Vento turned on Buyer portal for your organization' },
+        metadata: { message: 'Vento Real Estate turned on Buyer portal for your organization' },
       })
       expect(JSON.stringify(notices[0])).not.toContain('Pilot agreement signed')
     }))
@@ -207,7 +210,7 @@ describe('pnpm flags', () => {
           ),
         )
       expect(notice?.metadata).toEqual({
-        message: 'Vento gave your organization early access to new features',
+        message: 'Vento Real Estate gave your organization early access to new features',
       })
     }))
 

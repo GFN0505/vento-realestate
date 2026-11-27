@@ -71,11 +71,17 @@ function AcceptInvitationPage() {
   return (
     <AuthLayout>
       <InvitationSummary preview={preview} />
-      {me ? (
+      {preview.staffAccount ? (
+        // Decision 0023: a staff email can't join any organization. Neutral on purpose (audit
+        // L4): the page never says what kind of account the email has.
+        <FormAlert variant="error">
+          This email can't be invited. Ask {preview.inviterName} to invite a different email.
+        </FormAlert>
+      ) : me ? (
         <AcceptSignedIn token={token} preview={preview} me={me} onAccepted={accepted} />
       ) : preview.hasAccount ? (
         <>
-          <FormAlert variant="info" title="You already use Vento.">
+          <FormAlert variant="info" title="You already use Vento Real Estate.">
             Sign in as {preview.email} to accept.
           </FormAlert>
           <Button size="lg" className="w-full" asChild>
@@ -108,7 +114,7 @@ function AcceptInvitationPage() {
           Decline invitation
         </button>
         .
-        {!me && !preview.hasAccount && (
+        {!me && !preview.hasAccount && !preview.staffAccount && (
           <>
             {' '}
             By accepting, you agree to the <a href={LEGAL_LINKS.terms}>Terms</a> and{' '}

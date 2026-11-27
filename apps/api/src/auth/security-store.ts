@@ -86,6 +86,7 @@ export type IdentityUser = {
   email: string
   twoFactorEnabled: boolean
   passwordResetRequired: boolean
+  accountKind: 'customer' | 'staff'
 }
 
 const identityColumns = {
@@ -94,6 +95,7 @@ const identityColumns = {
   email: users.email,
   twoFactorEnabled: users.twoFactorEnabled,
   passwordResetRequired: users.passwordResetRequired,
+  accountKind: users.accountKind,
 }
 
 export async function findUserByEmail(db: DbOrTx, email: string): Promise<IdentityUser | null> {
@@ -149,13 +151,23 @@ export async function recentPasswordHashes(db: DbOrTx, userId: string): Promise<
 /**
  * The first active membership that requires two-step, by role or by the organization's
  * "Require two-step for everyone": the preferred (active) organization first, then by name.
- * A role requirement is named before the organization's when both apply. Null when none does.
+ * A role requirement is named before the organization's when both apply; a Vento Real Estate
+ * staff account comes before both. Null when none does.
  */
 export async function firstTwoStepRequirement(
   db: DbOrTx,
   userId: string,
   preferOrganizationId: string | null = null,
 ): Promise<TwoStepRequirement | null> {
+  // Staff can't turn two-step off: the console needs it (decisions 0021 and 0023). The enum
+  // value stays `super_admin`; the words say "Vento Real Estate staff".
+  const [staff] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.accountKind, 'staff')))
+  if (staff) {
+    return { reason: 'super_admin', organizationName: 'Vento Real Estate', roleName: null }
+  }
   const [row] = await db
     .select({
       organizationName: organizations.name,

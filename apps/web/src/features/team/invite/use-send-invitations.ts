@@ -42,8 +42,11 @@ function conflictLists(error: unknown) {
     'alreadyMembers' in data && Array.isArray(data.alreadyMembers) ? data.alreadyMembers : []
   const invited =
     'alreadyInvited' in data && Array.isArray(data.alreadyInvited) ? data.alreadyInvited : []
+  const staff =
+    'staffAccounts' in data && Array.isArray(data.staffAccounts) ? data.staffAccounts : []
   return {
     members: members.filter((e): e is string => typeof e === 'string'),
+    staff: staff.filter((e): e is string => typeof e === 'string'),
     invited: invited.filter(
       (i): i is { email: string; id: string } =>
         typeof i === 'object' &&
@@ -92,8 +95,8 @@ export function useSendInvitations(onSent: (sent: readonly string[]) => void) {
     },
     onError: (error) => {
       const lists = conflictLists(error)
-      if (lists && (lists.members.length > 0 || lists.invited.length > 0)) {
-        inviteDraft.markClashes(lists.members, lists.invited)
+      if (lists && lists.members.length + lists.invited.length + lists.staff.length > 0) {
+        inviteDraft.markClashes(lists.members, lists.invited, lists.staff)
       }
       const reason = errorReason(error)
       if (

@@ -7,6 +7,10 @@ export function rowProblem(row: InviteRow, viewerEmail: string): string | null {
   if (row.email === viewerEmail.toLowerCase()) return "That's you"
   if (row.clash?.kind === 'member') return 'Already a member'
   if (row.clash?.kind === 'invited') return 'Already invited'
+  if (row.clash?.kind === 'staff') {
+    // Neutral on purpose (audit L4): an owner learns only that this email can't join.
+    return "This email can't be invited. Use a different email."
+  }
   return null
 }
 

@@ -1,27 +1,22 @@
-import { FEATURE_KEYS, featureLabel, isFeatureKey, prerequisitesOf } from '@vento/shared'
+import { FEATURE_KEYS, featureLabel, prerequisitesOf } from '@vento/shared'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import { runQueries } from '@/db/run-queries'
-import {
-  featureReleases,
-  organizationOverrides,
-  organizations,
-  planVersions,
-  platformAuditEvents,
-} from '@/db/schema'
+import { organizationOverrides, organizations, platformAuditEvents } from '@/db/schema'
 import { formatDate } from '@/lib/format'
 import { isLive, stageOf } from '../availability'
-import { CommandError } from '../command-error'
 import { resolveOrganization } from '../operations/common'
 import {
   allOrganizationPlans,
   holders,
-  missingPrerequisites,
+  previewGroup,
+  previewReleaseOverride,
   previewStage,
   setReleaseGroup,
   setReleaseOverride,
   setStage,
+  unknownKeysInData,
 } from '../operations/release'
-import { loadOrganizationPlan, loadSnapshot } from '../snapshot'
+import { loadSnapshot } from '../snapshot'
 import {
   authorise,
   type CommandDeps,
@@ -39,16 +34,8 @@ export const FLAGS_HELP = `Usage: pnpm flags <command>
   stage <flag> <off|internal|pilot|on>   release stage for everyone
   group <organization> <standard|pilot|internal>
   override <organization> <flag> <on|off|clear> [--until YYYY-MM-DD]
-Changes need --reason "…" and --by <super-admin email>; --yes skips the question.`
-
-async function unknownKeysInData(deps: CommandDeps): Promise<string[]> {
-  const [stages, versions] = await runQueries(deps.db, [
-    () => deps.db.select({ key: featureReleases.featureKey }).from(featureReleases),
-    () => deps.db.select({ features: planVersions.features }).from(planVersions),
-  ])
-  const keys = new Set([...stages.map((s) => s.key), ...versions.flatMap((v) => v.features)])
-  return [...keys].filter((k) => !isFeatureKey(k)).sort()
-}
+Make changes in the Vento Real Estate console. If it's down, changes need --break-glass, --reason "…" and
+--by <super-admin email> (the other super-admins are emailed); --yes skips the question.`
 
 async function list(deps: CommandDeps): Promise<void> {
   const now = deps.now()
@@ -63,7 +50,7 @@ async function list(deps: CommandDeps): Promise<void> {
       `${key.padEnd(34)}${stageOf(snapshot, key).padEnd(10)}${String(holders(snapshot, orgs, key, now).length).padStart(4)}  ${plans.join(', ') || '–'}`,
     )
   }
-  const stale = await unknownKeysInData(deps)
+  const stale = await unknownKeysInData(deps.db)
   if (stale.length)
     deps.io.print(`Keys in data the code no longer has (ignored): ${stale.join(', ')}`)
 }
@@ -126,9 +113,8 @@ async function show(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function stage(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const key = featureArg(parsed.positionals[1])
   const to = stageArg(parsed.positionals[2])
-  const { actor, reason } = await authorise(deps, parsed)
+  const { actor, reason } = await authorise(deps, parsed, 'flags stage')
   const preview = await previewStage(deps.db, key, to, deps.now())
-  if (preview.current === to) throw new CommandError(`${featureLabel(key)} is already at ${to}.`)
   if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(await setStage(deps.db, actor, { key, stage: to, reason }))
 }
@@ -136,9 +122,9 @@ async function stage(deps: CommandDeps, parsed: Parsed): Promise<void> {
 async function group(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const to = groupArg(parsed.positionals[2])
-  const { actor, reason } = await authorise(deps, parsed)
-  const { releaseGroup } = await loadOrganizationPlan(deps.db, org.id)
-  if (!(await confirm(deps, parsed, [`${org.name} moves from ${releaseGroup} to ${to}.`]))) return
+  const { actor, reason } = await authorise(deps, parsed, 'flags group')
+  const preview = await previewGroup(deps.db, org, to, deps.now())
+  if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(await setReleaseGroup(deps.db, actor, { organization: org, group: to, reason }))
 }
 
@@ -146,17 +132,13 @@ async function override(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const org = await resolveOrganization(deps.db, parsed.positionals[1] ?? '')
   const key = featureArg(parsed.positionals[2])
   const value = onOffClear(parsed.positionals[3])
-  const { actor, reason } = await authorise(deps, parsed)
-  const lines = [
-    value === 'clear'
-      ? `${org.name}'s release override for ${featureLabel(key)} will be cleared.`
-      : `${featureLabel(key)} will be released ${value} for ${org.name}${parsed.until ? ` until ${parsed.until}` : ''}.`,
-  ]
-  if (value === 'on') {
-    const missing = await missingPrerequisites(deps.db, org, key, deps.now())
-    if (missing) lines.push(missing)
-  }
-  if (!(await confirm(deps, parsed, lines))) return
+  const { actor, reason } = await authorise(
+    deps,
+    parsed,
+    value === 'clear' ? 'flags override clear' : 'flags override',
+  )
+  const preview = await previewReleaseOverride(deps.db, org, key, value, parsed.until, deps.now())
+  if (!(await confirm(deps, parsed, preview.lines))) return
   deps.io.print(
     await setReleaseOverride(
       deps.db,

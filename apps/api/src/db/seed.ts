@@ -11,7 +11,7 @@ import {
   unmetPasswordRules,
 } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import { setActiveOrganization } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import { webUrl } from '@/auth/hooks/deps'
@@ -39,6 +39,7 @@ import {
   platformAdmins,
   rolePermissions,
   roles,
+  staffInvitations,
   users,
 } from './schema'
 
@@ -265,7 +266,17 @@ const LEKKI_PEOPLE: Person[] = [
   { name: 'Bisi Lawal', email: 'bisi@lekkipartners.ng', role: 'owner' },
   { name: 'Femi Adeoye', email: 'femi@lekkipartners.ng', role: 'sales' },
 ]
-const SUPER_ADMIN = { name: 'Ada Okafor', email: 'ada@vento.ng', role: 'viewer' as const }
+// Vento Real Estate staff (admin-console plan §1b.17): staff accounts with no organization, so
+// signing in lands them on the console. Chika has an open staff invitation from Ada.
+const SUPER_ADMINS = [
+  { name: 'Ada Okafor', email: 'ada@ventoerp.com' },
+  { name: 'Tunde Bello', email: 'tunde@ventoerp.com' },
+] as const
+const STAFF_INVITEE = { name: 'Chika Obi', email: 'chika@ventoerp.com' } as const
+
+/** What to run when the local database predates staff accounts (the kind can't be changed). */
+const STALE_STAFF_MESSAGE = `This local database is from before staff accounts: ada@ventoerp.com is still a customer account, and an account's kind can't change. Reset the local database (this deletes your local development data) and seed again:
+  docker compose down -v && pnpm db:up && pnpm db:migrate && pnpm db:seed`
 
 async function upsertEntities(
   tx: DbOrTx,
@@ -488,20 +499,28 @@ async function seed() {
 
   await bootstrapStartingData(db)
   await seedLekki(passwordHash)
-  const adminSecret = await seedSuperAdmin(passwordHash, password)
+  const adminSecrets: [string, string][] = []
+  for (const admin of SUPER_ADMINS) {
+    const secret = await seedSuperAdmin(admin, passwordHash, password)
+    if (secret) adminSecrets.push([admin.email, secret])
+  }
+  const staffLink = await seedStaffInvitation()
 
   logger.info('Seeded Vento Homes Ltd and Lekki Partners Ltd', {
     people: PEOPLE.length + LEKKI_PEOPLE.length,
     customRoles: CUSTOM_ROLES.map((r) => r.name),
     archivedCompanies: [ARCHIVED_ENTITY.name],
   })
-  const everyone = [...PEOPLE, ...LEKKI_PEOPLE, SUPER_ADMIN].map((p) => p.email)
+  const everyone = [...PEOPLE, ...LEKKI_PEOPLE, ...SUPER_ADMINS].map((p) => p.email)
   process.stdout.write(
     `\nSign in as any of: ${everyone.join(', ')}\n(password: SEED_PASSWORD from .env)\n\nInvitation links:\n  ${links.join('\n  ')}\n\n`,
   )
-  if (adminSecret) {
+  process.stdout.write(
+    `Staff invitation for ${STAFF_INVITEE.name} (${STAFF_INVITEE.email}), new each run:\n  ${staffLink}\n\n`,
+  )
+  for (const [email, secret] of adminSecrets) {
     process.stdout.write(
-      `Super-admin ${SUPER_ADMIN.email}: two-step is on. Add this secret to an authenticator app now; it isn't shown again:\n  ${adminSecret}\n\n`,
+      `Super-admin ${email}: two-step is on. Add this secret to an authenticator app now; it isn't shown again:\n  ${secret}\n\n`,
     )
   }
 }
@@ -595,37 +614,120 @@ async function seedLekki(passwordHash: string) {
   }
 }
 
+/** Stops with the reset instructions rather than half-converting a pre-1b local database. */
+async function assertNoStaleStaff(): Promise<void> {
+  const emails = SUPER_ADMINS.map((a) => a.email)
+  const stale = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(and(inArray(users.email, emails), eq(users.accountKind, 'customer')))
+  if (stale.length) throw new Error(STALE_STAFF_MESSAGE)
+}
+
 /**
- * ada@vento.ng, a Vento super-admin. Two-step is switched on through Better Auth the way the
- * e2e fixtures do it; returns the authenticator secret the first time only.
+ * A super-admin: a staff account with no organization (decision 0023). Two-step is switched on
+ * through Better Auth the way the e2e fixtures do it; returns the authenticator secret the first
+ * time only. The platform_admins row comes first, so the staff sign-in guard lets them in.
  */
-async function seedSuperAdmin(passwordHash: string, password: string): Promise<string | null> {
-  const userId = await db.transaction((tx) => upsertPerson(tx, SUPER_ADMIN, passwordHash, 'Vento'))
+async function seedSuperAdmin(
+  admin: (typeof SUPER_ADMINS)[number],
+  passwordHash: string,
+  password: string,
+): Promise<string | null> {
+  await assertNoStaleStaff()
+  const userId = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({ name: admin.name, email: admin.email, emailVerified: true, accountKind: 'staff' })
+      .onConflictDoUpdate({ target: users.email, set: { name: admin.name, emailVerified: true } })
+      .returning({ id: users.id })
+    if (!user) throw new Error(`User insert failed for ${admin.email}`)
+    const [account] = await tx
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(and(eq(accounts.userId, user.id), eq(accounts.providerId, 'credential')))
+    if (account) {
+      await tx.update(accounts).set({ password: passwordHash }).where(eq(accounts.id, account.id))
+    } else {
+      await tx.insert(accounts).values({
+        userId: user.id,
+        accountId: user.id,
+        providerId: 'credential',
+        password: passwordHash,
+      })
+      await tx.insert(passwordHistories).values({ userId: user.id, passwordHash })
+    }
+    const [row] = await tx
+      .select({ id: platformAdmins.id })
+      .from(platformAdmins)
+      .where(and(eq(platformAdmins.userId, user.id), isNull(platformAdmins.revokedAt)))
+    if (!row)
+      await tx.insert(platformAdmins).values({ userId: user.id, reason: 'Demo super-admin' })
+    return user.id
+  })
   const [user] = await db
     .select({ twoFactorEnabled: users.twoFactorEnabled })
     .from(users)
     .where(eq(users.id, userId))
-  let secret: string | null = null
-  if (!user?.twoFactorEnabled) {
-    const { testApp, browser } = await import('@/test/auth-client')
-    const { setUpTwoStep, signIn } = await import('@/test/flows')
-    const b = browser(testApp().app)
-    const res = await signIn(b, SUPER_ADMIN.email, password)
-    if (res.status !== 200) throw new Error('Super-admin sign-in failed')
-    const { totpURI } = await setUpTwoStep(b, password)
-    secret = new URL(totpURI).searchParams.get('secret')
-  }
-  const [admin] = await db
-    .select({ id: platformAdmins.id })
-    .from(platformAdmins)
-    .where(and(eq(platformAdmins.userId, userId), isNull(platformAdmins.revokedAt)))
-  if (!admin) await db.insert(platformAdmins).values({ userId, reason: 'Demo super-admin' })
-  return secret
+  if (user?.twoFactorEnabled) return null
+  const { testApp, browser } = await import('@/test/auth-client')
+  const { setUpTwoStep, signIn } = await import('@/test/flows')
+  const b = browser(testApp().app)
+  const res = await signIn(b, admin.email, password)
+  if (res.status !== 200) throw new Error(`Super-admin sign-in failed for ${admin.email}`)
+  const { totpURI } = await setUpTwoStep(b, password)
+  return new URL(totpURI).searchParams.get('secret')
+}
+
+/** Chika's open staff invitation from Ada: a fresh link and 48 hours on every run. */
+async function seedStaffInvitation(): Promise<string> {
+  const { newInvitationToken } = await import('@/modules/invitations/invitation-token')
+  const { staffInvitationLink } = await import('@/platform/operations/staff-invitations')
+  const { STAFF_INVITATION_TTL_MS } = await import('@/auth/policy')
+  const { token, tokenHash } = newInvitationToken()
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + STAFF_INVITATION_TTL_MS)
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('platform_admins'))`)
+    const [ada] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, 'ada@ventoerp.com'))
+    const [open] = await tx
+      .select({ id: staffInvitations.id })
+      .from(staffInvitations)
+      .where(
+        and(
+          eq(staffInvitations.email, STAFF_INVITEE.email),
+          eq(staffInvitations.status, 'pending'),
+        ),
+      )
+    if (open) {
+      await tx
+        .update(staffInvitations)
+        .set({ tokenHash, expiresAt, lastSentAt: now, userId: null, startedAt: null })
+        .where(eq(staffInvitations.id, open.id))
+    } else {
+      await tx.insert(staffInvitations).values({
+        ...STAFF_INVITEE,
+        reason: 'Joins the release rota',
+        invitedByUserId: ada?.id ?? null,
+        tokenHash,
+        expiresAt,
+        lastSentAt: now,
+      })
+    }
+  })
+  return staffInvitationLink(token)
 }
 
 try {
   await seed()
 } catch (error) {
+  // Instructions for the developer, readable as is (not only inside the log line).
+  if (error instanceof Error && error.message === STALE_STAFF_MESSAGE) {
+    process.stderr.write(`\n${STALE_STAFF_MESSAGE}\n\n`)
+  }
   logger.error('Seed failed', { error: error instanceof Error ? error.message : String(error) })
   process.exitCode = 1
 } finally {

@@ -56,6 +56,7 @@ import { recordAudit } from '@/modules/audit/audit.service'
 import { loadRoles, lockAssignableRoles, onArchivedRole } from '@/modules/roles/roles.service'
 import { invitationRowsById } from '@/modules/team/team.service'
 import { assertWithinLimit } from '@/platform/limits'
+import { staffEmails } from '@/platform/staff-accounts'
 import { hashInvitationToken, newInvitationToken } from './invitation-token'
 
 type InvitationRow = typeof invitations.$inferSelect
@@ -137,7 +138,7 @@ function invitationMessage(
   return {
     to: row.email,
     tag: 'invitation',
-    fromName: displayName(`${d.organizationName} via Vento`),
+    fromName: displayName(`${d.organizationName} via Vento Real Estate`),
     replyTo: { name: displayName(sender.name), email: sender.email },
     metadata: { invitationId: row.id },
     ...invitationEmail({
@@ -168,6 +169,28 @@ function clashError(
         ? `${member} is already a member of ${ctx.organizationName}.`
         : `${invited?.email} already has an invitation. Resend it instead.`
   return conflict(reason, message, { alreadyMembers, alreadyInvited })
+}
+
+/** The one sentence for an email that can't be invited, wherever it shows (audit L4). */
+export const CANNOT_INVITE = "This email can't be invited. Use a different email."
+
+/**
+ * A customer invitation to a staff account (decision 0023). Neutral on purpose (audit L4): the
+ * owner learns only that the email can't be invited, never why; `staffAccounts` marks the rows,
+ * and the router limits how often an organization gets this answer.
+ */
+function staffAccountsError(staff: string[]) {
+  const message =
+    staff.length > 1
+      ? `${staff.length} of these emails can't be invited. Use different emails.`
+      : CANNOT_INVITE
+  return conflict('staff_account', message, { staffAccounts: staff })
+}
+
+/** Accepting with a staff email: refused with the same neutral sentence. */
+async function assertNotStaffEmail(db: DbOrTx, row: InvitationRow): Promise<void> {
+  if ((await staffEmails(db, [row.email])).length === 0) return
+  throw conflict('staff_account', CANNOT_INVITE)
 }
 
 /** Up to 20 at once, all or nothing. Emails go out after commit (the router sends them). */
@@ -223,6 +246,8 @@ export async function createInvitations(
           inArray(users.email, emails),
         ),
       )
+    const staff = await staffEmails(tx, emails)
+    if (staff.length) throw staffAccountsError(staff)
     const memberEmails = new Set(alreadyMembers.map((m) => m.email))
     const live = pending.filter((p) => p.expiresAt > now && !memberEmails.has(p.email))
     if (memberEmails.size || live.length) {
@@ -431,6 +456,8 @@ export async function resendInvitation(
         ),
       )
     if (newer) throw alreadyInvited(current.email)
+    // The email became a staff account after this was sent.
+    if ((await staffEmails(tx, [current.email])).length) throw staffAccountsError([current.email])
     // They joined meanwhile (through a newer invitation, say): nothing to resend.
     const [joined] = await tx
       .select({ id: members.id })
@@ -546,13 +573,18 @@ async function findByToken(db: DbOrTx, token: string, lock = false): Promise<Inv
 export async function previewInvitation(db: DbOrTx, token: string): Promise<InvitationPreview> {
   const row = await findByToken(db, token)
   const d = await details(db, row)
-  const [account] = await db.select({ id: users.id }).from(users).where(eq(users.email, row.email))
+  const [account] = await db
+    .select({ id: users.id, accountKind: users.accountKind })
+    .from(users)
+    .where(eq(users.email, row.email))
   return {
     ...d,
     status: effectiveStatus(row),
     email: row.email,
     expiresOn: lagosIsoDate(row.expiresAt),
     hasAccount: Boolean(account),
+    // Only so the accept page can show the neutral sentence before asking for anything (L4).
+    staffAccount: account?.accountKind === 'staff',
   }
 }
 
@@ -689,6 +721,7 @@ export async function acceptInvitation(
       throw forbidden('invitation_email_mismatch', `This invitation is for ${row.email}`)
     }
     await assertAcceptable(tx, row)
+    await assertNotStaffEmail(tx, row)
     const emails = await joinOrganization(tx, row, actor.user)
     await setActiveOrganization(tx, {
       userId: actor.user.id,
@@ -718,12 +751,16 @@ export async function acceptInvitationAsNewUser(
   return db.transaction(async (tx) => {
     const row = await findByToken(tx, input.token, true)
     await assertAcceptable(tx, row)
+    await assertNotStaffEmail(tx, row)
     const [existing] = await tx
       .select({ id: users.id })
       .from(users)
       .where(eq(users.email, row.email))
     if (existing)
-      throw conflict('account_exists', 'You already have a Vento account. Sign in to accept.')
+      throw conflict(
+        'account_exists',
+        'You already have a Vento Real Estate account. Sign in to accept.',
+      )
     const [user] = await tx
       .insert(users)
       .values({

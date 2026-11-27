@@ -42,11 +42,20 @@ function InputOTPSlot({
       {...props}
     >
       {char}
-      {hasFakeCaret && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-6 w-px animate-caret-blink bg-foreground duration-1000" />
-        </div>
-      )}
+      {/*
+       * Always in the DOM, shown or hidden: removing it on blur is a DOM removal at the moment
+       * focus is on <body>, which Radix's focus trap reads as "focus lost" and pulls focus back to
+       * the dialog, so Tab out of the code could never reach the next control.
+       */}
+      <div
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-0 flex items-center justify-center',
+          !hasFakeCaret && 'invisible',
+        )}
+      >
+        <div className="h-6 w-px animate-caret-blink bg-foreground duration-1000" />
+      </div>
     </div>
   )
 }

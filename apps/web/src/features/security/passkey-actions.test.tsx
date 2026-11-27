@@ -47,6 +47,12 @@ describe('adding a passkey: what each failure says', () => {
     )
   })
 
+  it('tells a super-admin a fresh code or passkey is needed, not the password', () => {
+    expect(addPasskeyError({ code: 'SECOND_FACTOR_REQUIRED', status: 403 }, isCancel)).toBe(
+      AUTH_ERROR_MESSAGES.SECOND_FACTOR_REQUIRED,
+    )
+  })
+
   it('says the connection failed, else what to try', () => {
     expect(addPasskeyError({ status: 0 }, isCancel)).toBe(NETWORK_ERROR)
     expect(addPasskeyError({ code: 'SOMETHING', status: 500 }, isCancel)).toBe(ADD_FAILED)
@@ -82,5 +88,30 @@ describe('adding a passkey when the confirmation has lapsed', () => {
       'Passkey added · iCloud Keychain · Mac',
       expect.anything(),
     )
+  })
+})
+
+describe('adding a passkey as a super-admin without a fresh second factor', () => {
+  it('says what to do and never asks for the password again', async () => {
+    const queryClient = new QueryClient()
+    const until = new Date(Date.now() + 4 * 60_000).toISOString()
+    queryClient.setQueryData(
+      securityQuery().queryKey,
+      testSecurity({ reauthenticatedUntil: until }),
+    )
+    addPasskey.mockReset()
+    addPasskey.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'SECOND_FACTOR_REQUIRED', status: 403 },
+    })
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useAddPasskey(), { wrapper })
+    await act(() => result.current.add())
+
+    expect(addPasskey).toHaveBeenCalledTimes(1)
+    expect(securityUi.confirmOpen()).toBe(false)
+    expect(toast.error).toHaveBeenCalledWith(AUTH_ERROR_MESSAGES.SECOND_FACTOR_REQUIRED)
   })
 })

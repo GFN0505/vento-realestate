@@ -41,6 +41,12 @@ export const AUTH_ERROR_CODES = {
   TWO_STEP_ALREADY_ON: 'TWO_STEP_ALREADY_ON',
   /** 403 on /passkey/generate-register-options: "Confirm it's you" first (account.confirmPassword). */
   REAUTH_REQUIRED: 'REAUTH_REQUIRED',
+  /**
+   * 403 for a super-admin on /two-factor/generate-backup-codes and the passkey registration
+   * endpoints when no code or passkey was proven on this session in the last 5 minutes: a
+   * password alone can't mint a new second factor that opens the console.
+   */
+  SECOND_FACTOR_REQUIRED: 'SECOND_FACTOR_REQUIRED',
   // Better Auth's, listed so the web can map them.
   INVALID_EMAIL_OR_PASSWORD: 'INVALID_EMAIL_OR_PASSWORD',
   EMAIL_NOT_VERIFIED: 'EMAIL_NOT_VERIFIED',
@@ -97,6 +103,7 @@ export const AUTH_ERROR_MESSAGES: Record<
   | 'PASSKEY_NOT_FOUND'
   | 'PASSKEY_LIMIT'
   | 'REAUTH_REQUIRED'
+  | 'SECOND_FACTOR_REQUIRED'
   | 'TWO_FACTOR_NOT_ENABLED'
   | 'TWO_STEP_ALREADY_ON',
   string
@@ -121,6 +128,8 @@ export const AUTH_ERROR_MESSAGES: Record<
   PASSKEY_NOT_FOUND: "That passkey isn't recognised. Sign in with your password.",
   PASSKEY_LIMIT: 'You can have up to 10 passkeys. Remove one you no longer use.',
   REAUTH_REQUIRED: 'Enter your password to continue.',
+  SECOND_FACTOR_REQUIRED:
+    'As a Vento Real Estate super-admin, confirm this with your authenticator app or a passkey: sign out, sign in again with two-step, then try within 5 minutes.',
   TWO_FACTOR_NOT_ENABLED: 'Two-step is off now. The page is up to date.',
   TWO_STEP_ALREADY_ON: 'Two-step is already on. The page is up to date.',
 }

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
-import { publishPlans } from './fixtures'
+import { expireStaffInvitations, publishPlans } from './fixtures'
 
 const repoRoot = join(import.meta.dirname, '..', '..', '..', '..')
 
@@ -15,4 +15,6 @@ export default function globalSetup() {
     stdio: 'ignore',
   })
   publishPlans()
+  // The cap of 5 open staff invitations is global: start without earlier runs' leftovers.
+  expireStaffInvitations()
 }

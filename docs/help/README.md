@@ -7,6 +7,7 @@ The in-app help centre and contextual help, written for customers (not developer
 - Follow the `ux-writing` skill: plain English, domain terms, no internal jargon, no field names.
 - One task per article. Title starts with a verb: "Record a receipt", "Reschedule a payment plan".
 - Each article ends with "Related" links to the next likely task.
+- Vento Real Estate staff journeys (J-ADM-*, the console) aren't customer help: they're documented in [`docs/journeys/12-vento-admin.md`](../journeys/12-vento-admin.md) and [`docs/RUNBOOK.md`](../RUNBOOK.md), so they have no article here.
 
 ## Structure
 ```

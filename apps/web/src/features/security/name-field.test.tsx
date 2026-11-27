@@ -29,7 +29,11 @@ function renderName() {
   )
 }
 
-const edit = () => userEvent.click(screen.getByRole('button', { name: /Edit your name/ }))
+// The box selects its text on the next frame; type after that, or the first letter is replaced.
+const edit = async () => {
+  await userEvent.click(screen.getByRole('button', { name: /Edit your name/ }))
+  await new Promise((done) => requestAnimationFrame(() => done(null)))
+}
 
 beforeEach(() => vi.clearAllMocks())
 

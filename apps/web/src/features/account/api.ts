@@ -25,6 +25,7 @@ export const NEXT_STEP_PATH: Record<Exclude<NextStep, 'ready'>, string> = {
   onboarding_organization: '/onboarding',
   onboarding_entity: '/onboarding',
   two_step_setup: '/two-step/setup',
+  console: '/console',
 }
 
 /** After a sign-in or sign-out, drop everything cached for the previous person. */

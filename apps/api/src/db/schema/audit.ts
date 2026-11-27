@@ -31,5 +31,7 @@ export const auditEvents = pgTable(
     index('audit_events_org_created_idx').on(t.organizationId, t.createdAt.desc()),
     index('audit_events_org_target_idx').on(t.organizationId, t.targetType, t.targetId),
     index('audit_events_org_actor_idx').on(t.organizationId, t.actorUserId, t.createdAt.desc()),
+    // The console Dashboard's customer activity feed reads a few actions across organizations.
+    index('audit_events_action_created_idx').on(t.action, t.createdAt.desc()),
   ],
 )

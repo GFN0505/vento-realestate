@@ -129,7 +129,7 @@ test.describe('role and access', () => {
     await confirm.getByRole('button', { name: 'Make owner' }).click()
 
     await expect(personRow(page, 'Grace Umeh')).toContainText('Owner')
-    const subject = `Vento: Grace Umeh is now an owner of ${team.organizationName}`
+    const subject = `Vento Real Estate: Grace Umeh is now an owner of ${team.organizationName}`
     for (const owner of [olumide, ngozi, grace]) {
       await expect
         .poll(async () => (await allEmails(owner.email)).map((m) => m.subject))

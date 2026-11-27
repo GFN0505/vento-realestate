@@ -26,7 +26,7 @@ export function BackupCodes({ codes, email, saved, onSavedChange }: Props) {
   }
 
   function download() {
-    const body = `Vento backup codes for ${email}\nEach code works once.\n\n${text}\n`
+    const body = `Vento Real Estate backup codes for ${email}\nEach code works once.\n\n${text}\n`
     const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }))
     const link = document.createElement('a')
     link.href = url

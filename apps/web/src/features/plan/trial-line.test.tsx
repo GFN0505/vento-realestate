@@ -9,7 +9,7 @@ const now = new Date('2026-12-26T09:00:00Z')
 const trial = { planName: 'Enterprise', endsOn: '2027-01-02', losing: ['Board pack'] }
 
 describe('TrialLine', () => {
-  it('shows an owner when the trial ends, what goes, and Talk to Vento', () => {
+  it('shows an owner when the trial ends, what goes, and Talk to Vento Real Estate', () => {
     renderWithMe(<TrialLine now={now} />, testMe('owner', { plan: testPlan({ trial }) }))
 
     expect(
@@ -17,7 +17,7 @@ describe('TrialLine', () => {
         'Your Enterprise trial ends on 2 Jan 2027. After that, the board pack is no longer available. Your data stays.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Talk to Vento' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Talk to Vento Real Estate' })).toBeInTheDocument()
   })
 
   it('stays hidden 8 days before the end', () => {

@@ -125,7 +125,9 @@ describe('account.confirmPassword', () => {
       await expect(confirmPassword(deps, user, session, 'Wrong-pass-123')).rejects.toMatchObject({
         code: 'TOO_MANY_REQUESTS',
       })
-      expect(mailer.to(user.email).at(-1)?.subject).toBe('Vento: sign-in locked for 15 minutes')
+      expect(mailer.to(user.email).at(-1)?.subject).toBe(
+        'Vento Real Estate: sign-in locked for 15 minutes',
+      )
       expect(
         await tx.select().from(signInLocks).where(eq(signInLocks.email, user.email)),
       ).toHaveLength(1)
@@ -192,7 +194,7 @@ describe('account.passkeys', () => {
       expect(removed).toMatchObject({ targetType: 'passkey', targetLabel: 'Work iPhone' })
       expect(JSON.stringify(removed)).not.toContain(key.credentialID)
       expect(mailer.to(user.email).at(-1)?.subject).toBe(
-        'Vento: a passkey was removed from your account',
+        'Vento Real Estate: a passkey was removed from your account',
       )
     }))
 

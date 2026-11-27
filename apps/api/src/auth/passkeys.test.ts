@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import {
@@ -15,9 +15,9 @@ import type { Snapshot } from '@/platform/availability'
 import { staticFeatureStore } from '@/platform/feature-store'
 import { loadSnapshot } from '@/platform/snapshot'
 import { browser, testApp } from '@/test/auth-client'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import { TEST_PASSWORD } from '@/test/factories'
-import { onboard, signUpVerified } from '@/test/flows'
+import { joinAsStaff, onboard, signUpVerified } from '@/test/flows'
 import { type SoftAuthenticator, softAuthenticator } from '@/test/soft-authenticator'
 
 type App = ReturnType<typeof testApp>['app']
@@ -39,7 +39,7 @@ async function person(options: Parameters<typeof testApp>[0] = {}) {
   const b = browser(app)
   await signUpVerified(b, mailer, email)
   // A unique name: these commit, and the flags and plans command tests find organizations by name.
-  await onboard(b, `Passkey Homes ${uniqueEmail('o')}`.slice(0, 60))
+  await onboard(b, `Passkey Homes ${uniqueSuffix()}`.slice(0, 60))
   const me = await b.rpc('account/me')
   const organizationId = String((me.body.organization as { id: string }).id)
   const userId = String((me.body.user as { id: string }).id)
@@ -104,7 +104,9 @@ describe('adding a passkey', () => {
     const [row] = await db.select().from(passkeys).where(eq(passkeys.userId, userId))
     expect(row?.name).toBe('iCloud Keychain · Mac')
     expect((await actions(userId)).map((a) => a.action)).toContain('passkey.added')
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: a passkey was added to your account')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: a passkey was added to your account',
+    )
   })
 
   it('refuses a passkey that skipped Face ID, fingerprint or PIN', async () => {
@@ -165,6 +167,19 @@ describe('signing in with a passkey', () => {
     expect(signedIn.at(-1)?.metadata).toEqual({ method: 'passkey' })
     const [row] = await db.select().from(passkeys).where(eq(passkeys.userId, userId))
     expect(row?.lastUsedAt).not.toBeNull()
+  })
+
+  it('records the passkey as a fresh second factor on the new session', async () => {
+    const { app, b, userId } = await person()
+    const { key } = await addPasskey(b)
+    await passkeySignIn(app, key)
+    const [latest] = await db
+      .select({ secondFactorAt: sessions.secondFactorAt })
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.createdAt))
+      .limit(1)
+    expect(latest?.secondFactorAt).toBeInstanceOf(Date)
   })
 
   it('keeps the session 30 days with x-vento-remember: 1, else 12 hours', async () => {
@@ -240,6 +255,19 @@ describe('signing in with a passkey', () => {
     expect(await sessionCount(userId)).toBe(0)
   })
 
+  it('lets a super-admin (a staff account, no organization) in, to land on the console', async () => {
+    const { app } = testApp()
+    const b = browser(app)
+    await joinAsStaff(b)
+    const { key } = await addPasskey(b)
+    const { b: signedIn, res } = await passkeySignIn(app, key)
+    expect(res.status).toBe(200)
+    expect((await signedIn.rpc('account/me')).body).toMatchObject({
+      nextStep: 'console',
+      console: { twoStepOn: true },
+    })
+  })
+
   it('refuses an unknown passkey without counting towards a lock', async () => {
     const { app, email } = await person()
     const { res } = await passkeySignIn(app, softAuthenticator(env.WEB_ORIGIN))
@@ -281,7 +309,8 @@ describe('signing in with a passkey', () => {
     const { app, b, mailer, email } = await person()
     const { key } = await addPasskey(b)
     const { b: phone } = await passkeySignIn(app, key)
-    const alerts = () => mailer.to(email).filter((m) => m.subject.startsWith('Vento: new sign-in'))
+    const alerts = () =>
+      mailer.to(email).filter((m) => m.subject.startsWith('Vento Real Estate: new sign-in'))
     expect(alerts()).toHaveLength(1)
     expect(alerts()[0]?.text).not.toMatch(/\d+\.\d+\.\d+/)
     const options = await phone.authGet('/passkey/generate-authenticate-options')
@@ -403,7 +432,9 @@ describe('security audit fixes', () => {
         ),
       )
     expect(audited.length).toBeGreaterThan(0)
-    expect(mailer.to(email).at(-1)?.subject).toBe('Vento: a passkey may have been copied')
+    expect(mailer.to(email).at(-1)?.subject).toBe(
+      'Vento Real Estate: a passkey may have been copied',
+    )
   })
 
   it('ignores a low counter with a forged signature', async () => {

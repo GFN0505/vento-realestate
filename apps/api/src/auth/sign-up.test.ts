@@ -57,7 +57,7 @@ describe('sign up', () => {
     expect(second.status).toBe(200)
     expect(mailer.to(email).map((m) => m.tag)).toEqual(['verify_email', 'existing_account'])
     expect(mailer.to(email)[1]?.text).toContain(
-      'Someone tried to create a Vento account with your email. Sign in or reset your password.',
+      'Someone tried to create a Vento Real Estate account with your email. Sign in or reset your password.',
     )
   })
 

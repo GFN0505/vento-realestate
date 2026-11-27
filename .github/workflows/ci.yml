@@ -17,7 +17,8 @@ jobs:
   check:
     name: Lint, types, tests, build, e2e
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # e2e alone takes ~13 min on a hosted runner (desktop + mobile, 950+ tests).
+    timeout-minutes: 30
 
     services:
       postgres:

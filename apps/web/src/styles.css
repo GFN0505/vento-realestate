@@ -80,6 +80,8 @@
   /* The active row's icon carries the brand (7.2:1 on navy). */
   --sidebar-active-icon: #a5a6fb;
   --sidebar-active-foreground: #ffffff;
+  /* The console's "Vento staff · all customers" label: amber on navy (9.6:1), both themes. */
+  --sidebar-staff: #fbbf24;
   /* Light: the navy meets the page on its own. Dark: same shade as the page, so a hairline. */
   --sidebar-edge: transparent;
   /* Active bottom tab (board ExecutiveHomeMobile): 7:1 on white. */
@@ -272,6 +274,7 @@
   --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
   --color-sidebar-edge: var(--sidebar-edge);
+  --color-sidebar-staff: var(--sidebar-staff);
   --color-nav-active: var(--nav-active);
   --color-auth-panel: var(--auth-panel);
   --color-auth-hairline: var(--auth-hairline);

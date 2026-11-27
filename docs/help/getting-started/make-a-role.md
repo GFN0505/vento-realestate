@@ -1,9 +1,9 @@
 # Make a role that fits the job
 
-Vento has nine built-in roles. When none fits a job, for example a site engineer who needs Projects and Documents but not Sales, make your own.
+Vento Real Estate has nine built-in roles. When none fits a job, for example a site engineer who needs Projects and Documents but not Sales, make your own.
 
 **See what a role can do**
-Go to **Settings → Roles & permissions** and click a role. The grid shows each area of Vento against View, Create, Edit, Delete, Export and Approve. Built-in roles can't be changed.
+Go to **Settings → Roles & permissions** and click a role. The grid shows each area of Vento Real Estate against View, Create, Edit, Delete, Export and Approve. Built-in roles can't be changed.
 
 **Make a role**
 1. Click **New role**, or open a role and click **Duplicate role**.
@@ -14,7 +14,7 @@ Go to **Settings → Roles & permissions** and click a role. The grid shows each
 People with the role get the change on their next click. Two-step sign-in is required for any role that can change settings, or do more than view Finance or HR.
 
 **Try it before giving it out**
-On the role's page, click **Preview this role** to see Vento as that role. Click **Stop preview** when you're done.
+On the role's page, click **Preview this role** to see Vento Real Estate as that role. Click **Stop preview** when you're done.
 
 **Give it to someone**
 On **Settings → Team**, click the role on their row and choose the new one.

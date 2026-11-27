@@ -113,7 +113,7 @@ export function OrganizationForm({ org, editable, form, save, submit }: Props) {
           </Field>
         </Section>
 
-        <Section title="Defaults" description="How Vento keeps your books and reports.">
+        <Section title="Defaults" description="How Vento Real Estate keeps your books and reports.">
           <Field>
             <FieldLabel htmlFor={ids.fy}>Financial year starts in</FieldLabel>
             <NativeSelect

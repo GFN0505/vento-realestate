@@ -52,7 +52,7 @@ Unit and plot colours reuse these: **violet outline = available** (it's an actio
 - Mobile touch targets ≥ 44px.
 
 ### Product name
-The product is **Vento Real Estate** (the company has other Vento products). The lockup is the V mark, the 'Vento' wordmark and a small uppercase 'Real Estate' descriptor; running text may say 'Vento'.
+The product is **Vento Real Estate** (the company has other Vento products). The lockup is the V mark, the 'Vento' wordmark and a small uppercase 'Real Estate' descriptor; running text always says 'Vento Real Estate', never 'Vento' alone (decision 0022, which lists the three approved short forms).
 
 ### Default theme
 The app opens in **light mode** (owner's decision, 25 Nov 2026). Dark mode is a choice in the user menu (brick 3), with an option to follow the system setting.
@@ -88,7 +88,7 @@ These are decisions, not decoration. They're folded into the journeys (`docs/jou
 | Letters | One legal layout: letterhead in the developer's brand, reference and date, title, key-facts table, numbered clauses, signature blocks, verify link. The offer letter states the hold deadline; the allocation letter says it doesn't transfer title. Legal wording is a placeholder for lawyers. |
 | Emails | Single column, 600px. |
 | WhatsApp | Each message is an approved template with quick-reply buttons; replies land in the buyer's conversation. |
-| AI | One marker (star + "AI") on anything AI produced; suggestions sit on a faint violet surface until accepted. Ask Vento states what it's based on. Flags are questions, not accusations. |
+| AI | One marker (star + "AI") on anything AI produced; suggestions sit on a faint violet surface until accepted. Ask (the AI question feature, "Ask Vento" on the boards; decision 0022) states what it's based on. Flags are questions, not accusations. |
 | Role homes | Same anatomy: four numbers for the role, a queue sorted by due date then impact, two job-specific panels. Each role gets its own sidebar and four mobile tabs. Admins can preview any role. Home follows the location filter: "All entities" is the group-wide view with a per-entity breakdown; one entity shows only that entity; each module fills its part as it ships (release plan §8). |
 | Settings | New settings pages use a left sub-navigation. |
 | Super-admin | Staff-only console, clearly labelled. Support access is read-only and logged. |
@@ -157,7 +157,7 @@ Seed data and the golden thread use the same names so screenshots match the app.
 - Off by default. Each feature has its own switch and cost estimate. At the limit AI pauses and every form works manually.
 **AI inside the work**
 - One marker, the star + “AI”, sits on anything AI produced. Suggestions sit on a faint violet surface until a person accepts them.
-- Ask Vento always says what it’s based on (“14 subscriptions you have access to”) and how it found them. Actions it offers still go through review.
+- Ask always says what it’s based on (“14 subscriptions you have access to”) and how it found them. Actions it offers still go through review.
 - Drafts are never sent or published automatically. A flag is a question, not an accusation; each one needs a person and a note.
 **Predictions (AI on)**
 - These are the same screens as on the Desktop page with AI switched on from the user menu. With AI off they look exactly like the originals.
@@ -241,7 +241,7 @@ Seed data and the golden thread use the same names so screenshots match the app.
 **Emails**
 - Single column, 600 px, so the same email works on a phone. Approvals never happen from email.
 **WhatsApp**
-- Each is an approved template with quick-reply buttons. Replies land in the buyer’s conversation in Vento.
+- Each is an approved template with quick-reply buttons. Replies land in the buyer’s conversation in Vento Real Estate.
 
 ### 6 · Settings & admin
 **New components in this round**
@@ -249,5 +249,5 @@ Seed data and the golden thread use the same names so screenshots match the app.
 **Settings with left navigation**
 - New settings pages use a left sub-navigation (new component: settings nav). The older Roles, Security and AI pages still use the tab row and should move to it.
 - Statutory rates are sourced and dated, but must be confirmed by your finance team before go-live.
-**Vento super-admin**
+**Super-admin (Vento Real Estate staff)**
 - Staff-only console with its own label in the sidebar so nobody mistakes it for a customer workspace. Support access is read-only and logged.

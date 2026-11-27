@@ -49,7 +49,7 @@ export function EntityMenu({
       <DropdownMenuTrigger ref={trigger} className={entityTriggerClass({ compact })}>
         <EntityTriggerContent
           compact={compact}
-          organization={me.organization?.name ?? 'Vento'}
+          organization={me.organization?.name ?? 'Vento Real Estate'}
           label={label}
           menu
         />

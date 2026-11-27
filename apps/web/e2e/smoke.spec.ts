@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 test('status page shows the API and database as connected', async ({ page }) => {
   await page.goto('/status')
 
-  await expect(page.getByRole('heading', { name: 'Vento' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Vento Real Estate' })).toBeVisible()
   await expect(page.getByText('Connected')).toHaveCount(2)
 })
 

@@ -1,10 +1,15 @@
 import { AUTH_ERROR_CODES } from '@vento/shared'
 import { resetPassword } from '@/email/templates/reset-password'
-import { existingAccountSignUp, verifyEmail } from '@/email/templates/verify-email'
+import {
+  existingAccountSignUp,
+  existingStaffAccountSignUp,
+  verifyEmail,
+} from '@/email/templates/verify-email'
 import { logger } from '@/lib/logger'
 import { requestScope } from '@/lib/request-scope'
+import { staffAccountState } from '@/platform/staff-accounts'
 import { VERIFICATION_RESEND_PER_HOUR, VERIFICATION_RESEND_PER_MINUTE } from '../policy'
-import { addAttempt, countAttempts } from '../security-store'
+import { addAttempt, countAttempts, findUserByEmail } from '../security-store'
 import { type AuthDeps, authError, sendEmail, webUrl } from './deps'
 
 const MINUTE = 60_000
@@ -78,9 +83,19 @@ export async function sendResetPasswordEmail(
   data: { user: { email: string; name: string }; url: string },
 ): Promise<void> {
   const email = data.user.email.toLowerCase()
+  // An unfinished or closed staff account has no password to reset: the inviter resends the
+  // invitation instead (admin-console plan §1b.6). The screen says the same either way.
+  const person = await findUserByEmail(deps.db, email)
+  if (
+    person?.accountKind === 'staff' &&
+    (await staffAccountState(deps.db, person.id)) !== 'active'
+  ) {
+    return
+  }
   const hour = await countAttempts(deps.db, 'password_reset_email', email, HOUR)
-  // Stops mail-bombing one inbox; the reply on screen is the same either way.
-  if (hour.count >= 5) return
+  // Stops mail-bombing one inbox; the reply on screen is the same either way. A super-admin's
+  // reset (audited, with a reason) always sends.
+  if (hour.count >= 5 && !requestScope().auth.adminResetLink) return
   await addAttempt(deps.db, 'password_reset_email', email)
   await sendEmail(
     deps,
@@ -95,6 +110,16 @@ export async function sendExistingAccountNotice(
   deps: AuthDeps,
   user: { email: string; name: string },
 ): Promise<void> {
+  const person = await findUserByEmail(deps.db, user.email)
+  if (person?.accountKind === 'staff') {
+    await sendEmail(
+      deps,
+      user.email,
+      'existing_account',
+      existingStaffAccountSignUp({ name: user.name, signInUrl: webUrl('/sign-in') }),
+    )
+    return
+  }
   await sendEmail(
     deps,
     user.email,

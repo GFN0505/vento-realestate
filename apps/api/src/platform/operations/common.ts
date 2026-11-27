@@ -7,17 +7,26 @@ import {
 } from '@vento/shared'
 import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
-import { organizationOverrides, organizations, plans, planVersions } from '@/db/schema'
+import { runQueries } from '@/db/run-queries'
+import {
+  organizationOverrides,
+  organizations,
+  plans,
+  planVersions,
+  platformAuditEvents,
+} from '@/db/schema'
 import { formatDate } from '@/lib/format'
 import type { OverrideKind } from '../availability'
-import { CommandError } from '../command-error'
 import { endOfLagosDay } from '../dates'
 import type { PlatformActor } from '../platform-audit'
+import { PlatformError } from '../platform-error'
 import {
   ensureOrganizationPlanRow,
   loadOrganizationPlan,
+  loadSnapshot,
   type OrganizationPlanRow,
 } from '../snapshot'
+import { describePlatformEvent } from './describe'
 
 export type OrganizationRef = { id: string; name: string }
 
@@ -35,7 +44,7 @@ export async function organizationById(db: DbOrTx, id: string): Promise<Organiza
     .select({ id: organizations.id, name: organizations.name })
     .from(organizations)
     .where(eq(organizations.id, id))
-  if (!row) throw new CommandError('No organization with that id.')
+  if (!row) throw new PlatformError('No organization with that id.', 'not_found')
   return row
 }
 
@@ -48,9 +57,11 @@ export async function resolveOrganization(db: DbOrTx, nameOrId: string): Promise
     .select({ id: organizations.id, name: organizations.name })
     .from(organizations)
     .where(sql`lower(${organizations.name}) = lower(${nameOrId.trim()})`)
-  if (rows.length === 0) throw new CommandError(`No organization is called "${nameOrId}".`)
+  if (rows.length === 0) {
+    throw new PlatformError(`No organization is called "${nameOrId}".`, 'not_found')
+  }
   if (rows.length > 1) {
-    throw new CommandError(
+    throw new PlatformError(
       `${rows.length} organizations are called "${nameOrId}". Use the id:\n${rows.map((r) => `  ${r.id}  ${r.name}`).join('\n')}`,
     )
   }
@@ -97,10 +108,10 @@ export async function findPlanVersion(
     .orderBy(desc(planVersions.version))
     .limit(1)
   if (!row) {
-    throw new CommandError(
-      version === undefined
-        ? `No plan "${planKey}". Run plans list to see them.`
-        : `${planKey} has no version ${version}.`,
+    throw new PlatformError(
+      version === undefined ? `No plan "${planKey}".` : `${planKey} has no version ${version}.`,
+      'not_found',
+      { missing: 'plan' },
     )
   }
   return { ...row, limits: (row.limits ?? {}) as Record<string, unknown> }
@@ -126,6 +137,7 @@ export async function clearOverride(
       ),
     )
     .returning({
+      id: organizationOverrides.id,
       enabled: organizationOverrides.enabled,
       limitValue: organizationOverrides.limitValue,
       expiresAt: organizationOverrides.expiresAt,
@@ -171,14 +183,14 @@ export function isRealIsoDate(value: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
 
-/** `--until 2027-01-31`: applies through that Lagos day. */
+/** An end date like 2027-01-31: applies through that Lagos day. */
 export function untilToExpiry(until: string | undefined, now: Date): Date | null {
   if (!until) return null
   if (!isRealIsoDate(until)) {
-    throw new CommandError('Write --until as YYYY-MM-DD, e.g. 2027-01-31.')
+    throw new PlatformError('Write the end date as YYYY-MM-DD, e.g. 2027-01-31.')
   }
   const expiresAt = endOfLagosDay(until)
-  if (expiresAt <= now) throw new CommandError('--until must be today or later.')
+  if (expiresAt <= now) throw new PlatformError('The end date must be today or later.')
   return expiresAt
 }
 
@@ -206,8 +218,91 @@ export function labels(keys: readonly FeatureKey[]): string {
     : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
-export function requireReason(reason: string | undefined): string {
-  const trimmed = reason?.trim() ?? ''
-  if (trimmed.length < 3) throw new CommandError('Add --reason so the audit trail says why.')
-  return trimmed
+/** The override not yet cleared for (kind, key), if any: the before-state a console change checks. */
+export async function currentOverrideId(
+  db: DbOrTx,
+  organizationId: string,
+  kind: OverrideKind,
+  key: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ id: organizationOverrides.id })
+    .from(organizationOverrides)
+    .where(
+      and(
+        eq(organizationOverrides.organizationId, organizationId),
+        eq(organizationOverrides.kind, kind),
+        eq(organizationOverrides.key, key),
+        isNull(organizationOverrides.clearedAt),
+      ),
+    )
+  return row?.id ?? null
+}
+
+/** Where to look for the change that made a preview stale. */
+export type StaleTarget =
+  | { organizationId: string }
+  | { targetType: 'feature' | 'plan'; targetKey: string }
+
+/**
+ * The state moved since the preview: names who moved it and how, from the newest platform audit
+ * event on the target ("Ada Okafor moved Sales to pilot since you opened this. …").
+ */
+export async function staleError(db: DbOrTx, target: StaleTarget): Promise<PlatformError> {
+  const [event] = await db
+    .select({
+      action: platformAuditEvents.action,
+      actorName: platformAuditEvents.actorName,
+      targetType: platformAuditEvents.targetType,
+      targetKey: platformAuditEvents.targetKey,
+      before: platformAuditEvents.before,
+      after: platformAuditEvents.after,
+      organizationName: organizations.name,
+    })
+    .from(platformAuditEvents)
+    .leftJoin(organizations, eq(organizations.id, platformAuditEvents.organizationId))
+    .where(
+      'organizationId' in target
+        ? eq(platformAuditEvents.organizationId, target.organizationId)
+        : and(
+            eq(platformAuditEvents.targetType, target.targetType),
+            eq(platformAuditEvents.targetKey, target.targetKey),
+          ),
+    )
+    .orderBy(desc(platformAuditEvents.createdAt))
+    .limit(1)
+  if (!event) {
+    return new PlatformError(
+      'This changed since you opened it. Check the preview and try again.',
+      'stale',
+    )
+  }
+  const { summary } = describePlatformEvent(event)
+  const what = summary.charAt(0).toLowerCase() + summary.slice(1)
+  return new PlatformError(
+    `${event.actorName} ${what} since you opened this. Check the preview and try again.`,
+    'stale',
+    { changedByName: event.actorName },
+  )
+}
+
+/** Compares the previewed before-state, after the change's lock is held. Absent = the command. */
+export async function assertExpected<T>(
+  db: DbOrTx,
+  expected: T | undefined,
+  actual: T,
+  target: StaleTarget,
+): Promise<void> {
+  if (expected === undefined) return
+  if (JSON.stringify(expected) === JSON.stringify(actual)) return
+  throw await staleError(db, target)
+}
+
+/** Everything a preview needs about one organization: its snapshot rows and plan row. */
+export async function organizationState(db: DbOrTx, organizationId: string, now: Date) {
+  const [snapshot, plan] = await runQueries(db, [
+    () => loadSnapshot(db, { organizationId, now }),
+    () => loadOrganizationPlan(db, organizationId),
+  ])
+  return { snapshot, plan: { organizationId, ...plan } }
 }

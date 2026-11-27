@@ -9,20 +9,26 @@ type Options = {
   module?: PermissionModule | null
   /** Error pages set a title but aren't "recently opened". */
   recent?: boolean
+  /** Instead of the organization's name, e.g. "Vento console" (a place with no organization). */
+  suffix?: string
 }
 
 /**
  * Sets the browser tab title to "{Page} · {Organization}" (so screen readers announce where you
  * are) and records the page in this device's recently opened list.
  */
-export function usePageTitle(title: string, { module = null, recent = true }: Options = {}) {
+export function usePageTitle(
+  title: string,
+  { module = null, recent = true, suffix }: Options = {},
+) {
   const me = useMe()
   const href = useLocation({ select: (l) => l.href })
   const organization = me.organization
 
   useEffect(() => {
-    document.title = organization ? `${title} · ${organization.name}` : title
-  }, [title, organization])
+    const place = suffix ?? organization?.name
+    document.title = place ? `${title} · ${place}` : title
+  }, [title, organization, suffix])
 
   // Recorded per path; the latest search (e.g. the entity) rides along.
   useEffect(() => {

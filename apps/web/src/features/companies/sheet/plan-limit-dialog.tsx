@@ -51,7 +51,7 @@ export function PlanLimitDialog() {
         <DialogBody>
           <DialogDescription className="text-[13.5px] leading-relaxed">
             {plan?.name ? `Your ${plan.name} plan` : 'Your plan'} includes {places}. Archive one, or
-            talk to Vento about a bigger plan.
+            talk to Vento Real Estate about a bigger plan.
           </DialogDescription>
         </DialogBody>
         <DialogFooter>
@@ -72,7 +72,7 @@ export function PlanLimitDialog() {
                   ? {}
                   : { target: '_blank', rel: 'noopener noreferrer' })}
               >
-                Talk to Vento
+                Talk to Vento Real Estate
               </a>
             </Button>
           )}

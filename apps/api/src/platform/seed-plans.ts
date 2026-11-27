@@ -12,7 +12,15 @@ import type { PlatformActor } from './platform-audit'
 /** The starting plans (release plan §5). Production publishes the same files with `pnpm plans publish`. */
 export const STARTING_PLANS = [starter, growth, enterprise].map((p) => planDefinition.parse(p))
 
-export const SETUP_ACTOR: PlatformActor = { userId: null, name: 'Vento (setup)', operator: null }
+export const SETUP_ACTOR: PlatformActor = {
+  userId: null,
+  name: 'Vento Real Estate (setup)',
+  channel: 'command',
+  operator: null,
+}
+
+/** The setup actor's name now and before 1b (old rows are append-only and keep theirs). */
+export const SETUP_ACTOR_NAMES: readonly string[] = [SETUP_ACTOR.name, 'Vento (setup)', 'Bootstrap']
 
 /** Publishes each starting plan that doesn't exist yet. Safe to run again: existing plans are left alone. */
 export async function seedPlans(db: DbOrTx, actor: PlatformActor = SETUP_ACTOR): Promise<string[]> {

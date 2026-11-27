@@ -1,4 +1,23 @@
 /**
+ * A customer account or a Vento Real Estate staff account (decision 0023). Fixed when the account
+ * is made: a database trigger refuses any change, and one email is only ever one kind.
+ */
+export const ACCOUNT_KINDS = ['customer', 'staff'] as const
+export type AccountKind = (typeof ACCOUNT_KINDS)[number]
+
+/**
+ * The `users.account_kind` column (migration 0013) as a Better Auth field: returned, never
+ * accepted on sign-up, so only the staff sign-up makes a staff account. Typed as a mutable array
+ * because Better Auth's enum type is `Array<LiteralString>`.
+ */
+export const accountKindUserField: {
+  type: AccountKind[]
+  required: true
+  input: false
+  defaultValue: 'customer'
+} = { type: [...ACCOUNT_KINDS], required: true, input: false, defaultValue: 'customer' }
+
+/**
  * Extra columns Better Auth keeps on its user and session rows. The API passes these to
  * `betterAuth({ user: { additionalFields } })` and the web passes them to
  * `inferAdditionalFields`, so both sides agree on names and which ones sign-up accepts.
@@ -13,6 +32,21 @@ export const authUserFields = {
   lastActiveOrganizationId: { type: 'string', required: false, input: false },
   /** Set when an owner or admin resets someone's two-step; cleared when they set it up again. */
   twoStepSetupRequired: { type: 'boolean', required: false, input: false, defaultValue: false },
+  accountKind: accountKindUserField,
+} as const
+
+/**
+ * The console's session columns (docs/plans/admin-console.md §3, migration 0011), spread
+ * into `authSessionFields`. No defaultValue, for the same reason as `persistent`: a rotated
+ * session must carry them over (or have the server clear them), never be reset by a default.
+ */
+export const consoleSessionFields = {
+  /** The last passkey, authenticator code or backup code proven on this session. Never a password. */
+  secondFactorAt: { type: 'date', required: false, input: false },
+  /** The console window opened (closes 8 hours later at most). */
+  consoleOpenedAt: { type: 'date', required: false, input: false },
+  /** The last console request (the window closes after 15 minutes without one). */
+  consoleActiveAt: { type: 'date', required: false, input: false },
 } as const
 
 export const authSessionFields = {
@@ -31,6 +65,7 @@ export const authSessionFields = {
   reauthenticatedAt: { type: 'date', required: false, input: false },
   /** When the session last moved into its active organization; the two-step gate reads it. */
   organizationEnteredAt: { type: 'date', required: false, input: false },
+  ...consoleSessionFields,
 } as const
 
 /** Better Auth's route prefix on the API and, through the proxy, on the web origin. */

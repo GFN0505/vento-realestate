@@ -15,6 +15,12 @@ export async function withRollback(fn: (tx: DbOrTx) => Promise<void>): Promise<v
 }
 
 let counter = 0
+/** A unique token for test names (organizations, entities), so no name ever contains an email. */
+export function uniqueSuffix(): string {
+  counter += 1
+  return `${Date.now().toString(36)}${counter}${Math.random().toString(36).slice(2, 6)}`
+}
+
 /** A unique lower-case email per call, for tests that commit (auth flows). */
 export function uniqueEmail(name = 'person'): string {
   counter += 1

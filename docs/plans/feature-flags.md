@@ -513,7 +513,7 @@ Validate these in `env.ts`, list them in `.env.example`, and add them to `turbo.
 - **Flags:** no `feature_releases` rows, so every flag is `internal`.
 - **Vento Homes Ltd:** `internal` (everything, no limits).
 - **Lekki Partners Ltd:** `standard` on Starter. It has a holding company and one SPV (at the entity limit), an owner (Bisi Lawal, `bisi@lekkipartners.ng`) and a sales member. A release override `on` for `sales.commissions` shows the owner hint locally.
-- **Super-admin:** `ada@vento.ng`, with two-step switched on by the same helper the e2e fixtures use. The seed prints the TOTP secret once.
+- **Super-admin:** `ada@ventoerp.com`, with two-step switched on by the same helper the e2e fixtures use. The seed prints the TOTP secret once.
 - **Production bootstrap:**
   1. Publish the three plan files.
   2. Run `superadmin grant <email> --bootstrap`.

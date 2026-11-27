@@ -61,8 +61,8 @@ test.describe('invite people', () => {
 
     for (const email of [a, b]) {
       const mail = await newestEmail(email, 'invitation')
-      expect(mail.subject).toContain(`to ${owner.organizationName} on Vento`)
-      expect(mail.fromName).toBe(`${owner.organizationName} via Vento`)
+      expect(mail.subject).toContain(`to ${owner.organizationName} on Vento Real Estate`)
+      expect(mail.fromName).toBe(`${owner.organizationName} via Vento Real Estate`)
       expect(mail.replyTo?.email).toBe(owner.email)
       expect(invitationPath(mail)).toMatch(/^\/accept-invitation\//)
     }

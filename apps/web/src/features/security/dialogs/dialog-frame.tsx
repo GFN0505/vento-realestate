@@ -19,6 +19,9 @@ type Props = {
   /** The dialog's form: a `DialogBody` and a `DialogFooter`. */
   children: ReactNode
   className?: string
+  /** Where focus goes on open and on close, when Radix's defaults aren't right (console). */
+  onOpenAutoFocus?: (event: Event) => void
+  onCloseAutoFocus?: (event: Event) => void
 }
 
 /**
@@ -34,6 +37,8 @@ export function DialogFrame({
   busy,
   children,
   className,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
 }: Props) {
   const height = useVisualViewportHeight(open)
   return (
@@ -42,6 +47,8 @@ export function DialogFrame({
         showCloseButton={!busy}
         style={height ? { height } : undefined}
         onInteractOutside={(event) => busy && event.preventDefault()}
+        onOpenAutoFocus={onOpenAutoFocus}
+        onCloseAutoFocus={onCloseAutoFocus}
         className={cn(
           'max-md:top-0 max-md:left-0 max-md:h-dvh max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:grid-rows-[auto_minmax(0,1fr)] max-md:rounded-none',
           className,

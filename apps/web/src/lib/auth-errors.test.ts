@@ -1,5 +1,6 @@
+import { AUTH_ERROR_MESSAGES } from '@vento/shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { retryAfterHeader, toAuthFailure } from './auth-errors'
+import { authErrorMessage, retryAfterHeader, toAuthFailure } from './auth-errors'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -41,5 +42,12 @@ describe('retryAfterHeader', () => {
     expect(retryAfterHeader(new Headers({ 'X-Retry-After': '37' }))).toBe(37)
     expect(retryAfterHeader(new Headers({ 'X-Retry-After': 'soon' }))).toBeNull()
     expect(retryAfterHeader(new Headers())).toBeNull()
+  })
+})
+
+describe('authErrorMessage', () => {
+  it('asks a super-admin for a fresh code or passkey, never just the password', () => {
+    const error = { code: 'SECOND_FACTOR_REQUIRED', status: 403 }
+    expect(authErrorMessage(error, 'sign-in')).toBe(AUTH_ERROR_MESSAGES.SECOND_FACTOR_REQUIRED)
   })
 })
