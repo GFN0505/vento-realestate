@@ -41,7 +41,9 @@ export function SuperAdminsPage() {
   const other = (userId: string | undefined) =>
     userId ? rows?.find((r) => r.userId === userId && !r.isYou) : undefined
   const removing = other(search.remove)
-  const resetting = other(search.reset)
+  const resetting = search.reset
+    ? rows?.find((r) => r.userId === search.reset && r.canResetTwoStep)
+    : undefined
   const withdrawing = search.withdraw
     ? invitations.data?.find((i) => i.id === search.withdraw)
     : undefined

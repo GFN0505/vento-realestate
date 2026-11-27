@@ -91,9 +91,11 @@ export function SuperAdminsTable({ rows, onRemove, onReset }: Props) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => onReset(row)}>
-                        Reset two-step
-                      </DropdownMenuItem>
+                      {row.canResetTwoStep && (
+                        <DropdownMenuItem onSelect={() => onReset(row)}>
+                          Reset two-step
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onSelect={() => onRemove(row)}
                         className="text-destructive focus:text-destructive"

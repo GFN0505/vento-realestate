@@ -9,7 +9,7 @@ import { useConsoleTitle } from '../shell/use-console-title'
 import { BackLink } from '../ui/back-link'
 import { DetailCard } from '../ui/detail-card'
 import { ListError } from '../ui/list-states'
-import { moduleLabel } from '../words'
+import { groupOf, moduleLabel } from '../words'
 import { releaseQuery } from './queries'
 import { StageBadge } from './release-cells'
 import { NeedsAndPlans } from './release-plans'
@@ -72,8 +72,10 @@ function Release({ featureKey }: { featureKey: FeatureKey }) {
           <StageBadge stage={release.stage} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          <span className="font-mono text-[12px]">{release.key}</span> ·{' '}
-          {moduleLabel(release.module)}
+          <span className="font-mono text-[12px]">{release.key}</span>
+          {/* A module is its own group: "sales · Sales" would say the same thing twice. */}
+          {moduleLabel(groupOf(release.key, release.module)) !== release.label &&
+            ` · ${moduleLabel(groupOf(release.key, release.module))}`}
         </p>
       </div>
       {offLine && (

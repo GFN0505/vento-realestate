@@ -8,7 +8,10 @@ const remove = consoleClient.console.superAdmins.remove
 const reset = consoleClient.console.superAdmins.resetTwoStep
 const withdraw = consoleClient.console.superAdmins.withdrawInvitation
 
-/** Remove (spec 1b): closes their staff account. Never on your own row; the API refuses it too. */
+/**
+ * Remove (spec 1b): closes their staff account. Never on your own row; the API refuses it too.
+ * The confirm's body is the server's preview (same sentences as the command), so no description.
+ */
 export function RemoveSuperAdminDialog({
   row,
   onClose,
@@ -23,7 +26,6 @@ export function RemoveSuperAdminDialog({
       onClose={onClose}
       change={change}
       title={`Remove ${row.name} as a super-admin?`}
-      description="Their staff account closes: they're signed out everywhere and can't sign in. Their name stays on past activity."
       confirmLabel={`Remove ${firstName(row.name)}`}
       destructive
       autoPreview={() => void change.preview({ userId: row.userId })}
@@ -40,7 +42,6 @@ export function ResetTwoStepDialog({ row, onClose }: { row: SuperAdminRow; onClo
       onClose={onClose}
       change={change}
       title={`Reset ${row.name}'s two-step?`}
-      description="They're signed out everywhere, their passkeys are removed, and they get an email to set a new password. They set up two-step again at their next sign-in."
       confirmLabel="Reset two-step"
       destructive
       autoPreview={() => void change.preview({ userId: row.userId })}
@@ -63,7 +64,6 @@ export function WithdrawInvitationDialog({
       onClose={onClose}
       change={change}
       title={`Withdraw ${invitation.name}'s invitation?`}
-      description="The link stops working at once."
       confirmLabel="Withdraw invitation"
       destructive
       autoPreview={() => void change.preview({ invitationId: invitation.id })}

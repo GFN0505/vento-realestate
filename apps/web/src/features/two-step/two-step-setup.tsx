@@ -112,6 +112,12 @@ export function VerifyStep({
 }) {
   const errorId = useId()
   const [code, setCode] = useState('')
+  // A refused code leaves empty boxes, so the next six digits complete and send by themselves.
+  const [refused, setRefused] = useState<string | null>(null)
+  if (setup.error !== refused) {
+    setRefused(setup.error)
+    if (setup.error) setCode('')
+  }
   return (
     <form
       noValidate

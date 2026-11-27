@@ -1,21 +1,26 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { featureLabel } from '@vento/shared'
-import type { PlanRow, ReleaseDetail } from '@vento/shared/console'
+import type { ReleaseDetail } from '@vento/shared/console'
 import type { ReactNode } from 'react'
-import { plansQuery } from '../plans/queries'
 import { DetailCard } from '../ui/detail-card'
 
 const link =
   'rounded-sm font-semibold text-link outline-hidden hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring'
 
-function PlanLinks({ plans }: { plans: readonly PlanRow[] }) {
-  if (plans.length === 0) return <span className="text-status-amber-fg">None</span>
+type PlanVersion = ReleaseDetail['planVersions'][number]
+
+/** "Growth v2, Enterprise v1", each opening its plan. */
+function PlanLinks({ plans, quiet = false }: { plans: readonly PlanVersion[]; quiet?: boolean }) {
+  if (plans.length === 0) return <span className="font-semibold text-status-amber-fg">None</span>
   return plans.map((plan, i) => (
     <span key={plan.key}>
       {i > 0 && ', '}
-      <Link to="/console/plans/$planKey" params={{ planKey: plan.key }} className={link}>
-        {plan.name} v{plan.latestVersion}
+      <Link
+        to="/console/plans/$planKey"
+        params={{ planKey: plan.key }}
+        className={quiet ? `${link} font-medium` : link}
+      >
+        {plan.name} v{plan.version}
       </Link>
     </span>
   ))
@@ -31,14 +36,12 @@ function Row({ term, children }: { term: string; children: ReactNode }) {
 }
 
 /**
- * Needs, and which plans sell it (spec 1b §3): *Included in* links each plan's latest version,
- * *Not in* lists the rest, and the line says how to change it. The release carries the names of
- * the latest versions that include it; the plan list supplies their keys and versions.
+ * Needs, and which plans sell it (spec 1b §3): *Included in* and *Not in* link each live plan's
+ * latest version, and the line says how to change it. Core and add-on features say so instead.
  */
 export function NeedsAndPlans({ release }: { release: ReleaseDetail }) {
-  const plans = [...(useQuery(plansQuery()).data ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
-  const included = plans.filter((p) => release.plans.includes(p.name))
-  const notIn = plans.filter((p) => !release.plans.includes(p.name))
+  const included = release.planVersions.filter((p) => p.included)
+  const notIn = release.planVersions.filter((p) => !p.included)
   const sold = !release.core && !release.addOn
   return (
     <DetailCard title="Needs and plans">
@@ -59,7 +62,7 @@ export function NeedsAndPlans({ release }: { release: ReleaseDetail }) {
         </Row>
         {sold && notIn.length > 0 && (
           <Row term="Not in">
-            <span>{notIn.map((p) => p.name).join(', ')}</span>
+            <PlanLinks plans={notIn} quiet />
           </Row>
         )}
       </dl>
