@@ -31,13 +31,13 @@ import { isUniqueViolation, notFound } from '@/lib/errors'
 import { type AuditActor, recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
 import {
-  countEligibleDraft,
-  draftTarget,
+  chainGap,
   type EligiblePerson,
   eligibleForRequest,
+  hasOtherActiveOwner,
   viewerStanding,
 } from './eligibility'
-import { approvalDecidedMessage, approvalNeededMessages } from './emails'
+import { approvalDecidedMessage, approvalNeededMessages, noApproverAlerts } from './emails'
 import {
   alreadyPending,
   decidedMomentAgo,
@@ -60,8 +60,11 @@ import {
 } from './plugin'
 import { loadRules, SYSTEM_ORDER } from './rules'
 
-/** Pending requests expire after 7 days without a decision (spec open question 5). */
-export const APPROVAL_TTL_MS = 7 * 24 * 3600_000
+/**
+ * Pending requests expire after 7 days without a decision (spec open question 5), counted on the
+ * database clock like every `expires_at > now()` check that reads it.
+ */
+const APPROVAL_TTL = sql`now() + interval '7 days'`
 
 /** The audit actor for expiry: a job, not a person. */
 export const SYSTEM_ACTOR: AuditActor = { userId: null, name: 'System' }
@@ -100,19 +103,19 @@ export async function requestOrRun<P, R extends ExecuteResult>(
   if (!reason) throw reasonRequired()
   const exclusions = await plugin.excluded(tx, ctx, payload)
   const firstStep = rule.steps[0] ?? []
-  const eligible = await countEligibleDraft(
+  const gap = await chainGap(
     tx,
     ctx.organizationId,
-    draftTarget({
-      roleIds: firstStep.map((r) => r.id),
+    {
+      steps: rule.steps.map((step) => step.map((r) => r.id)),
       module: meta.module,
       entityId: described.entityId,
       makerUserId: ctx.user.id,
-    }),
+    },
     exclusions.map((e) => e.userId),
   )
-  if (eligible === 0) {
-    if (meta.whenNoApprover === 'refuse') {
+  if (gap !== null) {
+    if (!(await mayProceedWithoutApprover(tx, ctx, plugin.key))) {
       throw noApprover(await entityName(tx, ctx.organizationId, described.entityId))
     }
     const result = await plugin.execute(tx, ctx, payload, {
@@ -120,7 +123,9 @@ export async function requestOrRun<P, R extends ExecuteResult>(
       approvalRequestId: null,
       noApprover: true,
     })
-    return { ran: true, result }
+    // The other owners hear of it, so an unwatched change never goes by unseen (security M1).
+    const alerts = await noApproverAlerts(tx, ctx, described.summary.title)
+    return { ran: true, result: { ...result, emails: [...result.emails, ...alerts] } }
   }
 
   const subject = plugin.subject(payload)
@@ -153,7 +158,6 @@ export async function requestOrRun<P, R extends ExecuteResult>(
     amount: amount?.value ?? null,
     currency: amount?.currency ?? null,
     ngnAmount: amount?.ngnValue ?? null,
-    expiresAt: new Date(Date.now() + APPROVAL_TTL_MS),
   })
   await tx.insert(approvalRequestStepRoles).values(
     rule.steps.flatMap((step, i) =>
@@ -191,6 +195,22 @@ export async function requestOrRun<P, R extends ExecuteResult>(
   })
   const firstText = stepText(firstStep.map((r) => r.name))
   return { ran: false, requestId, notice: sentNotice(approvers, firstText), emails }
+}
+
+/**
+ * Whether an action with a step nobody can fill may go ahead (marked in the audit) instead of
+ * being refused. `sole_owner` actions go ahead only for the organization's only owner: with any
+ * other owner, however limited, refusing is safer than a new owner nobody approved (security M1).
+ */
+export async function mayProceedWithoutApprover(
+  db: DbOrTx,
+  ctx: Pick<ServiceContext, 'organizationId' | 'user'>,
+  key: ApprovalActionKey,
+): Promise<boolean> {
+  const when = APPROVAL_ACTIONS[key].whenNoApprover
+  if (when === 'proceed') return true
+  if (when === 'refuse') return false
+  return !(await hasOtherActiveOwner(db, ctx.organizationId, ctx.user.id))
 }
 
 /** "Sent to Aisha Bello for approval", or the step's roles when many people can approve it. */
@@ -242,13 +262,13 @@ export async function pendingRequestId(
  */
 async function insertRequest(
   tx: DbOrTx,
-  values: typeof approvalRequests.$inferInsert,
+  values: Omit<typeof approvalRequests.$inferInsert, 'expiresAt'>,
 ): Promise<string> {
   try {
     return await tx.transaction(async (sp) => {
       const [row] = await sp
         .insert(approvalRequests)
-        .values(values)
+        .values({ ...values, expiresAt: APPROVAL_TTL })
         .returning({ id: approvalRequests.id })
       if (!row) throw new Error('Approval request insert returned nothing')
       return row.id

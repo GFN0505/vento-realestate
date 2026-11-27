@@ -9,6 +9,7 @@ import {
   type Currency,
   cancelledForLeaverText,
   formatAmount,
+  hasPermission,
   isApprovalActionKey,
   type ListApprovalsOutput,
   type listApprovalsInput,
@@ -25,23 +26,23 @@ import {
 import { and, eq, type SQL, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { ServiceContext } from '@/access/context'
+import { whoCanGrant } from '@/access/who-can-grant'
 import {
   CAN_DECIDE,
-  countEligibleDraft,
-  draftTarget,
+  chainGap,
   eligibleForRequest,
   OPEN_REQUEST,
   uuidArray,
   viewerStanding,
 } from '@/approvals/eligibility'
-import { expireOnRead, pendingRequestId } from '@/approvals/engine'
+import { expireOnRead, mayProceedWithoutApprover, pendingRequestId } from '@/approvals/engine'
 import { approvalPlugins } from '@/approvals/registry'
 import { loadRules, SYSTEM_ORDER } from '@/approvals/rules'
 import type { DbOrTx } from '@/db/client'
 import { rawTimestamp } from '@/db/raw'
 import { runQueries } from '@/db/run-queries'
 import { approvalDecisions, entities } from '@/db/schema'
-import { notFound } from '@/lib/errors'
+import { forbidden, notFound } from '@/lib/errors'
 import { pageOffset } from '@/lib/paginate'
 
 // The Approvals inbox (spec: Approvals board). Every query filters to rows the viewer may see:
@@ -389,12 +390,27 @@ function endedNote(
   return null
 }
 
-/** Whether a guarded action on this record would need approval, and by whom. */
+/**
+ * Whether a guarded action on this record would need approval, and by whom. Only for people who
+ * may take the action (security M4): the chain names roles and the pending request's id, and the
+ * web only asks when the viewer can make the change.
+ */
 export async function previewApproval(
   ctx: ServiceContext,
   input: z.output<typeof previewApprovalInput>,
 ): Promise<PreviewApprovalOutput> {
   const plugin = approvalPlugins()[input.actionKey]
+  const { module, action } = plugin.permission
+  if (!hasPermission(ctx.member.permissions, module, action)) {
+    const advice = await whoCanGrant(ctx.db, {
+      organizationId: ctx.organizationId,
+      module,
+      action,
+      doing: lowerFirst(APPROVAL_ACTIONS[input.actionKey].label),
+      excludeUserId: ctx.user.id,
+    })
+    throw forbidden('permission', advice.message)
+  }
   if (!(await plugin.appliesTo(ctx.db, ctx, input.subject))) return { needed: false }
   const rules = await loadRules(ctx.db, ctx.organizationId, ruleActionKey(input.actionKey))
   const entityId = input.entityId ?? null
@@ -406,20 +422,21 @@ export async function previewApproval(
   if (!rule) return { needed: false }
   const stepWords = rule.steps.map((step) => stepText(step.map((r) => r.name)))
   const meta = APPROVAL_ACTIONS[input.actionKey]
+  // The same test requestOrRun applies, without the record's own exclusions (no payload here).
   let blocked: string | null = null
-  if (meta.whenNoApprover === 'refuse') {
-    const eligible = await countEligibleDraft(
+  if (!(await mayProceedWithoutApprover(ctx.db, ctx, input.actionKey))) {
+    const gap = await chainGap(
       ctx.db,
       ctx.organizationId,
-      draftTarget({
-        roleIds: (rule.steps[0] ?? []).map((r) => r.id),
+      {
+        steps: rule.steps.map((step) => step.map((r) => r.id)),
         module: meta.module,
         entityId,
         makerUserId: ctx.user.id,
-      }),
+      },
       [],
     )
-    if (eligible === 0) blocked = noApproverMessage(await entityName(ctx, entityId))
+    if (gap !== null) blocked = noApproverMessage(await entityName(ctx, entityId))
   }
   return {
     needed: true,
@@ -439,6 +456,8 @@ export async function previewApproval(
     ),
   }
 }
+
+const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1)
 
 async function entityName(ctx: ServiceContext, entityId: string | null): Promise<string | null> {
   if (entityId === null) return null

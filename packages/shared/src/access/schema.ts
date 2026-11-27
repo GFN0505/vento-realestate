@@ -151,6 +151,15 @@ export const createInvitationsInput = z.strictObject({
   reason: approvalReason.optional(),
 })
 
+/**
+ * Resend: an owner invitation follows the "Make someone an owner" rules (security M2), so it may
+ * need **Why?** like inviting one does.
+ */
+export const resendInvitationInput = z.strictObject({
+  id,
+  reason: approvalReason.optional(),
+})
+
 export const invitationToken = z.string().min(20).max(200)
 export const invitationTokenInput = z.strictObject({ token: invitationToken })
 

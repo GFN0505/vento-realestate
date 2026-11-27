@@ -543,7 +543,10 @@ describe('organization isolation: approvals and audit (brick 4)', () => {
           () => client.approvals.decide({ requestId: theirRequest, decision: 'approve' }),
         ],
         ['approvals.cancel', () => client.approvals.cancel({ id: theirRequest })],
-        ['approvalRules.delete', () => client.approvalRules.delete({ id: theirRule?.id ?? '' })],
+        [
+          'approvalRules.delete',
+          () => client.approvalRules.delete({ id: theirRule?.id ?? '', version: 1 }),
+        ],
         [
           'approvalRules.update',
           () =>

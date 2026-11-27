@@ -4,6 +4,7 @@ import { findBareVento, stripComments } from '@vento/shared'
 import { describe, expect, it } from 'vitest'
 import { approvalDecidedEmail } from '@/email/templates/approval-decided'
 import { approvalNeededEmail } from '@/email/templates/approval-needed'
+import { approvalNoApproverEmail } from '@/email/templates/approval-no-approver'
 import { approvalRuleChangedEmail } from '@/email/templates/approval-rule-changed'
 import { invitationEmail } from '@/email/templates/invitation'
 import type { RenderedEmail } from '@/email/templates/layout'
@@ -195,6 +196,17 @@ const EMAILS: [string, RenderedEmail][] = [
       verb: 'changed',
       actionLabel: "Change a role's permissions",
       lines: [{ label: 'Approved by', before: 'Owner or Admin', after: 'Owner' }],
+      at: '14:30',
+      on: '27 Nov 2026',
+      url: 'http://x',
+    }),
+  ],
+  [
+    'approvalNoApproverEmail',
+    approvalNoApproverEmail({
+      makerName: 'Olumide Bankole',
+      organizationName: 'Vento Homes Ltd',
+      title: 'Make Aisha Bello an owner',
       at: '14:30',
       on: '27 Nov 2026',
       url: 'http://x',

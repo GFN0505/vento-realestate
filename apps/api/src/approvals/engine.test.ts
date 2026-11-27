@@ -219,6 +219,58 @@ describe('approvals engine: requesting', () => {
       expect(audit?.metadata).toEqual({ noApprover: true })
     }))
 
+  it('emails every other owner when it goes ahead with nobody else to approve', () =>
+    withRollback(async (tx) => {
+      const w = await world(tx)
+      const bisi = await createMember(tx, w.org, { role: 'owner', name: 'Bisi Lawal' })
+      await createApprovalRule(tx, w.org, { steps: [['admin']] })
+      const out = await requestOrRun(tx, w.maker, renamePlugin, { payload: rename(w), reason: 'x' })
+      if (!out.ran) throw new Error('expected it to run')
+      expect(out.result.emails.map((e) => e.to).sort()).toEqual(
+        [w.org.owner.email, bisi.user.email].sort(),
+      )
+      expect(out.result.emails[0]).toMatchObject({
+        tag: 'approval',
+        subject: `Vento Real Estate: a change went ahead without approval in ${w.org.name}`,
+      })
+      expect(out.result.emails[0]?.text).toContain(`Ope Martins made this change in ${w.org.name}`)
+    }))
+
+  it('goes ahead when a later step has nobody to approve, instead of saving a request that stalls', () =>
+    withRollback(async (tx) => {
+      const w = await world(tx)
+      // Step 1 has the owner; step 2's only admin is the maker.
+      await createApprovalRule(tx, w.org, { steps: [['owner'], ['admin']] })
+      const out = await requestOrRun(tx, w.maker, renamePlugin, { payload: rename(w), reason: 'x' })
+      expect(out.ran).toBe(true)
+      expect(await nameOf(tx, w.parkview.id)).toBe('Parkview Ltd')
+      expect(
+        await tx
+          .select()
+          .from(approvalRequests)
+          .where(eq(approvalRequests.organizationId, w.org.id)),
+      ).toEqual([])
+    }))
+
+  it('counts one person once across steps: two Owner steps need two owners besides the maker', () =>
+    withRollback(async (tx) => {
+      const w = await world(tx)
+      await createApprovalRule(tx, w.org, { steps: [['owner'], ['owner']] })
+      const out = await requestOrRun(tx, w.maker, renamePlugin, { payload: rename(w), reason: 'x' })
+      expect(out.ran).toBe(true)
+    }))
+
+  it('sets the 7 days on the database clock', () =>
+    withRollback(async (tx) => {
+      const w = await world(tx)
+      await createApprovalRule(tx, w.org, { steps: [['owner']] })
+      const out = await ask(tx, w)
+      const result = await tx.execute<{ exact: boolean }>(sql`
+        select expires_at = created_at + interval '7 days' as exact
+        from approval_requests where id = ${out.requestId}`)
+      expect(result.rows[0]?.exact).toBe(true)
+    }))
+
   describe('when the catalog refuses without an approver', () => {
     const meta = APPROVAL_ACTIONS['access.role.update'] as {
       -readonly [K in keyof ApprovalActionMeta]: ApprovalActionMeta[K]
@@ -241,6 +293,16 @@ describe('approvals engine: requesting', () => {
         })
         expect(await nameOf(tx, w.parkview.id)).toBe(w.parkview.name)
       }))
+
+    it('refuses when only a later step has nobody to approve', () =>
+      withRollback(async (tx) => {
+        meta.whenNoApprover = 'refuse'
+        const w = await world(tx)
+        await createApprovalRule(tx, w.org, { steps: [['owner'], ['admin']] })
+        await expect(
+          requestOrRun(tx, w.maker, renamePlugin, { payload: rename(w), reason: 'x' }),
+        ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'no_approver' } })
+      }))
   })
 })
 
@@ -260,6 +322,8 @@ describe('approvals engine: separation of duties', () => {
   it('never lets one person decide two steps', () =>
     withRollback(async (tx) => {
       const w = await world(tx)
+      // A second owner, so the chain can be finished and a request is saved.
+      await createMember(tx, w.org, { role: 'owner', name: 'Bisi Lawal' })
       await createApprovalRule(tx, w.org, { steps: [['owner'], ['owner']] })
       const out = await ask(tx, w)
       await approve(w.owner, out.requestId)
@@ -521,7 +585,7 @@ describe('approval decisions are append-only', () => {
   it('refuses to update or delete a decision', () =>
     withRollback(async (tx) => {
       const w = await world(tx)
-      await createApprovalRule(tx, w.org, { steps: [['owner'], ['owner']] })
+      await createApprovalRule(tx, w.org, { steps: [['owner']] })
       const out = await ask(tx, w)
       await approve(w.owner, out.requestId)
       await expect(

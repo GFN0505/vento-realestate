@@ -9,6 +9,7 @@ import {
   approvalRulesList,
   decideInput,
   decideOutput,
+  deleteApprovalRuleInput,
   listApprovalsInput,
   listApprovalsOutput,
   previewApprovalInput,
@@ -47,6 +48,9 @@ export const approvalRulesContract = {
   create: platform.input(approvalRuleInput).output(notice.extend({ rule: approvalRuleRow })),
   /** `version` as loaded; a newer one is CONFLICT `approval_rule_changed`. */
   update: platform.input(updateApprovalRuleInput).output(notice.extend({ rule: approvalRuleRow })),
-  /** Pending requests keep their copied steps. The sheet's Undo re-creates the rule. */
-  delete: platform.input(byId).output(notice),
+  /**
+   * `version` as loaded; a newer one is CONFLICT `approval_rule_changed`. Pending requests keep
+   * their copied steps. The sheet's Undo re-creates the rule.
+   */
+  delete: platform.input(deleteApprovalRuleInput).output(notice),
 }

@@ -1,10 +1,10 @@
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
-import { approvalRequests, auditEvents, members } from '@/db/schema'
+import { approvalRequests, auditEvents, memberEntityLimits, members } from '@/db/schema'
 import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
 import { withRollback } from '@/test/db'
-import { createMember, createOrganization } from '@/test/factories'
+import { createEntity, createMember, createOrganization } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 
 // access.member.make_owner through the real members service and routers (plan §6.3).
@@ -94,6 +94,25 @@ describe('access.member.make_owner: making someone an owner', () => {
           ),
         )
       expect(event?.metadata).toMatchObject({ noApprover: true })
+    }))
+
+  it('refuses with nobody to approve while another owner exists, even one limited to a company', () =>
+    withRollback(async (tx) => {
+      const { org, bisi, aisha, owner } = await world(tx)
+      // Bisi limited to one company can't approve an organization-wide change (security M1).
+      const parkview = await createEntity(tx, org)
+      await tx
+        .insert(memberEntityLimits)
+        .values({ organizationId: org.id, memberId: bisi.member.id, entityId: parkview.id })
+      await expect(
+        clientAs(tx, org.owner).client.members.updateAccess({
+          memberId: aisha.member.id,
+          roleId: owner,
+          entityIds: null,
+          reason: 'x',
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'no_approver' } })
+      expect(await roleOf(tx, aisha.member.id)).toBe(aisha.member.roleId)
     }))
 
   it('changes any other role at once', () =>

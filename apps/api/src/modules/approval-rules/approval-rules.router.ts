@@ -34,7 +34,7 @@ export const approvalRulesRouter = {
     .use(requireAllEntities())
     .use(requireOwner(APPROVAL_COPY.ownersOnly))
     .handler(async ({ context, input }) => {
-      const { emails, ...result } = await deleteRule(serviceContext(context), input.id)
+      const { emails, ...result } = await deleteRule(serviceContext(context), input)
       await sendAll(context.mailer, emails)
       return result
     }),

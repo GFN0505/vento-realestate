@@ -2,10 +2,16 @@ import { emptyPermissionSet, type PermissionSet } from '@vento/shared'
 import { and, eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
-import { auditEvents, roles } from '@/db/schema'
+import { auditEvents, memberEntityLimits, roles } from '@/db/schema'
 import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
 import { withRollback } from '@/test/db'
-import { createCustomRole, createMember, createOrganization, type TestOrg } from '@/test/factories'
+import {
+  createCustomRole,
+  createEntity,
+  createMember,
+  createOrganization,
+  type TestOrg,
+} from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 
 // access.role.update through the real roles service and routers (plan §6.3).
@@ -236,5 +242,43 @@ describe('access.role.update: changing a held role’s permissions', () => {
           subject: { type: 'role', id: unheld.id },
         }),
       ).toEqual({ needed: false })
+    }))
+
+  it("refuses the preview to someone who can't make the change (security M4)", () =>
+    withRollback(async (tx) => {
+      const { org, role } = await world(tx)
+      const sales = await createMember(tx, org, { role: 'sales' })
+      await expect(
+        clientAs(tx, sales.user).client.approvals.preview({
+          actionKey: 'access.role.update',
+          subject: { type: 'role', id: role.id },
+        }),
+      ).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        data: { reason: 'permission' },
+        message: expect.stringContaining("can change a role's permissions."),
+      })
+    }))
+
+  it('previews a make-owner rule as blocked when nobody can approve and another owner exists', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      await seedDefaultRules(tx, org.id, org.ownerMemberId)
+      const bisi = await createMember(tx, org, { role: 'owner', name: 'Bisi Lawal' })
+      const aisha = await createMember(tx, org, { role: 'admin', name: 'Aisha Bello' })
+      // Bisi asks; Olumide, the only other owner, is limited to one company, so he can't
+      // approve an organization-wide change.
+      const parkview = await createEntity(tx, org)
+      await tx
+        .insert(memberEntityLimits)
+        .values({ organizationId: org.id, memberId: org.ownerMemberId, entityId: parkview.id })
+      const preview = await clientAs(tx, bisi.user).client.approvals.preview({
+        actionKey: 'access.member.make_owner',
+        subject: { type: 'member', id: aisha.member.id },
+      })
+      expect(preview).toMatchObject({
+        needed: true,
+        blocked: 'Nobody else can approve this. Ask an owner to add an approver to the rule.',
+      })
     }))
 })

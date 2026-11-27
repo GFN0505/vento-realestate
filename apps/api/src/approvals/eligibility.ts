@@ -146,6 +146,68 @@ export async function countEligibleDraft(
   return result.rows[0]?.n ?? 0
 }
 
+/** Every non-empty set of step indexes of a chain (at most 3 steps, so at most 7 sets). */
+export function stepSubsets(stepCount: number): number[][] {
+  const subsets: number[][] = []
+  for (let mask = 1; mask < 1 << stepCount; mask++) {
+    subsets.push([...Array(stepCount).keys()].filter((i) => mask & (1 << i)))
+  }
+  return subsets.sort((a, b) => a.length - b.length)
+}
+
+/**
+ * Whether a chain not yet saved can be finished: each step needs its own person, since nobody
+ * decides two steps. By Hall's theorem that holds exactly when every set of k steps has at least k
+ * eligible people between them, so an empty later step, or two Owner steps with one other owner,
+ * is caught before a request is saved that would only stall (review S2). Returns the first step
+ * that can't be filled, or null.
+ */
+export async function chainGap(
+  db: DbOrTx,
+  organizationId: string,
+  chain: {
+    steps: readonly (readonly string[])[]
+    module: PermissionModule
+    entityId: string | null
+    makerUserId: string
+  },
+  excludedUserIds: readonly string[],
+): Promise<number | null> {
+  for (const subset of stepSubsets(chain.steps.length)) {
+    const roleIds = [...new Set(subset.flatMap((i) => chain.steps[i] ?? []))]
+    const eligible = await countEligibleDraft(
+      db,
+      organizationId,
+      draftTarget({
+        roleIds,
+        module: chain.module,
+        entityId: chain.entityId,
+        makerUserId: chain.makerUserId,
+      }),
+      excludedUserIds,
+    )
+    if (eligible < subset.length) return (subset[0] ?? 0) + 1
+  }
+  return null
+}
+
+/** Another active owner than this person, whatever their company limits. */
+export async function hasOtherActiveOwner(
+  db: DbOrTx,
+  organizationId: string,
+  userId: string,
+): Promise<boolean> {
+  const result = await db.execute<{ found: boolean }>(sql`
+    select exists (
+      select 1 from members m
+      join roles ro on ro.organization_id = m.organization_id and ro.id = m.role_id
+      where m.organization_id = ${organizationId} and m.status = 'active'
+        and ro.key = 'owner' and m.user_id <> ${userId}::uuid
+    ) as found
+  `)
+  return result.rows[0]?.found === true
+}
+
 export type ViewerStanding = {
   isMaker: boolean
   couldApprove: boolean

@@ -2,11 +2,18 @@ import { RPCHandler } from '@orpc/server/fetch'
 import { and, eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
-import { auditEvents } from '@/db/schema'
+import { auditEvents, members } from '@/db/schema'
 import { lagosIsoDate } from '@/lib/format'
 import { router } from '@/router'
 import { withRollback } from '@/test/db'
-import { createEntity, createMember, createOrganization, type TestOrg } from '@/test/factories'
+import {
+  createEntity,
+  createMember,
+  createOrganization,
+  createUser,
+  type TestOrg,
+  type TestUser,
+} from '@/test/factories'
 import { clientAs, testContext } from '@/test/router-client'
 import { recordAudit } from './audit.service'
 
@@ -162,6 +169,109 @@ describe('audit log: reading', () => {
         code: 'FORBIDDEN',
         data: { reason: 'all_entities_required' },
       })
+    }))
+})
+
+/** An account event about `about`, done by `by`, written straight into `org`'s trail. */
+async function accountEvent(tx: DbOrTx, org: TestOrg, by: TestUser, about: TestUser) {
+  await tx.insert(auditEvents).values({
+    organizationId: org.id,
+    actorUserId: by.id,
+    actorName: by.name,
+    action: 'two_step.reset',
+    targetType: 'user',
+    targetId: about.id,
+    targetLabel: about.name,
+    ipMasked: '102.89.34.x',
+    userAgentSummary: 'Chrome on Mac',
+  })
+}
+
+describe('audit log: people from outside the organization (security L1)', () => {
+  it('shows an admin of another organization neutrally, without device or IP address', () =>
+    withRollback(async (tx) => {
+      const [mine, theirs] = [await createOrganization(tx), await createOrganization(tx)]
+      const ada = await createMember(tx, theirs, { role: 'admin', name: 'Ada Okafor' })
+      const both = await createMember(tx, mine, { role: 'sales', name: 'Kunle Ojo' })
+      await createMember(tx, theirs, { role: 'sales', user: both.user })
+      await accountEvent(tx, mine, ada.user, both.user)
+      const { client } = clientAs(tx, mine.owner)
+      const { items } = await client.audit.list(lastWeek())
+      expect(items[0]).toMatchObject({
+        actor: {
+          userId: null,
+          name: 'An admin in another organization',
+          kind: 'other_organization',
+        },
+        what: "Reset Kunle Ojo's two-step sign-in",
+        device: null,
+        ipMasked: null,
+      })
+      expect(JSON.stringify(await client.audit.get({ id: items[0]?.id ?? '' }))).not.toContain(
+        'Ada',
+      )
+      expect((await client.audit.list({ ...lastWeek(), q: 'Ada Okafor' })).total).toBe(0)
+    }))
+
+  it('shows Vento Real Estate staff as Vento Real Estate, and members as themselves', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const staff = await createUser(tx, { name: 'Tunde Staff', accountKind: 'staff' })
+      const kunle = await createMember(tx, org, { role: 'sales', name: 'Kunle Ojo' })
+      await accountEvent(tx, org, staff, kunle.user)
+      await accountEvent(tx, org, org.owner, kunle.user)
+      const { items } = await clientAs(tx, org.owner).client.audit.list(lastWeek())
+      expect(items.map((i) => [i.actor.name, i.actor.kind, i.device])).toEqual(
+        expect.arrayContaining([
+          ['Vento Real Estate', 'vento', null],
+          ['Olumide Bankole', 'person', 'Chrome on Mac'],
+        ]),
+      )
+    }))
+})
+
+describe('audit log: the Person filter (review S3)', () => {
+  it('lists members who acted in the dates, removed ones too, and nobody from outside', () =>
+    withRollback(async (tx) => {
+      const [org, theirs] = [await createOrganization(tx), await createOrganization(tx)]
+      const grace = await createMember(tx, org, { role: 'sales', name: 'Grace Umeh' })
+      const idle = await createMember(tx, org, { role: 'sales', name: 'Idle Person' })
+      const old = await createMember(tx, org, { role: 'sales', name: 'Bayo Old' })
+      const ada = await createMember(tx, theirs, { role: 'admin', name: 'Ada Okafor' })
+      await event(tx, org)
+      await event(tx, org, { actor: { userId: grace.user.id, name: 'Grace Umeh' } })
+      await event(tx, org, {
+        actor: { userId: old.user.id, name: 'Bayo Old' },
+        at: new Date(Date.now() - 30 * 86_400_000),
+      })
+      await accountEvent(tx, org, ada.user, idle.user)
+      await tx
+        .update(members)
+        .set({ status: 'removed', removedAt: new Date() })
+        .where(eq(members.id, grace.member.id))
+      const { client } = clientAs(tx, org.owner)
+      const people = await client.audit.people(lastWeek())
+      expect(people).toEqual({
+        items: [
+          { userId: grace.user.id, name: 'Grace Umeh', removed: true },
+          { userId: org.owner.id, name: 'Olumide Bankole', removed: false },
+        ],
+        page: 1,
+        pageSize: 25,
+        total: 2,
+      })
+      const found = await client.audit.people({ ...lastWeek(), q: 'grace', pageSize: 1 })
+      expect(found.items.map((p) => p.name)).toEqual(['Grace Umeh'])
+      expect((await client.audit.people({ ...lastWeek(), page: 3 })).total).toBe(2)
+    }))
+
+  it('refuses people who cannot see the audit log', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const viewer = await createMember(tx, org, { role: 'viewer' })
+      await expect(clientAs(tx, viewer.user).client.audit.people(lastWeek())).rejects.toMatchObject(
+        { code: 'FORBIDDEN' },
+      )
     }))
 })
 

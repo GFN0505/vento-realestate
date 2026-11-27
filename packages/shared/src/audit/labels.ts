@@ -292,6 +292,9 @@ export const FIELD_LABELS: Readonly<Record<string, string>> = {
 
 export const OTHER_DETAILS_CHANGED = 'Other details changed'
 
+/** Who did an account event, when they aren't a member of the organization reading it. */
+export const OTHER_ORGANIZATION_ACTOR = 'An admin in another organization'
+
 export type AuditFieldChange = { label: string; before: string | null; after: string | null }
 
 type Json = Readonly<Record<string, unknown>> | null | undefined

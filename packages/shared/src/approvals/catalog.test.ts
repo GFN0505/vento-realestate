@@ -81,8 +81,13 @@ describe('approvals catalog', () => {
     expect(RULE_ACTION_KEYS).toEqual(['access.role.update', 'access.member.make_owner'])
   })
 
-  it('lets the platform actions go ahead when nobody else can approve (spec question 4)', () => {
-    for (const [, meta] of entries) expect(meta.whenNoApprover).toBe('proceed')
+  it('lets a role change go ahead when nobody else can approve (spec question 4)', () => {
+    expect(APPROVAL_ACTIONS['access.role.update'].whenNoApprover).toBe('proceed')
+  })
+
+  it('lets a new owner through without an approver only for a sole owner (security M1)', () => {
+    expect(APPROVAL_ACTIONS['access.member.make_owner'].whenNoApprover).toBe('sole_owner')
+    expect(APPROVAL_ACTIONS['access.invitation.owner'].whenNoApprover).toBe('sole_owner')
   })
 
   it('names the effect on the approve button', () => {

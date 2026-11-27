@@ -9,6 +9,7 @@ import {
   belowThresholdLine,
   cannotApproveInModuleText,
   companiesText,
+  type deleteApprovalRuleInput,
   duplicateRuleMessage,
   gapText,
   hasPermission,
@@ -67,9 +68,10 @@ async function approvers(db: DbOrTx, organizationId: string): Promise<Approver[]
   }>(sql`
     select m.role_id,
       (select array_agg(rp.module::text) from role_permissions rp
-        where rp.role_id = m.role_id and rp.action = 'approve') as approves,
-      (select array_agg(l.entity_id) from member_entity_limits l where l.member_id = m.id)
-        as entity_ids
+        where rp.organization_id = m.organization_id and rp.role_id = m.role_id
+          and rp.action = 'approve') as approves,
+      (select array_agg(l.entity_id) from member_entity_limits l
+        where l.organization_id = m.organization_id and l.member_id = m.id) as entity_ids
     from members m
     where m.organization_id = ${organizationId} and m.status = 'active'`)
   return result.rows.map((r) => ({
@@ -393,8 +395,22 @@ export async function updateRule(
     await assertEntities(tx, live.organizationId, fields.entityIds)
     await assertNoDuplicate(tx, live.organizationId, fields, input.id)
     const before = await reload(tx, live.organizationId, input.id)
-    await tx.delete(approvalRuleSteps).where(eq(approvalRuleSteps.ruleId, input.id))
-    await tx.delete(approvalRuleEntities).where(eq(approvalRuleEntities.ruleId, input.id))
+    await tx
+      .delete(approvalRuleSteps)
+      .where(
+        and(
+          eq(approvalRuleSteps.organizationId, live.organizationId),
+          eq(approvalRuleSteps.ruleId, input.id),
+        ),
+      )
+    await tx
+      .delete(approvalRuleEntities)
+      .where(
+        and(
+          eq(approvalRuleEntities.organizationId, live.organizationId),
+          eq(approvalRuleEntities.ruleId, input.id),
+        ),
+      )
     await onDuplicateRace(
       fields,
       tx
@@ -405,7 +421,12 @@ export async function updateRule(
           appliesToAll: fields.entityIds === 'all',
           version: sql`${approvalRules.version} + 1`,
         })
-        .where(eq(approvalRules.id, input.id)),
+        .where(
+          and(
+            eq(approvalRules.organizationId, live.organizationId),
+            eq(approvalRules.id, input.id),
+          ),
+        ),
     )
     await writeRule(tx, live.organizationId, input.id, fields)
     const rule = await reload(tx, live.organizationId, input.id)
@@ -436,13 +457,19 @@ function changed(by: string) {
   )
 }
 
+/** `version` as loaded (security L3): a rule saved since then isn't deleted unseen. */
 export async function deleteRule(
   ctx: ServiceContext,
-  id: string,
+  input: z.output<typeof deleteApprovalRuleInput>,
 ): Promise<{ notice: string; emails: EmailMessage[] }> {
+  const { id } = input
   return ctx.db.transaction(async (tx) => {
     const live = await lockOwner(tx, ctx)
-    if (!(await lockRule(tx, live.organizationId, id))) throw notFound()
+    const locked = await lockRule(tx, live.organizationId, id)
+    if (!locked) throw notFound()
+    if (locked.version !== input.version) {
+      throw changed(await lastChangedBy(tx, live.organizationId, id))
+    }
     const rule = await reload(tx, live.organizationId, id)
     // Pending requests keep their copied steps; only the rule goes.
     await tx

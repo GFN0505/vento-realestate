@@ -110,6 +110,13 @@ export const updateApprovalRuleInput = z
   .superRefine(checkRule)
 export type UpdateApprovalRuleInput = z.input<typeof updateApprovalRuleInput>
 
+/** The version the page loaded (security L3); a newer one is CONFLICT `approval_rule_changed`. */
+export const deleteApprovalRuleInput = z.strictObject({
+  id,
+  version: z.number().int().min(1),
+})
+export type DeleteApprovalRuleInput = z.input<typeof deleteApprovalRuleInput>
+
 export const approvalRuleRoleRef = z.object({ id, name: z.string() })
 
 export const approvalRuleStep = z.object({

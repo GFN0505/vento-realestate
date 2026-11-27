@@ -26,8 +26,14 @@ export type ApprovalActionMeta = {
   hasAmount: boolean
   /** Approving asks once more, with the amount (payroll, payment out). */
   irreversible: boolean
-  /** Nobody else eligible: go ahead and mark the audit entry, or refuse before saving anything. */
-  whenNoApprover: 'proceed' | 'refuse'
+  /**
+   * Some step has nobody eligible (the maker, the excluded and anyone needed for another step
+   * don't count): go ahead and mark the audit entry, or refuse before saving anything.
+   * `sole_owner`: go ahead only when the maker is the organization's only active owner, and
+   * refuse while any other owner exists, so demoting or limiting the other owners can't be used
+   * to make an owner with nobody watching (security M1).
+   */
+  whenNoApprover: 'proceed' | 'refuse' | 'sole_owner'
   /** Fixed text in the rules table's Extra condition column; null = none. */
   extraCondition: string | null
   /**
@@ -65,7 +71,7 @@ export const APPROVAL_ACTIONS: Readonly<Record<ApprovalActionKey, ApprovalAction
     chip: 'Owners',
     hasAmount: false,
     irreversible: false,
-    whenNoApprover: 'proceed',
+    whenNoApprover: 'sole_owner',
     extraCondition: 'Not the person being made an owner',
     rulesFrom: null,
     approveLabel: (s) => `Make ${s.recordLabel} an owner`,
@@ -77,7 +83,7 @@ export const APPROVAL_ACTIONS: Readonly<Record<ApprovalActionKey, ApprovalAction
     chip: 'Owners',
     hasAmount: false,
     irreversible: false,
-    whenNoApprover: 'proceed',
+    whenNoApprover: 'sole_owner',
     extraCondition: null,
     // Plan question 2: covered by "Make someone an owner", so inviting can't bypass it.
     rulesFrom: 'access.member.make_owner',

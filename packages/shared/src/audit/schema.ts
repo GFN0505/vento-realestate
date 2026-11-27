@@ -58,11 +58,16 @@ export const listAuditInput = z
   .superRefine(checkRange)
 export type ListAuditInput = z.input<typeof listAuditInput>
 
-/** "Vento" for Vento Real Estate's changes, "System" for jobs, otherwise a person. */
+/**
+ * "Vento Real Estate" for Vento Real Estate's changes (its staff are never named), "System" for
+ * jobs, otherwise a person. `other_organization`: an account event done by someone who isn't a
+ * member here (an admin of another organization the person belongs to), shown as
+ * OTHER_ORGANIZATION_ACTOR with no id, device or IP address (security L1).
+ */
 export const auditActor = z.object({
   userId: id.nullable(),
   name: z.string(),
-  kind: z.enum(['person', 'vento', 'system']),
+  kind: z.enum(['person', 'vento', 'system', 'other_organization']),
 })
 
 export const auditFieldChange = z.object({
@@ -88,6 +93,32 @@ export const auditRow = z.object({
 export type AuditRow = z.infer<typeof auditRow>
 
 export const listAuditOutput = paginated(auditRow)
+
+/**
+ * The Person filter's choices: everyone who did something in the log in these dates, removed
+ * members included, A–Z. Never anyone outside the organization.
+ */
+export const auditPeopleInput = z
+  .strictObject({
+    ...paginationInput.shape,
+    /** Part of a name. */
+    q: z.string().trim().max(100).optional(),
+    from: isoDate,
+    to: isoDate,
+  })
+  .superRefine(checkRange)
+export type AuditPeopleInput = z.input<typeof auditPeopleInput>
+
+export const auditPerson = z.object({
+  userId: id,
+  /** Their name now. */
+  name: z.string(),
+  /** No longer a member. */
+  removed: z.boolean(),
+})
+export type AuditPerson = z.infer<typeof auditPerson>
+
+export const auditPeopleOutput = paginated(auditPerson)
 
 export const auditDetail = auditRow.extend({
   /** The record, with an app path when it has a page. */

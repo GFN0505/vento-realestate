@@ -12,6 +12,7 @@ import {
   invitationPreview,
   invitationTokenInput,
   memberIdInput,
+  resendInvitationInput,
   role,
   roleDetail,
   roleList,
@@ -69,8 +70,15 @@ export const invitationsContract = {
       requested: z.array(z.object({ email: z.string(), requestId: id })).optional(),
     }),
   ),
-  /** Once a minute per invitation (TOO_MANY_REQUESTS). Owner invitations: owners only. */
-  resend: platform.input(z.strictObject({ id })).output(notice),
+  /**
+   * Once a minute per invitation (TOO_MANY_REQUESTS). Owner invitations: owners only, and they go
+   * through the "Make someone an owner" rules: `outcome` (always sent) says whether it was sent or
+   * waits for approval (BAD_REQUEST `reason_required` without `reason`, CONFLICT
+   * `approval_pending` / `no_approver`). While it waits, the invitation stays as it is.
+   */
+  resend: platform
+    .input(resendInvitationInput)
+    .output(notice.extend({ outcome: requestOutcome.optional() })),
   withdraw: platform.input(z.strictObject({ id })).output(notice),
   /** Public: what the invitation offers, for the Accept invitation screen. */
   preview: platform.input(invitationTokenInput).output(invitationPreview),

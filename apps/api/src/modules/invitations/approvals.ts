@@ -15,6 +15,8 @@ export const ownerInvitationPayload = z.object({
   email: z.string().min(3).max(254),
   roleId: z.uuid(),
   entityIds: entityLimit,
+  /** Resending this owner invitation (security M2): on approval it's revived, not re-created. */
+  resendOf: z.uuid().optional(),
 })
 
 /**
@@ -29,6 +31,8 @@ export function invitationEmailSubjectId(email: string): string {
 export type OwnerInvitationResult = ExecuteResult & {
   invitationId: string
   message: ExecuteResult['emails'][number]
+  /** The invitation's `lastSentAt`, which its delivery must match. */
+  sentAt: Date
 }
 
 export const ownerInvitationPlugin: ApprovalPlugin<OwnerInvitationPayload, OwnerInvitationResult> =
@@ -77,6 +81,7 @@ export const ownerInvitationPlugin: ApprovalPlugin<OwnerInvitationPayload, Owner
         notice: made.notice,
         invitationId: made.invitationId,
         message: made.message,
+        sentAt: made.sentAt,
         // Sent and recorded after commit, like any invitation (Team shows its delivery).
         emails: [],
         afterCommit: async (deps) => {

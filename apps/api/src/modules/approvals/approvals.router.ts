@@ -7,7 +7,8 @@ import { getApproval, listApprovals, previewApproval } from './approvals.service
 
 // Built on `member`, so the tab guard and two-step gate hold. No module permission: each
 // procedure filters to rows the viewer may see, and decide checks eligibility under a lock
-// (plan §5).
+// (plan §5). Preview needs the action's own permission, which depends on the input, so the
+// service checks it.
 export const approvalsRouter = {
   list: member.approvals.list.handler(({ context, input }) =>
     listApprovals(serviceContext(context), input),

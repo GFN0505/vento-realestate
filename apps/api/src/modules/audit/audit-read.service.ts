@@ -2,14 +2,17 @@ import {
   AUDIT_EXPORT_MAX_ROWS,
   AUDIT_MODULE_LABELS,
   type AuditDetail,
+  type AuditPerson,
   type AuditRow,
   auditActionsInModule,
   auditActionsMatching,
   auditFieldChanges,
   type auditFilters,
   auditModuleOf,
+  type auditPeopleInput,
   auditWhat,
   type listAuditInput,
+  OTHER_ORGANIZATION_ACTOR,
   tooManyRowsMessage,
 } from '@vento/shared'
 import { and, desc, eq, gte, ilike, inArray, lt, or, type SQL, sql } from 'drizzle-orm'
@@ -23,6 +26,7 @@ import { conflict, notFound } from '@/lib/errors'
 import { formatDate, formatTime } from '@/lib/format'
 import { likePattern } from '@/lib/like'
 import { pageOffset } from '@/lib/paginate'
+import { ORGANIZATION_NOTICE_ACTOR } from '@/platform/platform-audit'
 import { recordAudit } from './audit.service'
 import { toCsv } from './csv'
 
@@ -41,6 +45,25 @@ export function dateRange(from: string, to: string): { start: Date; end: Date } 
   const end = new Date(new Date(`${to}T00:00:00+01:00`).getTime() + DAY_MS)
   return { start, end }
 }
+
+/**
+ * Whether the actor is someone this organization knows: no person (a job, Vento Real Estate's
+ * notices, an invitee), or a member here now or before. Account events are copied into every
+ * organization the person belongs to (recordAccountEvent), so an admin of another organization
+ * can be the actor of a row here (security L1).
+ */
+const ACTOR_KNOWN_HERE = sql`(${auditEvents.actorUserId} is null or exists (
+  select 1 from members m
+  where m.organization_id = ${auditEvents.organizationId} and m.user_id = ${auditEvents.actorUserId}))`
+
+/** member: show as recorded; staff: Vento Real Estate; other: an admin of another organization. */
+const ACTOR_STANDING = sql<ActorStanding>`case
+  when ${ACTOR_KNOWN_HERE} then 'member'
+  when exists (select 1 from users u
+    where u.id = ${auditEvents.actorUserId} and u.account_kind = 'staff') then 'staff'
+  else 'other' end`
+
+type ActorStanding = 'member' | 'staff' | 'other'
 
 function conditions(ctx: ServiceContext, f: Filters): SQL | undefined {
   const { start, end } = dateRange(f.from, f.to)
@@ -69,7 +92,8 @@ function conditions(ctx: ServiceContext, f: Filters): SQL | undefined {
     const actions = auditActionsMatching(f.q)
     parts.push(
       or(
-        ilike(auditEvents.actorName, pattern),
+        // Never by the name of someone who isn't shown here.
+        and(ilike(auditEvents.actorName, pattern), ACTOR_KNOWN_HERE),
         ilike(auditEvents.targetLabel, pattern),
         actions.length ? inArray(auditEvents.action, actions) : undefined,
       ),
@@ -92,6 +116,7 @@ const COLUMNS = {
   metadata: auditEvents.metadata,
   userAgentSummary: auditEvents.userAgentSummary,
   ipMasked: auditEvents.ipMasked,
+  actorStanding: ACTOR_STANDING,
 }
 
 type EventRow = {
@@ -108,6 +133,7 @@ type EventRow = {
   metadata: unknown
   userAgentSummary: string | null
   ipMasked: string | null
+  actorStanding: ActorStanding
 }
 
 type Json = Record<string, unknown> | null
@@ -124,17 +150,45 @@ function actorKind(row: Pick<EventRow, 'actorUserId' | 'actorName'>): AuditRow['
   return row.actorName === SYSTEM_ACTOR.name ? 'system' : 'vento'
 }
 
+/**
+ * Who, as this organization may see them. Someone outside it is never named, and their device
+ * and IP address are dropped: they belong to another organization's admin, or to Vento Real
+ * Estate's staff.
+ */
+function whoOf(row: EventRow): Pick<AuditRow, 'actor' | 'device' | 'ipMasked'> {
+  if (row.actorStanding === 'staff') {
+    return {
+      actor: { userId: null, name: ORGANIZATION_NOTICE_ACTOR, kind: 'vento' },
+      device: null,
+      ipMasked: null,
+    }
+  }
+  if (row.actorStanding === 'other') {
+    return {
+      actor: { userId: null, name: OTHER_ORGANIZATION_ACTOR, kind: 'other_organization' },
+      device: null,
+      ipMasked: null,
+    }
+  }
+  return {
+    actor: { userId: row.actorUserId, name: row.actorName, kind: actorKind(row) },
+    device: row.userAgentSummary,
+    ipMasked: row.ipMasked,
+  }
+}
+
 function toRow(row: EventRow): AuditRow {
   const metadata = asJson(row.metadata)
+  const who = whoOf(row)
   return {
     id: row.id,
     at: row.at.toISOString(),
-    actor: { userId: row.actorUserId, name: row.actorName, kind: actorKind(row) },
+    actor: who.actor,
     module: auditModuleOf(row.action) ?? 'settings',
     what: auditWhat(row.action, { targetLabel: row.targetLabel, metadata }),
     changes: auditFieldChanges(asJson(row.before), asJson(row.after)),
-    device: row.userAgentSummary,
-    ipMasked: row.ipMasked,
+    device: who.device,
+    ipMasked: who.ipMasked,
   }
 }
 
@@ -161,6 +215,53 @@ export async function listAudit(
     pageSize: input.pageSize,
     total: count?.n ?? 0,
   }
+}
+
+/** The Person filter's input: dates, part of a name, and a page. */
+type PeopleInput = z.output<typeof auditPeopleInput>
+
+/**
+ * The Person filter's choices (review S3): members, removed ones included, who acted in the log
+ * in these dates. Starts from the organization's members, so it's bounded by them, and each check
+ * is one probe of audit_events_org_actor_idx. Nobody outside the organization is listed.
+ */
+export async function listAuditPeople(
+  ctx: ServiceContext,
+  input: PeopleInput,
+): Promise<{ items: AuditPerson[]; page: number; pageSize: number; total: number }> {
+  const { start, end } = dateRange(input.from, input.to)
+  const { limit, offset } = pageOffset(input)
+  const named = input.q ? sql`and u.name ilike ${likePattern(input.q)}` : sql``
+  const result = await ctx.db.execute<{
+    user_id: string
+    name: string
+    removed: boolean
+    total: number
+  }>(sql`
+    select u.id as user_id, u.name, bool_and(m.status = 'removed') as removed,
+      count(*) over ()::int as total
+    from members m
+    join users u on u.id = m.user_id
+    where m.organization_id = ${ctx.organizationId} ${named}
+      and exists (
+        select 1 from audit_events a
+        where a.organization_id = m.organization_id and a.actor_user_id = m.user_id
+          and a.created_at >= ${start} and a.created_at < ${end})
+    group by u.id, u.name
+    order by lower(u.name), u.id
+    limit ${limit} offset ${offset}
+  `)
+  return {
+    items: result.rows.map((r) => ({ userId: r.user_id, name: r.name, removed: r.removed })),
+    page: input.page,
+    pageSize: input.pageSize,
+    total: result.rows[0]?.total ?? (offset > 0 ? await countPeople(ctx, input) : 0),
+  }
+}
+
+/** The total when the page asked for is past the end (the window count has no row to ride on). */
+async function countPeople(ctx: ServiceContext, input: PeopleInput): Promise<number> {
+  return (await listAuditPeople(ctx, { ...input, page: 1, pageSize: 1 })).total
 }
 
 /** The app page for an entry's record, when it has one. */

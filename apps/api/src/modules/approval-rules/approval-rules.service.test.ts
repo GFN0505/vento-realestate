@@ -56,9 +56,8 @@ describe('approval rules: reading', () => {
         permissions: { settings: ['view', 'approve'] },
       })
       const { client } = clientAs(tx, org.owner)
-      await client.approvalRules.delete({
-        id: (await client.approvalRules.list()).items[1]?.rules[0]?.id ?? '',
-      })
+      const seeded = (await client.approvalRules.list()).items[1]?.rules[0]
+      await client.approvalRules.delete({ id: seeded?.id ?? '', version: seeded?.version ?? 1 })
       const { rule } = await client.approvalRules.create({
         actionKey: 'access.member.make_owner',
         when: { kind: 'any' },
@@ -212,14 +211,40 @@ describe('approval rules: changing', () => {
       )
     }))
 
+  it('refuses to delete a rule saved since it was loaded, naming who saved it (security L3)', () =>
+    withRollback(async (tx) => {
+      const { org, bisi, owner } = await world(tx)
+      const rule = (await clientAs(tx, org.owner).client.approvalRules.list()).items[0]?.rules[0]
+      if (!rule) throw new Error('default rule missing')
+      await clientAs(tx, bisi.user).client.approvalRules.update({
+        id: rule.id,
+        version: rule.version,
+        actionKey: 'access.role.update',
+        when: { kind: 'any' },
+        steps: [[owner]],
+        entityIds: 'all',
+      })
+      const { client } = clientAs(tx, org.owner)
+      await expect(
+        client.approvalRules.delete({ id: rule.id, version: rule.version }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        data: { reason: 'approval_rule_changed', changedByName: 'Bisi Lawal' },
+      })
+      expect((await client.approvalRules.list()).items[0]?.rules[0]).toMatchObject({
+        id: rule.id,
+        version: rule.version + 1,
+      })
+    }))
+
   it('deletes a rule and tells the other owners', () =>
     withRollback(async (tx) => {
       const { org, bisi } = await world(tx)
       const { client, mailer } = clientAs(tx, org.owner)
       const rule = (await client.approvalRules.list()).items[1]?.rules[0]
-      expect(await client.approvalRules.delete({ id: rule?.id ?? '' })).toEqual({
-        notice: 'Rule deleted',
-      })
+      expect(
+        await client.approvalRules.delete({ id: rule?.id ?? '', version: rule?.version ?? 1 }),
+      ).toEqual({ notice: 'Rule deleted' })
       expect((await client.approvalRules.list()).items[1]?.rules).toEqual([])
       expect(mailer.to(bisi.user.email)[0]?.text).toContain('Approved by: Owner')
     }))
