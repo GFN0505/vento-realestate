@@ -167,7 +167,7 @@ Spec: [my-security](../specs/my-security.md) (brick 3d; owner's decision of 26 N
 **Watch for:** an admin or a read-only settings viewer (switch read-only: "Only owners can change this."); everyone already on ("Everyone already has two-step on."); someone with "Keep me signed in" who doesn't sign in for days (required after 7 days, setup opens over their page and keeps their work); a person in two organizations (asked only when they're in this one); two owners changing it at once (later wins, both audited); a passkey-only member (still sets up the authenticator app); custom role two-step switch (on and locked with the reason); organization switched in another tab (tab guard).
 **Target:** 3 clicks. **Test:** `e2e/settings/require-two-step.spec.ts` **Status:** built
 
-## J-ONB-11 · Set approval rules
+## J-ONB-12 · Set approval rules
 **Who / how often:** Owner; at setup, then a few times a year (a new SPV, a bigger PO limit).
 **Starts from:** *Settings → Approval rules*, ⌘K "Approval rules", or the role page's "Approves:" line.
 
@@ -183,7 +183,7 @@ Spec: [approvals-and-audit](../specs/approvals-and-audit.md) (brick 4).
 **Watch for:** an admin or other Settings viewer (read-only: "Only owners can change approval rules."); a duplicate rule (same action, companies and threshold: refused); a role without Approve in that module (listed disabled with why); a step nobody can approve in some company (amber warning on the row); a role used in a rule being deleted (refused on the role page); an archived company (rule greyed, back on restore); 375 px (one card per rule, tap for the sheet).
 **Target:** under 60 seconds and 5 clicks to add a rule. **Test:** `e2e/settings/approval-rules.spec.ts` **Status:** draft
 
-## J-ONB-12 · Find out who changed something
+## J-ONB-13 · Find out who changed something
 **Who / how often:** Owner or admin with access to every company; monthly, and urgently when a balance, price or access is disputed.
 **Starts from:** *Settings → Audit log*, ⌘K "Audit log", or **View history** on a role page or member sheet.
 

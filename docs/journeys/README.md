@@ -36,8 +36,8 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-08 | Make a role that fits the job | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (send for approval: draft, brick 4) |
 | J-ONB-09 | Secure your own account (My security, passkeys, sessions) | Every member | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-10 | Require two-step for everyone | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
-| J-ONB-11 | Set approval rules | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (brick 4) |
-| J-ONB-12 | Find out who changed something (audit log) | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (brick 4) |
+| J-ONB-12 | Set approval rules | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (brick 4) |
+| J-ONB-13 | Find out who changed something (audit log) | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | draft (brick 4) |
 | J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
 | J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |

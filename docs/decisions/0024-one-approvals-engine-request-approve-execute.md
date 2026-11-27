@@ -1,4 +1,4 @@
-# 0021 · One approvals engine: request, approve, execute
+# 0024 · One approvals engine: request, approve, execute
 
 - **Date:** 2026-11-26
 - **Status:** accepted

@@ -2,9 +2,9 @@
 
 - **Status:** approved (owner, 26 Nov 2026, all 8 plan questions as recommended). Build starts only after the admin console merges to `main`.
 - **Spec:** [docs/specs/approvals-and-audit.md](../specs/approvals-and-audit.md) (approved, all 8 recommendations, 26 Nov 2026)
-- **Journeys:** J-EXE-02 (rewritten), J-ONB-11 and J-ONB-12 (new), J-ONB-08 and J-ONB-06 (approval step added)
+- **Journeys:** J-EXE-02 (rewritten), J-ONB-12 and J-ONB-13 (new), J-ONB-08 and J-ONB-06 (approval step added)
 - **Branch:** `brick/04-approvals-audit`, cut from `main` **after the admin console merges**. **One pull request.**
-- **Decision record:** [0021 One approvals engine: request, approve, execute](../decisions/0021-one-approvals-engine-request-approve-execute.md) (accepted; renumbered if the console takes 0021)
+- **Decision record:** [0024 One approvals engine: request, approve, execute](../decisions/0024-one-approvals-engine-request-approve-execute.md) (accepted; was 0021 before the console took that number)
 - **Written:** 26 Nov 2026, against `main` at `af849c1` (3d merged: oRPC 1.16, Drizzle, TanStack Router, migrations up to `0010_passkey_guards.sql`)
 
 ## Summary (plain English)
@@ -337,7 +337,7 @@ If the console adds organization-side audit actions (for example "Vento viewed y
 - About 40 audit events across the last 7 days, spread over modules (written through `recordAudit`, never raw inserts), so the audit log reads like the board.
 
 ## 11. Build order
-1. **Rebase on `main` after the admin console merges.** Regenerate the migration numbers, and renumber decision 0021 if it's taken.
+1. **Rebase on `main` after the admin console merges.** Done: migrations number from 0016; the decision is 0024 (the console took 0021); the journeys are J-ONB-12 and J-ONB-13 (the console reserved J-ONB-11).
 2. Shared: catalog, schemas, matcher, copy, audit labels, role-rules change, contracts (types compile end to end with stubbed routers).
 3. Schema, migrations, triggers and backfill; isolation test.
 4. Engine, eligibility, registry and errors, with the engine test suite, using a test-only plug-in.
@@ -350,7 +350,7 @@ If the console adds organization-side audit actions (for example "Vento viewed y
 11. Docs (§12), the combined review (code + design), and the **security audit** (this brick touches permissions). Fix, then the PR.
 
 ## 12. Docs (same PR)
-- Journeys J-EXE-02, J-ONB-11, J-ONB-12, J-ONB-06 and J-ONB-08 set to `built`.
+- Journeys J-EXE-02, J-ONB-12, J-ONB-13, J-ONB-06 and J-ONB-08 set to `built`.
 - `SCREENS.md` statuses and `CHANGES.md` rows for the spec's departures.
 - **`DOMAIN.md`:**
   - Approval rule, Approval request (adds `cancelled`), Approvable action;

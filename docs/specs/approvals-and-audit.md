@@ -2,7 +2,7 @@
 
 - **Status:** approved (owner, 26 Nov 2026)
 - **Module:** Platform
-- **Journeys:** J-EXE-02 (rewritten: approve or reject from the inbox), J-ONB-11 (new: set approval rules), J-ONB-12 (new: find out who changed something), J-ONB-08 and J-ONB-06 (changed: a role change and making someone an owner can need approval)
+- **Journeys:** J-EXE-02 (rewritten: approve or reject from the inbox), J-ONB-12 (new: set approval rules), J-ONB-13 (new: find out who changed something), J-ONB-08 and J-ONB-06 (changed: a role change and making someone an owner can need approval)
 - **Screens:** see [Screens this slice touches](#screens-this-slice-touches)
 - **Decisions:** builds on 0006 (maker-checker and audit), 0011 (one append-only audit table), 0014 (the company is a view filter), 0015 (platform audit stays separate), 0018 (say "company"); roles-and-organization decision 13 (default rule for role changes); app-shell decision 3 (no bell until something feeds it). The architect writes one record: "Sensitive actions run through one approvals engine: request → approve → execute, with the rule copied onto the request".
 - **Branch:** `brick/04-approvals-audit`, cut from `main`
@@ -106,9 +106,9 @@ When a rule applies, the action's button opens **Send for approval**: one sheet 
 1. Role page → change ticks → save bar **Send for approval** (1) → sheet, **Why?** "Site engineers now raise POs" → **Send for approval** (2).
 2. The role page shows "Waiting for approval by an owner or admin" with **Cancel request**; the grid is read-only until it's decided.
 
-**Set a rule (J-ONB-11): 5 clicks.** Settings → **Approval rules** (1) → **Add rule** (2) → Action "Change a role's permissions" (3) → Approvers "Owner" (4) → **Save rule** (5). Toast "Rule saved. Applies to new requests."
+**Set a rule (J-ONB-12): 5 clicks.** Settings → **Approval rules** (1) → **Add rule** (2) → Action "Change a role's permissions" (3) → Approvers "Owner" (4) → **Save rule** (5). Toast "Rule saved. Applies to new requests."
 
-**Find who changed something (J-ONB-12): 2 clicks and a search.** Settings → **Audit log** (1) → Search "Finance manager" → the row "Olumide Bankole · Changed role Finance manager · Approve in Finance: no → yes" → open it (2) for the full entry.
+**Find who changed something (J-ONB-13): 2 clicks and a search.** Settings → **Audit log** (1) → Search "Finance manager" → the row "Olumide Bankole · Changed role Finance manager · Approve in Finance: no → yes" → open it (2) for the full entry.
 
 ## Acceptance criteria
 **Engine**
@@ -202,7 +202,7 @@ When a rule applies, the action's button opens **Send for approval**: one sheet 
 
 ## Journeys
 - **J-EXE-02** rewritten to this spec (draft).
-- **J-ONB-11** Set approval rules (new, draft). **J-ONB-12** Find out who changed something (new, draft).
+- **J-ONB-12** Set approval rules (new, draft). **J-ONB-13** Find out who changed something (new, draft).
 - **J-ONB-08** and **J-ONB-06**: the approval step is added when built.
 
 ## Domain changes
