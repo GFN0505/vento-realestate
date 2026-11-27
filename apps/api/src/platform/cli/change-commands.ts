@@ -35,8 +35,9 @@ export const CHANGE_COMMANDS = {
   'plans bootstrap': { console: 'plans.publish.apply' },
   'superadmin invite': { console: 'superAdmins.invite.apply' },
   'superadmin revoke': { console: 'superAdmins.remove.apply' },
-  // The owner's break-glass reset (27 Nov 2026) keeps the password; the console's reset also
-  // sends a password link, so the two never write the same trail.
+  // The owner's break-glass reset (27 Nov 2026) keeps the password and may be your own (a lone
+  // super-admin); the console's reset sends a password link and never your own, so the two never
+  // write the same trail.
   'superadmin reset-two-step': { console: null, counterpart: 'superAdmins.resetTwoStep.apply' },
 } as const satisfies Record<
   string,

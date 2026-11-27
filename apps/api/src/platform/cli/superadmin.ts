@@ -1,6 +1,10 @@
 import { accountName, email as emailSchema } from '@vento/shared'
-import { sendAll } from '@/email/mailer'
-import { formatDate } from '@/lib/format'
+import { webUrl } from '@/auth/hooks/deps'
+import { type EmailMessage, sendAll } from '@/email/mailer'
+import { superAdminsChangedEmail } from '@/email/templates/platform-notices'
+import { env } from '@/env'
+import { formatDate, formatTime } from '@/lib/format'
+import { logger } from '@/lib/logger'
 import { resetEmails } from '../console/super-admins.service'
 import {
   inviteSuperAdmin,
@@ -16,7 +20,9 @@ import {
   resetSuperAdminTwoStep,
   revokeSuperAdmin,
 } from '../operations/super-admin'
+import type { PlatformActor } from '../platform-audit'
 import { PlatformError } from '../platform-error'
+import { otherSuperAdmins } from '../super-admins'
 import { authorise, type CommandDeps, confirm, type Parsed, requireReason } from './context'
 
 export const SUPERADMIN_HELP = `Usage: pnpm superadmin <command>
@@ -71,20 +77,63 @@ async function invite(deps: CommandDeps, parsed: Parsed): Promise<void> {
   deps.io.print(result.done)
 }
 
-/** The owner's break-glass reset (27 Nov 2026): the password still works; two-step is set up again. */
+/**
+ * The owner's break-glass reset (27 Nov 2026): the password still works; two-step is set up again
+ * before the console opens. Your own is allowed here (a lone super-admin who lost phone and backup
+ * codes), never in the console.
+ */
 async function resetTwoStep(deps: CommandDeps, parsed: Parsed, email: string): Promise<void> {
   const { actor, reason } = await authorise(deps, parsed, 'superadmin reset-two-step')
-  const preview = await previewResetTwoStep(deps.db, actor, { email })
+  const preview = await previewResetTwoStep(deps.db, actor, { email }, { allowSelf: true })
   if (!(await confirm(deps, parsed, preview.lines))) return
   const result = await resetSuperAdminTwoStep(deps.db, actor, {
     email,
     reason,
     keepPassword: true,
+    allowSelf: true,
   })
-  // The person gets the security alert; the others the break-glass email.
+  // The person gets the security alert; the others the break-glass email (break-glass.ts).
   const [alert] = await resetEmails(deps.db, actor, result.person, reason, deps.now())
-  if (alert) await sendAll(deps.mailer, [alert])
-  deps.io.print(`${result.done}. They sign in with their password and set up two-step again.`)
+  const messages: EmailMessage[] = alert ? [alert] : []
+  if (result.self) messages.push(...(await selfResetSecurityNotice(deps, actor, reason)))
+  await sendAll(deps.mailer, messages)
+  deps.io.print(
+    result.self
+      ? `${result.done}. Sign in with your password and set up two-step again before the console opens.`
+      : `${result.done}. They sign in with their password and set up two-step again.`,
+  )
+}
+
+/**
+ * A self-reset always reaches the security inbox. The break-glass email already goes there when
+ * nobody else is told, so this adds it only when there are other super-admins (no duplicate).
+ */
+async function selfResetSecurityNotice(
+  deps: CommandDeps,
+  actor: PlatformActor,
+  reason: string,
+): Promise<EmailMessage[]> {
+  const security =
+    deps.securityAlertEmail === undefined ? env.SECURITY_ALERT_EMAIL : deps.securityAlertEmail
+  if (!security) {
+    logger.warn('A super-admin reset their own two-step and SECURITY_ALERT_EMAIL is unset')
+    return []
+  }
+  const others = await otherSuperAdmins(deps.db, actor.userId ? [actor.userId] : [])
+  if (others.length === 0) return []
+  const now = deps.now()
+  return [
+    {
+      to: security,
+      tag: 'platform_notice',
+      ...superAdminsChangedEmail({
+        sentence: `${actor.name} reset their own two-step from the command line`,
+        at: `${formatTime(now)} on ${formatDate(now)}`,
+        reason,
+        activityUrl: webUrl('/console/activity'),
+      }),
+    },
+  ]
 }
 
 export async function superadminCommand(deps: CommandDeps, parsed: Parsed): Promise<void> {

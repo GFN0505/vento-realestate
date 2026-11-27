@@ -167,8 +167,7 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 - Staff invitations last **48 hours**, at most **5 open**.
 - The Dashboard leaves **internal organizations** out of its numbers and feed.
 - Short forms of the name: the logo lockup counts as the full name; "Staff · all customers" on the console's phone top bar; "Ask Vento" becomes **"Ask"**.
-- A break-glass `superadmin reset-two-step` for a super-admin locked out while the console is down.
+- A break-glass `superadmin reset-two-step` for a super-admin locked out while the console is down, **your own included** from the host, so a lone super-admin who lost phone and backup codes isn't locked out (the security inbox is always told; the console never resets your own).
 
 **Still need the owner's yes (admin-console slice 1b)**
 - "Gone quiet" is **14 days** without member activity; the queue shows at most 8 rows.
-- Nobody can reset their own two-step, even from the host, so production keeps **two super-admins** at all times.

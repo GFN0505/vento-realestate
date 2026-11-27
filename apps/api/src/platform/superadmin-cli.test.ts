@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
@@ -5,12 +6,13 @@ import { platformAdmins, platformAuditEvents, sessions, staffInvitations, users 
 import { createMemoryTransport } from '@/email/transports/memory'
 import { uniqueEmail, withRollback } from '@/test/db'
 import { createSession, createStaffAccount, createSuperAdmin } from '@/test/factories'
+import { consoleClientAs } from '@/test/router-client'
 import { memoryIo } from './cli/io'
 import { runCommand } from './cli/run'
 
 // `pnpm superadmin` after 1b (admin-console plan §1b.8 and the owner's answer).
 
-async function run(db: DbOrTx, args: string[]) {
+async function run(db: DbOrTx, args: string[], securityAlertEmail: string | null = null) {
   const io = memoryIo([true])
   const mailer = createMemoryTransport()
   const code = await runCommand('superadmin', [...args, '--yes'], {
@@ -19,10 +21,22 @@ async function run(db: DbOrTx, args: string[]) {
     operator: 'ada@api-1',
     mailer,
     now: () => new Date(),
-    securityAlertEmail: null,
+    securityAlertEmail,
   })
   return { code, io, mailer }
 }
+
+const SECURITY = 'security@ventoerp.com'
+
+const selfReset = (email: string) => [
+  'reset-two-step',
+  email,
+  '--by',
+  email,
+  '--reason',
+  'Lost phone and backup codes',
+  '--break-glass',
+]
 
 /** No active super-admin, inside this rolled-back transaction (others commit some). */
 async function emptyEnvironment(tx: DbOrTx) {
@@ -135,27 +149,75 @@ describe('superadmin reset-two-step --break-glass', () => {
       expect(mailer.to(tunde.email)[0]?.tag).toBe('security_alert')
     }))
 
-  it('refuses without --break-glass and refuses your own', () =>
+  it('refuses without --break-glass', () =>
     withRollback(async (tx) => {
       const ada = await createSuperAdmin(tx)
+      const tunde = await createStaffAccount(tx, { name: 'Tunde Bello' })
       const plain = await run(tx, [
         'reset-two-step',
-        ada.email,
-        '--by',
-        ada.email,
-        '--reason',
-        'x y z',
-      ])
-      expect(plain.code).toBe(1)
-      const own = await run(tx, [
-        'reset-two-step',
-        ada.email,
+        tunde.email,
         '--by',
         ada.email,
         '--reason',
         'Lost phone',
-        '--break-glass',
       ])
-      expect(own.io.errors).toEqual(["You can't reset your own two-step. Ask another super-admin."])
+      expect(plain.code).toBe(1)
+      const [row] = await tx.select().from(users).where(eq(users.id, tunde.id))
+      expect(row?.twoFactorEnabled).toBe(true)
+    }))
+})
+
+describe('superadmin reset-two-step on yourself (a lone super-admin, owner 27 Nov 2026)', () => {
+  it('lets the only super-admin reset their own two-step, keeping the password, and tells the security inbox', () =>
+    withRollback(async (tx) => {
+      await emptyEnvironment(tx)
+      const ada = await createStaffAccount(tx, { name: 'Ada Okafor' })
+      await createSession(tx, ada, { consoleOpenedAt: new Date() })
+      const { code, io, mailer } = await run(tx, selfReset(ada.email), SECURITY)
+      expect(code, io.errors.join('\n')).toBe(0)
+      expect(io.output.join('\n')).toMatch(/set up two-step again before the console opens/)
+      const [row] = await tx.select().from(users).where(eq(users.id, ada.id))
+      expect(row).toMatchObject({
+        twoFactorEnabled: false,
+        twoStepSetupRequired: true,
+        passwordResetRequired: false,
+      })
+      expect(await tx.select().from(sessions).where(eq(sessions.userId, ada.id))).toEqual([])
+      const [event] = await tx
+        .select()
+        .from(platformAuditEvents)
+        .where(eq(platformAuditEvents.action, 'superadmin.two_step_reset'))
+      expect(event).toMatchObject({ channel: 'command', actorUserId: ada.id, targetKey: ada.id })
+      expect(mailer.to(ada.email).map((m) => m.tag)).toContain('security_alert')
+      expect(mailer.to(SECURITY)).toHaveLength(1)
+    }))
+
+  it('also tells every other super-admin, and the security inbox even then', () =>
+    withRollback(async (tx) => {
+      const ada = await createStaffAccount(tx, { name: 'Ada Okafor' })
+      const bola = await createSuperAdmin(tx, { name: 'Bola Ade' })
+      const { code, mailer } = await run(tx, selfReset(ada.email), SECURITY)
+      expect(code).toBe(0)
+      expect(mailer.to(bola.email)[0]?.subject).toMatch(/ from the command line$/)
+      expect(mailer.to(SECURITY)[0]?.subject).toBe(
+        'Ada Okafor reset their own two-step from the command line',
+      )
+    }))
+
+  it('is still refused in the console', () =>
+    withRollback(async (tx) => {
+      const ada = await createSuperAdmin(tx)
+      const { client } = consoleClientAs(tx, ada)
+      await expect(
+        client.console.superAdmins.resetTwoStep.apply({
+          userId: ada.id,
+          expected: {},
+          reason: 'Lost phone',
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: "You can't reset your own two-step. Ask another super-admin.",
+      })
     }))
 })

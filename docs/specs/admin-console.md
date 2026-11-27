@@ -638,7 +638,7 @@ Only things not built. Each says why it matters and what triggers it.
 12. **"New owner" in the feed**, if today's `member.access_changed` can't tell it apart without new metadata.
 13. **Tick off queue items** (mark a command-line change reviewed, with Undo; needs storage). *Trigger:* more than a couple of break-glass changes a month.
 14. **Console ⌘K** (find an organization or feature, jump anywhere). *Trigger:* about 500 organizations or 3 daily console users.
-15. ~~**Break-glass `superadmin reset-two-step`**~~ *Built in 1b (owner, 27 Nov 2026)*, but it needs another active super-admin as `--by` (nobody resets their own two-step), so a **lone** super-admin who lost phone and backup codes is still locked out. *Open:* a self-reset from the host, or the rule "always keep two super-admins" (RUNBOOK §4).
+15. ~~**Break-glass `superadmin reset-two-step`**~~ *Built in 1b (owner, 27 Nov 2026)*, including your own from the host: `--by` may be the target, so a **lone** super-admin who lost phone and backup codes can reset their own two-step (the security inbox is always told; the console still never resets your own).
 16. **A former staff email becoming a customer account.** *Trigger:* the first person who needs it.
 17. **Billing facts** on organization detail. *Trigger:* the *Billing and plan* screen.
 18. **Statutory defaults** page. *Trigger:* the first statutory rules.

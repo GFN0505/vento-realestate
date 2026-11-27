@@ -316,7 +316,7 @@ export const consoleRouter = {
     },
     resetTwoStep: {
       preview: sa.resetTwoStep.preview.handler(({ input, context }) =>
-        previewResetTwoStep(context.db, context.admin, { userId: input.userId }),
+        previewResetTwoStep(context.db, consoleActor(context.admin), { userId: input.userId }),
       ),
       apply: sa.resetTwoStep.apply.handler(async ({ input, context }) => {
         let reset: Awaited<ReturnType<typeof resetSuperAdminTwoStep>> | null = null

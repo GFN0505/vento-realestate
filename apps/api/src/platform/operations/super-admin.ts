@@ -144,14 +144,39 @@ export async function revokeSuperAdmin(
 const ownReset = () =>
   new PlatformError("You can't reset your own two-step. Ask another super-admin.")
 
+/**
+ * Your own two-step: only from the host's command line, with --break-glass (the owner's answer,
+ * 27 Nov 2026), so a lone super-admin who lost phone and backup codes isn't locked out. Host
+ * access is super-admin power anyway (decisions 0015 and 0021). The console never allows it.
+ */
+const mayResetSelf = (actor: Pick<PlatformActor, 'channel'>, allowSelf: boolean | undefined) =>
+  allowSelf === true && actor.channel === 'command'
+
 export async function previewResetTwoStep(
   db: DbOrTx,
-  actor: Pick<PlatformActor, 'userId'>,
+  actor: Pick<PlatformActor, 'userId' | 'channel'>,
   target: SuperAdminTarget,
+  options: { allowSelf?: boolean } = {},
 ): Promise<Preview<Record<string, never>>> {
   const person = await findPerson(db, target)
-  if (person.id === actor.userId) throw ownReset()
+  const self = person.id === actor.userId
+  if (self && !mayResetSelf(actor, options.allowSelf)) throw ownReset()
   if (!(await isActive(db, person.id))) throw notOne(person)
+  if (self) {
+    return {
+      lines: [
+        {
+          text: "Your two-step is cleared, your passkeys are removed and you're signed out everywhere.",
+          tone: 'warning',
+        },
+        {
+          text: 'Sign in with your password and set up two-step again before the console opens. Every other super-admin and the security inbox are told.',
+          tone: 'info',
+        },
+      ],
+      expected: {},
+    }
+  }
   return {
     lines: [
       {
@@ -176,20 +201,28 @@ export async function previewResetTwoStep(
 export async function resetSuperAdminTwoStep(
   db: DbOrTx,
   actor: PlatformActor,
-  input: SuperAdminTarget & { reason: string; keepPassword?: boolean },
-): Promise<{ done: string; person: { id: string; name: string; email: string }; counts: Counts }> {
+  input: SuperAdminTarget & { reason: string; keepPassword?: boolean; allowSelf?: boolean },
+): Promise<{
+  done: string
+  person: { id: string; name: string; email: string }
+  counts: Counts
+  self: boolean
+}> {
   return db.transaction(async (tx) => {
     await tx.execute(`select pg_advisory_xact_lock(hashtext('platform_admins'))`)
     const person = await findPerson(tx, input)
-    if (person.id === actor.userId) throw ownReset()
+    const self = person.id === actor.userId
+    if (self && !mayResetSelf(actor, input.allowSelf)) throw ownReset()
     if (!actor.userId || !(await isActive(tx, actor.userId))) {
       throw new PlatformError(NO_LONGER_ONE)
     }
     if (!(await isActive(tx, person.id))) throw notOne(person)
+    // A self-reset keeps the password (it's the way back in) whatever the caller asked.
+    const keepPassword = self || input.keepPassword
     const counts = await clearSecondFactors(tx, person.id, {
-      mode: input.keepPassword ? 'reset_keep_password' : 'reset',
+      mode: keepPassword ? 'reset_keep_password' : 'reset',
     })
-    const done = `${person.name}'s two-step was reset`
+    const done = self ? 'Your two-step was reset' : `${person.name}'s two-step was reset`
     await recordPlatformAudit(tx, {
       actor,
       action: 'superadmin.two_step_reset',
@@ -197,7 +230,7 @@ export async function resetSuperAdminTwoStep(
       targetKey: person.id,
       before: { name: person.name },
       reason: input.reason,
-      metadata: { ...counts, passwordReset: !input.keepPassword },
+      metadata: { ...counts, passwordReset: !keepPassword, self },
       done,
     })
     await recordAccountEvent(tx, {
@@ -206,7 +239,12 @@ export async function resetSuperAdminTwoStep(
       actor: { userId: actor.userId, name: actor.name },
       metadata: counts,
     })
-    return { done, person: { id: person.id, name: person.name, email: person.email }, counts }
+    return {
+      done,
+      person: { id: person.id, name: person.name, email: person.email },
+      counts,
+      self,
+    }
   })
 }
 
