@@ -22,7 +22,7 @@ EMAIL_ALLOWED_RECIPIENTS=you@yourdomain.com
 ```
 Restart `pnpm dev`. As Olumide, go to Team → **Invite people** and invite your own address.
 
-**You should see:** the email in your inbox within a minute, from "Vento Homes Ltd via Vento", with Reply-To set to Olumide. In Gmail, ⋮ → **Show original** shows DKIM, SPF and DMARC as PASS.
+**You should see:** the email in your inbox within a minute, from "Vento Homes Ltd via Vento Real Estate", with Reply-To set to Olumide. In Gmail, ⋮ → **Show original** shows DKIM, SPF and DMARC as PASS.
 
 - [ ] OK  ·  Notes:
 
