@@ -35,6 +35,7 @@
  *   tsx src/test/e2e-fixtures.ts staff-invitation <pending|expired|withdrawn|accepted|started> [inviterEmail]  a staff invitation and its link
  *   tsx src/test/e2e-fixtures.ts customer-account <email>  a customer account on that email (the staff sign-up's "customer account meanwhile")
  *   tsx src/test/e2e-fixtures.ts age-staff-invitation <email> <hours>  makes that staff invitation older (expiry without waiting)
+ *   tsx src/test/e2e-fixtures.ts expire-staff-invitations  expires every open staff invitation (the cap of 5 is global)
  *   tsx src/test/e2e-fixtures.ts dashboard            four standard organizations for the Dashboard queue, an internal one that must never show, a break-glass row; prints the names
  *   tsx src/test/e2e-fixtures.ts age-console <email> <idle|max>  closes that person's console window (16 minutes idle, or opened 8 hours ago)
  *   tsx src/test/e2e-fixtures.ts age-second-factor <email>  makes that person's last code or passkey 10 minutes old (the console asks again)
@@ -1055,11 +1056,32 @@ async function ageStaffInvitation(email: string | undefined, hours: string | und
 }
 
 /**
+ * Expires every open staff invitation (49 hours older). The cap of 5 open invitations is global, so
+ * the e2e run clears the ones earlier runs and fixtures left before it starts.
+ */
+async function expireStaffInvitations() {
+  const { db } = await import('@/db/client')
+  const { staffInvitations } = await import('@/db/schema')
+  const { and, eq, gt, sql } = await import('drizzle-orm')
+  const shift = sql`make_interval(hours => 49)`
+  const rows = await db
+    .update(staffInvitations)
+    .set({
+      expiresAt: sql`${staffInvitations.expiresAt} - ${shift}`,
+      lastSentAt: sql`${staffInvitations.lastSentAt} - ${shift}`,
+      createdAt: sql`${staffInvitations.createdAt} - ${shift}`,
+    })
+    .where(and(eq(staffInvitations.status, 'pending'), gt(staffInvitations.expiresAt, sql`now()`)))
+    .returning({ id: staffInvitations.id })
+  return { invitations: rows.length }
+}
+
+/**
  * The Dashboard's queue (J-ADM-06): four standard organizations with unique names (trial ending in
  * 2 days, people over the limit, no plan, nobody active for 18 days), one internal organization
  * with all of these (it must never appear), and a break-glass row. Prints the names.
  */
-async function dashboardFixture() {
+async function dashboardFixture(withCommand?: string) {
   const { db } = await import('@/db/client')
   const { members, organizations, platformAuditEvents } = await import('@/db/schema')
   const { eq } = await import('drizzle-orm')
@@ -1093,7 +1115,8 @@ async function dashboardFixture() {
   const trial = await createOrganization(db, { name: names.trial, planKey: 'starter' })
   await trialFor(trial)
   const over = await createOrganization(db, { name: names.overLimit, planKey: 'starter' })
-  for (let i = 0; i < 10; i++) await addMember(db, over, { role: 'viewer', name: `Viewer ${i}` })
+  // Far over the Starter limit, so it ranks first among organizations over a limit.
+  for (let i = 0; i < 40; i++) await addMember(db, over, { role: 'viewer', name: `Viewer ${i}` })
   await createOrganization(db, { name: names.noPlan, releaseGroup: 'standard' })
   const quiet = await createOrganization(db, { name: names.quiet, planKey: 'starter' })
   await quietFor(quiet.id)
@@ -1102,19 +1125,21 @@ async function dashboardFixture() {
   for (let i = 0; i < 10; i++)
     await addMember(db, internal, { role: 'viewer', name: `Viewer ${i}` })
   await quietFor(internal.id)
-  const ada = await createSuperAdmin(db, { name: 'Ada Okafor' })
-  await db.insert(platformAuditEvents).values({
-    actorUserId: ada.id,
-    actorName: ada.name,
-    operator: 'ada@api-1',
-    channel: 'command',
-    action: 'release.stage_changed',
-    targetType: 'feature',
-    targetKey: 'sales',
-    before: { stage: 'on' },
-    after: { stage: 'off' },
-    reason: 'e2e break-glass',
-  })
+  if (withCommand === 'command') {
+    const ada = await createSuperAdmin(db, { name: 'Ada Okafor' })
+    await db.insert(platformAuditEvents).values({
+      actorUserId: ada.id,
+      actorName: ada.name,
+      operator: 'ada@api-1',
+      channel: 'command',
+      action: 'release.stage_changed',
+      targetType: 'feature',
+      targetKey: 'sales',
+      before: { stage: 'on' },
+      after: { stage: 'off' },
+      reason: 'e2e break-glass',
+    })
+  }
   return names
 }
 
@@ -1237,7 +1262,8 @@ async function main() {
     'staff-invitation': () => staffInvitationFixture(arg, arg2),
     'customer-account': () => customerAccount(arg),
     'age-staff-invitation': () => ageStaffInvitation(arg, arg2),
-    dashboard: dashboardFixture,
+    'expire-staff-invitations': () => expireStaffInvitations(),
+    dashboard: () => dashboardFixture(arg),
     'age-console': () => ageConsole(arg, arg2),
     'age-second-factor': () => ageSecondFactor(arg),
     'age-passkeys': () => agePasskeys(arg),

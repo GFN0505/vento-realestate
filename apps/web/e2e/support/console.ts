@@ -3,12 +3,13 @@ import { expect, type Locator, type Page } from '@playwright/test'
 import { nextTotpCode, totpCode } from './totp'
 
 export const STAFF_LABEL = 'Vento Real Estate staff · all customers'
+export const STAFF_LABEL_SHORT = 'Staff · all customers'
 
 /** Signs in with a code (which counts as fresh proof) and opens the console without a prompt. */
 export async function signInToConsole(
   page: Page,
   admin: { email: string; password: string; totpSecret: string },
-  path = '/console',
+  path = '/console/organizations',
 ) {
   await page.goto('/sign-in')
   await page.getByLabel('Work email').fill(admin.email)
@@ -19,8 +20,18 @@ export async function signInToConsole(
   // A person with an organization lands on Home; one without lands on the console.
   await expect(page).toHaveURL(/\/(console|$)/)
   await page.goto(path)
-  await expect(page.getByText(STAFF_LABEL).locator('visible=true').first()).toBeVisible()
+  await expectStaffLabel(page)
 }
+
+/** The staff label: in full in the sidebar, "Staff · all customers" in the phone top bar. */
+export const expectStaffLabel = (page: Page) =>
+  expect(
+    page
+      .getByText(STAFF_LABEL)
+      .or(page.getByText(STAFF_LABEL_SHORT, { exact: true }))
+      .locator('visible=true')
+      .first(),
+  ).toBeVisible()
 
 /**
  * Staff sign in on the normal sign-in page and land on the console Dashboard: the code just typed
@@ -101,6 +112,7 @@ export async function openOrganization(
   org: { organizationName: string; organizationId: string },
 ) {
   const { organizationName: name, organizationId: id } = org
+  await page.goto('/console/organizations')
   const search = page.getByRole('searchbox', { name: /Search by organization/ })
   await expect(search).toBeVisible()
   await expect(page.getByRole('link', { name: /\S/ }).first()).toBeVisible()

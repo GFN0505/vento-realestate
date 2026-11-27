@@ -260,7 +260,7 @@ test.describe('a standard organization given an override', () => {
   })
 })
 
-/** Records where "Talk to Vento" sends the browser, without leaving the app. */
+/** Records where "Talk to Vento Real Estate" sends the browser, without leaving the app. */
 async function recordTalkToVento(page: Page) {
   await page.addInitScript(() => {
     const w = window as unknown as { talkTo: string[] }
@@ -284,7 +284,7 @@ async function recordTalkToVento(page: Page) {
 }
 
 test.describe('plan hints in search', () => {
-  test('an owner who searches a Growth-only feature sees where it is available, and Enter opens Talk to Vento', async ({
+  test('an owner who searches a Growth-only feature sees where it is available, and Enter opens Talk to Vento Real Estate', async ({
     page,
   }) => {
     const org = createStarterOrgFixture()
@@ -296,7 +296,7 @@ test.describe('plan hints in search', () => {
     await page.getByPlaceholder('Type a page or action').fill('commissions')
     const row = page.getByRole('option', { name: /Available on Growth/ })
     await expect(row).toBeVisible()
-    await expect(row).toContainText('Talk to Vento')
+    await expect(row).toContainText('Talk to Vento Real Estate')
     await page.keyboard.press('Enter')
 
     const targets = await page.evaluate(() => (window as unknown as { talkTo: string[] }).talkTo)
@@ -316,7 +316,7 @@ test.describe('plan hints in search', () => {
 
     await expect(page.getByText('No pages or actions match "commissions".')).toBeVisible()
     await expect(page.getByText('Available on')).toHaveCount(0)
-    await expect(page.getByText('Talk to Vento')).toHaveCount(0)
+    await expect(page.getByText('Talk to Vento Real Estate')).toHaveCount(0)
   })
 
   test('previewing a role hides the plan hints from the owner', async ({ page }, testInfo) => {
@@ -353,7 +353,9 @@ test.describe('plan hints in search', () => {
 })
 
 test.describe('the trial line', () => {
-  test('shows an owner a trial that ends within 7 days, with Talk to Vento', async ({ page }) => {
+  test('shows an owner a trial that ends within 7 days, with Talk to Vento Real Estate', async ({
+    page,
+  }) => {
     const org = createStarterOrgFixture()
     startTrial(org.organizationId, 'growth', 5)
 
@@ -361,7 +363,7 @@ test.describe('the trial line', () => {
 
     const line = page.getByRole('region', { name: 'Your trial' })
     await expect(line).toContainText(/Your Growth trial ends on \d{1,2} \w{3} \d{4}\./)
-    await expect(line.getByRole('link', { name: 'Talk to Vento' })).toHaveAttribute(
+    await expect(line.getByRole('link', { name: 'Talk to Vento Real Estate' })).toHaveAttribute(
       'href',
       /^(mailto:|https:\/\/wa\.me\/)/,
     )

@@ -313,13 +313,18 @@ export const createCustomerAccount = (email: string) =>
 export const ageStaffInvitation = (email: string, hours = 49) =>
   runFixture<{ invitations: number }>('age-staff-invitation', email, String(hours))
 
+/** Expires every open staff invitation: the cap of 5 open ones is global, so a run starts clean. */
+export const expireStaffInvitations = () =>
+  runFixture<{ invitations: number }>('expire-staff-invitations')
+
 /**
  * The Dashboard's queue (J-ADM-06): unique organization names for a trial ending in 2 days, people
  * over the limit, no plan and nobody active for 18 days, plus an internal one that must never show.
  */
-export const createDashboardFixture = () =>
+export const createDashboardFixture = (withCommandLineChange = false) =>
   runFixture<{ trial: string; overLimit: string; noPlan: string; quiet: string; internal: string }>(
     'dashboard',
+    ...(withCommandLineChange ? ['command'] : []),
   )
 
 /** Closes the console window on every session: 16 minutes idle, or opened 8 hours ago. */

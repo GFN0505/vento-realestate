@@ -2,9 +2,11 @@ import { expect, type Page, test } from '@playwright/test'
 import {
   confirmWithCode,
   expectNoSeriousViolations,
+  expectStaffLabel,
   openOrganization,
   proofDialog,
   STAFF_LABEL,
+  signInAsStaff,
   signInToConsole,
   useTheme,
 } from '../support/console'
@@ -16,16 +18,15 @@ import {
   createStarterOrgFixture,
   createSuperAdminFixture,
 } from '../support/fixtures'
-import { card, openSecurity, toastWith } from '../support/security'
+import { card, toastWith } from '../support/security'
 import { enterPassword, signInWithTotp } from '../support/sign-in'
-import { totpCode } from '../support/totp'
 import { addVirtualAuthenticator } from '../support/webauthn'
 
 // Access to the Vento console (decision 0021, plan section 11): customers get a 404 and never
 // download console code; a super-admin enters through a fresh code, backup code or passkey.
 
 const NOT_FOUND = "We can't find that page"
-const ORGANIZATIONS = { name: 'Organizations', level: 1 } as const
+const ORGANIZATIONS = { name: 'Dashboard', level: 1 } as const
 
 /** Records every JavaScript response body, to prove what the browser was (not) sent. */
 function recordScripts(page: Page) {
@@ -91,13 +92,16 @@ test.describe('customers and everyone else', () => {
     await expect(page.getByRole('heading', { name: NOT_FOUND })).toBeVisible()
   })
 
-  test('a revoked super-admin gets a 404 on /console and no console code is sent', async ({
+  test('a removed super-admin cannot sign in, and /console is a 404 with no console code sent', async ({
     page,
   }) => {
     const revoked = createSuperAdminFixture('revoked')
-    await signInWithTotp(page, revoked)
     const scripts = recordScripts(page)
+    await page.goto('/sign-in')
+    await enterPassword(page, revoked.email, revoked.password)
 
+    await expect(page.getByRole('alert').first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Two-step check' })).toHaveCount(0)
     await page.goto('/console')
 
     await expect(page.getByRole('heading', { name: NOT_FOUND })).toBeVisible()
@@ -116,26 +120,33 @@ test.describe('customers and everyone else', () => {
 })
 
 test.describe('a super-admin entering', () => {
-  test('signing in with a code opens the console from the user menu without a prompt', async ({
+  test('staff sign in on the normal page and land on the Dashboard with no extra prompt', async ({
     page,
-    isMobile,
   }) => {
-    const admin = createSuperAdminFixture('member')
-    await signInWithTotp(page, admin)
+    const admin = createSuperAdminFixture()
 
-    const menu = await openUserMenuEntry(page, isMobile)
-    await menu.getByText('Vento console').click()
+    await signInAsStaff(page, admin)
 
-    await expect(page).toHaveURL(/\/console$/)
     await expect(page.getByRole('heading', ORGANIZATIONS)).toBeVisible()
-    await expect(page.getByText(STAFF_LABEL).locator('visible=true').first()).toBeVisible()
+    await expectStaffLabel(page)
     await expect(page.getByRole('heading', { name: "Confirm it's you" })).toHaveCount(0)
   })
+
+  for (const path of ['/', '/settings/team', '/settings/security', '/projects']) {
+    test(`staff opening ${path} are sent to the console`, async ({ page }) => {
+      await signInAsStaff(page, createSuperAdminFixture())
+
+      await page.goto(path)
+
+      await expect(page).toHaveURL(/\/console\/?$/)
+      await expect(page.getByRole('heading', ORGANIZATIONS)).toBeVisible()
+    })
+  }
 
   test('with the window and the last proof both expired it asks, and a code opens it', async ({
     page,
   }) => {
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
     closeWindowAndProof(admin.email)
 
@@ -148,7 +159,7 @@ test.describe('a super-admin entering', () => {
   })
 
   test('a wrong code is refused with a message and the card stays open', async ({ page }) => {
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
     closeWindowAndProof(admin.email)
 
@@ -162,7 +173,7 @@ test.describe('a super-admin entering', () => {
   test('a backup code opens it once, and the same backup code is refused the second time', async ({
     page,
   }) => {
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     const code = admin.backupCodes[0] ?? ''
     await signInToConsole(page, admin)
     closeWindowAndProof(admin.email)
@@ -185,7 +196,7 @@ test.describe('a super-admin entering', () => {
   test('a window that only went idle, with the sign-in proof still fresh, reopens without a prompt', async ({
     page,
   }) => {
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
     ageConsole(admin.email, 'idle')
 
@@ -193,20 +204,6 @@ test.describe('a super-admin entering', () => {
 
     await expect(page.getByRole('heading', ORGANIZATIONS)).toBeVisible()
     await expect(page.getByRole('heading', { name: "Confirm it's you" })).toHaveCount(0)
-  })
-
-  test('a super-admin with no organization lands on the console after signing in', async ({
-    page,
-  }) => {
-    const admin = createSuperAdminFixture('no-org')
-
-    await page.goto('/sign-in')
-    await enterPassword(page, admin.email, admin.password)
-    await page.getByLabel('6-digit code').fill(totpCode(admin.totpSecret))
-
-    await expect(page).toHaveURL(/\/console$/)
-    await expect(page.getByRole('heading', ORGANIZATIONS)).toBeVisible()
-    await expect(page.getByText(STAFF_LABEL).locator('visible=true').first()).toBeVisible()
   })
 
   test('a super-admin whose two-step was reset is told to set it up again', async ({ page }) => {
@@ -218,7 +215,7 @@ test.describe('a super-admin entering', () => {
     await page.goto('/console')
 
     await expect(
-      page.getByRole('heading', { name: 'Set up two-step to use the Vento console' }),
+      page.getByRole('heading', { name: 'Set up two-step to use the Vento Real Estate console' }),
     ).toBeVisible()
     await expect(page.getByRole('link', { name: 'Set up two-step' })).toBeVisible()
   })
@@ -241,7 +238,8 @@ test.describe('a passkey', () => {
 
   async function addPasskey(page: Page) {
     const authenticator = await addVirtualAuthenticator(page)
-    await openSecurity(page)
+    await page.goto('/console/account')
+    await expect(page.getByRole('heading', { name: 'My account', level: 1 })).toBeVisible()
     await card(page, 'Passkeys').getByRole('button', { name: 'Add a passkey' }).first().click()
     await expect(toastWith(page, /^Passkey added/)).toBeVisible()
     return authenticator
@@ -250,8 +248,8 @@ test.describe('a passkey', () => {
   test('a passkey added after the last code is refused with a message until a code is used', async ({
     page,
   }) => {
-    const admin = createSuperAdminFixture('member')
-    await signInWithTotp(page, admin)
+    const admin = createSuperAdminFixture()
+    await signInAsStaff(page, admin)
     await addPasskey(page)
     closeWindowAndProof(admin.email)
 
@@ -267,8 +265,8 @@ test.describe('a passkey', () => {
   test('opens the console through Use passkey once a code has been used since it was added', async ({
     page,
   }) => {
-    const admin = createSuperAdminFixture('member')
-    await signInWithTotp(page, admin)
+    const admin = createSuperAdminFixture()
+    await signInAsStaff(page, admin)
     await addPasskey(page)
     await openWithCode(page, admin)
     closeWindowAndProof(admin.email)
@@ -281,8 +279,8 @@ test.describe('a passkey', () => {
   })
 
   test('a refused passkey keeps the card open and offers the code instead', async ({ page }) => {
-    const admin = createSuperAdminFixture('member')
-    await signInWithTotp(page, admin)
+    const admin = createSuperAdminFixture()
+    await signInAsStaff(page, admin)
     await addPasskey(page)
     closeWindowAndProof(admin.email)
 
@@ -315,7 +313,7 @@ test.describe('the window running out mid-task', () => {
     page,
   }) => {
     const org = createStarterOrgFixture()
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
     const sheet = await openStartTrial(page, org, 'Board pack trial')
     const keys: string[] = []
@@ -341,7 +339,7 @@ test.describe('the window running out mid-task', () => {
 
   test('Escape on the dialog does not close the sheet or lose its reason', async ({ page }) => {
     const org = createStarterOrgFixture()
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
     const sheet = await openStartTrial(page, org, 'Keep this reason')
     closeWindowAndProof(admin.email)
@@ -360,7 +358,7 @@ test.describe('the window running out mid-task', () => {
 
   test('focus returns inside the sheet when the dialog is closed with Escape', async ({ page }) => {
     const org = createStarterOrgFixture()
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
     const sheet = await openStartTrial(page, org, 'Keep this reason')
     closeWindowAndProof(admin.email)
@@ -381,10 +379,10 @@ test.describe('on a 375 px phone', () => {
   test.use({ viewport: { width: 375, height: 812 } })
 
   test('the staff label is visible and nothing scrolls sideways', async ({ page }) => {
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await signInToConsole(page, admin)
 
-    await expect(page.getByText(STAFF_LABEL).locator('visible=true').first()).toBeVisible()
+    await expectStaffLabel(page)
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )
@@ -396,7 +394,7 @@ for (const theme of ['light', 'dark'] as const) {
   test(`Confirm it's you has no serious accessibility violations in ${theme} mode`, async ({
     page,
   }) => {
-    const admin = createSuperAdminFixture('member')
+    const admin = createSuperAdminFixture()
     await useTheme(page, theme)
     await signInToConsole(page, admin)
     closeWindowAndProof(admin.email)

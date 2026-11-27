@@ -11,7 +11,7 @@ import {
 // J-ADM-02 in the console: find an organization, see why a feature is or isn't there, move it to
 // a plan, start a trial, add an override and an AI budget. Each test makes its own organization.
 
-const REASON_HELP = "Kept in Vento's activity. The customer doesn't see it."
+const REASON_HELP = "Kept in Vento Real Estate's activity. The customer doesn't see it."
 
 const sheet = (page: Page) => page.getByRole('dialog').first()
 

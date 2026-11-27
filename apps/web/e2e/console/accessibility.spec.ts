@@ -18,9 +18,28 @@ const heading = (page: Page, name: string | RegExp) =>
 
 const SCREENS: Screen[] = [
   {
-    name: 'Organizations',
+    name: 'Dashboard',
     open: async (page) => {
       await page.goto('/console')
+      await heading(page, 'Dashboard')
+      await expect(
+        page.getByRole('heading', { name: 'Customer activity · last 7 days' }),
+      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Plans and releases' })).toBeVisible()
+    },
+  },
+  {
+    name: 'My account',
+    open: async (page) => {
+      await page.goto('/console/account')
+      await heading(page, 'My account')
+      await expect(page.getByRole('region', { name: 'Sign-in' })).toBeVisible()
+    },
+  },
+  {
+    name: 'Organizations',
+    open: async (page) => {
+      await page.goto('/console/organizations')
       await heading(page, 'Organizations')
       await expect(page.getByRole('searchbox', { name: /Search by organization/ })).toBeVisible()
       await expect(
@@ -31,7 +50,6 @@ const SCREENS: Screen[] = [
   {
     name: 'Organization detail',
     open: async (page, org) => {
-      await page.goto('/console')
       await openOrganization(page, org)
       await expect(page.getByTestId('feature-why').first()).toBeVisible()
     },
@@ -39,7 +57,6 @@ const SCREENS: Screen[] = [
   {
     name: 'Change plan review step',
     open: async (page, org) => {
-      await page.goto('/console')
       await openOrganization(page, org)
       await page.getByRole('button', { name: 'Change plan' }).click()
       await page
@@ -91,10 +108,10 @@ const SCREENS: Screen[] = [
     },
   },
   {
-    name: 'Add super-admin sheet',
+    name: 'Invite super-admin sheet',
     open: async (page) => {
       await page.goto('/console/super-admins')
-      await page.getByRole('button', { name: 'Add super-admin' }).click()
+      await page.getByRole('button', { name: 'Invite super-admin' }).click()
       await expect(page.getByRole('dialog').getByLabel('Email')).toBeVisible()
     },
   },
