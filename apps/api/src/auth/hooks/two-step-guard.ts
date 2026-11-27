@@ -55,6 +55,14 @@ export async function beforeTwoStepVerify(
   if (until) throw lockedError(until)
 }
 
+/** Makes a joining staff account a super-admin once its code is proven (decision 0023). */
+async function joinIfStaffSignUp(deps: AuthDeps, userId: string): Promise<void> {
+  const scope = requestScope()
+  const operator = `console · ${scope.userAgentSummary ?? 'Unknown browser'} · ${scope.ipMasked ?? 'unknown network'}`
+  const joined = await completeStaffJoin(deps.db, userId, operator)
+  await sendAll(deps.mailer, joined.emails)
+}
+
 async function twoStepLockedUntil(deps: AuthDeps, userId: string): Promise<Date | null> {
   const [row] = await deps.db
     .select({ lockedUntil: twoFactors.lockedUntil })
@@ -83,12 +91,7 @@ export async function afterTwoStepVerify(
       await clearTwoStepSetupRequired(deps.db, user.id)
       // The staff sign-up: verifying the code is what makes them a super-admin (decision 0023).
       // First, so the account event below already reaches the platform trail.
-      if (user.accountKind === 'staff') {
-        const scope = requestScope()
-        const operator = `console · ${scope.userAgentSummary ?? 'Unknown browser'} · ${scope.ipMasked ?? 'unknown network'}`
-        const joined = await completeStaffJoin(deps.db, user.id, operator)
-        await sendAll(deps.mailer, joined.emails)
-      }
+      if (user.accountKind === 'staff') await joinIfStaffSignUp(deps, user.id)
       await recordAccountEvent(deps.db, {
         userId: user.id,
         action: 'two_step.enabled',
@@ -120,6 +123,9 @@ export async function afterTwoStepVerify(
   }
   if (code) return
 
+  // A staff sign-up whose join didn't land at set-up (the hook failed): two-step is proven now,
+  // so finish it (a no-op unless its invitation is still open; review minor).
+  if (user.accountKind === 'staff') await joinIfStaffSignUp(deps, user.id)
   await afterSignIn(deps, ctx, user, input.method)
   if (input.method === 'backup_code') await onBackupCodeUsed(deps, user)
 }

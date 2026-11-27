@@ -1,13 +1,14 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, like, sql } from 'drizzle-orm'
 import type { DbOrTx } from '@/db/client'
-import { passkeys, sessions, twoFactors, users } from '@/db/schema'
+import { passkeys, sessions, twoFactors, users, verifications } from '@/db/schema'
 
 /**
- * Removes a person's second factors and ends every session, inside the caller's transaction.
+ * Removes a person's second factors, ends every session and voids any password link, inside the
+ * caller's transaction.
  * - `reset` (lost phone): sign-in stays refused until they set a new password from the emailed
  *   link, then they set two-step up again. Shared by an owner's reset and a super-admin's.
- * - `reset_keep_password` (the break-glass command): the password still works; two-step is set
- *   up again at the next sign-in.
+ * - `reset_keep_password` (e2e fixtures only): the password still works; two-step is set up again
+ *   at the next sign-in. A real reset never keeps the password (audit M1).
  * - `close` (a removed super-admin's staff account): factors and sessions gone; the caller also
  *   removes the password (`closeStaffAccount` in platform/staff-accounts.ts), so nothing signs in.
  */
@@ -42,5 +43,10 @@ export async function clearSecondFactors(
     .delete(sessions)
     .where(eq(sessions.userId, userId))
     .returning({ id: sessions.id })
+  // A password link sent before this must not outlive it (audit L1): a reset sends a fresh one
+  // after commit, and a closed account gets none.
+  await tx
+    .delete(verifications)
+    .where(and(like(verifications.identifier, 'reset-password:%'), eq(verifications.value, userId)))
   return { sessionsEnded: ended.length, passkeysRemoved: removedPasskeys.length }
 }

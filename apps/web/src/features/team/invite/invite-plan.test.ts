@@ -37,9 +37,8 @@ describe('planInvite', () => {
 describe('a staff email in Invite people', () => {
   it('is a row problem, never sent', () => {
     const staff = row('tunde@ventoerp.com', { kind: 'staff' })
-    expect(rowProblem(staff, 'me@x.ng')).toBe(
-      "A Vento Real Estate staff account can't join an organization. Use a different email.",
-    )
+    // Neutral: it never says why (audit L4).
+    expect(rowProblem(staff, 'me@x.ng')).toBe("This email can't be invited. Use a different email.")
     expect(planInvite([staff, row('a@x.ng')], 'me@x.ng', null).sendable).toHaveLength(1)
   })
 })

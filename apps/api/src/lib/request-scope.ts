@@ -30,6 +30,11 @@ export type RequestScope = {
      * silently, with no "new sign-in" email.
      */
     firstSignIn?: boolean
+    /**
+     * A super-admin's reset sent this password link (console or command): the per-inbox hourly
+     * cap doesn't apply, so a reset never leaves someone with no way back in (audit L7).
+     */
+    adminResetLink?: boolean
   }
 }
 

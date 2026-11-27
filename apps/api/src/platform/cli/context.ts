@@ -41,6 +41,11 @@ export type CommandDeps = {
   breakGlass?: BreakGlassChange[]
   /** Overrides SECURITY_ALERT_EMAIL (tests); null = none. */
   securityAlertEmail?: string | null
+  /**
+   * Asks Better Auth to email a password link (the reset's inbox proof). Set by main.ts; tests
+   * pass a recorder. Missing = the command says no link was sent.
+   */
+  requestPasswordReset?: (email: string) => Promise<void>
 }
 
 /** A change made with --break-glass: who, which command, and how to find its audit rows. */
@@ -75,6 +80,8 @@ export type Parsed = {
   bootstrap: boolean
   /** The console is down: allow a change from the command line (and tell the other super-admins). */
   breakGlass: boolean
+  /** `superadmin invite --bootstrap`: also print the one-time link (it's emailed either way). */
+  printLink: boolean
 }
 
 export function parse(args: string[]): Parsed {
@@ -99,10 +106,11 @@ export function parse(args: string[]): Parsed {
       default: { type: 'boolean', default: false },
       bootstrap: { type: 'boolean', default: false },
       'break-glass': { type: 'boolean', default: false },
+      'print-link': { type: 'boolean', default: false },
     },
   })
-  const { 'break-glass': breakGlass, ...rest } = values
-  return { ...rest, breakGlass, positionals } as Parsed
+  const { 'break-glass': breakGlass, 'print-link': printLink, ...rest } = values
+  return { ...rest, breakGlass, printLink, positionals } as Parsed
 }
 
 function unknown(kind: string, value: string, keys: readonly string[]): never {

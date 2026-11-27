@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { accounts, sessions, staffInvitations, twoFactors, users } from '@/db/schema'
+import { accounts, sessions, staffInvitations, twoFactors, users, verifications } from '@/db/schema'
 import { withRollback } from '@/test/db'
 import {
   createSession,
@@ -110,12 +110,21 @@ describe('discarding unfinished staff accounts', () => {
 })
 
 describe('closing a staff account', () => {
-  it('removes every session, the authenticator and the password, and keeps the row', () =>
+  it('removes every session, the authenticator, the password and any password link, and keeps the row', () =>
     withRollback(async (tx) => {
       const tunde = await createStaffAccount(tx)
       await tx.insert(twoFactors).values({ userId: tunde.id, secret: 'x', backupCodes: 'x' })
       await createSession(tx, tunde)
+      await tx.insert(verifications).values({
+        identifier: 'reset-password:old-link',
+        value: tunde.id,
+        expiresAt: new Date(Date.now() + 30 * 60_000),
+      })
       await closeStaffAccount(tx, tunde.id)
+      // A password link sent before must not outlive the closure (audit L1).
+      expect(
+        await tx.select().from(verifications).where(eq(verifications.value, tunde.id)),
+      ).toEqual([])
       expect(await tx.select().from(sessions).where(eq(sessions.userId, tunde.id))).toEqual([])
       expect(await tx.select().from(twoFactors).where(eq(twoFactors.userId, tunde.id))).toEqual([])
       expect(await tx.select().from(accounts).where(eq(accounts.userId, tunde.id))).toEqual([])

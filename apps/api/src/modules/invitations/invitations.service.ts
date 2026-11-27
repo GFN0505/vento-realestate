@@ -178,27 +178,26 @@ function clashError(
   return conflict(reason, message, { alreadyMembers, alreadyInvited })
 }
 
+/** The one sentence for an email that can't be invited, wherever it shows (audit L4). */
+export const CANNOT_INVITE = "This email can't be invited. Use a different email."
+
 /**
- * A customer invitation to a Vento Real Estate staff account (decision 0023): one sentence for one
- * email, a count for several. Nothing is sent; `staffAccounts` marks every such row at once.
+ * A customer invitation to a staff account (decision 0023). Neutral on purpose (audit L4): the
+ * owner learns only that the email can't be invited, never why; `staffAccounts` marks the rows,
+ * and the router limits how often an organization gets this answer.
  */
 function staffAccountsError(staff: string[]) {
-  const [first] = staff
   const message =
     staff.length > 1
-      ? `${staff.length} of these emails are Vento Real Estate staff accounts and can't join an organization. Use different emails.`
-      : `${first} is a Vento Real Estate staff account and can't join an organization. Use a different email.`
+      ? `${staff.length} of these emails can't be invited. Use different emails.`
+      : CANNOT_INVITE
   return conflict('staff_account', message, { staffAccounts: staff })
 }
 
-/** Accepting with a staff email: refused, naming the organization and who to ask. */
+/** Accepting with a staff email: refused with the same neutral sentence. */
 async function assertNotStaffEmail(db: DbOrTx, row: InvitationRow): Promise<void> {
   if ((await staffEmails(db, [row.email])).length === 0) return
-  const d = await details(db, row)
-  throw conflict(
-    'staff_account',
-    `This email belongs to a Vento Real Estate staff account, so it can't join ${d.organizationName}. Ask ${d.inviterName} to invite a different email.`,
-  )
+  throw conflict('staff_account', CANNOT_INVITE)
 }
 
 /** Up to 20 at once, all or nothing. Emails go out after commit (the router sends them). */
@@ -591,6 +590,7 @@ export async function previewInvitation(db: DbOrTx, token: string): Promise<Invi
     email: row.email,
     expiresOn: lagosIsoDate(row.expiresAt),
     hasAccount: Boolean(account),
+    // Only so the accept page can show the neutral sentence before asking for anything (L4).
     staffAccount: account?.accountKind === 'staff',
   }
 }

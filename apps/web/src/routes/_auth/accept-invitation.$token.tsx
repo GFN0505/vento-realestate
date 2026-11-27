@@ -72,10 +72,10 @@ function AcceptInvitationPage() {
     <AuthLayout>
       <InvitationSummary preview={preview} />
       {preview.staffAccount ? (
-        // Decision 0023: a staff email can't join any organization; say so before anything.
+        // Decision 0023: a staff email can't join any organization. Neutral on purpose (audit
+        // L4): the page never says what kind of account the email has.
         <FormAlert variant="error">
-          This email belongs to a Vento Real Estate staff account, so it can't join{' '}
-          {preview.organizationName}. Ask {preview.inviterName} to invite a different email.
+          This email can't be invited. Ask {preview.inviterName} to invite a different email.
         </FormAlert>
       ) : me ? (
         <AcceptSignedIn token={token} preview={preview} me={me} onAccepted={accepted} />

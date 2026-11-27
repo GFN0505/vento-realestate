@@ -15,11 +15,13 @@ import {
   resendInvitation,
   withdrawInvitation,
 } from './invitations.service'
+import { limitStaffRefusals } from './staff-refusal-limit'
 
 // Listing invitations is team.list.
 export const invitationsRouter = {
   create: member.invitations.create
     .use(requirePermission('settings', 'create', 'invite people'))
+    .use(limitStaffRefusals())
     .handler(async ({ context, input }) => {
       const { emails, sentAt, ...result } = await createInvitations(serviceContext(context), input)
       const delivered = await deliverInvitations(context, emails, sentAt)
@@ -30,6 +32,7 @@ export const invitationsRouter = {
     }),
   resend: member.invitations.resend
     .use(requirePermission('settings', 'create', 'invite people'))
+    .use(limitStaffRefusals())
     .handler(async ({ context, input }) => {
       const { emails, sentAt, notice } = await resendInvitation(serviceContext(context), input.id)
       await deliverInvitations(context, emails, sentAt)

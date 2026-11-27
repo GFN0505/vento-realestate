@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { DbOrTx } from '@/db/client'
-import { platformAuditEvents, staffInvitations, users } from '@/db/schema'
+import { platformAdmins, platformAuditEvents, staffInvitations, users } from '@/db/schema'
 import { uniqueEmail, withRollback } from '@/test/db'
 import {
   createStaffInvitation,
@@ -324,6 +324,128 @@ describe('the staff sign-up page (join.get)', () => {
       await expect(client.console.join.get({ token: invitation.token })).resolves.toMatchObject({
         status: 'pending',
         resume: true,
+      })
+    }))
+})
+
+describe('invitations that no longer fit the person (review 1, audit L2)', () => {
+  it('refuses to resend to someone who became a super-admin or a customer meanwhile', () =>
+    withRollback(async (tx) => {
+      const ada = await createSuperAdmin(tx)
+      const toAdmin = await createStaffInvitation(tx, { invitedBy: ada })
+      await createSuperAdmin(tx, { email: toAdmin.email, name: 'Tunde Bello' })
+      const toCustomer = await createStaffInvitation(tx, { invitedBy: ada })
+      await createUser(tx, { email: toCustomer.email })
+      const { client } = consoleClientAs(tx, ada)
+      const resend = (invitationId: string) =>
+        client.console.superAdmins.resendInvitation({ invitationId, ...key() })
+      await expect(resend(toAdmin.id)).rejects.toMatchObject({
+        message: 'Tunde Bello is already a super-admin.',
+      })
+      await expect(resend(toCustomer.id)).rejects.toMatchObject({
+        message: expect.stringMatching(/already has a Vento Real Estate customer account/),
+      })
+    }))
+
+  it('withdraws the email’s other invitations when one is accepted', () =>
+    withRollback(async (tx) => {
+      const ada = await createSuperAdmin(tx)
+      const old = await createStaffInvitation(tx, { status: 'expired', invitedBy: ada })
+      // Stored as expired, as a newer invitation to the same email leaves it.
+      await tx
+        .update(staffInvitations)
+        .set({ status: 'expired' })
+        .where(eq(staffInvitations.id, old.id))
+      const current = await createStaffInvitation(tx, {
+        email: old.email,
+        started: true,
+        invitedBy: ada,
+      })
+      const { completeStaffJoin } = await import('../operations/staff-invitations')
+      await expect(completeStaffJoin(tx, current.user?.id ?? '', null)).resolves.toMatchObject({
+        joined: true,
+      })
+      const [row] = await tx.select().from(staffInvitations).where(eq(staffInvitations.id, old.id))
+      expect(row?.status).toBe('withdrawn')
+    }))
+
+  it("won't start on an email that is already an active staff account", () =>
+    withRollback(async (tx) => {
+      const ada = await createSuperAdmin(tx)
+      const invitation = await createStaffInvitation(tx, { invitedBy: ada })
+      await createSuperAdmin(tx, { email: invitation.email })
+      const { client } = consoleClientAs(tx, null)
+      await expect(
+        client.console.join.start({ token: invitation.token, password: 'Parkview-gate-2026' }),
+      ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'invitation_not_pending' } })
+    }))
+})
+
+describe('removing a super-admin who sent invitations (review 2)', () => {
+  it('withdraws them on the record, says so in the preview, and they no longer make a super-admin', () =>
+    withRollback(async (tx) => {
+      const ada = await createSuperAdmin(tx)
+      const bola = await createSuperAdmin(tx, { name: 'Bola Ade' })
+      const sent = await createStaffInvitation(tx, { invitedBy: bola, started: true })
+      const { client } = consoleClientAs(tx, ada)
+      const preview = await client.console.superAdmins.remove.preview({ userId: bola.id })
+      expect(preview.lines.map((l) => l.text)).toContain(
+        'Their open invitation is withdrawn: Tunde Bello.',
+      )
+      await client.console.superAdmins.remove.apply({
+        userId: bola.id,
+        expected: {},
+        reason: 'Left the team',
+        ...key(),
+      })
+      const [row] = await tx.select().from(staffInvitations).where(eq(staffInvitations.id, sent.id))
+      expect(row?.status).toBe('withdrawn')
+      const [event] = await tx
+        .select()
+        .from(platformAuditEvents)
+        .where(
+          and(
+            eq(platformAuditEvents.targetKey, sent.id),
+            eq(platformAuditEvents.action, 'superadmin.invitation_withdrawn'),
+          ),
+        )
+      expect(event?.actorUserId).toBe(ada.id)
+    }))
+
+  it('refuses a join on an invitation whose inviter is no longer a super-admin', () =>
+    withRollback(async (tx) => {
+      const bola = await createSuperAdmin(tx, { name: 'Bola Ade' })
+      const sent = await createStaffInvitation(tx, { invitedBy: bola, started: true })
+      await tx
+        .update(platformAdmins)
+        .set({ revokedAt: new Date() })
+        .where(eq(platformAdmins.userId, bola.id))
+      const { completeStaffJoin } = await import('../operations/staff-invitations')
+      await expect(completeStaffJoin(tx, sent.user?.id ?? '', null)).resolves.toMatchObject({
+        joined: false,
+      })
+    }))
+})
+
+describe('an unfinished customer sign-up on the email (audit L3)', () => {
+  it("doesn't block a staff invitation, and is removed by it", () =>
+    withRollback(async (tx) => {
+      await quiet(tx)
+      const ada = await createSuperAdmin(tx)
+      const unverified = await createUser(tx, { emailVerified: false })
+      await expect(invite(tx, ada, unverified.email)).resolves.toMatchObject({
+        done: { message: 'Invitation sent to Tunde Bello' },
+      })
+      expect(await tx.select().from(users).where(eq(users.id, unverified.id))).toEqual([])
+    }))
+
+  it('reads as no customer account on the sign-up page', () =>
+    withRollback(async (tx) => {
+      const invitation = await createStaffInvitation(tx)
+      await createUser(tx, { email: invitation.email, emailVerified: false })
+      const { client } = consoleClientAs(tx, null)
+      await expect(client.console.join.get({ token: invitation.token })).resolves.toMatchObject({
+        status: 'pending',
       })
     }))
 })

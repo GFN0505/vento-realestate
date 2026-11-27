@@ -1,7 +1,7 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm'
 import { clearSecondFactors } from '@/auth/clear-second-factors'
 import type { DbOrTx } from '@/db/client'
-import { accounts, platformAdmins, staffInvitations, users } from '@/db/schema'
+import { accounts, members, platformAdmins, staffInvitations, users } from '@/db/schema'
 
 // Staff accounts (decision 0023, admin-console plan §1b.4). A staff account's state is derived:
 // - active: an active platform_admins row;
@@ -115,3 +115,40 @@ export async function staffEmails(db: DbOrTx, emails: readonly string[]): Promis
 /** An open staff invitation counts as "pending and unexpired". */
 export const openInvitation = (now: Date) =>
   and(eq(staffInvitations.status, 'pending'), gt(staffInvitations.expiresAt, now))
+
+/**
+ * A customer sign-up nobody finished (email never verified, no membership): it holds the email
+ * but proves nothing, so it never blocks a staff invitation (audit L3). Removed inside the
+ * staff-invitation transaction; it has no history to keep.
+ */
+export async function discardUnverifiedCustomer(tx: DbOrTx, email: string): Promise<void> {
+  await tx
+    .delete(users)
+    .where(
+      and(
+        eq(users.email, email),
+        eq(users.accountKind, 'customer'),
+        eq(users.emailVerified, false),
+        sql`not exists (select 1 from ${members} where ${members.userId} = ${users.id})`,
+      ),
+    )
+}
+
+/**
+ * One account's clean-up, for a refused sign-in (audit L6): no scan of every staff account on each
+ * attempt. Under the platform_admins lock, and only if it's still neither active nor joining.
+ */
+export async function discardIfUnfinished(tx: DbOrTx, userId: string, now = new Date()) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('platform_admins'))`)
+  if ((await staffAccountState(tx, userId, now)) !== 'closed') return
+  const [linked] = await tx
+    .select({ id: staffInvitations.id })
+    .from(staffInvitations)
+    .where(and(eq(staffInvitations.userId, userId), sql`${staffInvitations.status} <> 'accepted'`))
+    .limit(1)
+  const [credential] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.userId, userId), eq(accounts.providerId, 'credential')))
+  if (linked || credential) await discardAccount(tx, userId)
+}

@@ -93,8 +93,9 @@ export async function sendResetPasswordEmail(
     return
   }
   const hour = await countAttempts(deps.db, 'password_reset_email', email, HOUR)
-  // Stops mail-bombing one inbox; the reply on screen is the same either way.
-  if (hour.count >= 5) return
+  // Stops mail-bombing one inbox; the reply on screen is the same either way. A super-admin's
+  // reset (audited, with a reason) always sends.
+  if (hour.count >= 5 && !requestScope().auth.adminResetLink) return
   await addAttempt(deps.db, 'password_reset_email', email)
   await sendEmail(
     deps,

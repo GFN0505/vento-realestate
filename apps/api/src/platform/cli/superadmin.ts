@@ -28,12 +28,19 @@ import { authorise, type CommandDeps, confirm, type Parsed, requireReason } from
 export const SUPERADMIN_HELP = `Usage: pnpm superadmin <command>
   list
   invite --email <email> --name "…" --break-glass --by <super-admin email> --reason "…"
-  invite --bootstrap --email <email> --name "…" [--reason "…"]   only while there are no super-admins
+  invite --bootstrap --email <email> --name "…" [--reason "…"] [--print-link]   only while there are no super-admins
   revoke <email> --break-glass --by <super-admin email> --reason "…"
   reset-two-step <email> --break-glass --by <super-admin email> --reason "…"
 Invite, remove and reset super-admins in the Vento Real Estate console; --break-glass is for when it's down.`
 
 const BOOTSTRAP_REASON = 'First super-admin'
+
+/** SECURITY_ALERT_EMAIL, or the test's override. */
+function securityInbox(deps: CommandDeps): string | null {
+  const value =
+    deps.securityAlertEmail === undefined ? env.SECURITY_ALERT_EMAIL : deps.securityAlertEmail
+  return value ?? null
+}
 
 /** `--email` and `--name`, checked with the console's own rules. */
 function invitee(parsed: Parsed): { email: string; name: string } {
@@ -48,16 +55,23 @@ async function invite(deps: CommandDeps, parsed: Parsed): Promise<void> {
   const person = invitee(parsed)
   if (parsed.bootstrap) {
     // Only on an empty environment (the operation checks), so it needs no glass. The link is
-    // printed: there's nobody to ask yet, and the email may not be set up.
+    // emailed, and the security inbox is told; it's printed only when asked, since terminal
+    // output may be logged (audit L8).
     const reason = requireReason(parsed.reason ?? BOOTSTRAP_REASON)
     const result = await inviteSuperAdmin(deps.db, 'bootstrap', {
       ...person,
       reason,
       operator: deps.operator,
+      securityInbox: securityInbox(deps),
     })
     await sendAll(deps.mailer, result.emails)
-    deps.io.print(result.done)
-    deps.io.print(`One-time link (works for 48 hours): ${result.link}`)
+    deps.io.print(`${result.done}. The link is emailed to ${person.email} and works for 48 hours.`)
+    if (parsed.printLink) {
+      deps.io.error(
+        'Warning: this one-time link opens a super-admin sign-up. Anyone who sees it (terminal history, logs) can use it.',
+      )
+      deps.io.print(`One-time link (works for 48 hours): ${result.link}`)
+    }
     return
   }
   const { actor, reason } = await authorise(deps, parsed, 'superadmin invite')
@@ -78,30 +92,45 @@ async function invite(deps: CommandDeps, parsed: Parsed): Promise<void> {
 }
 
 /**
- * The owner's break-glass reset (27 Nov 2026): the password still works; two-step is set up again
- * before the console opens. Your own is allowed here (a lone super-admin who lost phone and backup
- * codes), never in the console.
+ * The owner's break-glass reset (27 Nov 2026), your own included (a lone super-admin who lost
+ * phone and backup codes), never in the console. Like the console's reset, sign-in then needs a
+ * new password from the emailed link: the inbox is the proof, a password alone never gets back in
+ * (audit M1). Two-step is set up again before the console opens.
  */
 async function resetTwoStep(deps: CommandDeps, parsed: Parsed, email: string): Promise<void> {
   const { actor, reason } = await authorise(deps, parsed, 'superadmin reset-two-step')
   const preview = await previewResetTwoStep(deps.db, actor, { email }, { allowSelf: true })
   if (!(await confirm(deps, parsed, preview.lines))) return
-  const result = await resetSuperAdminTwoStep(deps.db, actor, {
-    email,
-    reason,
-    keepPassword: true,
-    allowSelf: true,
-  })
+  const result = await resetSuperAdminTwoStep(deps.db, actor, { email, reason, allowSelf: true })
   // The person gets the security alert; the others the break-glass email (break-glass.ts).
   const [alert] = await resetEmails(deps.db, actor, result.person, reason, deps.now())
   const messages: EmailMessage[] = alert ? [alert] : []
   if (result.self) messages.push(...(await selfResetSecurityNotice(deps, actor, reason)))
   await sendAll(deps.mailer, messages)
+  const sent = await sendPasswordLink(deps, result.person.email)
   deps.io.print(
     result.self
-      ? `${result.done}. Sign in with your password and set up two-step again before the console opens.`
-      : `${result.done}. They sign in with their password and set up two-step again.`,
+      ? `${result.done}. Open the link we emailed to ${result.person.email}, set a new password, then set up two-step again before the console opens.`
+      : `${result.done}. We emailed ${result.person.email} a link to set a new password; then they set up two-step again before the console opens.`,
   )
+  if (!sent) {
+    deps.io.error(
+      'The password link could not be sent. They can use "Forgot password" on the sign-in page.',
+    )
+  }
+}
+
+async function sendPasswordLink(deps: CommandDeps, email: string): Promise<boolean> {
+  if (!deps.requestPasswordReset) return false
+  try {
+    await deps.requestPasswordReset(email)
+    return true
+  } catch (error) {
+    logger.error('Password link after a break-glass reset not sent', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return false
+  }
 }
 
 /**
@@ -113,8 +142,7 @@ async function selfResetSecurityNotice(
   actor: PlatformActor,
   reason: string,
 ): Promise<EmailMessage[]> {
-  const security =
-    deps.securityAlertEmail === undefined ? env.SECURITY_ALERT_EMAIL : deps.securityAlertEmail
+  const security = securityInbox(deps)
   if (!security) {
     logger.warn('A super-admin reset their own two-step and SECURITY_ALERT_EMAIL is unset')
     return []

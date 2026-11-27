@@ -1,11 +1,11 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { clearSecondFactors } from '@/auth/clear-second-factors'
 import type { DbOrTx } from '@/db/client'
-import { platformAdmins, sessions, users } from '@/db/schema'
+import { platformAdmins, sessions, staffInvitations, users } from '@/db/schema'
 import { recordAccountEvent } from '@/modules/audit/audit.service'
 import { type PlatformActor, recordPlatformAudit } from '../platform-audit'
 import { PlatformError } from '../platform-error'
-import { closeStaffAccount } from '../staff-accounts'
+import { closeStaffAccount, discardUnfinishedStaffAccounts } from '../staff-accounts'
 import { activeSuperAdminCount } from '../super-admins'
 import type { Preview } from './release'
 
@@ -67,6 +67,19 @@ export async function listSuperAdmins(db: DbOrTx) {
 /** `superadmin grant` is gone (decision 0023): staff join by invitation. */
 export const GRANT_REFUSAL = 'Super-admins join by invitation. Use superadmin invite.'
 
+/** Pending (or expired, still revivable) invitations this person sent. */
+async function openInvitationsFrom(db: DbOrTx, userId: string) {
+  return db
+    .select({ id: staffInvitations.id, name: staffInvitations.name, email: staffInvitations.email })
+    .from(staffInvitations)
+    .where(
+      and(
+        eq(staffInvitations.invitedByUserId, userId),
+        sql`${staffInvitations.status} in ('pending', 'expired')`,
+      ),
+    )
+}
+
 const selfRemoval = () => new PlatformError("You can't remove yourself. Ask another super-admin.")
 const notOne = (person: Person) => new PlatformError(`${person.name} isn't a super-admin.`)
 
@@ -78,8 +91,17 @@ export async function previewRevoke(
   const person = await findPerson(db, target)
   if (person.id === actor.userId) throw selfRemoval()
   if (!(await isActive(db, person.id))) throw notOne(person)
+  const sent = await openInvitationsFrom(db, person.id)
   return {
     lines: [
+      ...(sent.length
+        ? [
+            {
+              text: `Their ${sent.length === 1 ? 'open invitation is' : `${sent.length} open invitations are`} withdrawn: ${sent.map((i) => i.name).join(', ')}.`,
+              tone: 'info' as const,
+            },
+          ]
+        : []),
       { text: `${person.name} (${person.email}) will no longer be a super-admin.`, tone: 'info' },
       {
         text: "Their staff account closes: they're signed out everywhere and can't sign in. Their name stays on past activity.",
@@ -118,6 +140,28 @@ export async function revokeSuperAdmin(
     if ((await activeSuperAdminCount(tx)) === 0) {
       throw new PlatformError('There must always be at least one super-admin.')
     }
+    // Invitations they sent stop working: nobody joins on a removed person's word (review 2).
+    for (const invitation of await openInvitationsFrom(tx, user.id)) {
+      await tx
+        .update(staffInvitations)
+        .set({
+          status: 'withdrawn',
+          respondedAt: new Date(),
+          withdrawnByUserId: actor.userId,
+          userId: null,
+          startedAt: null,
+        })
+        .where(eq(staffInvitations.id, invitation.id))
+      await recordPlatformAudit(tx, {
+        actor: { ...actor, idempotencyKey: undefined, requestHash: undefined },
+        action: 'superadmin.invitation_withdrawn',
+        targetType: 'staff_invitation',
+        targetKey: invitation.id,
+        before: { name: invitation.name, email: invitation.email },
+        reason: `${user.name} was removed as a super-admin`,
+      })
+    }
+    await discardUnfinishedStaffAccounts(tx)
     if (user.accountKind === 'staff') {
       await closeStaffAccount(tx, user.id)
     } else {
@@ -170,7 +214,7 @@ export async function previewResetTwoStep(
           tone: 'warning',
         },
         {
-          text: 'Sign in with your password and set up two-step again before the console opens. Every other super-admin and the security inbox are told.',
+          text: 'We email you a link to set a new password; then set up two-step again before the console opens. Every other super-admin and the security inbox are told.',
           tone: 'info',
         },
       ],
@@ -193,15 +237,15 @@ export async function previewResetTwoStep(
 }
 
 /**
- * A lost phone (admin-console plan §1b.7): another super-admin clears the person's two-step.
- * `console`: sign-in also needs a new password from the emailed link (the router asks Better Auth
- * for it after commit). `break_glass` (the owner's command, 27 Nov 2026): they keep their password
- * and set two-step up again at the next sign-in. Either way the console stays shut until then.
+ * A lost phone (admin-console plan §1b.7): two-step cleared, every session ended, and sign-in
+ * refused until a new password is set from the emailed link (the caller asks Better Auth for it
+ * after commit). The link is the inbox proof: a password alone never gets back in (audit M1),
+ * from the console or the break-glass command, your own reset included.
  */
 export async function resetSuperAdminTwoStep(
   db: DbOrTx,
   actor: PlatformActor,
-  input: SuperAdminTarget & { reason: string; keepPassword?: boolean; allowSelf?: boolean },
+  input: SuperAdminTarget & { reason: string; allowSelf?: boolean },
 ): Promise<{
   done: string
   person: { id: string; name: string; email: string }
@@ -217,11 +261,7 @@ export async function resetSuperAdminTwoStep(
       throw new PlatformError(NO_LONGER_ONE)
     }
     if (!(await isActive(tx, person.id))) throw notOne(person)
-    // A self-reset keeps the password (it's the way back in) whatever the caller asked.
-    const keepPassword = self || input.keepPassword
-    const counts = await clearSecondFactors(tx, person.id, {
-      mode: keepPassword ? 'reset_keep_password' : 'reset',
-    })
+    const counts = await clearSecondFactors(tx, person.id, { mode: 'reset' })
     const done = self ? 'Your two-step was reset' : `${person.name}'s two-step was reset`
     await recordPlatformAudit(tx, {
       actor,
@@ -230,7 +270,7 @@ export async function resetSuperAdminTwoStep(
       targetKey: person.id,
       before: { name: person.name },
       reason: input.reason,
-      metadata: { ...counts, passwordReset: !keepPassword, self },
+      metadata: { ...counts, self },
       done,
     })
     await recordAccountEvent(tx, {

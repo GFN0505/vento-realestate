@@ -26,6 +26,8 @@ export function clientAs(
     authApi?: Record<string, (...args: never[]) => unknown>
     /** Availability source; by default read from `db` on every call, so changes show at once. */
     features?: FeatureStore
+    /** Turn the in-memory rate limiter on (off by default, like the test environment). */
+    rateLimit?: boolean
     /** Session fields beyond the defaults (a fresh session entered now, never confirmed). */
     session?: {
       createdAt?: Date
@@ -83,7 +85,7 @@ export function testContext(
     ),
     auth,
     mailer,
-    rateLimiter: createRateLimiter(false),
+    rateLimiter: createRateLimiter(options.rateLimit ?? false),
     featureStore: options.features ?? liveFeatureStore(db),
   }
 }

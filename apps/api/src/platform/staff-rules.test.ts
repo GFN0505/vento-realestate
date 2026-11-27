@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { CURRENT_TERMS_VERSION } from '@vento/shared'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { invitations, members, platformAdmins, platformAuditEvents, users } from '@/db/schema'
 import { createInvitations } from '@/modules/invitations/invitations.service'
@@ -44,7 +44,7 @@ describe('a staff account on the customer side', () => {
 })
 
 describe('customer invitations to a staff email', () => {
-  it('are a row problem naming the email, and nothing is made', () =>
+  it('are a neutral row problem, and nothing is made', () =>
     withRollback(async (tx) => {
       const org = await createOrganization(tx)
       const ada = await createSuperAdmin(tx)
@@ -57,7 +57,8 @@ describe('customer invitations to a staff email', () => {
       ).rejects.toMatchObject({
         code: 'CONFLICT',
         data: { reason: 'staff_account', staffAccounts: [ada.email] },
-        message: `${ada.email} is a Vento Real Estate staff account and can't join an organization. Use a different email.`,
+        // Neutral on purpose (audit L4): it never says the email is a staff account.
+        message: "This email can't be invited. Use a different email.",
       })
       expect(await tx.select().from(invitations).where(eq(invitations.email, ada.email))).toEqual(
         [],
@@ -82,8 +83,7 @@ describe('customer invitations to a staff email', () => {
       await expect(clientAs(tx, staff).client.invitations.accept({ token })).rejects.toMatchObject({
         code: 'CONFLICT',
         data: { reason: 'staff_account' },
-        message:
-          "This email belongs to a Vento Real Estate staff account, so it can't join Vento Homes Ltd. Ask Olumide Bankole to invite a different email.",
+        message: "This email can't be invited. Use a different email.",
       })
       await expect(
         anonymous.invitations.acceptAsNewUser({
@@ -108,12 +108,47 @@ describe('customer invitations to a staff email', () => {
     }))
 })
 
+describe('limits on "can\'t be invited" answers (audit L4)', () => {
+  it('gives an organization the generic wait after 5 in an hour', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx)
+      const ada = await createSuperAdmin(tx)
+      const { client } = clientAs(tx, org.owner, { activeOrganizationId: org.id, rateLimit: true })
+      const invite = () =>
+        client.invitations.create({
+          items: [{ email: ada.email, roleId: org.roleIds.get('sales') ?? '' }],
+          entityIds: null,
+        })
+      for (let i = 0; i < 5; i++) {
+        await expect(invite()).rejects.toMatchObject({ data: { reason: 'staff_account' } })
+      }
+      await expect(invite()).rejects.toMatchObject({ code: 'TOO_MANY_REQUESTS' })
+    }))
+})
+
 describe('the database keeps the kinds apart', () => {
   it('refuses a super-admin row for a customer account', () =>
     withRollback(async (tx) => {
       const customer = await createUser(tx)
       await expect(
         tx.insert(platformAdmins).values({ userId: customer.id, reason: 'test' }),
+      ).rejects.toMatchObject({ cause: { constraint: 'platform_admins_staff_only' } })
+    }))
+
+  it('refuses to reactivate a super-admin row of a customer account (audit L5)', () =>
+    withRollback(async (tx) => {
+      const customer = await createUser(tx)
+      // A pre-1b revoked row, built with the guards off for this transaction only.
+      await tx.execute(sql`set local session_replication_role = replica`)
+      await tx
+        .insert(platformAdmins)
+        .values({ userId: customer.id, reason: 'pre-1b', revokedAt: new Date() })
+      await tx.execute(sql`set local session_replication_role = origin`)
+      await expect(
+        tx
+          .update(platformAdmins)
+          .set({ revokedAt: null })
+          .where(eq(platformAdmins.userId, customer.id)),
       ).rejects.toMatchObject({ cause: { constraint: 'platform_admins_staff_only' } })
     }))
 

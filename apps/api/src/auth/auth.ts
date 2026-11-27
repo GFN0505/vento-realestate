@@ -24,7 +24,7 @@ import { logger } from '@/lib/logger'
 import { lookupPlace } from '@/lib/place'
 import { requestScope } from '@/lib/request-scope'
 import { type FeatureStore, liveFeatureStore } from '@/platform/feature-store'
-import { discardUnfinishedStaffAccounts, staffAccountState } from '@/platform/staff-accounts'
+import { discardIfUnfinished, staffAccountState } from '@/platform/staff-accounts'
 import { checkDevice } from './hooks/after-sign-in'
 import { onBackupCodesRegenerated, onPasswordChanged, onTwoStepDisabled } from './hooks/audit-hooks'
 import {
@@ -166,6 +166,23 @@ const PASSWORD_CHECKED_PATHS = new Set([
   '/two-factor/enable',
   '/two-factor/generate-backup-codes',
 ])
+
+/**
+ * A staff account setting two-step up again after a reset (audit M1): the new code proves only
+ * the new authenticator, which whoever holds the password just made. It isn't fresh proof, so the
+ * console asks "Confirm it's you" with a code instead of opening on it. A staff sign-up's first
+ * set-up (no reset) still counts. Read before the after-hook clears the flag.
+ */
+async function setUpAfterStaffReset(db: Db, path: string, userId: string): Promise<boolean> {
+  if (path !== '/two-factor/verify-totp' || requestScope().auth.twoStepMode !== 'setup') {
+    return false
+  }
+  const [row] = await db
+    .select({ accountKind: users.accountKind, after: users.twoStepSetupRequired })
+    .from(users)
+    .where(eq(users.id, userId))
+  return row?.accountKind === 'staff' && row.after
+}
 
 /** Active super-admin or joining: the only staff accounts that may sign in. */
 async function staffMaySignIn(db: Db, userId: string): Promise<boolean> {
@@ -370,9 +387,11 @@ export function createAuth(options: CreateAuthOptions) {
               : path === '/change-password'
                 ? (ctx?.context.session?.session ?? null)
                 : null
-            const secondFactorAt = SECOND_FACTOR_PATHS.has(path)
-              ? new Date(now)
-              : optionalDate(previous?.secondFactorAt)
+            const secondFactorAt =
+              SECOND_FACTOR_PATHS.has(path) &&
+              !(await setUpAfterStaffReset(db, path, session.userId))
+                ? new Date(now)
+                : optionalDate(previous?.secondFactorAt)
             return {
               data: {
                 ...session,
@@ -561,7 +580,7 @@ export function createAuth(options: CreateAuthOptions) {
             if (user.accountKind === 'staff' && !(await staffMaySignIn(db, user.id))) {
               await db.delete(sessions).where(eq(sessions.token, signedIn.session.token))
               ctx.context.setNewSession(null)
-              await db.transaction((tx) => discardUnfinishedStaffAccounts(tx))
+              await db.transaction((tx) => discardIfUnfinished(tx, user.id))
               const lockedUntil = email ? await onPasswordFailure(deps, email) : null
               if (lockedUntil) return lockedResponse(lockedUntil)
               return errorResponse(401, {

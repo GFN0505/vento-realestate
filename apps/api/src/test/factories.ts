@@ -385,7 +385,9 @@ export async function createStaffInvitation(
       email,
       name,
       reason: 'Joins the release rota',
-      invitedByUserId: options.invitedBy === undefined ? null : (options.invitedBy?.id ?? null),
+      invitedByUserId: options.invitedBy?.id ?? null,
+      // No inviter means the bootstrap invitation, as in real data.
+      bootstrap: !options.invitedBy,
       status: status === 'expired' ? 'pending' : status,
       tokenHash,
       expiresAt: new Date(status === 'expired' ? now - 60_000 : now + 48 * 60 * 60_000),

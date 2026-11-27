@@ -11,7 +11,7 @@ import { type ParsedEmail, parseEmails, toParsed } from './parse-emails'
 export type RowClash =
   | { kind: 'member' }
   | { kind: 'invited'; invitationId: string }
-  /** A Vento Real Estate staff account: it can't join any organization (decision 0023). */
+  /** An email that can't be invited (a staff account, decision 0023; shown neutrally, audit L4). */
   | { kind: 'staff' }
 
 export type InviteRow = ParsedEmail & {

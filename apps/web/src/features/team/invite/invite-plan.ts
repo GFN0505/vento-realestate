@@ -8,7 +8,8 @@ export function rowProblem(row: InviteRow, viewerEmail: string): string | null {
   if (row.clash?.kind === 'member') return 'Already a member'
   if (row.clash?.kind === 'invited') return 'Already invited'
   if (row.clash?.kind === 'staff') {
-    return "A Vento Real Estate staff account can't join an organization. Use a different email."
+    // Neutral on purpose (audit L4): an owner learns only that this email can't join.
+    return "This email can't be invited. Use a different email."
   }
   return null
 }

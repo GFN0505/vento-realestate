@@ -6,6 +6,7 @@ import { type EmailMessage, sendAll } from '@/email/mailer'
 import { errorSummary } from '@/lib/error-summary'
 import { badRequest } from '@/lib/errors'
 import { logger } from '@/lib/logger'
+import { requestScope } from '@/lib/request-scope'
 import { consoleWindow, os, superAdmin, superAdminAnyTwoStep } from '@/orpc'
 import {
   inviteSuperAdmin,
@@ -428,6 +429,8 @@ async function requestResetLink(
   context: Pick<BaseContext, 'auth' | 'requestId'>,
   email: string,
 ): Promise<void> {
+  // Admin-initiated, so the inbox's hourly cap doesn't apply (audit L7).
+  requestScope().auth.adminResetLink = true
   try {
     await context.auth.api.requestPasswordReset({
       body: { email, redirectTo: '/reset-password' },

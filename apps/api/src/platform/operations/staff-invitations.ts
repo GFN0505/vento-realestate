@@ -7,9 +7,10 @@ import {
   STAFF_INVITATIONS_OPEN_MAX,
 } from '@/auth/policy'
 import type { DbOrTx } from '@/db/client'
-import { platformAdmins, staffInvitations, users } from '@/db/schema'
+import { members, platformAdmins, staffInvitations, users } from '@/db/schema'
 import type { EmailMessage } from '@/email/mailer'
 import { staffInvitationEmail, superAdminsChangedEmail } from '@/email/templates/platform-notices'
+import { env } from '@/env'
 import { formatDate, formatTime } from '@/lib/format'
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
 import { type PlatformActor, recordPlatformAudit } from '../platform-audit'
@@ -18,6 +19,7 @@ import { SETUP_ACTOR } from '../seed-plans'
 import {
   discardStaffAccountOf,
   discardUnfinishedStaffAccounts,
+  discardUnverifiedCustomer,
   openInvitation,
 } from '../staff-accounts'
 import { activeSuperAdminCount, otherSuperAdmins } from '../super-admins'
@@ -60,19 +62,32 @@ async function openInvitationCount(db: DbOrTx, now: Date): Promise<number> {
 
 type Invitee = { email: string; name: string }
 
-/** The refusals shared by the preview and the invite, in the spec's order. */
-async function assertInvitable(
-  db: DbOrTx,
-  invitee: Invitee,
-  options: { bootstrap: boolean; now: Date },
-): Promise<void> {
+/**
+ * The email's own account: refused when it's a customer account or already a super-admin. An
+ * unverified customer sign-up with no membership doesn't count (audit L3). Shared by invite and
+ * resend, so a resend can't revive an invitation for someone who became either (audit L2).
+ */
+async function assertInviteeAccount(db: DbOrTx, email: string): Promise<void> {
   const [account] = await db
-    .select({ id: users.id, name: users.name, accountKind: users.accountKind })
+    .select({
+      id: users.id,
+      name: users.name,
+      accountKind: users.accountKind,
+      emailVerified: users.emailVerified,
+    })
     .from(users)
-    .where(eq(users.email, invitee.email))
+    .where(eq(users.email, email))
   if (account?.accountKind === 'customer') {
+    const [member] = account.emailVerified
+      ? [{ id: 'verified' }]
+      : await db
+          .select({ id: members.id })
+          .from(members)
+          .where(eq(members.userId, account.id))
+          .limit(1)
+    if (!member) return
     throw new PlatformError(
-      `${invitee.email} already has a Vento Real Estate customer account. Invite a different email, such as their @ventoerp.com address.`,
+      `${email} already has a Vento Real Estate customer account. Invite a different email, such as their @ventoerp.com address.`,
     )
   }
   if (account) {
@@ -82,6 +97,15 @@ async function assertInvitable(
       .where(and(eq(platformAdmins.userId, account.id), isNull(platformAdmins.revokedAt)))
     if (active) throw new PlatformError(`${account.name} is already a super-admin.`)
   }
+}
+
+/** The refusals shared by the preview and the invite, in the spec's order. */
+async function assertInvitable(
+  db: DbOrTx,
+  invitee: Invitee,
+  options: { bootstrap: boolean; now: Date },
+): Promise<void> {
+  await assertInviteeAccount(db, invitee.email)
   const [open] = await db
     .select({ id: staffInvitations.id, expiresAt: staffInvitations.expiresAt })
     .from(staffInvitations)
@@ -137,7 +161,12 @@ export async function previewInvite(
 export async function inviteSuperAdmin(
   db: DbOrTx,
   actor: StaffInvitationActor,
-  input: Invitee & { reason: string; operator: string | null },
+  input: Invitee & {
+    reason: string
+    operator: string | null
+    /** Bootstrap only: SECURITY_ALERT_EMAIL, told when the invitation is made. */
+    securityInbox?: string | null
+  },
   now = new Date(),
 ): Promise<StaffInvitationResult> {
   const bootstrap = actor === 'bootstrap'
@@ -148,19 +177,35 @@ export async function inviteSuperAdmin(
         "There's already a super-admin. Ask them to invite you from the console.",
       )
     }
+    const setup: PlatformActor = { ...SETUP_ACTOR, operator: input.operator }
     if (bootstrap) {
-      // A re-run replaces the open bootstrap invitation, whoever it was for.
+      // A re-run replaces the open bootstrap invitation, whoever it was for, on the record.
       const old = await tx
-        .select({ id: staffInvitations.id })
+        .select({
+          id: staffInvitations.id,
+          name: staffInvitations.name,
+          email: staffInvitations.email,
+        })
         .from(staffInvitations)
         .where(and(eq(staffInvitations.bootstrap, true), eq(staffInvitations.status, 'pending')))
-      for (const row of old) await discardStaffAccountOf(tx, row.id)
-      await tx
-        .update(staffInvitations)
-        .set({ status: 'withdrawn', respondedAt: now })
-        .where(and(eq(staffInvitations.bootstrap, true), eq(staffInvitations.status, 'pending')))
+      for (const row of old) {
+        await discardStaffAccountOf(tx, row.id)
+        await tx
+          .update(staffInvitations)
+          .set({ status: 'withdrawn', respondedAt: now, userId: null, startedAt: null })
+          .where(eq(staffInvitations.id, row.id))
+        await recordPlatformAudit(tx, {
+          actor: setup,
+          action: 'superadmin.invitation_withdrawn',
+          targetType: 'staff_invitation',
+          targetKey: row.id,
+          before: { name: row.name, email: row.email },
+          reason: 'Replaced by a new bootstrap invitation',
+        })
+      }
     }
     await discardUnfinishedStaffAccounts(tx, now)
+    await discardUnverifiedCustomer(tx, input.email)
     await assertInvitable(tx, input, { bootstrap, now })
     // A stale pending row would block the "one pending per email" index: store its expiry.
     await tx
@@ -173,7 +218,7 @@ export async function inviteSuperAdmin(
           lte(staffInvitations.expiresAt, now),
         ),
       )
-    const by: PlatformActor = bootstrap ? { ...SETUP_ACTOR, operator: input.operator } : actor
+    const by: PlatformActor = bootstrap ? setup : actor
     const { token, tokenHash } = newInvitationToken()
     const expiresAt = new Date(now.getTime() + STAFF_INVITATION_TTL_MS)
     const [row] = await tx
@@ -223,6 +268,19 @@ export async function inviteSuperAdmin(
       const others = await otherSuperAdmins(tx, by.userId ? [by.userId] : [])
       for (const o of others) emails.push({ to: o.email, tag: 'platform_notice', ...notice })
     }
+    // Nobody else can be told about a bootstrap invitation: the security inbox is (audit L8).
+    if (bootstrap && input.securityInbox) {
+      emails.push({
+        to: input.securityInbox,
+        tag: 'platform_notice',
+        ...superAdminsChangedEmail({
+          sentence: `A bootstrap invitation was made for ${input.name} (${input.email})`,
+          at: atText(now),
+          reason: input.reason,
+          activityUrl: webUrl('/console/activity'),
+        }),
+      })
+    }
     return { done, emails, ...(bootstrap && { link }) }
   })
 }
@@ -257,6 +315,9 @@ export async function resendStaffInvitation(
     if (!isOpenable(row)) {
       throw new PlatformError(`${row.name}'s invitation was already accepted or withdrawn.`)
     }
+    // Someone who became a customer or a super-admin since it was sent gets no fresh link.
+    await discardUnverifiedCustomer(tx, row.email)
+    await assertInviteeAccount(tx, row.email)
     if (row.lastSentAt.getTime() > now.getTime() - STAFF_INVITATION_RESEND_MS) {
       throw new PlatformError('Wait a minute before resending.')
     }
@@ -420,6 +481,21 @@ export async function completeStaffJoin(
       .from(users)
       .where(eq(users.id, userId))
     if (!invitation || person?.accountKind !== 'staff') return { joined: false, emails: [] }
+    // An invitation from someone removed since must not make a super-admin (review 2).
+    if (!invitation.bootstrap) {
+      const [inviter] = invitation.invitedByUserId
+        ? await tx
+            .select({ id: platformAdmins.id })
+            .from(platformAdmins)
+            .where(
+              and(
+                eq(platformAdmins.userId, invitation.invitedByUserId),
+                isNull(platformAdmins.revokedAt),
+              ),
+            )
+        : []
+      if (!inviter) return { joined: false, emails: [] }
+    }
     const [already] = await tx
       .select({ id: platformAdmins.id })
       .from(platformAdmins)
@@ -435,6 +511,17 @@ export async function completeStaffJoin(
       .update(staffInvitations)
       .set({ status: 'accepted', respondedAt: now })
       .where(eq(staffInvitations.id, invitation.id))
+    // Any other invitation to this email is spent: a resend can't bring it back (review 1).
+    await tx
+      .update(staffInvitations)
+      .set({ status: 'withdrawn', respondedAt: now, userId: null, startedAt: null })
+      .where(
+        and(
+          eq(staffInvitations.email, invitation.email),
+          sql`${staffInvitations.status} in ('pending', 'expired')`,
+          sql`${staffInvitations.id} <> ${invitation.id}`,
+        ),
+      )
     const actor: PlatformActor = { userId, name: person.name, channel: 'console', operator }
     await recordPlatformAudit(tx, {
       actor,
@@ -452,10 +539,14 @@ export async function completeStaffJoin(
       activityUrl: webUrl('/console/activity'),
     })
     const others = await otherSuperAdmins(tx, [userId])
-    return {
-      joined: true,
-      emails: others.map((o): EmailMessage => ({ to: o.email, tag: 'platform_notice', ...notice })),
+    const emails = others.map(
+      (o): EmailMessage => ({ to: o.email, tag: 'platform_notice', ...notice }),
+    )
+    // The first super-admin joining from a bootstrap link: the security inbox hears (audit L8).
+    if (invitation.bootstrap && env.SECURITY_ALERT_EMAIL) {
+      emails.push({ to: env.SECURITY_ALERT_EMAIL, tag: 'platform_notice', ...notice })
     }
+    return { joined: true, emails }
   })
 }
 
