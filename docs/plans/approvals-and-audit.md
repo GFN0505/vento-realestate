@@ -130,7 +130,7 @@ requestOrRun<K>(tx, ctx, key: K, input: { payload; subject; reason?: string }): 
 1. `plugin = registry[key]`. Call `plugin.describe(tx, payload)` → summary, `entityId`, amount.
 2. Load the organization's rules for `key` (one query), then `matchRule`. No rule → `plugin.execute(tx, ctx, payload, { approvedBy: [] })` → `{ ran: true }`.
 3. If the rule matched but **no reason** was given → `BAD_REQUEST reason_required` ("Tell the approver why."). The web always asks for one first (§7).
-4. Count eligible approvers for step 1. If there are none: `whenNoApprover === 'proceed'` → execute, and the action's audit event gets `metadata.noApprover = true`; `refuse` → `CONFLICT no_approver` with the spec's message.
+4. Check **every step** of the chain (after review; first this checked step 1 only): for every subset of steps there must be at least as many distinct eligible people as steps, so one person can't fill two steps. If a step has nobody: `whenNoApprover === 'proceed'` → execute, the action's audit event gets `metadata.noApprover = true`, and every other owner is emailed; `sole_owner` (make owner, owner invitations) → like `proceed` only when the maker is the only active owner, otherwise `CONFLICT no_approver`; `refuse` → `CONFLICT no_approver` with the spec's message.
 5. Insert the request and its step roles, store `excluded = plugin.excluded(...)`, set `expires_at = now() + 7 days`, record `approval.requested`, and queue the "approval needed" emails for step 1. The pending unique index turns a duplicate into `CONFLICT already_pending` with `{ requestId }`.
 
 `decide(ctx, input)` runs in one transaction:
@@ -383,7 +383,7 @@ If the console adds organization-side audit actions (for example "Vento viewed y
 ## 14. Plan questions (owner approved all recommendations, 26 Nov 2026)
 Each has a recommendation.
 
-1. **Role edits that need approval.** *Recommended:* **only edits to a role at least one person holds.** A role nobody holds changes nobody's access, so its edits (and creating roles) run at once. Assigning a role to someone stays instant (the 3c ceiling bounds it), as the spec left it.
+1. **Role edits that need approval.** *Recommended:* **only edits to a role at least one person holds.** A role nobody holds changes nobody's access, so its edits (and creating roles) run at once. Assigning a role to someone stays instant (the 3c ceiling bounds it), as the spec left it. **Confirmed after the security audit (owner, 27 Nov 2026).**
 2. **Owner invitations.** *Recommended:* **inviting someone as an owner goes through approval** (its own catalog action, covered by the "Make someone an owner" default rule). Otherwise the make-owner rule could be bypassed by inviting instead. The invitation is created and emailed only on approval.
 3. **Whose change it is when it runs.** *Recommended:* **the maker's.** The audit entry's actor is the maker, with the approvers listed. The maker must still be an active member with the permission when the last approval lands; if not, the request expires as stale.
 4. **Which rule changes email the other owners.** *Recommended:* **every create, edit and delete**, not just "loosening". A new company-specific rule can loosen an all-company one, so "looser" is hard to judge, and rule changes are rare.

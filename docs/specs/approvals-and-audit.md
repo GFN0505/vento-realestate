@@ -52,7 +52,7 @@ Olumide signs off on everything by phone call and WhatsApp. When Grace wants to 
 
 Money actions (receipt reversal, refund, price list, PO, payment out, manual journal, payroll…) bring their defaults with their modules, taken from the SetApprovalRules board.
 
-**When nobody else can approve** (a one-owner organization, or a company where only the maker approves): each catalog action declares what happens. Money actions are refused before anything is saved, with the reason and whom to ask (open question 4). Brick 4's two platform actions go ahead and their audit entry says "No one else could approve this".
+**When nobody else can approve** (a one-owner organization, or a company where only the maker approves): each catalog action declares what happens. Money actions are refused before anything is saved, with the reason and whom to ask (open question 4). Brick 4's role change goes ahead and its audit entry says "No one else could approve this"; owner actions (make or invite an owner) go ahead only for a sole owner and are refused while another owner exists (after the security audit). Any guarded change that goes ahead emails every other owner.
 
 **Status of a request:** `pending` → `approved` (all steps done; the action ran) · `rejected` (with the approver's comment) · `cancelled` (by the maker, or automatically when the maker leaves the organization) · `expired` (7 days without a decision, or the record changed so the request no longer applies; open question 5). One pending request per record and action: a second one is refused with a link to the first.
 
@@ -148,7 +148,7 @@ When a rule applies, the action's button opens **Send for approval**: one sheet 
 
 ## Behind the scenes
 - **Plug-in contract (`packages/shared` + `apps/api`).** A module registers each approvable action once:
-  - `key` (`access.role.update`, later `finance.receipt.reverse`…), `module` (for the Approve permission), `label`, `chip`, `hasAmount`, `irreversible`, `whenNoApprover: 'refuse' | 'proceed'`, `extraCondition` (text for the rules page), `approveLabel(summary)`, `defaultRules`;
+  - `key` (`access.role.update`, later `finance.receipt.reverse`…), `module` (for the Approve permission), `label`, `chip`, `hasAmount`, `irreversible`, `whenNoApprover: 'refuse' | 'proceed' | 'sole_owner'` (`sole_owner`, added after review: go ahead only when the maker is the organization's only owner), `extraCondition` (text for the rules page), `approveLabel(summary)`, `defaultRules`;
   - `payload`: a zod schema for what's stored (never secrets);
   - `describe(tx, payload)` → `{ title, recordLabel, recordLink, entityId | null, amount?: { value, currency, ngnValue }, changes: [{ field, before, after }] }`, computed once at request time;
   - `excluded(tx, payload)` → people who can't approve, each with a reason;

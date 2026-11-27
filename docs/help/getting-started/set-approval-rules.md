@@ -18,10 +18,13 @@ Two rules are ready for you: changing a role's permissions (an owner or admin ap
 Rules apply to new requests only. Requests already waiting keep the steps they started with.
 
 **Change or delete a rule**
-Click the rule, change it and click **Save rule**. To remove it, click **Delete rule** and confirm. The message has **Undo**. Every other owner is emailed when a rule is added, changed or deleted.
+Click the rule, change it and click **Save rule**. To remove it, click **Delete rule** and confirm. If someone else changed the rule since you opened it, you're asked to reopen it first. The message has **Undo**. Every other owner is emailed when a rule is added, changed or deleted.
 
 **Which rule applies**
 A rule for the request's own company beats an "all companies" rule. If several fit, the one with the highest amount that the request is over wins. Only one rule applies.
+
+**What a rule covers**
+The role rule covers changes to what a role can do (and its two-step setting) when someone already has that role. Giving someone a role is not covered: it stays instant, because nobody can give more access than they have themselves. Every such change is still in the audit log.
 
 **Always true**
 - The person who asks can't approve, even if their role allows it.
@@ -31,7 +34,9 @@ A rule for the request's own company beats an "all companies" rule. If several f
 A role can only approve in an area where it has **Approve** on its role page. Hover over the role to see why, then give it Approve first (**Settings → Roles & permissions**). Anyone whose role has Approve must use two-step sign-in. Land & legal, Project manager and Facility now do, and you'll see a banner with 7 days to set it up.
 
 **If you see "Nobody can approve step 2"**
-No one can approve that step in that company. Add a role, or give someone that role. For role changes and owner changes, if nobody else can approve, the change goes ahead and the audit log says "No one else could approve this".
+No one can approve that step in that company. Add a role, or give someone that role. Every step is checked when someone asks, and one person can't fill two steps.
+- A role change with a step nobody can take goes ahead, every other owner is emailed, and the audit log says "No one else could approve this".
+- Making someone an owner, or inviting one, is refused while another owner exists but none can approve. Only the organization's sole owner can go ahead alone.
 
 **Roles in rules**
 You can't delete a role that a rule uses: "Site manager approves in 2 rules. Change those rules first."

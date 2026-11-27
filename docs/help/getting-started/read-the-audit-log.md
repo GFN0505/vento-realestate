@@ -11,7 +11,7 @@ Owners and admins who can work in every company. Others won't see it in Settings
 3. Narrow it with **Module**, **Person**, **Company** and **Dates**. Pick a preset, or enter your own From and To (up to a year apart).
 4. Click a row to see every changed field, who approved it, where it was done from, and a link to the record.
 
-Each row shows when, who, what happened, and before → after ("Role: Sales → Finance"). Changes made by Vento Real Estate show "Vento Real Estate", and automatic jobs show "System". If we don't have a name for a field, the row says "Other details changed".
+Each row shows when, who, what happened, and before → after ("Role: Sales → Finance"). Changes made by Vento Real Estate show "Vento Real Estate" (its staff are never named), and automatic jobs show "System". If an admin who also belongs to another organization did something that was recorded here (like signing in), you'll see "An admin in another organization", without their device or address. The **Person** filter lists the people who appear in the log for the dates you chose, including people who have left. If we don't have a name for a field, the row says "Other details changed".
 
 The filters are in the address, so you can send the link to a colleague who can also read the log.
 
