@@ -1,6 +1,10 @@
+import { emptyPermissionSet } from '@vento/shared'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import {
+  approvalDecisions,
+  approvalRequests,
+  approvalRules,
   auditEvents,
   entities,
   invitations,
@@ -11,9 +15,11 @@ import {
   sessions,
   users,
 } from '@/db/schema'
+import { lagosIsoDate } from '@/lib/format'
+import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { recordDelivery } from '@/modules/invitations/delivery'
-import { withRollback } from './db'
+import { uniqueSuffix, withRollback } from './db'
 import {
   addAddOnRow,
   archiveEntityRow,
@@ -499,5 +505,101 @@ describe('Vento Real Estate console isolation', () => {
       ])
       expect(json).not.toContain('Only-In-B')
       expect(json).not.toContain(b.owner.email)
+    }))
+})
+
+describe('organization isolation: approvals and audit (brick 4)', () => {
+  it('answers not found for their requests, rules and audit entries, changing nothing', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      await seedDefaultRules(tx, mine.id, mine.ownerMemberId)
+      const theirs = await createOrganization(tx, { name: `Other Developer ${uniqueSuffix()}` })
+      await seedDefaultRules(tx, theirs.id, theirs.ownerMemberId)
+      await createMember(tx, theirs, { role: 'owner', name: 'Their Second Owner' })
+      const theirMaker = await createMember(tx, theirs, { role: 'admin', name: 'Their Admin' })
+      const theirRole = await createCustomRole(tx, theirs, { permissions: { projects: ['view'] } })
+      await createMember(tx, theirs, { role: 'viewer', roleId: theirRole.id })
+      const asked = await clientAs(tx, theirMaker.user).client.roles.update({
+        id: theirRole.id,
+        version: 1,
+        permissions: { ...emptyPermissionSet(), projects: ['view', 'create'] },
+        reason: 'Theirs',
+      })
+      if (asked.outcome?.ran !== false) throw new Error('expected a request')
+      const theirRequest = asked.outcome.requestId
+      const [theirRule] = await tx
+        .select()
+        .from(approvalRules)
+        .where(eq(approvalRules.organizationId, theirs.id))
+      const [theirEvent] = await tx
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.organizationId, theirs.id))
+      const { client } = clientAs(tx, mine.owner)
+      const attempts: [string, () => Promise<unknown>][] = [
+        ['approvals.get', () => client.approvals.get({ id: theirRequest })],
+        [
+          'approvals.decide',
+          () => client.approvals.decide({ requestId: theirRequest, decision: 'approve' }),
+        ],
+        ['approvals.cancel', () => client.approvals.cancel({ id: theirRequest })],
+        ['approvalRules.delete', () => client.approvalRules.delete({ id: theirRule?.id ?? '' })],
+        [
+          'approvalRules.update',
+          () =>
+            client.approvalRules.update({
+              id: theirRule?.id ?? '',
+              version: 1,
+              actionKey: 'access.role.update',
+              when: { kind: 'any' },
+              steps: [[mine.roleIds.get('owner') ?? '']],
+              entityIds: 'all',
+            }),
+        ],
+        ['audit.get', () => client.audit.get({ id: theirEvent?.id ?? '' })],
+      ]
+      for (const [name, attempt] of attempts) {
+        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      const [request] = await tx
+        .select()
+        .from(approvalRequests)
+        .where(eq(approvalRequests.id, theirRequest))
+      expect(request?.status).toBe('pending')
+      expect(
+        await tx
+          .select()
+          .from(approvalDecisions)
+          .where(eq(approvalDecisions.requestId, theirRequest)),
+      ).toEqual([])
+      expect(
+        await tx.select().from(approvalRules).where(eq(approvalRules.organizationId, theirs.id)),
+      ).toHaveLength(2)
+    }))
+
+  it("never lists, counts or previews another organization's approvals or audit", () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const theirs = await createOrganization(tx, { name: `Other Developer ${uniqueSuffix()}` })
+      await seedDefaultRules(tx, theirs.id, theirs.ownerMemberId)
+      const theirRole = await createCustomRole(tx, theirs, { permissions: { projects: ['view'] } })
+      await recordAudit(tx, {
+        organizationId: theirs.id,
+        action: 'role.updated',
+        actor: { userId: theirs.owner.id, name: 'Their Owner Person' },
+        target: { type: 'role', id: theirRole.id, label: 'Their engineer' },
+      })
+      const { client } = clientAs(tx, mine.owner)
+      const me = await client.account.me()
+      expect(me).toMatchObject({ approvalsWaiting: 0 })
+      expect((await client.approvalRules.list()).items.flatMap((g) => g.rules)).toEqual([])
+      const audit = await client.audit.list({ from: '2026-01-01', to: lagosIsoDate(new Date()) })
+      expect(JSON.stringify(audit)).not.toContain('Their Owner Person')
+      expect(
+        await client.approvals.preview({
+          actionKey: 'access.role.update',
+          subject: { type: 'role', id: theirRole.id },
+        }),
+      ).toEqual({ needed: false })
     }))
 })

@@ -7,25 +7,34 @@ import {
   PERMISSION_ACTIONS,
   PERMISSION_MODULES,
   type PermissionSet,
+  roleNeedsTwoStep,
   type SystemRoleKey,
   unmetPasswordRules,
 } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
 import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
-import { setActiveOrganization } from '@/access/context'
+import { loadMembership, type ServiceContext, setActiveOrganization } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
+import { decide } from '@/approvals/engine'
+import { approvalPlugins } from '@/approvals/registry'
 import { webUrl } from '@/auth/hooks/deps'
 import { INVITATION_TTL_MS } from '@/auth/policy'
 import { env } from '@/env'
 import { logger } from '@/lib/logger'
+import { runWithRequestScope } from '@/lib/request-scope'
+import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
+import { type AuditInput, recordAudit } from '@/modules/audit/audit.service'
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
+import { updateRole } from '@/modules/roles/roles.service'
 import { findPlanVersion } from '@/platform/operations/common'
 import { assignPlan } from '@/platform/operations/plans'
 import { setReleaseOverride } from '@/platform/operations/release'
 import { bootstrapStartingData, SETUP_ACTOR } from '@/platform/seed-plans'
+import { availabilityForOrganization } from '@/platform/snapshot'
 import { type DbOrTx, db, pool } from './client'
 import {
   accounts,
+  approvalRequests,
   auditEvents,
   entities,
   invitations,
@@ -83,7 +92,10 @@ const PEOPLE: Person[] = [
   { name: 'Grace Umeh', email: 'grace@ventohomes.ng', role: 'sales', activeDaysAgo: 0 },
   { name: 'Aisha Bello', email: 'aisha@ventohomes.ng', role: 'finance', activeDaysAgo: 2 },
   { name: 'Kemi Adebayo', email: 'kemi@ventohomes.ng', role: 'hr', activeDaysAgo: 14 },
-  { name: 'Ope Martins', email: 'ope@ventohomes.ng', role: 'facility', activeDaysAgo: null },
+  // An admin since brick 4, so a role change has a second approver besides the owner (plan
+  // question 6); Chinedu Eze took over the facility work.
+  { name: 'Ope Martins', email: 'ope@ventohomes.ng', role: 'admin', activeDaysAgo: 0 },
+  { name: 'Chinedu Eze', email: 'chinedu@ventohomes.ng', role: 'facility', activeDaysAgo: 4 },
   // Accountant in the designs; viewer until custom roles exist (owner's decision 12).
   { name: 'Tunde Ola', email: 'tunde@ventohomes.ng', role: 'viewer', activeDaysAgo: 6 },
   // An admin limited to Parkview: sees only Parkview's names on Team and manages only its people.
@@ -111,6 +123,8 @@ function siteEngineerPermissions(): PermissionSet {
   set.land = []
   set.sales = []
   set.documents = ['view', 'create']
+  // No Approve yet: the seeded approval request asks for it (brick 4).
+  set.projects = set.projects.filter((a) => a !== 'approve')
   return set
 }
 
@@ -184,6 +198,13 @@ async function upsertCustomRoles(tx: DbOrTx, organizationId: string): Promise<Ma
           .returning({ id: roles.id })
       )[0]?.id
     if (!id) throw new Error(`Role insert failed for ${role.name}`)
+    ids.set(role.name, id)
+    // A role saved in the app since (version above 1, e.g. an approved request) is left as it is.
+    const [current] = await tx
+      .select({ version: roles.version })
+      .from(roles)
+      .where(eq(roles.id, id))
+    if (existing && (current?.version ?? 1) > 1) continue
     if (existing) await tx.update(roles).set(values).where(eq(roles.id, id))
     await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, id))
     const set = role.permissions()
@@ -197,7 +218,6 @@ async function upsertCustomRoles(tx: DbOrTx, organizationId: string): Promise<Ma
         })),
       ),
     )
-    ids.set(role.name, id)
   }
   return ids
 }
@@ -494,8 +514,20 @@ async function seed() {
     })
     await upsertArchivedEntity(tx, organizationId, ownerId)
     await upsertDisplayPasskey(tx)
+    const [ownerMember] = await tx
+      .select({ id: members.id })
+      .from(members)
+      .where(
+        and(
+          eq(members.organizationId, organizationId),
+          eq(members.userId, ownerId),
+          eq(members.status, 'active'),
+        ),
+      )
+    if (ownerMember) await seedDefaultRules(tx, organizationId, ownerMember.id)
     return upsertInvitations(tx, organizationId, roleIds, ownerId)
   })
+  await seedApprovalsAndAudit()
 
   await bootstrapStartingData(db)
   await seedLekki(passwordHash)
@@ -574,6 +606,17 @@ async function seedLekki(passwordHash: string) {
         roleId: roleIds.get(person.role) ?? '',
       })
     }
+    const [bisi] = await tx
+      .select({ id: members.id })
+      .from(members)
+      .where(
+        and(
+          eq(members.organizationId, id),
+          eq(members.userId, bisiId ?? ''),
+          eq(members.status, 'active'),
+        ),
+      )
+    if (bisi) await seedDefaultRules(tx, id, bisi.id)
     await tx
       .update(organizations)
       .set({
@@ -611,6 +654,306 @@ async function seedLekki(passwordHash: string) {
       value: 'on',
       reason: 'Demo data',
     })
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Approvals and audit (brick 4, plan §10). Written once, through the real services, the first
+// time the organization has no approval requests: decided ones fill Decided and My requests, one
+// waits for Olumide, and about forty audit events over the last 7 days make the log read like the
+// board.
+
+/** The service context of a seeded person in Vento Homes Ltd, as the middleware would build it. */
+async function contextAs(email: string, organizationId: string): Promise<ServiceContext> {
+  const [user] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.email, email))
+  if (!user) throw new Error(`Seed person missing: ${email}`)
+  const membership = await loadMembership(db, user.id, organizationId)
+  if (membership?.organizationId !== organizationId) throw new Error(`Not a member: ${email}`)
+  return {
+    db,
+    organizationId,
+    organizationName: membership.organizationName,
+    user,
+    member: membership.member,
+    sessionId: null,
+    features: await availabilityForOrganization(db, organizationId),
+  }
+}
+
+async function seedApprovalsAndAudit(): Promise<void> {
+  const [org] = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.name, ORGANIZATION))
+  if (!org) return
+  const [any] = await db
+    .select({ id: approvalRequests.id })
+    .from(approvalRequests)
+    .where(eq(approvalRequests.organizationId, org.id))
+    .limit(1)
+  if (any) return
+  await seedAuditHistory(org.id)
+  const ope = await contextAs('ope@ventohomes.ng', org.id)
+  const olumide = await contextAs('olumide@ventohomes.ng', org.id)
+  const [role] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(
+      and(
+        eq(roles.organizationId, org.id),
+        eq(roles.name, 'Site engineer'),
+        isNull(roles.archivedAt),
+      ),
+    )
+  if (!role) return
+  const plugins = approvalPlugins()
+  const ask = async (change: (p: PermissionSet) => PermissionSet, reason: string) => {
+    const [current] = await db
+      .select({ version: roles.version })
+      .from(roles)
+      .where(eq(roles.id, role.id))
+    const perms = await db
+      .select({ module: rolePermissions.module, action: rolePermissions.action })
+      .from(rolePermissions)
+      .where(eq(rolePermissions.roleId, role.id))
+    const set = normalisePermissions(
+      Object.fromEntries(
+        PERMISSION_MODULES.map((m) => [
+          m,
+          perms.filter((p) => p.module === m).map((p) => p.action),
+        ]),
+      ),
+    )
+    const sent = await updateRole(ope, {
+      id: role.id,
+      version: current?.version ?? 1,
+      permissions: normalisePermissions(change(set)),
+      // Approve anywhere needs two-step (decision 0024); the other changes don't touch it.
+      requiresTwoStep: roleNeedsTwoStep(normalisePermissions(change(set))) || undefined,
+      reason,
+    })
+    if (sent.outcome.ran) throw new Error('Seed: expected the Site engineer change to wait')
+    return sent.outcome.requestId
+  }
+  // Approved: documents edit, so Decided and My requests aren't empty.
+  const approved = await ask(
+    (p) => ({ ...p, documents: ['view', 'create', 'edit'] }),
+    'Site engineers update drawings on site',
+  )
+  await decide(olumide, { requestId: approved, decision: 'approve', comment: 'Fine' }, plugins)
+  // Rejected, with the comment Ope sees.
+  const rejected = await ask(
+    (p) => ({ ...p, finance: ['view'] }),
+    'So they can see the cement budget',
+  )
+  await decide(
+    olumide,
+    {
+      requestId: rejected,
+      decision: 'reject',
+      comment: "Site engineers don't need Finance. Kunle shares the budget.",
+    },
+    plugins,
+  )
+  // Waiting for Olumide (J-EXE-02).
+  await ask(
+    (p) => ({ ...p, projects: [...p.projects, 'approve'] }),
+    'Halima signs off site POs now',
+  )
+}
+
+type HistoryEvent = Omit<AuditInput, 'organizationId' | 'at'> & {
+  daysAgo: number
+  hour: number
+  device?: string
+  ip?: string
+}
+
+/** One person's sign-in on a phone or laptop, from Lagos. */
+const signIn = (
+  actor: AuditInput['actor'],
+  daysAgo: number,
+  hour: number,
+  device: string,
+  ip: string,
+): HistoryEvent => ({
+  action: 'auth.signed_in',
+  actor,
+  target: { type: 'user', id: actor.userId },
+  daysAgo,
+  hour,
+  device,
+  ip,
+})
+
+async function seedAuditHistory(organizationId: string): Promise<void> {
+  const byEmail = new Map(
+    (await db.select({ id: users.id, email: users.email, name: users.name }).from(users)).map(
+      (u) => [u.email, u],
+    ),
+  )
+  const person = (email: string) => {
+    const u = byEmail.get(email)
+    return { userId: u?.id ?? null, name: u?.name ?? email }
+  }
+  const [parkview] = await db
+    .select({ id: entities.id, name: entities.name })
+    .from(entities)
+    .where(and(eq(entities.organizationId, organizationId), eq(entities.rcNumber, 'RC 1789234')))
+  const [auditor] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(and(eq(roles.organizationId, organizationId), eq(roles.name, 'Auditor')))
+  const regulars = ['olumide', 'aisha', 'grace', 'ope', 'funmi'].map((n) => ({
+    email: `${n}@ventohomes.ng`,
+  }))
+  const devices = ['Chrome on Mac', 'Safari on iPhone', 'Chrome on Android', 'Edge on Windows']
+  const ips = ['102.89.34.x', '105.112.18.x', '197.210.54.x', '102.67.21.x']
+  const events: HistoryEvent[] = []
+  for (let day = 6; day >= 0; day--) {
+    for (const [i, p] of regulars.entries()) {
+      if ((day + i) % 2 === 0 || i === 0) {
+        const slot = (day + i) % 4
+        events.push(signIn(person(p.email), day, 8 + i, devices[slot] ?? '', ips[slot] ?? ''))
+      }
+    }
+  }
+  const olumide = person('olumide@ventohomes.ng')
+  const aisha = person('aisha@ventohomes.ng')
+  const grace = person('grace@ventohomes.ng')
+  events.push(
+    {
+      action: 'auth.sign_in_failed',
+      actor: grace,
+      target: { type: 'user', id: grace.userId },
+      daysAgo: 5,
+      hour: 7,
+      device: 'Safari on iPhone',
+      ip: '197.210.54.x',
+    },
+    {
+      action: 'auth.sign_in_failed',
+      actor: grace,
+      target: { type: 'user', id: grace.userId },
+      daysAgo: 5,
+      hour: 7,
+      device: 'Safari on iPhone',
+      ip: '197.210.54.x',
+    },
+    {
+      action: 'two_step.enabled',
+      actor: aisha,
+      target: { type: 'user', id: aisha.userId },
+      daysAgo: 6,
+      hour: 10,
+    },
+    {
+      action: 'passkey.added',
+      actor: aisha,
+      target: { type: 'user', id: aisha.userId, label: 'iCloud Keychain · iPhone' },
+      daysAgo: 6,
+      hour: 10,
+      device: 'Safari on iPhone',
+    },
+    {
+      action: 'member.access_changed',
+      actor: olumide,
+      target: { type: 'member', label: 'Aisha Bello' },
+      before: { role: 'Sales', entities: 'all' },
+      after: { role: 'Finance', entities: 'all' },
+      daysAgo: 4,
+      hour: 14,
+    },
+    {
+      action: 'member.access_changed',
+      actor: olumide,
+      target: { type: 'member', label: 'Funmi Akande' },
+      before: { role: 'Admin', entities: 'all' },
+      after: { role: 'Admin', entities: [parkview?.name ?? 'Parkview Residences SPV Ltd'] },
+      daysAgo: 4,
+      hour: 14,
+    },
+    {
+      action: 'invitation.sent',
+      actor: olumide,
+      target: { type: 'invitation', label: 'chidi.okafor@ventohomes.ng' },
+      after: { email: 'chidi.okafor@ventohomes.ng', role: 'Finance', entities: 'all' },
+      daysAgo: 3,
+      hour: 9,
+    },
+    {
+      action: 'entity.updated',
+      actor: aisha,
+      target: { type: 'entity', id: parkview?.id, label: parkview?.name },
+      before: { tin: null },
+      after: { tin: '1789234-0001' },
+      metadata: { entityId: parkview?.id },
+      daysAgo: 3,
+      hour: 11,
+    },
+    {
+      action: 'organization.updated',
+      actor: olumide,
+      target: { type: 'organization', id: organizationId, label: ORGANIZATION },
+      before: { financialYearStartMonth: 4 },
+      after: { financialYearStartMonth: 1 },
+      daysAgo: 2,
+      hour: 16,
+    },
+    {
+      action: 'role.updated',
+      actor: olumide,
+      target: { type: 'role', id: auditor?.id, label: 'Auditor' },
+      before: { description: 'Read-only' },
+      after: { description: 'Based on Viewer' },
+      daysAgo: 2,
+      hour: 16,
+    },
+    {
+      action: 'session.revoked',
+      actor: grace,
+      target: { type: 'session', label: 'Chrome on Android' },
+      daysAgo: 1,
+      hour: 18,
+      device: 'Safari on iPhone',
+    },
+    {
+      action: 'account.password_changed',
+      actor: grace,
+      target: { type: 'user', id: grace.userId },
+      daysAgo: 1,
+      hour: 18,
+      device: 'Safari on iPhone',
+    },
+    {
+      action: 'two_step.backup_codes_regenerated',
+      actor: olumide,
+      target: { type: 'user', id: olumide.userId },
+      daysAgo: 0,
+      hour: 9,
+    },
+  )
+  const now = Date.now()
+  for (const e of events) {
+    const at = new Date(now - e.daysAgo * 86_400_000)
+    // Lagos hours (UTC+1), on that day.
+    at.setUTCHours(e.hour - 1, (e.hour * 7) % 60, 0, 0)
+    if (at.getTime() > now) at.setTime(now - 60_000)
+    const { daysAgo: _d, hour: _h, device, ip, ...input } = e
+    await runWithRequestScope(
+      {
+        requestId: 'seed',
+        ip: null,
+        ipMasked: ip ?? '102.89.34.x',
+        userAgent: null,
+        userAgentSummary: device ?? 'Chrome on Mac',
+        auth: {},
+      },
+      () => recordAudit(db, { ...input, organizationId, at }),
+    )
   }
 }
 

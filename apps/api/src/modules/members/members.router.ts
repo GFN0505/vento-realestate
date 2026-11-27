@@ -12,7 +12,7 @@ export const membersRouter = {
     .use(requirePermission('settings', 'edit', "change people's access"))
     .handler(async ({ context, input }) => {
       const { emails, ...result } = await updateMemberAccess(serviceContext(context), input)
-      // "X is now an owner" to every owner, after commit.
+      // "X is now an owner" to every owner, or "Approval needed" to the approvers, after commit.
       await sendAll(context.mailer, emails)
       return result
     }),

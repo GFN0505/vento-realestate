@@ -1,4 +1,5 @@
 export * from './access'
+export * from './approvals'
 export * from './audit'
 export * from './auth'
 export * from './auth-security'

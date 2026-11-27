@@ -6,6 +6,7 @@ import { money } from '../common/money'
 import { currency, id, paginated, paginationInput } from '../common/schemas'
 import { APPROVAL_ACTION_KEYS, APPROVAL_ACTIONS, type ApprovalActionKey } from './catalog'
 import { APPROVAL_COPY } from './copy'
+import { APPROVAL_TEXT_MAX } from './outcome'
 
 const datetime = z.iso.datetime()
 
@@ -13,7 +14,6 @@ export const approvalActionKey = z.enum(APPROVAL_ACTION_KEYS)
 
 export const MAX_APPROVAL_STEPS = 3
 export const MAX_ROLES_PER_STEP = 9
-export const APPROVAL_TEXT_MAX = 500
 
 /** `pending → approved | rejected | cancelled | expired`. */
 export const approvalStatus = z.enum(['pending', 'approved', 'rejected', 'cancelled', 'expired'])
@@ -290,6 +290,11 @@ export const decideInput = z
   .strictObject({
     requestId: id,
     decision: approvalDecision,
+    /**
+     * The step the viewer was looking at. When it was decided meanwhile, CONFLICT
+     * `approval_decided` ("Aisha Bello approved this a moment ago.") instead of deciding the next.
+     */
+    step: z.number().int().min(1).max(MAX_APPROVAL_STEPS).optional(),
     comment: z
       .string()
       .trim()
@@ -308,23 +313,6 @@ export const decideOutput = z.object({
   /** The last step was approved and the action ran. */
   ran: z.boolean(),
 })
-
-/**
- * The maker's **Why?**, sent with a guarded action. Optional in each module's input: the service
- * asks for it (BAD_REQUEST `reason_required`) only when a rule applies.
- */
-export const approvalReason = z
-  .string()
-  .trim()
-  .min(1, { message: APPROVAL_COPY.reasonRequired })
-  .max(APPROVAL_TEXT_MAX, { message: `Keep it under ${APPROVAL_TEXT_MAX} characters` })
-
-/** What a guarded action's mutation returns: it ran, or a request now waits. */
-export const requestOutcome = z.discriminatedUnion('ran', [
-  z.object({ ran: z.literal(true), notice: z.string() }),
-  z.object({ ran: z.literal(false), requestId: id, notice: z.string() }),
-])
-export type RequestOutcome = z.infer<typeof requestOutcome>
 
 /** The record a guarded action works on (`role` + id, `member` + id). */
 export const approvalSubject = z.strictObject({
@@ -358,14 +346,3 @@ export const previewApprovalOutput = z.discriminatedUnion('needed', [
   }),
 ])
 export type PreviewApprovalOutput = z.infer<typeof previewApprovalOutput>
-
-/** The record's "Waiting for approval" status, embedded by modules that guard an action. */
-export const pendingApproval = z.object({
-  requestId: id,
-  /** "Finance", "an owner or admin". */
-  waitingFor: z.string(),
-  requestedAt: datetime,
-  /** The viewer made it, so **Cancel request** shows. */
-  isOwn: z.boolean(),
-})
-export type PendingApproval = z.infer<typeof pendingApproval>

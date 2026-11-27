@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { entityRef } from '../access/schema'
 import { roleRef } from '../account/schema'
+import { pendingApproval } from '../approvals/outcome'
 import { id, paginated, paginationInput } from '../common/schemas'
 
 const datetime = z.iso.datetime()
@@ -94,6 +95,8 @@ export const teamMemberRow = z.object({
     remove: z.boolean(),
   }),
   readOnly,
+  /** Making them an owner waits for approval ("Owner · waiting for approval"); null if not. */
+  pendingApproval: pendingApproval.nullable().optional(),
 })
 export type TeamMemberRow = z.infer<typeof teamMemberRow>
 

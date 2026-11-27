@@ -236,7 +236,7 @@ describe('roles: saving', () => {
         code: 'BAD_REQUEST',
         data: { reason: 'role_needs_two_step' },
         message:
-          "This role needs two-step sign-in because it can manage money, payroll or people's access.",
+          "This role needs two-step sign-in because it can manage money, payroll or people's access, or approve anything.",
       })
       const saved = await updateRole(ctx, {
         id: role.id,

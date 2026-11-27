@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { approvalRuleInput, decideInput, requestOutcome, updateApprovalRuleInput } from './schema'
+import { requestOutcome } from './outcome'
+import { approvalRuleInput, decideInput, updateApprovalRuleInput } from './schema'
 
 const ROLE_A = '01900000-0000-7000-8000-00000000000a'
 const ROLE_B = '01900000-0000-7000-8000-00000000000b'

@@ -113,6 +113,20 @@
       "when": 1795742657909,
       "tag": "0015_platform_admins_staff_update",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795798733007,
+      "tag": "0016_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795798742522,
+      "tag": "0017_approvals_guards",
+      "breakpoints": true
     }
   ]
 }

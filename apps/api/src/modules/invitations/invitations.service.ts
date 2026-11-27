@@ -31,6 +31,8 @@ import {
 import { newOwnerAlerts } from '@/access/new-owner-alerts'
 import { memberTwoStepGate } from '@/access/two-step-gate'
 import { firstOwner } from '@/access/who-can-grant'
+import { requestOrRun } from '@/approvals/engine'
+import { approvalMetadata, type ExecuteMeta, RAN_AT_ONCE } from '@/approvals/plugin'
 import { webUrl } from '@/auth/hooks/deps'
 import { checkPasswordPolicy } from '@/auth/password-policy'
 import { INVITATION_RESEND_INTERVAL_MS, INVITATION_TTL_MS } from '@/auth/policy'
@@ -56,6 +58,7 @@ import { loadRoles, lockAssignableRoles, onArchivedRole } from '@/modules/roles/
 import { invitationRowsById } from '@/modules/team/team.service'
 import { assertWithinLimit } from '@/platform/limits'
 import { staffEmails } from '@/platform/staff-accounts'
+import { ownerInvitationPlugin } from './approvals'
 import { hashInvitationToken, newInvitationToken } from './invitation-token'
 
 type InvitationRow = typeof invitations.$inferSelect
@@ -200,7 +203,69 @@ async function assertNotStaffEmail(db: DbOrTx, row: InvitationRow): Promise<void
   throw conflict('staff_account', CANNOT_INVITE)
 }
 
-/** Up to 20 at once, all or nothing. Emails go out after commit (the router sends them). */
+type Inserted = { row: InvitationRow; message: EmailMessage }
+
+/** One invitation, its companies and its audit event. The caller has checked everything. */
+async function insertInvitation(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  input: { email: string; roleId: string; limitEntities: { id: string }[]; now: Date },
+  meta: ExecuteMeta,
+): Promise<Inserted> {
+  const { token, tokenHash } = newInvitationToken()
+  const [row] = await alreadyInvitedOnRace(
+    input.email,
+    onArchivedRole(
+      tx
+        .insert(invitations)
+        .values({
+          organizationId: ctx.organizationId,
+          email: input.email,
+          roleId: input.roleId,
+          invitedByUserId: ctx.user.id,
+          tokenHash,
+          expiresAt: new Date(input.now.getTime() + INVITATION_TTL_MS),
+          lastSentAt: input.now,
+          delivery: 'queued',
+          deliveryChangedAt: input.now,
+        })
+        .returning(),
+    ),
+  )
+  if (!row) throw new Error('Invitation insert returned nothing')
+  if (input.limitEntities.length) {
+    await tx.insert(invitationEntityLimits).values(
+      input.limitEntities.map((e) => ({
+        organizationId: ctx.organizationId,
+        invitationId: row.id,
+        entityId: e.id,
+      })),
+    )
+  }
+  const d = await details(tx, row)
+  await recordAudit(tx, {
+    organizationId: ctx.organizationId,
+    action: 'invitation.sent',
+    actor: actorOf(ctx),
+    target: { type: 'invitation', id: row.id, label: row.email },
+    after: {
+      email: row.email,
+      role: d.roleName,
+      entities: d.entities,
+      expiresAt: row.expiresAt.toISOString(),
+    },
+    ...(meta.approvalRequestId !== null || meta.noApprover
+      ? { metadata: approvalMetadata(meta) }
+      : {}),
+  })
+  return { row, message: invitationMessage(row, token, d, ctx.user) }
+}
+
+/**
+ * Up to 20 at once, all or nothing. Emails go out after commit (the router sends them). Owner
+ * invitations go through the approvals engine (plan question 2): one request each, and the
+ * invitation is created only when it's approved.
+ */
 export async function createInvitations(
   ctx: ServiceContext,
   input: z.output<typeof createInvitationsInput>,
@@ -208,6 +273,7 @@ export async function createInvitations(
   sent: number
   notice: string
   invitations: TeamInvitationRow[]
+  requested: { email: string; requestId: string }[]
   emails: EmailMessage[]
   sentAt: Date
 }> {
@@ -264,7 +330,8 @@ export async function createInvitations(
         live.map(({ email, id }) => ({ email, id })),
       )
     }
-    // Members plus live invitations count against the plan; expired ones don't.
+    // Members plus live invitations count against the plan; expired ones don't. Owner
+    // invitations waiting for approval count too, so approving one never goes over.
     await assertWithinLimit(tx, inviter, 'members', input.items.length)
     // Expired-but-pending rows would block the "one pending per email" index: mark them first.
     if (pending.length) {
@@ -279,66 +346,134 @@ export async function createInvitations(
         )
     }
 
+    const ownerRoleIds = new Set(roleRows.filter((r) => r.key === 'owner').map((r) => r.id))
     const messages: EmailMessage[] = []
     const ids: string[] = []
+    const requested: { email: string; requestId: string }[] = []
+    const approvalEmails: EmailMessage[] = []
     for (const item of input.items) {
-      const { token, tokenHash } = newInvitationToken()
-      const [row] = await alreadyInvitedOnRace(
-        item.email,
-        onArchivedRole(
-          tx
-            .insert(invitations)
-            .values({
-              organizationId: ctx.organizationId,
-              email: item.email,
-              roleId: item.roleId,
-              invitedByUserId: ctx.user.id,
-              tokenHash,
-              expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
-              lastSentAt: now,
-              delivery: 'queued',
-              deliveryChangedAt: now,
-            })
-            .returning(),
-        ),
-      )
-      if (!row) throw new Error('Invitation insert returned nothing')
-      if (limitEntities.length) {
-        await tx.insert(invitationEntityLimits).values(
-          limitEntities.map((e) => ({
-            organizationId: ctx.organizationId,
-            invitationId: row.id,
-            entityId: e.id,
-          })),
+      if (!ownerRoleIds.has(item.roleId)) {
+        const { row, message } = await insertInvitation(
+          tx,
+          inviter,
+          { ...item, limitEntities, now },
+          RAN_AT_ONCE,
         )
+        messages.push(message)
+        ids.push(row.id)
+        continue
       }
-      const d = await details(tx, row)
-      await recordAudit(tx, {
-        organizationId: ctx.organizationId,
-        action: 'invitation.sent',
-        actor: actorOf(ctx),
-        target: { type: 'invitation', id: row.id, label: row.email },
-        after: {
-          email: row.email,
-          role: d.roleName,
-          entities: d.entities,
-          expiresAt: row.expiresAt.toISOString(),
-        },
+      const out = await requestOrRun(tx, inviter, ownerInvitationPlugin, {
+        payload: { email: item.email, roleId: item.roleId, entityIds: input.entityIds },
+        reason: input.reason,
       })
-      messages.push(invitationMessage(row, token, d, ctx.user))
-      ids.push(row.id)
+      if (out.ran) {
+        messages.push(out.result.message)
+        ids.push(out.result.invitationId)
+      } else {
+        requested.push({ email: item.email, requestId: out.requestId })
+        approvalEmails.push(...out.emails)
+      }
     }
-    return { messages, ids }
+    return { messages, ids, requested, approvalEmails }
   })
-  const n = input.items.length
   return {
-    sent: n,
-    notice:
-      n === 1 ? `Invitation sent to ${input.items[0]?.email}` : `Invitations sent to ${n} people`,
+    sent: created.ids.length,
+    notice: invitationsNotice(
+      input.items.filter((i) => !created.requested.some((r) => r.email === i.email)),
+      created.requested,
+    ),
     invitations: await invitationRowsById(ctx, created.ids),
-    emails: created.messages,
+    requested: created.requested,
+    emails: [...created.messages, ...created.approvalEmails],
     sentAt: now,
   }
+}
+
+/** "Invitation sent to …" and, for owner invitations, that they wait for approval. */
+function invitationsNotice(
+  sent: readonly { email: string }[],
+  requested: readonly { email: string }[],
+): string {
+  const parts: string[] = []
+  if (sent.length === 1) parts.push(`Invitation sent to ${sent[0]?.email}`)
+  else if (sent.length > 1) parts.push(`Invitations sent to ${sent.length} people`)
+  if (requested.length === 1) {
+    parts.push(`The owner invitation to ${requested[0]?.email} waits for approval`)
+  } else if (requested.length > 1) {
+    parts.push(`${requested.length} owner invitations wait for approval`)
+  }
+  return parts.join('. ')
+}
+
+export type OwnerInvitationPayload = { email: string; roleId: string; entityIds: string[] | null }
+
+/**
+ * The approved owner invitation: created and sent now, so none existed while it waited, and its 7
+ * days start at approval. Everything is checked again as the maker is now; a clash since then
+ * (they joined, someone invited them, the maker is no longer an owner) makes the request stale.
+ */
+export async function createApprovedOwnerInvitation(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  p: OwnerInvitationPayload,
+  meta: ExecuteMeta,
+): Promise<{ invitationId: string; message: EmailMessage; sentAt: Date; notice: string }> {
+  const now = new Date()
+  const inviter = await lockViewer(tx, ctx)
+  const pending = await tx
+    .select({ id: invitations.id, expiresAt: invitations.expiresAt })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.organizationId, ctx.organizationId),
+        eq(invitations.status, 'pending'),
+        eq(invitations.email, p.email),
+      ),
+    )
+    .for('update')
+  const [role] = await lockAssignableRoles(tx, ctx.organizationId, [p.roleId])
+  if (role?.key !== 'owner' || inviter.member.roleKey !== 'owner') {
+    throw forbidden('owner_only', 'Only owners can invite someone as an owner.')
+  }
+  if (widerThan(viewerOf(inviter), role.permissions)) {
+    throw forbidden('wider_permissions', GRANT_CEILING_MESSAGE)
+  }
+  const limitEntities = await assertGrantableEntities(tx, inviter, p.entityIds)
+  if ((await staffEmails(tx, [p.email])).length) throw staffAccountsError([p.email])
+  const [joined] = await tx
+    .select({ id: members.id })
+    .from(members)
+    .innerJoin(users, eq(users.id, members.userId))
+    .where(
+      and(
+        eq(members.organizationId, ctx.organizationId),
+        eq(members.status, 'active'),
+        eq(users.email, p.email),
+      ),
+    )
+  if (joined) throw clashError(ctx, [p.email], [])
+  const live = pending.find((row) => row.expiresAt > now)
+  if (live) throw clashError(ctx, [], [{ email: p.email, id: live.id }])
+  await assertWithinLimit(tx, inviter, 'members', 1)
+  if (pending.length) {
+    await tx
+      .update(invitations)
+      .set({ status: 'expired' })
+      .where(
+        inArray(
+          invitations.id,
+          pending.map((row) => row.id),
+        ),
+      )
+  }
+  const { row, message } = await insertInvitation(
+    tx,
+    inviter,
+    { email: p.email, roleId: p.roleId, limitEntities, now },
+    meta,
+  )
+  return { invitationId: row.id, message, sentAt: now, notice: `Invitation sent to ${p.email}` }
 }
 
 function alreadyInvited(email: string) {

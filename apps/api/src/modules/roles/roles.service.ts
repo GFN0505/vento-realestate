@@ -7,9 +7,11 @@ import {
   PERMISSION_MODULES,
   type PermissionSet,
   permissionChanges,
+  type RequestOutcome,
   type Role,
   type RoleDetail,
   type RoleList,
+  roleInRuleMessage,
   roleNeedsTwoStep,
   SYSTEM_ROLE_KEYS,
   type SystemRoleKey,
@@ -33,8 +35,18 @@ import {
   roleRights,
 } from '@/access/role-refusals'
 import { firstOwner, whoCanGrant } from '@/access/who-can-grant'
+import { requestOrRun } from '@/approvals/engine'
+import { StaleError } from '@/approvals/errors'
+import { pendingApprovals } from '@/approvals/pending'
+import {
+  approvalMetadata,
+  type ExecuteMeta,
+  type ExecuteResult,
+  RAN_AT_ONCE,
+} from '@/approvals/plugin'
 import type { DbOrTx } from '@/db/client'
 import { auditEvents, rolePermissions, roles } from '@/db/schema'
+import type { EmailMessage } from '@/email/mailer'
 import {
   badRequest,
   conflict,
@@ -45,6 +57,7 @@ import {
 } from '@/lib/errors'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { lockOrganization } from '@/modules/organization/organization.service'
+import { type RoleUpdatePayload, roleIsHeld, roleUpdatePlugin } from './approvals'
 
 /** A role and what it can do, without the viewer-specific flags. */
 export type RoleRecord = Omit<Role, 'memberCount' | 'invitedCount' | 'can' | 'readOnly'>
@@ -207,7 +220,12 @@ export async function listRoles(ctx: ServiceContext): Promise<RoleList> {
 /** The role page: the role plus the organization's "Require two-step for everyone". */
 export async function getRoleDetail(ctx: ServiceContext, id: string): Promise<RoleDetail> {
   const role = await getRole(ctx, id)
-  return { ...role, requiredForEveryone: ctx.member.organizationTwoStep.required }
+  const pending = await pendingApprovals(ctx.db, ctx, 'access.role.update', 'role', [id])
+  return {
+    ...role,
+    requiredForEveryone: ctx.member.organizationTwoStep.required,
+    pendingApproval: pending.get(id) ?? null,
+  }
 }
 
 export async function getRole(ctx: ServiceContext, id: string, db: DbOrTx = ctx.db) {
@@ -355,17 +373,20 @@ async function lastChangedBy(tx: DbOrTx, ctx: ServiceContext, roleId: string): P
 }
 
 const TWO_STEP_REQUIRED =
-  "This role needs two-step sign-in because it can manage money, payroll or people's access."
+  "This role needs two-step sign-in because it can manage money, payroll or people's access, or approve anything."
+
+type RoleSave = { notice: string; role: Role; outcome: RequestOutcome; emails: EmailMessage[] }
 
 /**
  * Saves a custom role: only changed fields, permissions replaced, version bumped. The version
  * sent must be the one in the database, so two people editing at once can't overwrite each
- * other. Undo is this call again with the old values and the new version.
+ * other. Undo is this call again with the old values and the new version. A change to what a role
+ * others hold can do goes through the approvals engine (decision 0024): it may wait for approval.
  */
 export async function updateRole(
   ctx: ServiceContext,
   input: z.output<typeof updateRoleInput>,
-): Promise<{ notice: string; role: Role }> {
+): Promise<RoleSave> {
   return ctx.db.transaction(async (tx) => {
     // Serialises role saves, so two editors locking each other's roles can't deadlock.
     await lockOrganization(tx, ctx.organizationId)
@@ -373,85 +394,146 @@ export async function updateRole(
     const [current] = await loadRoles(tx, live.organizationId, [input.id], { lock: 'update' })
     if (!current) throw notFound()
     await refuse(tx, live, current, 'edit')
-    const next = {
+    const next: RoleUpdatePayload = {
+      roleId: current.id,
+      version: input.version,
       name: input.name ?? current.name,
       description: input.description ?? current.description,
       requiresTwoStep: input.requiresTwoStep ?? current.requiresTwoStep,
       permissions: normalisePermissions(input.permissions ?? current.permissions),
     }
-    if (widerThan(viewerOf(live), next.permissions)) {
-      throw forbidden('wider_permissions', GRANT_CEILING_MESSAGE)
-    }
-    if (roleNeedsTwoStep(next.permissions) && !next.requiresTwoStep) {
-      throw badRequest('role_needs_two_step', TWO_STEP_REQUIRED)
-    }
-    if (current.version !== input.version) {
-      const by = await lastChangedBy(tx, live, current.id)
-      throw conflict(
-        'role_changed',
-        `${by} changed ${current.name} a moment ago. Reload to see the latest, then make your change again.`,
-        { changedByName: by },
-      )
-    }
+    assertSavable(live, next)
+    if (current.version !== input.version) throw await roleChanged(tx, live, current)
     const changes = permissionChanges(current.permissions, next.permissions)
     const fields = (['name', 'description', 'requiresTwoStep'] as const).filter(
       (k) => next[k] !== current[k],
     )
+    const saved = async (notice: string, outcome: RequestOutcome, emails: EmailMessage[]) => ({
+      notice,
+      role: await getRole(live, current.id, tx),
+      outcome,
+      emails,
+    })
     if (changes.length === 0 && fields.length === 0) {
-      return { notice: `${current.name} saved`, role: await getRole(live, current.id, tx) }
+      const notice = `${current.name} saved`
+      return saved(notice, { ran: true, notice }, [])
     }
     if (next.name !== current.name) await assertNameFree(tx, live, next.name, current.id)
-    await onNameRace(
-      next.name,
-      tx
-        .update(roles)
-        .set({
-          name: next.name,
-          pluralName: customRolePluralName(next.name),
-          description: next.description,
-          requiresTwoStep: next.requiresTwoStep,
-          version: sql`${roles.version} + 1`,
-        })
-        .where(and(eq(roles.organizationId, live.organizationId), eq(roles.id, current.id))),
-    )
-    if (changes.length) {
-      await tx
-        .delete(rolePermissions)
-        .where(
-          and(
-            eq(rolePermissions.organizationId, live.organizationId),
-            eq(rolePermissions.roleId, current.id),
-          ),
-        )
-      await insertPermissions(tx, live.organizationId, current.id, next.permissions)
+    // The rule guards what the role can do and its two-step, and only for a role someone holds.
+    const guarded =
+      (changes.length > 0 || next.requiresTwoStep !== current.requiresTwoStep) &&
+      (await roleIsHeld(tx, live.organizationId, current.id))
+    if (!guarded) {
+      const { notice } = await applyRoleUpdate(tx, live, next, RAN_AT_ONCE)
+      return saved(notice, { ran: true, notice }, [])
     }
-    const touched = changes.map((c) => c.module)
-    await recordAudit(tx, {
-      organizationId: live.organizationId,
-      action: 'role.updated',
-      actor: actorOf(live),
-      target: { type: 'role', id: current.id, label: next.name },
-      before: {
-        ...Object.fromEntries(fields.map((k) => [k, current[k]])),
-        ...(touched.length && {
-          permissions: Object.fromEntries(touched.map((m) => [m, current.permissions[m]])),
-        }),
-      },
-      after: {
-        ...Object.fromEntries(fields.map((k) => [k, next[k]])),
-        ...(touched.length && {
-          permissions: Object.fromEntries(touched.map((m) => [m, next.permissions[m]])),
-        }),
-      },
-      metadata: { version: current.version + 1, changes },
+    const out = await requestOrRun(tx, live, roleUpdatePlugin, {
+      payload: next,
+      reason: input.reason,
     })
-    return { notice: `${next.name} saved`, role: await getRole(live, current.id, tx) }
+    if (out.ran) {
+      return saved(out.result.notice, { ran: true, notice: out.result.notice }, out.result.emails)
+    }
+    const outcome = { ran: false as const, requestId: out.requestId, notice: out.notice }
+    return saved(out.notice, outcome, out.emails)
   })
+}
+
+/** The ceiling and the two-step lock, for the save and again when an approved save runs. */
+function assertSavable(live: ServiceContext, next: RoleUpdatePayload): void {
+  if (widerThan(viewerOf(live), next.permissions)) {
+    throw forbidden('wider_permissions', GRANT_CEILING_MESSAGE)
+  }
+  if (roleNeedsTwoStep(next.permissions) && !next.requiresTwoStep) {
+    throw badRequest('role_needs_two_step', TWO_STEP_REQUIRED)
+  }
+}
+
+async function roleChanged(tx: DbOrTx, live: ServiceContext, current: RoleRecord) {
+  const by = await lastChangedBy(tx, live, current.id)
+  return conflict(
+    'role_changed',
+    `${by} changed ${current.name} a moment ago. Reload to see the latest, then make your change again.`,
+    { changedByName: by },
+  )
+}
+
+/**
+ * The only writer of a role save (the approvals plug-in's execute, and the save above when no
+ * rule applies). Re-checks everything as `ctx` is now: a role saved since the request was made is
+ * out of date (StaleError), and the editor's own refusals still apply.
+ */
+export async function applyRoleUpdate(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  next: RoleUpdatePayload,
+  meta: ExecuteMeta,
+): Promise<ExecuteResult> {
+  await lockOrganization(tx, ctx.organizationId)
+  const live = await lockViewer(tx, ctx)
+  const [current] = await loadRoles(tx, live.organizationId, [next.roleId], { lock: 'update' })
+  if (!current) throw new StaleError('The role was deleted')
+  if (current.version !== next.version) throw new StaleError('The role was saved since')
+  await refuse(tx, live, current, 'edit')
+  assertSavable(live, next)
+  const changes = permissionChanges(current.permissions, next.permissions)
+  const fields = (['name', 'description', 'requiresTwoStep'] as const).filter(
+    (k) => next[k] !== current[k],
+  )
+  if (next.name !== current.name) await assertNameFree(tx, live, next.name, current.id)
+  await onNameRace(
+    next.name,
+    tx
+      .update(roles)
+      .set({
+        name: next.name,
+        pluralName: customRolePluralName(next.name),
+        description: next.description,
+        requiresTwoStep: next.requiresTwoStep,
+        version: sql`${roles.version} + 1`,
+      })
+      .where(and(eq(roles.organizationId, live.organizationId), eq(roles.id, current.id))),
+  )
+  if (changes.length) {
+    await tx
+      .delete(rolePermissions)
+      .where(
+        and(
+          eq(rolePermissions.organizationId, live.organizationId),
+          eq(rolePermissions.roleId, current.id),
+        ),
+      )
+    await insertPermissions(tx, live.organizationId, current.id, next.permissions)
+  }
+  const touched = changes.map((c) => c.module)
+  await recordAudit(tx, {
+    organizationId: live.organizationId,
+    action: 'role.updated',
+    actor: actorOf(live),
+    target: { type: 'role', id: current.id, label: next.name },
+    before: {
+      ...Object.fromEntries(fields.map((k) => [k, current[k]])),
+      ...(touched.length && {
+        permissions: Object.fromEntries(touched.map((m) => [m, current.permissions[m]])),
+      }),
+    },
+    after: {
+      ...Object.fromEntries(fields.map((k) => [k, next[k]])),
+      ...(touched.length && {
+        permissions: Object.fromEntries(touched.map((m) => [m, next.permissions[m]])),
+      }),
+    },
+    metadata: { version: current.version + 1, changes, ...approvalMetadata(meta) },
+  })
+  return { notice: `${next.name} saved`, emails: [], afterCommit: null }
 }
 
 const people = (n: number) => (n === 1 ? '1 person' : `${n} people`)
 
-/** Removed members or answered invitations still refer to the role (non-negotiable 7). */
+/**
+ * Removed members, answered invitations or approval requests (their copied steps) still refer to
+ * the role (non-negotiable 7).
+ */
 async function hasHistory(tx: DbOrTx, organizationId: string, roleId: string): Promise<boolean> {
   const result = await tx.execute<{ yes: boolean }>(sql`
     select (
@@ -459,9 +541,27 @@ async function hasHistory(tx: DbOrTx, organizationId: string, roleId: string): P
         and role_id = ${roleId} and status <> 'active')
       or exists (select 1 from invitations where organization_id = ${organizationId}
         and role_id = ${roleId} and status <> 'pending')
+      or exists (select 1 from approval_request_step_roles where organization_id = ${organizationId}
+        and role_id = ${roleId})
     ) as yes
   `)
   return Boolean(result.rows[0]?.yes)
+}
+
+/** How many approval rules name the role in a step. */
+async function rulesNaming(tx: DbOrTx, organizationId: string, roleId: string): Promise<number> {
+  const result = await tx.execute<{ n: number }>(sql`
+    select count(distinct s.rule_id)::int as n
+    from approval_rule_step_roles sr
+    join approval_rule_steps s on s.id = sr.step_id and s.organization_id = sr.organization_id
+    where sr.organization_id = ${organizationId} and sr.role_id = ${roleId}
+  `)
+  return result.rows[0]?.n ?? 0
+}
+
+/** "Site manager approves in 2 rules. Change those rules first." */
+function inRules(name: string, count: number) {
+  return conflict('role_in_rule', roleInRuleMessage(name, count), { count })
 }
 
 function inUse(name: string, holders: Holders) {
@@ -485,6 +585,8 @@ export async function deleteRole(ctx: ServiceContext, id: string): Promise<{ not
     await refuse(tx, live, role, 'delete')
     const holders = (await holderCounts(tx, live.organizationId, [id])).get(id)
     if (holders && holders.members + holders.invited > 0) throw inUse(role.name, holders)
+    const rules = await rulesNaming(tx, live.organizationId, id)
+    if (rules > 0) throw inRules(role.name, rules)
     const kept = (await hasHistory(tx, live.organizationId, id)) ? 'archived' : 'erased'
     try {
       const where = and(eq(roles.organizationId, live.organizationId), eq(roles.id, id))
@@ -494,6 +596,7 @@ export async function deleteRole(ctx: ServiceContext, id: string): Promise<{ not
       if (isGuardViolation(error, 'roles_archive_unheld')) {
         throw inUse(role.name, { members: 0, invited: 0 })
       }
+      if (isGuardViolation(error, 'roles_not_in_rule')) throw inRules(role.name, 1)
       throw error
     }
     await recordAudit(tx, {

@@ -6,6 +6,7 @@ import { syncSystemRoles } from '@/access/system-roles'
 import type { DbOrTx } from '@/db/client'
 import { entities, members, organizationPlans, organizations, users } from '@/db/schema'
 import { conflict, forbidden } from '@/lib/errors'
+import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { insertEntity } from '@/modules/entities/entities.service'
 import { lockOrganization, toOrganization } from '@/modules/organization/organization.service'
@@ -56,9 +57,13 @@ export async function createOrganization(
     const roleIds = await syncSystemRoles(tx, org.id)
     const ownerRoleId = roleIds.get('owner')
     if (!ownerRoleId) throw new Error('Owner role missing')
-    await tx
+    const [owner] = await tx
       .insert(members)
       .values({ organizationId: org.id, userId: actor.user.id, roleId: ownerRoleId })
+      .returning({ id: members.id })
+    if (!owner) throw new Error('Owner member insert returned nothing')
+    // "Change a role's permissions" and "Make someone an owner" need approval from day one.
+    await seedDefaultRules(tx, org.id, owner.id)
     await setActiveOrganization(tx, {
       userId: actor.user.id,
       sessionId: actor.sessionId,

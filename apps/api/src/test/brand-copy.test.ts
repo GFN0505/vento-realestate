@@ -2,6 +2,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { findBareVento, stripComments } from '@vento/shared'
 import { describe, expect, it } from 'vitest'
+import { approvalDecidedEmail } from '@/email/templates/approval-decided'
+import { approvalNeededEmail } from '@/email/templates/approval-needed'
+import { approvalRuleChangedEmail } from '@/email/templates/approval-rule-changed'
 import { invitationEmail } from '@/email/templates/invitation'
 import type { RenderedEmail } from '@/email/templates/layout'
 import {
@@ -159,6 +162,42 @@ const EMAILS: [string, RenderedEmail][] = [
       at: '14:30',
       reason: 'Down',
       activityUrl: 'http://x',
+    }),
+  ],
+  [
+    'approvalNeededEmail',
+    approvalNeededEmail({
+      organizationName: 'Vento Homes Ltd',
+      makerName: 'Ope Martins',
+      title: 'Site engineer: Projects & construction approve added',
+      amountText: null,
+      reason: 'Halima signs off site POs now',
+      changes: [{ field: 'Projects & construction', before: 'View', after: 'View, Approve' }],
+      approvedSoFar: [],
+      url: 'http://x',
+    }),
+  ],
+  [
+    'approvalDecidedEmail',
+    approvalDecidedEmail({
+      title: 'Make Aisha Bello an owner',
+      decision: 'reject',
+      deciderName: 'Bisi Lawal',
+      comment: 'Not yet',
+      url: 'http://x',
+    }),
+  ],
+  [
+    'approvalRuleChangedEmail',
+    approvalRuleChangedEmail({
+      byName: 'Olumide Bankole',
+      organizationName: 'Vento Homes Ltd',
+      verb: 'changed',
+      actionLabel: "Change a role's permissions",
+      lines: [{ label: 'Approved by', before: 'Owner or Admin', after: 'Owner' }],
+      at: '14:30',
+      on: '27 Nov 2026',
+      url: 'http://x',
     }),
   ],
   [

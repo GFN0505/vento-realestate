@@ -160,6 +160,21 @@ async function world(tx: DbOrTx, who: Actor) {
       action: 'delete',
       call: (x) => x.invitations.withdraw({ id: inv2.invitation.id }),
     },
+    // Brick 4. Changing rules is owners-only on top of Settings edit (approval-rules tests).
+    { name: 'approvals.list', action: 'member', call: (x) => x.approvals.list({}) },
+    { name: 'approvalRules.list', action: 'view', call: (x) => x.approvalRules.list() },
+    {
+      name: 'audit.list',
+      action: 'edit',
+      allEntities: true,
+      call: (x) => x.audit.list({ from: '2026-11-01', to: '2026-11-27' }),
+    },
+    {
+      name: 'audit.export',
+      action: 'edit',
+      allEntities: true,
+      call: (x) => x.audit.export({ from: '2026-11-01', to: '2026-11-27' }),
+    },
   ]
   return { client: clientAs(tx, actor.user).client, cases }
 }
