@@ -57,11 +57,12 @@ export function useDecide(onDone: () => void) {
       if (!connection.isOnline()) return Promise.reject(new Error(OFFLINE_SAVE_ERROR))
       return client.approvals.decide(input)
     },
-    onSuccess: ({ notice, ran }, input) => {
+    onSuccess: ({ notice }, input) => {
       toast.success(notice)
       dropFromWaiting(queryClient, input.requestId)
       refreshApprovals(queryClient)
-      if (ran || input.decision === 'reject') refreshRecords(queryClient)
+      // Every decision moves the record on: it ran, it ended, or it now waits for the next step.
+      refreshRecords(queryClient)
       onDone()
     },
     onError: (error, input) => {

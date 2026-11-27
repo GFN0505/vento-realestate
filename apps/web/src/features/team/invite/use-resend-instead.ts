@@ -10,8 +10,12 @@ export function useResendInstead() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id }: { id: string; email: string }) => client.invitations.resend({ id }),
-    onSuccess: (_, { email }) => {
-      toast.success(`Invitation sent again to ${email}`)
+    onSuccess: (result, { email }) => {
+      toast.success(
+        result.outcome && !result.outcome.ran
+          ? result.outcome.notice
+          : `Invitation sent again to ${email}`,
+      )
       inviteDraft.remove(email)
       void queryClient.invalidateQueries({ queryKey: teamListKey() })
     },

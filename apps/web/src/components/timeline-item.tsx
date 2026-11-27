@@ -49,14 +49,16 @@ export function TimelineItem({ mark, title, meta, detail, spoken, last = false }
       <span className="sr-only">{spoken}</span>
       <div aria-hidden className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-baseline justify-between gap-3 text-[13px]">
-          <span className={cn('min-w-0', mark === 'later' && 'text-muted-foreground')}>
+          <span
+            className={cn('min-w-0 wrap-anywhere', mark === 'later' && 'text-muted-foreground')}
+          >
             {title}
           </span>
           {meta && (
             <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{meta}</span>
           )}
         </div>
-        {detail && <div className="text-[13px] text-muted-foreground">{detail}</div>}
+        {detail && <div className="wrap-anywhere text-[13px] text-muted-foreground">{detail}</div>}
       </div>
     </li>
   )

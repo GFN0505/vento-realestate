@@ -3,6 +3,7 @@ import { APPROVAL_COPY, type ApprovalRuleInput, type ApprovalRuleRow } from '@ve
 import { toast } from 'sonner'
 import { OFFLINE_SAVE_ERROR, toastApiError } from '@/lib/api-errors'
 import { connection } from '@/lib/connection'
+import { errorReason } from '@/lib/error-data'
 import { client } from '@/lib/orpc'
 import { ruleInput, ruleValues } from './rule-form'
 import { approvalRulesQuery } from './rules-queries'
@@ -30,6 +31,12 @@ export function useSaveRule(onSaved: () => void) {
       void queryClient.invalidateQueries({ queryKey: approvalRulesQuery().queryKey })
       onSaved()
     },
+    onError: (error) => {
+      // "… changed this rule a moment ago": the sheet keeps its fields; the list shows theirs.
+      if (errorReason(error) === 'approval_rule_changed') {
+        void queryClient.invalidateQueries({ queryKey: approvalRulesQuery().queryKey })
+      }
+    },
   })
 }
 
@@ -44,7 +51,7 @@ export function useDeleteRule(onDeleted: () => void) {
   return useMutation({
     mutationFn: (row: ApprovalRuleRow) => {
       if (!connection.isOnline()) return Promise.reject(new Error(OFFLINE_SAVE_ERROR))
-      return client.approvalRules.delete({ id: row.id })
+      return client.approvalRules.delete({ id: row.id, version: row.version })
     },
     onSuccess: (_, row) => {
       refresh()

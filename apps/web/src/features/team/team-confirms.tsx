@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useMe } from '@/features/preview/use-effective-permissions'
 import { OwnerConfirm } from './owner-confirm'
+import { ResendOwnerSheet } from './resend-owner-sheet'
 import { useTeamActionsContext } from './use-team-actions'
 
 /** The three confirms (spec UI copy): remove, reset two-step and make owner (or its request). */
@@ -44,7 +45,13 @@ export function TeamConfirms() {
         open={open === 'owner'}
         organization={organization}
         onClose={() => actions.setConfirm(null)}
-        onConfirm={actions.makeOwner}
+        openRequest={actions.openRequest}
+      />
+      <ResendOwnerSheet
+        confirm={confirm?.kind === 'resend-owner' ? confirm : null}
+        open={open === 'resend-owner'}
+        onClose={() => actions.setConfirm(null)}
+        openRequest={actions.openRequest}
       />
     </>
   )

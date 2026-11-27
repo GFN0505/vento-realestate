@@ -58,3 +58,24 @@ describe('audit words', () => {
     expect(whereText({ device: null, ipMasked: null })).toBe('')
   })
 })
+
+describe('people in the Person filter', () => {
+  it('marks someone who has left', async () => {
+    const { personLabel } = await import('./person-filter')
+    expect(personLabel({ name: 'Grace Umeh', removed: true })).toBe('Grace Umeh (removed)')
+    expect(personLabel({ name: 'Aisha Bello', removed: false })).toBe('Aisha Bello')
+  })
+})
+
+describe('someone from another organization', () => {
+  it('shows the neutral name with no initials or place', () => {
+    const outside = row({
+      actor: { userId: null, name: 'An admin in another organization', kind: 'other_organization' },
+      device: null,
+      ipMasked: null,
+    })
+    render(<AuditTable rows={[outside]} onOpen={vi.fn()} />)
+    expect(screen.getByText('An admin in another organization')).toBeVisible()
+    expect(whereText(outside)).toBe('')
+  })
+})

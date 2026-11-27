@@ -6,9 +6,9 @@ import { NativeSelect } from '@/components/native-select'
 import { SearchField } from '@/components/search-field'
 import { Input } from '@/components/ui/input'
 import { entitiesQuery } from '@/features/entity/use-current-entity'
-import { orpc } from '@/lib/orpc'
 import { addDays, auditRange, lagosToday, rangeProblem } from './audit-range'
 import type { AuditSearch } from './audit-search'
+import { PersonFilter } from './person-filter'
 
 type Props = {
   search: AuditSearch
@@ -37,13 +37,7 @@ const select = 'h-11 md:h-10 md:text-[13px]'
  * filtered view can be shared. Search waits 300 ms after typing stops.
  */
 export function AuditToolbar({ search, update }: Props) {
-  // People and companies for the filters: cached lists the rest of Settings uses.
-  const people = useQuery(
-    orpc.team.list.queryOptions({
-      input: { show: 'everyone', page: 1, pageSize: 100 },
-      staleTime: 5 * 60_000,
-    }),
-  )
+  // Companies for the filter: the cached list the rest of Settings uses.
   const companies = useQuery(entitiesQuery())
   const preset = presetOf(search)
   const [custom, setCustom] = useState(preset === 'custom')
@@ -78,21 +72,12 @@ export function AuditToolbar({ search, update }: Props) {
             </option>
           ))}
         </NativeSelect>
-        <NativeSelect
-          aria-label="Person"
-          value={search.person ?? ''}
-          onChange={(e) => set({ person: e.target.value || undefined })}
-          className={select}
-        >
-          <option value="">Anyone</option>
-          {people.data?.items.map((row) =>
-            row.kind === 'member' ? (
-              <option key={row.id} value={row.userId}>
-                {row.name}
-              </option>
-            ) : null,
-          )}
-        </NativeSelect>
+        <PersonFilter
+          value={search.person}
+          onChange={(person) => set({ person })}
+          range={range}
+          disabled={problem !== null}
+        />
         <NativeSelect
           aria-label="Company"
           value={search.company ?? ''}

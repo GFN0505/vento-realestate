@@ -6,7 +6,7 @@ import { ageText, amountText, requestState } from './approval-words'
 
 /** The row's look, shared by the list's links (desktop: `?id=`, phones: `/approvals/$id`). */
 export const approvalRowClass =
-  'flex w-full gap-3 border-b border-l-[3px] border-l-transparent px-4 py-3.5 text-left outline-hidden transition-colors last:border-b-0 hover:bg-muted/60 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
+  'group flex w-full gap-3 border-b border-l-[3px] border-l-transparent px-4 py-3.5 text-left outline-hidden transition-colors last:border-b-0 hover:bg-muted/60 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
 
 /**
  * ApprovalRow (board Approvals): the maker's initials, the title and amount, who asked and why,
@@ -28,7 +28,7 @@ export function ApprovalRowContent({ row, tab }: { row: ApprovalRequestRow; tab:
             <span className="shrink-0 font-semibold text-[13px] tabular-nums">{amount.main}</span>
           )}
         </span>
-        <span className="truncate text-muted-foreground text-xs">
+        <span className="truncate text-muted-foreground text-xs group-aria-[current=true]:text-selected-foreground">
           {row.makerName} · “{row.reason}”
         </span>
         <span className="flex min-w-0 flex-wrap items-center gap-2">
@@ -39,9 +39,11 @@ export function ApprovalRowContent({ row, tab }: { row: ApprovalRequestRow; tab:
             </StatusBadge>
           )}
           {row.entity && (
-            <span className="truncate text-muted-foreground text-xs">{row.entity.name}</span>
+            <span className="truncate text-muted-foreground text-xs group-aria-[current=true]:text-selected-foreground">
+              {row.entity.name}
+            </span>
           )}
-          <span className="ml-auto text-muted-foreground text-[11px] tabular-nums">
+          <span className="ml-auto text-muted-foreground text-[11px] tabular-nums group-aria-[current=true]:text-selected-foreground">
             {ageText(when)}
           </span>
         </span>

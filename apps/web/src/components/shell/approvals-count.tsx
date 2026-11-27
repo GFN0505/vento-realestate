@@ -46,12 +46,13 @@ export function ApprovalsTopBarLink() {
     <Link
       to="/approvals"
       preload="intent"
-      aria-label={count > 0 ? `Approvals, ${waitingWords(count)}` : 'Approvals'}
       className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border bg-card px-3 font-semibold text-[13px] outline-hidden transition-colors hover:bg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
     >
       <BadgeCheckIcon aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.8} />
       Approvals
       <CountPill count={count} />
+      {/* Words after the visible name, not an aria-label that rewords it (WCAG 2.5.3). */}
+      {count > 0 && <span className="sr-only">, {waitingWords(count)}</span>}
     </Link>
   )
 }

@@ -58,7 +58,7 @@ export function ApprovalDetail({ detail, onDecided, page = false }: Props) {
           name={detail.makerName}
           className="size-7 border bg-card text-[10px] text-foreground"
         />
-        <p className="min-w-0 text-[13px] leading-relaxed">
+        <p className="min-w-0 wrap-anywhere text-[13px] leading-relaxed">
           <span className="font-semibold">{detail.makerName}</span>{' '}
           <span className="text-muted-foreground">asked {ageText(detail.createdAt)}</span>
           <br />“{detail.reason}”
@@ -146,7 +146,7 @@ function Note({ children }: { children: ReactNode }) {
   return (
     <p className="flex gap-2.5 rounded-[10px] border bg-muted/40 px-3.5 py-3 text-[13px] leading-relaxed">
       <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0">{children}</span>
+      <span className="min-w-0 wrap-anywhere">{children}</span>
     </p>
   )
 }

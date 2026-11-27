@@ -28,7 +28,9 @@ export function Changes({ changes }: { changes: AuditRow['changes'] }) {
     <ul className="flex flex-col gap-0.5">
       {changes.map((change, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: fields never reorder within an entry.
-        <li key={index}>{changeText(change)}</li>
+        <li key={index} className="wrap-anywhere">
+          {changeText(change)}
+        </li>
       ))}
     </ul>
   )

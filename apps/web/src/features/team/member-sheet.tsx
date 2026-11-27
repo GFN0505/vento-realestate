@@ -120,7 +120,7 @@ export function MemberSheet({ row, listKey, onClose, closeGuard, ...frame }: Pro
                 role,
                 save: run,
                 entityIds,
-                onRequested: () => {
+                onDone: () => {
                   form.reset()
                   closeGuard.current = null
                   onClose()

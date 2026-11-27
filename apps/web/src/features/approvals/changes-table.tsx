@@ -34,10 +34,10 @@ export function ChangesTable({ changes }: { changes: readonly ApprovalChange[] }
               <th scope="row" className="px-3 py-2.5 text-left font-normal text-muted-foreground">
                 {change.field}
               </th>
-              <td className="px-3 py-2.5 text-muted-foreground">
+              <td className="wrap-anywhere px-3 py-2.5 text-muted-foreground">
                 {change.before === null ? DASH : <del>{change.before}</del>}
               </td>
-              <td className="px-3 py-2.5 font-semibold">
+              <td className="wrap-anywhere px-3 py-2.5 font-semibold">
                 {change.after === null ? DASH : change.after}
               </td>
             </tr>
