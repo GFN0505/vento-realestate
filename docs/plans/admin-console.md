@@ -675,3 +675,656 @@ Files read for this plan:
 - `apps/api/src/modules/account/account.service.ts`, `src/db/schema/{platform,auth}.ts`, `src/test/{procedure-guard.test,router-client,factories}.ts`
 - `packages/shared/src/{contract,index}.ts`, `common/errors.ts`, `account/{schema,contract,security,two-step-copy}.ts`, `package.json`
 - `apps/web/src/routes/{__root,_app}.tsx`, `routes/_app/_shell.tsx`, `src/router.tsx`, `src/lib/{orpc,passkey-client}.ts`, `components/shell/{user-menu-panel,sidebar}.tsx`, `components/confirm-dialog.tsx`, `features/security/use-reauth.ts`, `scripts/bundle-check.mjs`, `vite.config.ts`
+
+---
+
+# Plan: Vento Real Estate console, slice 1b (staff accounts, staff invitations, Dashboard, My account, naming and domain)
+
+- **Status:** planned, for the same PR (#9) on `feat/admin-console`, on top of slice 1 as built. Nothing in slice 1 is rewritten except where 1b contradicts it (each place is named below).
+- **Spec:** [docs/specs/admin-console.md](../specs/admin-console.md), section "Slice 1b" and the *(1b)* amendments above it; "Owner's decisions (1b, 27 Nov 2026)" approve every recommended default and are not reopened here. "Console backlog (later)" is out of scope.
+- **Builds on:** slice 1 of this plan (§1–§16), [my-security](my-security.md) (cards, dialogs, passkeys, two-step reset), [team](team.md) (customer invitations, the token pattern).
+- **Journeys:** J-ADM-05, J-ADM-06, J-ADM-07 (new), J-ADM-03 (changed: invite, resend, withdraw, reset two-step, removal closes the account), J-ADM-01 and J-ADM-02 (step 1 is "sign in → Dashboard"; J-ADM-02 gains the plans line).
+- **Decision records:** new **0022 · The product is always called Vento Real Estate** and **0023 · Staff accounts are separate from customer accounts and join by invitation** (full text in §1b.19). 0023 amends 0015 and 0021; 0022 amends 0019's host example.
+- **Domain:** `realestate.ventoerp.com` (console `realestate.ventoerp.com/console`). Code has no host name in it: the host is `WEB_ORIGIN`, and passkeys follow it (§1b.14).
+- **Written by:** the architect agent on 27 Nov 2026, against `feat/admin-console` at `29a559a`.
+
+## Summary (plain English)
+Super-admins stop being customers with extra power and get their own kind of account.
+
+- **Staff accounts.** A staff account is made only by accepting a staff invitation. It never belongs to an organization, can't make one, and can't join one. One email is either staff or customer, never both; the database refuses the mix as well as the screens.
+- **Inviting a super-admin.** On *Super-admins*, **Invite super-admin** takes an email, a name and a reason. The person gets a link that works for 48 hours, opens a separate staff sign-up (name, password, two-step, backup codes, an optional passkey) and lands on the console. Invitations can be resent once a minute and withdrawn at once; at most 5 are open.
+- **Signing in.** Staff use the normal sign-in page and land straight on the new **Dashboard**. Any customer address sends them back to the console.
+- **My account** in the console manages the person's own password, two-step, backup codes, passkeys and devices, using the same cards as My security. Another super-admin can **Reset two-step** for someone who lost their phone. Removing a super-admin closes their staff account: they're signed out everywhere and can't sign in again.
+- **At deploy,** anyone who is both a super-admin and a member of an organization stops being a super-admin (their customer access is untouched). If that leaves nobody, `pnpm superadmin invite --bootstrap` prints a one-time link. On production this is very likely the owner's own account, so the deploy includes that step (§1b.20).
+- **Dashboard:** four numbers, a *Needs attention* list and two panels, all from data that exists today, with Vento Real Estate's own internal organizations left out. One new database index; no new tracking.
+- **Naming:** every word on screen and in emails says "Vento Real Estate", with the three approved short forms. A test fails on a bare "Vento".
+- **No new dependency.**
+
+---
+
+## 1b.1 Summary (technical)
+- **Schema:** `0013_staff_accounts` (generated): `users.account_kind` (`customer | staff`), a new platform table `staff_invitations`, enum value `account` on `platform_channel`, and index `audit_events_action_created_idx`. `0014_staff_account_guards` (custom SQL): the deploy migration of existing super-admins, then three triggers that pin "one email, one kind" in the database.
+- **Staff account** = `users.account_kind = 'staff'`, a Better Auth user field (`input: false`), so `authenticate()` has it with no extra query. Its state comes from `platform_admins` and `staff_invitations`: **active** (an active super-admin), **joining** (a pending staff invitation is started for this user), **closed** (no credential, no factors, no sessions; revoked rows kept).
+- **Staff invitations** follow the customer pattern (`modules/invitations`): a 256-bit token, SHA-256 hash stored, lazy `expired`, one pending per email (partial unique), resend replaces the hash. New operations in `platform/operations/staff-invitations.ts` serve the console and the command line.
+- **Staff sign-up** uses two public, rate-limited console procedures (`console.join.get`, `console.join.start`), then Better Auth's own `/two-factor/enable` and `/two-factor/verify-totp`. The verify after-hook (setup mode) turns a joining staff account into a super-admin and accepts the invitation in one transaction (`completeStaffJoin`).
+- **Enforcement:** `memberMiddleware` answers NOT_FOUND to staff; onboarding, customer invitation create, resend, preview and accept refuse staff emails; the `/sign-in/email` after-hook refuses a staff account that is neither active nor joining; reset-password emails aren't sent to those either.
+- **Reset two-step and removal** share one extracted helper, `auth/clear-second-factors.ts` (today's body of `resetMemberTwoStep`). Removal also deletes the credential, which closes the account.
+- **Staff account events** (sign-in, two-step, passkeys, console opened) have no organization trail, so `recordAccountEvent` hands them to the platform trail (`channel: 'account'`, `target_type: 'staff_account'`), which Activity and the Dashboard leave out.
+- **Dashboard:** `console.dashboard.get` (one call, parallel queries), `console.organizations.accountActivity`; the over-limit computation is refactored to give "over" and "at" in one pass.
+- **Commands:** `superadmin invite` (break-glass: emails only), `superadmin invite --bootstrap` (prints a link), `grant` refuses; registry `'superadmin invite' → 'superAdmins.invite.apply'`.
+- **Web:** `/console` becomes the Dashboard, Organizations moves to `/console/organizations`, new `/console/account` and public `/staff-invitation/$token` (under `_auth`). My security's cards are composed by a new `security-cards.tsx`, used by both pages. Console entries leave the customer user menu, More and ⌘K.
+
+## 1b.2 Domain model
+
+```
+User (account_kind customer | staff, fixed at creation)
+ ├─ customer ──0..*── Member (organizations)           never a PlatformAdmin row from 1b on
+ └─ staff    ──0..*── PlatformAdmin (≤1 active)        never a Member row
+             ──0..*── StaffInvitation (user_id once the person set a password)
+StaffInvitation  email, name, invited_by (null = bootstrap), reason, token_hash, expires_at,
+                 last_sent_at, status, user_id + started_at, responded_at, withdrawn_by
+PlatformAuditEvent  + channel 'account' rows: a staff person's own account events
+```
+**Ownership:** all of it is identity (decision 0010) or platform configuration (decision 0015): no `organization_id`, no entity. Nothing is limited by entity or project.
+
+### Staff account (per user, derived)
+```
+                 join.start (password set)          code verified (setup)
+  (no user) ───────────────────────────▶ joining ─────────────────────────▶ active
+                                           │  │                             │  │
+             invitation expired/withdrawn, │  │ resend                      │  │ reset two-step (another
+             or resent → discarded (user   │  └─▶ discarded, fresh start    │  │ super-admin): factors and
+             row deleted)                  ▼                                │  │ sessions gone, password link;
+                                        (no user)                           │  └─▶ active, two-step off → set up at next sign-in
+                                                         removed (revoke) ▼
+                                                                         closed ──invite + join.start──▶ joining (same user row)
+```
+- **joining:** `account_kind = staff`, no active `platform_admins` row, a pending, unexpired invitation with `user_id` = this user. Can sign in only to finish (password → two-step).
+- **active:** an active `platform_admins` row. Two-step on, except between a reset and the next set-up (then the console answers `console_two_step_required` and `nextStep` is `two_step_setup`).
+- **closed:** `account_kind = staff`, only revoked `platform_admins` rows, no `accounts` credential row, no two-factor row, no passkeys, no sessions. Sign-in fails exactly like a wrong password. The name stays on past activity.
+
+### Staff invitation
+```
+             resend (≥1 min since last send; new hash, +48 h; discards a joining account)
+               ┌──┐
+               ▼  │
+  invite ──▶ pending ──code verified──▶ accepted
+               │  │
+               │  └── 48 h pass ──▶ expired (read-time; stored on the next write)  ──resend──▶ pending
+               └── withdraw (reason) ──▶ withdrawn
+```
+`effectiveStatus(row, now)` = `expired` when `pending` and `expires_at ≤ now`, as `modules/invitations` does. Expiry writes no event (spec).
+
+### One email, one kind: where it's enforced
+| Moment | Rule | Where | DB backstop |
+|---|---|---|---|
+| Staff invite (console, CLI) | Refused when a customer account has the email: "tunde@gmail.com already has a Vento Real Estate customer account…" | `inviteSuperAdmin` | – |
+| Staff sign-up, `join.get` / `join.start` | Refused when the email got a customer account meanwhile (status `customer_account`) | `platform/console/join.service.ts` | `users_email_unique` |
+| Customer sign-up (`/sign-up/email`) with a staff email | Looks normal on screen (owner's decision 9); the inbox gets a staff note instead of the "existing account" email | `hooks/verification.ts` `sendExistingAccountNotice` | `users_email_unique` |
+| Customer invite / resend to a staff email | Row problem: "tunde@ventoerp.com is a Vento Real Estate staff account…"; nothing sent | `invitations.service.ts` `createInvitations`, `resendInvitation` | – |
+| Customer invitation preview and accept (`accept`, `acceptAsNewUser`) | "This email belongs to a Vento Real Estate staff account, so it can't join Vento Homes Ltd…" | `invitations.service.ts` | trigger `members_refuse_staff` |
+| Onboarding `createOrganization` | FORBIDDEN `staff_account` | `onboarding.service.ts` | trigger `members_refuse_staff` (the owner row) |
+| Any `member` / `memberPendingTwoStep` procedure | NOT_FOUND | `access/middleware.ts` | – |
+| A super-admin row for a customer | Impossible | `completeStaffJoin` only | trigger `platform_admins_staff_only` |
+| Changing an account's kind | Impossible (backlog 16 needs a migration) | – | trigger `users_account_kind_fixed` |
+
+### Invariants
+- **DB:** `staff_invitations_email_pending_unique` (one pending per email); `token_hash` unique; `email = lower(email)`; `char_length(reason) between 3 and 500`; `(user_id is null) = (started_at is null)`; `status <> 'accepted' or user_id is not null`; `status not in ('accepted','withdrawn') or responded_at is not null`; the three triggers above; `platform_admins_user_active_unique` and the append-only triggers unchanged.
+- **Service:** a staff account is a super-admin only after a verified code; at most 5 open invitations; the fourth-super-admin note counts active plus open; nobody resets their own two-step or removes themselves; there's always one active super-admin; every invite, resend, withdraw, join, reset and removal takes the existing `pg_advisory_xact_lock(hashtext('platform_admins'))`, so the counts are serial.
+
+## 1b.3 Database
+
+### Migration `0013_staff_accounts` (generated)
+| Table | Column / object | Type | Notes |
+|---|---|---|---|
+| `users` | `account_kind` | enum `account_kind` (`customer`, `staff`) not null default `customer` | Better Auth field `accountKind` (`input: false`, `defaultValue: 'customer'`, returned) in `authUserFields`; `auth-schema.test.ts` updated |
+| `platform_channel` | value `account` | enum | a staff person's own account event (sign-in, two-step, passkey, console opened) |
+| `staff_invitations` (new, platform) | `id` | uuid v7 | |
+| | `email` | text not null | lower-case CHECK |
+| | `name` | text not null | 1–100 after trim, as `accountName` |
+| | `reason` | text not null | 3–500 CHECK |
+| | `invited_by_user_id` | uuid null → `users` restrict | null = bootstrap |
+| | `bootstrap` | boolean not null default false | the open bootstrap invitation is replaced on a re-run |
+| | `status` | enum `staff_invitation_status` (`pending`, `accepted`, `expired`, `withdrawn`) default `pending` | |
+| | `token_hash` | text not null | unique `staff_invitations_token_hash_unique` |
+| | `expires_at` | timestamptz not null | sent + 48 h |
+| | `last_sent_at` | timestamptz not null default now() | resend once a minute |
+| | `user_id` | uuid null → `users` restrict | the staff account once the password is set |
+| | `started_at` | timestamptz null | with `user_id` (CHECK) |
+| | `responded_at` | timestamptz null | accepted or withdrawn |
+| | `withdrawn_by_user_id` | uuid null → `users` restrict | |
+| | `created_at`, `updated_at` | timestamptz | |
+| | indexes | | `staff_invitations_email_pending_unique (email) where status = 'pending'`; `staff_invitations_status_idx (status, created_at desc)`; `staff_invitations_user_idx (user_id)`; `staff_invitations_invited_by_idx (invited_by_user_id)` |
+| `audit_events` | `audit_events_action_created_idx` | index `(action, created_at desc)` | the Dashboard feed reads across organizations (spec: an index, not new tracking) |
+
+### Migration `0014_staff_account_guards` (custom, `pnpm db:generate --custom --name staff_account_guards`)
+In this order, in the migrator's single transaction:
+1. **Super-admins who are customers stop being super-admins** (owner's decision 2):
+   ```sql
+   WITH gone AS (
+     UPDATE platform_admins pa SET revoked_at = now(), updated_at = now()
+     WHERE pa.revoked_at IS NULL
+       AND EXISTS (SELECT 1 FROM members m WHERE m.user_id = pa.user_id AND m.status = 'active')
+     RETURNING pa.user_id)
+   INSERT INTO platform_audit_events (actor_user_id, actor_name, operator, action, target_type,
+     target_key, before, reason, channel, metadata)
+   SELECT NULL, 'Vento Real Estate (setup)', 'migration 0014_staff_account_guards',
+     'superadmin.revoked', 'user', g.user_id::text, jsonb_build_object('name', u.name),
+     'Staff accounts are separate from customer accounts', 'command',
+     jsonb_build_object('done', u.name || ' is no longer a Vento Real Estate super-admin.')
+   FROM gone g JOIN users u ON u.id = g.user_id;
+   ```
+   then `UPDATE sessions SET console_opened_at = NULL, console_active_at = NULL` for those users. Their membership, password, two-step and passkeys are untouched.
+2. **Remaining active super-admins become staff accounts:** `UPDATE users SET account_kind = 'staff' WHERE id IN (SELECT user_id FROM platform_admins WHERE revoked_at IS NULL)`. (They have no active membership after step 1; removed membership rows stay as history.)
+3. **Triggers** (plpgsql, `ERRCODE 'check_violation'`, messages without personal data):
+   - `members_refuse_staff` BEFORE INSERT OR UPDATE OF `user_id`, `status` ON `members` when `NEW.status = 'active'`: refuse if the user is staff.
+   - `platform_admins_staff_only` BEFORE INSERT ON `platform_admins`: refuse unless the user is staff (legacy revoked rows of customers are untouched: insert only).
+   - `users_account_kind_fixed` BEFORE UPDATE OF `account_kind` ON `users`: refuse any change.
+
+**Migration safety**
+- `account_kind` is added with a constant default: metadata-only in Postgres, no rewrite. Old code ignores it. The enum value `account` is added but not used in the same transaction (Postgres 12+ allows `ADD VALUE` in a transaction block only on that condition; 0014 uses `command`).
+- `audit_events_action_created_idx` is a plain `CREATE INDEX`: the drizzle migrator runs every pending migration in one transaction, so `CONCURRENTLY` isn't possible. Fine before launch (the table is small). The RUNBOOK deploy note says so, and that a large table would need the index built by hand with `CONCURRENTLY` first.
+- `platform_audit_events` stays append-only: step 1 only inserts. `platform_admins` is updated, as `revokeSuperAdmin` already does.
+- **Not reversible by itself:** a revoked super-admin comes back only by a staff invitation on a different email. That's the owner's decision; the RUNBOOK deploy note says who to tell before the deploy and to run the bootstrap invitation straight after it if no super-admin remains.
+
+## 1b.4 Staff accounts in the code
+- **`AuthUser.accountKind`** (`access/context.ts`), filled by `authenticate()` from the session's user (no query). `IdentityUser` in `auth/security-store.ts` selects it too.
+- **`platform/staff-accounts.ts`** (new):
+  - `staffAccountState(db, userId)` → `'active' | 'joining' | 'closed'`, one query: `platform_admins` (active) ⟕ `staff_invitations` (pending, unexpired, `user_id`).
+  - `discardUnfinishedStaffAccounts(tx, now)`: for every staff user with no `platform_admins` row at all whose invitation is no longer pending-and-unexpired (or was resent), clear `user_id`/`started_at` on their invitations, then delete the user (cascades: `sessions`, `accounts`, `two_factors`, `passkeys`, known devices, password history; a test checks every FK to `users` is cascade or cleared first). A **former** super-admin who was re-invited and stopped half-way isn't deleted (their history links to the row): they go back to closed (`closeStaffAccount`) and the invitation link is cleared. It runs inside every staff-invitation write (invite, resend, withdraw, join) and on a refused sign-in by such an account, so an unfinished account never outlives the next staff action. A never-joined account has no audit rows (staff account events reach the platform trail only once the person has a `platform_admins` row, below), so nothing restricts the delete.
+  - `closeStaffAccount(tx, userId)` (used by revoke): `clearSecondFactors(tx, userId, { mode: 'close' })`, then delete the `accounts` row with `provider_id = 'credential'`, so no password works.
+- **`auth/clear-second-factors.ts`** (new, extracted from `resetMemberTwoStep`): advisory lock per person (the same one the passkeys insert trigger takes, migration 0010), delete `two_factors` and `passkeys`, delete every session, and set `two_factor_enabled = false` plus, for `mode: 'reset'`, `two_step_setup_required = true` and `password_reset_required = true`. Returns the counts for the audit metadata. `members.service.ts` calls it with `'reset'` (behaviour unchanged, test unchanged).
+- **Account events** (`modules/audit/audit.service.ts`, `recordAccountEvent`): when the person has no active membership, it calls `recordStaffAccountEvent(db, input)` from the new `platform/staff-account-events.ts` before falling back to the log line. That writes a platform row only for a staff account that has ever had a `platform_admins` row: `channel: 'account'`, `target_type: 'staff_account'`, `target_key: userId`, `actor_user_id`/`actor_name` from the event's actor (null for "Sign-in attempt"; the CHECK applies only to `console`), operator `"{device} · {masked IP}"`, the event's `metadata`, reason `"Account event"`. Customers with no organization keep the log line.
+- **Copy and requirement:** `firstTwoStepRequirement` returns `{ reason: 'super_admin' }` for any staff account (checked first); `two-step-copy.ts` says "Required for Vento Real Estate staff" and "Two-step is required for Vento Real Estate staff, so it can't be turned off." The enum value stays `super_admin` (no schema change).
+- **Passkeys** (`auth/passkey-availability.ts`): `passkeysAvailableHere` with no active organization answers the `passkeysAvailableForUser` super-admin rule (active super-admin and the kill switch not on), so My account's passkey card, rename and remove work. Customers with no organization are unchanged (false).
+
+## 1b.5 Staff invitations and the staff sign-up
+
+### Operations (`apps/api/src/platform/operations/staff-invitations.ts`)
+All take `PlatformActor | 'bootstrap'`, run in one transaction under the `platform_admins` lock, call `discardUnfinishedStaffAccounts` first, write exactly one platform audit row (so `applyOnce` idempotency holds), and return `{ done, emails: EmailMessage[] }` (plus `link` for the bootstrap). Emails are sent by the caller after commit.
+
+| Operation | Checks, in order (each a `PlatformError`) | Writes | Event (`target_type 'staff_invitation'`, `target_key` id) |
+|---|---|---|---|
+| `previewInvite(db, { email, name })` | the same checks as below | – | – (lines: "Tunde Bello (tunde@ventoerp.com) gets an email to join. The link works for 48 hours." · "They become a super-admin only after setting a password and two-step sign-in." · fourth note) |
+| `inviteSuperAdmin` | bootstrap: no active super-admin, else "There's already a super-admin. Ask them to invite you from the console." · customer account · active super-admin ("Tunde Bello is already a super-admin.") · open invitation ("…already has an invitation that expires 29 Nov 2026, 14:30.", `next: 'resend_invitation'`, `invitationId`) · 5 open ("There are 5 open invitations. Withdraw one or wait for it to be accepted."; not for bootstrap) | stale `pending` rows for the email → `expired`; bootstrap: the open bootstrap invitation → `withdrawn`; insert, `expires_at = now + 48 h` | `superadmin.invited` (after: name, email, expiresAt; metadata `bootstrap`) |
+| `resendStaffInvitation(id)` | pending (incl. expired) · `last_sent_at > now − 1 min` → "Wait a minute before resending." · open count if it was expired | new token hash, `expires_at`, `last_sent_at`; status back to `pending`; a joining account for it is discarded (fresh start: the person's way out of a forgotten password) | `superadmin.invitation_resent` (reason: the invitation's own reason) |
+| `withdrawStaffInvitation(id, reason, expected { status: 'pending' })` | pending (incl. expired) | `withdrawn`, `responded_at`, `withdrawn_by`; its joining account discarded | `superadmin.invitation_withdrawn` |
+| `startStaffJoin(token, name, password)` | see the flow | user, credential, invitation started | – (no audit row; the account trail starts at join) |
+| `completeStaffJoin(userId)` | a pending, unexpired, started invitation for this user; the email has no customer account | `platform_admins` (granted_by = inviter, reason = invitation's), invitation `accepted` | `superadmin.joined` (actor: the new person, channel `console`) |
+
+`INVITATION_TTL` for staff: `STAFF_INVITATION_TTL_MS = 48 h`, `STAFF_INVITATION_RESEND_MS = 1 min`, `STAFF_INVITATIONS_OPEN_MAX = 5` in `auth/policy.ts` beside the console constants (security policy approved by the owner, so in code). Tokens reuse `modules/invitations/invitation-token.ts` (`newInvitationToken`, `hashInvitationToken`).
+
+Action names follow the existing platform convention (`superadmin.granted`, `superadmin.revoked`), not the spec's `super_admin.*`; same meaning, logged in CHANGES.
+
+### The staff sign-up, request by request
+```
+browser                         API                                         database
+GET /staff-invitation/{t}  ──▶ console.join.get {token}   (20/min/IP)  ──▶ hash lookup
+  ◀── { status: pending|expired|withdrawn|accepted|customer_account, email, name,
+        inviterName, expiresAt, resume: boolean }
+Step 1  name + password   ──▶ console.join.start {token, name, password}  (10/min/IP)
+                               new:     policy check → insert user (staff, email_verified, no
+                                        terms) + credential + password history; invitation
+                                        user_id/started_at  (closed account: same user row,
+                                        new name and credential)
+                               resume:  name ignored
+                               both:    auth.api.signInEmail (sets the cookie; the sign-in
+                                        guard lets a joining account through)
+  ◀── { next: 'two_step' }  or BAD_REQUEST wrong password (counts towards the usual lock)
+Step 2  /two-factor/enable {password} (Better Auth) ◀── totpURI + backupCodes (held in memory)
+        /two-factor/verify-totp {code} (setup mode)
+           after-hook: two_step.enabled, then completeStaffJoin(userId) → super-admin,
+           invitation accepted, superadmin.joined; notices to other super-admins after commit
+Step 3  backup codes → I've saved them
+Step 4  passkey offer: /passkey/generate-register-options… (allowed: an active super-admin)
+Step 5  /console → access.status → closed + fresh proof → access.open (no prompt) → Dashboard
+```
+- **Why two public procedures and then Better Auth:** the token proves the inbox (no email verification), and Better Auth must still own the session, the two-step secret and the backup codes. `acceptAsNewUser` already creates a user and signs in the same way (`invitations.router.ts`).
+- **Why the join happens in the verify hook:** the spec says "verifying the code makes them a super-admin". Doing it where the code is verified means there's no state "two-step on, not a super-admin" to resume from. If the hook finds the invitation withdrawn or expired meanwhile, it does nothing: `join.get` then shows that state, and the next staff action discards the account.
+- **Resume:** reopening a valid link after step 1 returns `resume: true`. The page asks only for the password (no name) and goes on at step 2. A forgotten password: ask the inviter to **Resend** (fresh start); reset-password emails aren't sent to a joining account.
+- **Signed in as someone else:** the page compares `me.user.email` (when signed in) with the invitation's email and offers **Sign out and continue** (`features/account/sign-out.ts`). Signed in as the invitee (a joining account mid-way): it goes straight to step 2.
+- **Rate limits:** `publicRateLimit('staffJoinGet', 20)` and `publicRateLimit('staffJoinStart', 10)` per IP a minute. Code attempts: Better Auth's two-factor rule per IP (3 every 10 seconds, so at most 18 a minute, enforced before our hooks); in setup mode a wrong code never sets our sign-in lock (`afterTwoStepVerify` mirrors locks only in sign-in mode). A test pins both, and that Better Auth's own `accountLockout` doesn't stop a later right code at set-up (risk §1b.20).
+- **Bad links:** an unknown token answers like expired with no inviter ("This invitation has expired. Ask a Vento Real Estate super-admin to send a new one."). `join.start` on a non-pending invitation is CONFLICT with the same reasons (`invitation_expired`, `invitation_withdrawn`, `invitation_not_pending`, new `staff_customer_account`).
+
+## 1b.6 Sign-in, routing and My account
+- **Routing (server decides):** `getMe` for a staff account: active super-admin with two-step → `nextStep: 'console'`; two-step off (joining, or after a reset) → `'two_step_setup'`. `me.console` is unchanged (set only for an active super-admin). The web already follows it: `_app.tsx` sends `'console'` to `/console` from every customer path, including unknown ones; `_auth.tsx` gains "`nextStep === 'console'` → `/console`" and lets `/staff-invitation/…` through, like `/accept-invitation`.
+- **After sign-in** the sign-in page navigates to `redirect` or `/`, and `_app` sends staff on to `/console`. The code or passkey just stamped `second_factor_at`, so the console gate opens the window without *Confirm it's you* (slice 1, `access.open`).
+- **Sign-in guard** (`auth.ts`, `/sign-in/email` after-hook, after a correct password, beside `passwordResetRequired`): a staff account that is neither active nor joining → `discardUnfinishedStaffAccounts`, the new session deleted, and the same `INVALID_EMAIL_OR_PASSWORD` response a wrong password gets. A closed account never gets that far (no credential, so Better Auth already answers that). Passkey sign-in: a closed account has no passkeys; `afterPasskeySignIn`'s rule (no membership → only an active super-admin) is unchanged.
+- **Reset-password emails** (`hooks/verification.ts`, `sendResetPasswordEmail`): not sent to a joining or closed staff account (same screen either way). The two-step reset's link (§1b.7) goes to an active one.
+- **Two-step set-up for staff** (after a reset): the existing `/two-step/setup` route already works with no organization (slice 1); its header gains the staff sentence "Staff accounts need it every time you sign in." when `twoStepRequiredBy.reason === 'super_admin'`.
+- **My account** (`/console/account`, *settings page* archetype): the same personal procedures My security uses (`account.security`, `account.updateName`, `account.confirmPassword`, `account.passkeys.*`, `account.sessions.*`, plus Better Auth's change-password, backup-code and passkey endpoints). They are `authed` (personal), so no new API. Two-step shows "On · Required for Vento Real Estate staff" with no **Turn off** (the turn-off guard already refuses for `super_admin`); new backup codes and passkeys need a code or passkey from the last 5 minutes (slice 1, `assertFreshFactorForSuperAdmin`), so the dialogs ask for a code, as My security does for super-admins today.
+
+## 1b.7 Reset two-step and removal
+- **`resetSuperAdminTwoStep(db, actor, { userId, reason, expected: {} })`** (`operations/super-admin.ts`): lock; actor still active; target ≠ actor ("You can't reset your own two-step. Ask another super-admin."); target an active super-admin; `clearSecondFactors(tx, userId, { mode: 'reset' })`; platform event `superadmin.two_step_reset` (metadata: sessions ended, passkeys removed); the person's account event `two_step.reset` (platform trail, actor the resetting super-admin). Returns the emails: to the person `twoStepResetAlert` (existing template, "by Ada Okafor"), to the others the notice "Ada Okafor reset Tunde Bello's two-step". The router then asks Better Auth for the 30-minute reset link (`auth.api.requestPasswordReset`, as `members.router.ts` does). At the next sign-in: new password → `nextStep: 'two_step_setup'` → set up → console. No command (backlog 15); the parity registry is one-way (commands → console), so nothing breaks.
+- **`revokeSuperAdmin`** (extended): after the existing checks, for a staff target `closeStaffAccount(tx, userId)` in the same transaction (sessions, passkeys, authenticator and credential gone; `two_factor_enabled = false`). Preview lines become "Their staff account closes: they're signed out everywhere and can't sign in. Their name stays on past activity." The emails (`removedEmails`) are unchanged in shape; the person's copy says "Your staff account is closed."
+- **Re-inviting a closed account** starts fresh on the same user row (spec rule 5): `join.start` sets the name and a new credential; history (`platform_admins` revoked rows, audit rows) still links.
+- **`members.resetTwoStep`'s super-admin refusal** stays as a backstop (staff can't be members, so it's unreachable); its copy becomes "Vento Real Estate staff reset two-step with Vento Real Estate."
+
+## 1b.8 Commands
+| Command | After 1b |
+|---|---|
+| `superadmin invite --email x --name "…" --reason "…" --by y --break-glass` | Runs `inviteSuperAdmin` as `--by`, channel `command`. **Emails** the invitation; never prints the link (so whoever holds the host can't use it). The usual break-glass email tells every other super-admin. Needs `--break-glass` like every change. |
+| `superadmin invite --bootstrap --email x --name "…" [--reason "…"]` | Only with no active super-admin. Actor `Vento Real Estate (setup)`, channel `command`, `invited_by` null. **Prints** the one-time link (`{WEB_ORIGIN}/staff-invitation/{token}`, 48 hours) and also emails it (the dev transport writes it to `.mail`). A re-run withdraws the open bootstrap invitation and issues a new one. Reason defaults to "First super-admin". |
+| `superadmin grant …` | Refuses, exit 1: "Super-admins join by invitation. Use superadmin invite." |
+| `superadmin revoke`, `superadmin list` | Unchanged (revoke now closes the account; list also prints open invitations). |
+- `cli/context.ts` `parse` gains `--email`; `cli/superadmin.ts` help text; `main.ts` is unchanged.
+- **Registry** (`cli/change-commands.ts`): `'superadmin grant'` is removed; `'superadmin invite': { console: 'superAdmins.invite.apply' }` is added. `authorise(deps, parsed, 'superadmin invite')` makes it refuse without `--break-glass`.
+- **Parity test:** `invite` with `--break-glass` vs `superAdmins.invite.apply` on identical fixtures writes the same `action`, `target_type`, `after` (minus ids and times) and sends the invitation email, with channels `command` and `console`; `grant` refuses; `invite --bootstrap` with a super-admin present refuses with the spec sentence.
+- **`describePlatformEvent`** (`operations/describe.ts`) learns the five new actions ("Invited Tunde Bello (tunde@ventoerp.com)", "Resent Tunde Bello's invitation", "Withdrew Tunde Bello's invitation", "Tunde Bello joined as a super-admin", "Reset Tunde Bello's two-step"), used by Activity, the break-glass email and the Dashboard.
+- Actor names: `SCHEDULED_ACTOR` → "Vento Real Estate (scheduled)", `SETUP_ACTOR` → "Vento Real Estate (setup)". The read-time label for legacy null-channel rows (`activity.service.ts`) accepts both the old and the new scheduled names (old rows are append-only).
+
+## 1b.9 Dashboard
+
+### Every number's source, checked against the code
+| Number or row | Source (exists today) | Query (internal excluded everywhere: `coalesce(op.release_group, 'standard') <> 'internal'` via `organizations o left join organization_plans op`) | Index used |
+|---|---|---|---|
+| Header "214 organizations · 3,912 people" | `organizations`; active `members` | `count(*)`; `count(distinct m.user_id) where m.status = 'active'` | `members_org_status_idx` |
+| **Organizations**, "+6 in the last 7 days" | `organizations.created_at` | `count(*) filter (where o.created_at >= now() - interval '7 days')` | seq scan (≤ thousands) |
+| **Active this week** "1,204 people · in 61 organizations" | `members.last_active_at` (written by `touchMemberActivity`, at most hourly) | `count(distinct m.user_id), count(distinct m.organization_id) where m.status = 'active' and m.last_active_at >= now() - interval '7 days'` | seq scan on `members` (measured; add a partial index on `last_active_at` only if over budget) |
+| **Trials ending soon** | `organization_trials` | as `organizations.summary` today: `cancelled_at is null and expires_at > now() and ends_on <= lagosToday + 7`, distinct organization (the spec's `ended_recorded_at` is the reminder job's bookkeeping, not the truth; `expires_at` is) | `organization_trials_org_idx` |
+| **Over a limit**, "5 more at a limit" | the existing in-memory computation (`overLimitIds`: members + live invitations, active entities vs `countLimit`) | refactored to `limitStanding(db, now, snapshot?)` → `Map<orgId, { over: LimitUse[]; at: LimitUse[] }>` in one pass; `overLimitIds` becomes a wrapper so slice 1 callers don't change | existing two grouped counts |
+| Queue 1 · command-line changes, 7 days | `platform_audit_events` | `(channel = 'command' or (channel is null and actor_name not in (scheduled names))) and created_at >= now() - 7 days`, newest first; summary from `describePlatformEvent` | `platform_audit_events_created_idx` |
+| Queue 2 · trial ending in 7 days | as above | name, plan name, `ends_on`; soonest first | – |
+| Queue 3 · over a limit | `limitStanding` | worst excess first ("People 17 of 15") | – |
+| Queue 4 · no plan | `organization_plans.plan_version_id is null` (or no row) | name | `organization_plans_org_unique` |
+| Queue 5 · gone quiet | `members.last_active_at` | `o.created_at < now() - 14 days` group by `o.id` having `coalesce(max(m.last_active_at), o.created_at) < now() - 14 days`; days = now − that | `members_org_status_idx` |
+| Summary · new organizations / trials started | `organizations.created_at`; `organization_trials.starts_at >= now() - 7 days` | counts | – |
+| Summary · invitations sent, accepted | `invitations.created_at` (a resend updates `last_sent_at`, so it's not counted); `status = 'accepted' and responded_at >= now() - 7 days` | counts | seq scan (measured) |
+| Summary · sign-ups not finished | `users` | `account_kind = 'customer' and email_verified and created_at >= now() - 7 days and not exists (members m where m.user_id = u.id)`; count only, never names | seq scan (measured) |
+| Feed (15) and Account activity (30 days) | `audit_events` actions `organization.created`, `entity.created`, `invitation.accepted`, `member.removed`, `member.access_changed` (owner only), `two_step.reset`, `auth.locked_out`, `passkey.suspected_clone` — each verified as written today (`onboarding.service`, `entities.service`, `invitations.service`, `members.service`, `sign-in-guard`, `passkey-hooks`) | below | new `audit_events_action_created_idx`; per organization `audit_events_org_created_idx` |
+| By plan · versions · Internal · No plan | `organization_plans` ⋈ `plan_versions` ⋈ `plans` | group by plan key, name, version; internal and no-plan counted apart | `organization_plans_plan_version_idx` |
+| At pilot | `feature_releases.stage = 'pilot'` | from the snapshot (`loadSnapshot`), no query | – |
+| Recent changes (5) | `platform_audit_events` | newest 5 where `channel is distinct from 'account'`, through `toActivityRow` | `platform_audit_events_created_idx` |
+
+```sql
+-- Feed (Dashboard: 7 days, limit 15; organization card: one organization, 30 days, limit 30)
+select a.organization_id, o.name, a.action,
+       (a.created_at at time zone 'Africa/Lagos')::date as day,
+       count(*)::int as n, max(a.created_at) as latest_at
+from audit_events a
+join organizations o on o.id = a.organization_id
+left join organization_plans op on op.organization_id = a.organization_id
+where a.created_at >= now() - interval '7 days'
+  and a.action in (…8 actions…)
+  and (a.action <> 'member.access_changed' or a.metadata->>'roleKey' = 'owner')
+  and coalesce(op.release_group, 'standard') <> 'internal'
+group by 1, 2, 3, 4
+order by latest_at desc
+limit 15
+```
+- **"New owner":** `member.access_changed` stores role *names*, which a custom role can share in spirit ("Owner (site)") but not reliably by key. `members.service.ts` adds `metadata: { roleKey: role.key }` to that event (one line, additive, no new event). Rows from before 1b have no key and are left out of the feed, which is right (they're older than 30 days within weeks).
+- **Facts only:** the queries select organization id and name, action, counts and times; never `actor_name`, `target_label`, `before`, `ip_masked` or `user_agent_summary`. The output schema has no field that could carry them, and a test scans the JSON (spec).
+- **Shape of the call:** `dashboard.get` runs the reads in parallel with `runQueries` (pool, as `organizations.summary`): one SQL for the counts, one for the queue lists, the feed, the plan breakdown, the platform reads, and `limitStanding`. Queue: at most 8 rows in spec order, then `more` (the count left). p95 ≤ 300 ms on 2,000 seeded organizations is asserted with `EXPLAIN ANALYZE` notes in the PR and a timing test on the seeded fixture (not a CI gate). The web refetches on focus (`refetchOnWindowFocus`, staleTime 30 s).
+- **Account activity card:** `organizations.accountActivity({ id })` → "9 of 11 people active in the last 7 days · last active today" (`count(*) filter (where last_active_at >= now() - 7 days)`, `count(*)`, `max(last_active_at)` over active members) and the feed query for that organization over 30 days. Internal organizations show their own card (the exclusion is for cross-customer numbers only).
+- **Organizations page vs Dashboard:** the Organizations page keeps slice 1's totals (every organization, internal included, with the Internal chip); the Dashboard's header leaves internal out (owner's decision 5). The Dashboard's search box opens `/console/organizations?search=…`.
+
+## 1b.10 Moving a feature between plans (Releases fix)
+- `releaseDetail` gains `planVersions: { key, name, version, included }[]` (every live plan's latest version, by sort order) from `snapshot.latestPlans` (it already has `planKey` and `version`). `releaseRow.plans` (names) stays for the list.
+- `release-sections.tsx`: *Included in* lists the included plans as links "Growth v2, Enterprise v1" (to `/console/plans/{key}`), *Not in* lists the rest, then "To change this, publish a new version of a plan. Customers stay on their version until you move them." with "publish a new version" linking to *Plans*. Core features keep "Core: in every plan" and no *Not in*; add-on features keep "With the AI add-on".
+
+## 1b.11 Contract (`packages/shared/src/console`)
+New and changed procedures (everything else from §5.3 stays):
+
+| Procedure | Built on | Input | Output | Errors |
+|---|---|---|---|---|
+| `dashboard.get` | `consoleWindow` | – | `dashboard { header {organizations, people}, numbers {organizations, newLast7Days, activePeople, activeOrganizations, trialsEndingSoon, overLimit, atLimit}, attention { items: attentionItem[] (≤ 8), more }, activity { summary {newOrganizations, invitationsSent, invitationsAccepted, trialsStarted, signUpsNotFinished}, feed: feedRow[] (≤ 15) }, plans { byPlan: {key, name, total, versions: {version, organizations}[]}[], internal, noPlan, atPilot: featureKey[], recent: activityRow[] (≤ 5) } }` | – |
+| `organizations.accountActivity` | `consoleWindow` | `{ id }` | `{ people, activeLast7Days, lastActiveAt: datetime \| null, feed: feedRow[] (≤ 30) }` | NOT_FOUND |
+| `superAdmins.invitations` | `consoleWindow` | – | `staffInvitationRow { id, email, name, invitedByName (null = setup), expiresAt, status: 'pending' \| 'expired', resendableAt }[]` (pending rows only; bounded by 5 open plus expired ones from the last 30 days) | – |
+| `superAdmins.invite.{preview,apply}` | `consoleWindow` | `{ email: z.email() lower-cased, name: accountName }` (+ `reason`, `idempotencyKey`, `expected: {}`) | preview / `done` | CONFLICT `platform_refused` (customer account, already one, open invitation with `next: 'resend_invitation'` and `invitationId`, 5 open) |
+| `superAdmins.resendInvitation` | `consoleWindow` | `{ invitationId, idempotencyKey }` | `done` | CONFLICT (`platform_refused` "Wait a minute…", not pending); NOT_FOUND |
+| `superAdmins.withdrawInvitation.{preview,apply}` | `consoleWindow` | `{ invitationId }` (+ reason, key, `expected { status }`) | preview / `done` | CONFLICT `platform_stale` (accepted or withdrawn meanwhile); NOT_FOUND |
+| `superAdmins.resetTwoStep.{preview,apply}` | `consoleWindow` | `{ userId }` (+ reason, key) | preview / `done` | CONFLICT ("You can't reset your own two-step…", not a super-admin) |
+| `superAdmins.remove.*` | unchanged | | | |
+| `superAdmins.add.*` | **removed** (replaced by invite; the console web stops using it in the same commit) | | | |
+| `join.get` | `os` + `publicRateLimit('staffJoinGet', 20)` (**public**) | `{ token: string 1–200 }` | `staffJoinPreview { status: 'pending' \| 'expired' \| 'withdrawn' \| 'accepted' \| 'customer_account', email, name, inviterName: name \| null, expiresAt, resume: boolean }` | – (unknown token = `expired`, inviter null) |
+| `join.start` | `os` + `publicRateLimit('staffJoinStart', 10)` (**public**) | `{ token, name?: accountName, password: 1–128 }` | `{ next: 'two_step' \| 'sign_in' }` (`sign_in` when the account was made but Better Auth's sign-in failed, as `acceptAsNewUser`) | BAD_REQUEST password policy reasons; CONFLICT `invitation_expired` / `invitation_withdrawn` / `invitation_not_pending` / `staff_customer_account`; UNAUTHORIZED wrong password on resume; TOO_MANY_REQUESTS |
+
+- `superAdminRow` gains `canResetTwoStep: boolean` (not you, and two-step on) and its `grantedByName` is shown as **Invited by**.
+- `activityKind` keeps `super_admin`; invitation events map to it. Rows with `channel = 'account'` are never returned by `activity.list` or `activity.people`.
+- `join.*` keep `meta.area: 'console'` (they are console code and live in the subpath) and are listed in a new `CONSOLE_PUBLIC_PROCEDURES = ['console.join.get', 'console.join.start']` exported from `platform/console/console.router.ts`, spread into `PUBLIC_PROCEDURES` in `router.ts`.
+
+**Shared schema changes outside the console subpath**
+- `common/errors.ts`: `conflictReason` + `staff_account` (customer invite row problem, data `staffAccounts: string[]`) and `staff_customer_account`; `forbiddenReason` + `staff_account`; CONFLICT `next` + `'resend_invitation'` with optional `invitationId`.
+- `access/schema.ts`: `invitationPreview.staffAccount: boolean`.
+- `auth/fields.ts`: `accountKind` user field.
+- `account/two-step-copy.ts`: the staff sentences.
+- `account/schema.ts`: comments only ("Vento Real Estate"); no shape change.
+
+## 1b.12 Permissions and guards
+| Procedure | Built on | Who | Limits |
+|---|---|---|---|
+| `console.dashboard.get`, `console.organizations.accountActivity`, `console.superAdmins.*` | `consoleWindow` | active super-admin (a staff account), two-step on, window open | organization only by ID in input |
+| `console.join.get`, `console.join.start` | `os` + per-IP rate limit (public) | anyone with the token | the token names one invitation; nothing else readable |
+| `account.*` personal (My account) | `authed`, unchanged | every signed-in person, staff included | – |
+| every `member` / `memberPendingTwoStep` procedure | `memberMiddleware` | customers only: a staff account gets NOT_FOUND before any membership read | – |
+| `onboarding.createOrganization`, `invitations.accept`, `invitations.acceptAsNewUser` | unchanged builders | refuse staff (FORBIDDEN `staff_account` / CONFLICT) | – |
+| `pnpm superadmin invite` | CLI | `--break-glass` + `--by` + `--reason`, or `--bootstrap` on an empty environment | – |
+
+One platform role, no module × action matrix (unchanged; lesser staff roles are backlog 8). No maker-checker (fewer than four super-admins).
+
+**Walks:** the access walk (`console-access.test.ts`) skips `CONSOLE_PUBLIC_PROCEDURES` and instead checks they answer without a session and are in `PUBLIC_PROCEDURES`; the anonymous walk (`procedure-guard.test.ts`) treats them as public; a new **staff walk** calls every customer (`member` and `memberPendingTwoStep`) procedure as an active staff account and expects NOT_FOUND with no writes (`countingDb`).
+
+## 1b.13 Web (`apps/web`)
+
+### Routes
+```
+src/routes/console/index.tsx                   Dashboard (was Organizations)
+src/routes/console/organizations.index.tsx     Organizations (moved; same page, same search params)
+src/routes/console/organizations.$organizationId.tsx   + Account activity card
+src/routes/console/account.tsx                 My account
+src/routes/_auth/staff-invitation.$token.tsx   Staff sign-up (public; loader and component split)
+src/routes/_auth.tsx                           lets /staff-invitation through; nextStep 'console' → /console
+```
+- Every link that meant "Organizations" (`back-link.tsx` uses, stat buttons, Dashboard numbers, the not-found page's way back) points at `/console/organizations`; `console-nav.ts` `isCurrent` treats `/console` as exact.
+- The staff sign-up route keeps its loader with the component (`codeSplitGroupings`, as `console/index.tsx`), so `@vento/shared/console` never reaches the main chunk. It calls `console.join.*` through a small typed client, `features/console/join/join-client.ts` (an `RPCLink` typed `{ console: { join: ConsoleContract['join'] } }`, no console interceptors).
+
+### Shell changes
+- `console-nav.ts`: **Dashboard** (`/console`, `LayoutDashboardIcon`) first, Organizations at `/console/organizations`; `CONSOLE_TABS` = Dashboard, Organizations, Releases; `CONSOLE_MORE` = Plans, Activity, Super-admins; `STAFF_LABEL` "Vento Real Estate staff · all customers"; `STAFF_LABEL_SHORT` "Staff · all customers" (approved short form b, phone top bar only).
+- `console-user-menu.tsx` and `console-more-sheet.tsx`: **My account** replaces **Back to {organization}**; theme; **Sign out**. `use-leave-console.ts` keeps only sign-out.
+- `use-console-title.ts`: "{page} · Vento Real Estate console".
+- Customer side: the **Vento console** entries go from `components/shell/user-menu-panel.tsx`, `components/shell/more-sheet.tsx` and `features/shell/command-results.tsx`, and My security's super-admin line from `features/security/security-page.tsx`.
+
+### Screens
+| Screen (SCREENS.md §15 row) | Design | Built from | States |
+|---|---|---|---|
+| Console **Dashboard** | – role-home anatomy (needs-design; DESIGN-NOTES "Role homes") | `PageHeader`, `features/console/ui/stat-button.tsx` (numbers that open the filtered list), `StatusBadge` tones (rose, amber, slate), `ui/card`, `SearchField`; share bars as plain `div`s with tokens (no chart library) | skeleton in the final layout; queue empty and feed empty sentences; "Couldn't load the Dashboard." with **Try again** (`console-route-error.tsx` pattern); 375 px: numbers 2 × 2, then queue, then panels |
+| Organization detail **Account activity** card | [AdminOrgDetail](../design/claude-design/AdminOrgDetail.dc.html) layout | `features/console/ui/detail-card.tsx`, the feed row component shared with the Dashboard | empty "No account activity in the last 30 days." |
+| Super-admins: **Invite super-admin** sheet, Invitations section, row ⋯ (**Reset two-step**, **Remove**) | – pattern | the change pattern (`changes/change-sheet.tsx`, `preview-lines.tsx`, `reason-field.tsx`, `use-change.ts`), `ui/dropdown-menu`, `ConfirmDialog` for withdraw and reset (with reason), email field as `features/team/invite/email-box.tsx` (`type=email`, `autoComplete=off`, no spell-check or capitals) | refused messages in the sheet; open-invitation refusal offers **Resend** (`next: 'resend_invitation'`); "Expired" rose badge; **Resend** disabled until `resendableAt`; own row has no ⋯ actions |
+| Releases feature page: *Included in* / *Not in* / the line | – | `release-sections.tsx` | core and add-on variants |
+| **Staff sign-up** (public) | – pattern from [SignUp](../design/claude-design/SignUp.dc.html) and two-step set-up (needs-design) | `components/auth/auth-layout.tsx`, `password-input.tsx`, `password-rules.tsx` (`new-password-fields.tsx`), `features/two-step/two-step-setup.tsx` + `use-two-step-setup.ts` (started at the scan step with the password just typed: `confirmPassword(password)`), `components/auth/totp-qr.tsx`, `code-input.tsx`, `backup-codes.tsx`, `features/security/passkey-actions.ts` (`useAddPasskey`), `features/invitations/invitation-closed.tsx` layout for bad links | join (new / resume), scan, wrong code, backup codes, passkey offer (unsupported device → skipped automatically), expired, withdrawn, used (**Sign in**), customer account, signed in as someone else (**Sign out and continue**), network failure (fields kept) |
+| **My account** (console) | – pattern from [SecuritySettings](../design/claude-design/SecuritySettings.dc.html) | new `features/security/security-cards.tsx` (name field, sign-in card, passkeys card, sessions card, dialogs host, intent): extracted from `security-page.tsx` so both pages render the same cards; the console page adds its own header and title | as My security (loading, card errors, reauth dialogs) |
+| Customer *Invite people* row problem for a staff email | – | `features/team/invite/invite-rows.tsx`, `use-send-invitations.ts` (new `staffAccounts` list beside `alreadyMembers`) | – |
+| Customer accept page, staff email | – | `features/invitations/invitation-closed.tsx` (new variant) | – |
+
+**Not imported the wrong way:** the console imports customer code (`features/security/*`, `features/two-step/*`, `components/auth/*`), which is allowed; nothing customer-side imports `features/console/` or `@vento/shared/console` except the lazy staff sign-up route chunk. `scripts/bundle-check.mjs` keeps `features/console/` and `packages/shared/src/console/` forbidden in Home's first load, and `features/security/` stays forbidden there too, so `security-cards.tsx` can't leak into it. Report Home's first load before and after (190.0 KB of 200 KB at slice 1; 1b should only shrink it by removing the console entries).
+
+**Design deviations** (to `docs/design/CHANGES.md`): Dashboard built from the role-home anatomy without a board; "sign-ups not finished" counts the last 7 days (the panel's own period) where the spec's source table said 30; the platform action names are `superadmin.*`; staff sign-up has no Terms checkbox (§1b.20).
+
+## 1b.14 Naming and domain
+
+### "Vento Real Estate" sweep
+Found with `git grep -nP 'Vento(?! Real Estate)'` over product code (comments, identifiers, `@vento/*`, `vento_*`, `VENTO_*`, cookie names and the customer "Vento Homes" excluded). Each file changes only user-visible strings:
+- **apps/api email templates:** `email/templates/security-alert.ts` (19 strings), `platform-notices.ts`, `verify-email.ts`, `invitation.ts` ("… on Vento Real Estate", "via Vento Real Estate"), `reset-password.ts`, `trial-ending.ts`, `layout.ts` (footer).
+- **apps/api operation and refusal copy:** `platform/operations/plans.ts` (14), `operations/super-admin.ts`, `operations/release.ts`, `platform/super-admins.ts` (`NOT_SUPER_ADMIN`), `platform/platform-audit.ts` (organization notice actor "Vento Real Estate", scheduled actor), `platform/seed-plans.ts`, `platform/limits.ts`, `platform/console/super-admins.service.ts`, `platform/console/access.service.ts`, `platform/cli/{context,flags,plans,superadmin}.ts` (`BREAK_GLASS_REFUSAL`, help text), `modules/invitations/invitations.service.ts` ("You already have a Vento Real Estate account…"), `modules/members/members.service.ts`, `auth/security-store.ts`, `access/middleware.ts` (session-expired sentence), `app.ts`.
+- **apps/api identity names:** `auth/auth.ts` `appName` and TOTP `issuer` → "Vento Real Estate" (new authenticator entries only; existing ones keep their label), `auth/webauthn-settings.ts` `rpName` → "Vento Real Estate".
+- **packages/shared:** `account/two-step-copy.ts`, `auth/error-codes.ts` (message), `features/catalog.ts` (`ai.ask` label "Ask Vento" → **"Ask"**, approved short form c; the AI marker carries the brand).
+- **apps/web:** `components/{session-expired-dialog,system-status}.tsx`, `components/errors/{not-found-page,offline-page,server-error-page}.tsx`, `components/auth/backup-codes.tsx` (download file heading), `components/shell/{entity-switcher,entity-menu,more-sheet,user-menu-panel}.tsx`, `components/vento-mark.tsx` (the mark's accessible name "Vento Real Estate"; the visible lockup "Vento | REAL ESTATE" counts as the full name, short form a), `lib/{error-copy,auth-errors}.ts`, `features/plan/{talk-to-vento,talk-to-vento-button,upgrade-hint-rows,trial-line,plan-limit-message}.tsx|ts` (**Talk to Vento Real Estate**, "Contact Vento Real Estate"), `features/team/{team-context-line.tsx,invite/plan-places.ts,invite/invite-footer.tsx}`, `features/companies/{companies-context-line.tsx,sheet/plan-limit-dialog.tsx}`, `features/organization/profile/organization-form.tsx`, `features/onboarding/onboarding-layout.tsx`, `features/invitations/invitation-closed.tsx`, `features/auth/password-step.tsx`, `routes/_auth/accept-invitation.$token.tsx`, `features/shell/command-results.tsx`, `features/security/security-page.tsx`, and in the console `shell/{console-nav,console-top-bar,use-console-title}.ts(x)`, `access/{confirm-its-you,two-step-missing}.tsx`, `changes/{reason-field.tsx,change-errors.ts}`, `releases/release-page.tsx`, `organizations/{activity-card.tsx,override-words.ts,sheets/release-group-sheet.tsx}`, `activity/activity-page.tsx`, `super-admins/{super-admins-page,super-admin-changes}.tsx`.
+- **docs/help:** `README.md` and `getting-started/{find-your-way-around,invite-your-team,join-your-team,make-a-role,set-up-your-companies,set-up-your-organization}.md`.
+- **Not changed:** seed and fixture customer data ("Vento Homes Ltd"), code names (`VentoMark`, `talkToVento`, `@vento/*`), test emails on `test.vento.ng`, and past audit rows (append-only; they keep "Vento").
+
+### The copy test (fails on a bare "Vento")
+- `packages/shared/src/brand/bare-vento.ts` (+ test): `findBareVento(text): string[]` = matches of `/\bVento\b(?! Real Estate)/` after removing the allow-list: `Vento Homes` (customer data), `Vento | REAL ESTATE` (lockup), and exact strings listed with a reason in `BRAND_ALLOW` (e.g. the wordmark's `Vento` text node in `vento-mark.tsx`, which sits beside its descriptor).
+- `apps/web/src/test/brand-copy.test.ts`: reads every non-test `.ts`/`.tsx` under `apps/web/src` plus `index.html`, removes comments with a small string-aware stripper (`stripComments` in `bare-vento.ts`), and scans what's left. No parser is needed: identifiers can't match (`VentoMark` and `talkToVento` have no word boundary after or before "Vento", and package and cookie names are lower case), so what matches is copy. (TypeScript 7 in this repo has no stable compiler API, and adding a parser would be a new dependency.)
+- `apps/api/src/test/brand-copy.test.ts`: the same scan over `apps/api/src` (excluding `test/`, `db/seed.ts` and tests) and `packages/shared/src`; **renders every email template** with the cases in `email/templates/templates.test.ts` and scans subject, text and HTML; scans `docs/help/**/*.md` outside code spans.
+- A failure prints file, line and the string, so the next brick can't add a bare "Vento" without noticing.
+
+### Domain `realestate.ventoerp.com`
+- **Code:** nothing hard-codes the host. `WEB_ORIGIN` sets CORS, trusted origins, links in emails and the passkey relying party (`webauthn-settings.ts`: `rpID = hostname`, `origin = origin`). Production sets `WEB_ORIGIN=https://realestate.ventoerp.com`.
+- **Passkeys (decision 0019):** bound to the host. Nothing runs on `app.ventoerp.com` yet, so the move costs nothing. If anything had been made there, those passkeys would stop working and people fall back to password and code; no related-origins file is planned. Decision 0022 records the host; 0019 isn't edited.
+- **Environment and ops (`.env.example`, RUNBOOK §6 and "Environment variables"):** `WEB_ORIGIN`, `EMAIL_FROM="Vento Real Estate <no-reply@realestate.ventoerp.com>"` with the Postmark sender signature, DKIM and Return-Path on that domain, `SUPPORT_EMAIL` and `SECURITY_ALERT_EMAIL` on Vento Real Estate addresses, TLS for the host. Tests keep their `test.vento.ng` and `support@vento.ng` fixtures (not user-visible).
+- **Docs:** `docs/ARCHITECTURE.md` (the console row and any host), slice 1 of this plan (header line "Domain" and decision 0021's text here say `app.ventoerp.com`: add "(1b: realestate.ventoerp.com)" beside them; the committed 0021 file is amended by 0022 and 0023, not edited), RUNBOOK §6.
+
+## 1b.15 Files
+
+**packages/shared**
+- `src/console/schema.ts` (+ `schema.test.ts`): invite, resend, withdraw, reset-two-step inputs; `staffInvitationRow`; `staffJoinPreview`, join inputs; `dashboard`, `attentionItem`, `feedRow`, `accountActivity`; `releaseDetail.planVersions`; `superAdminRow.canResetTwoStep`; `addSuperAdmin` removed
+- `src/console/contract.ts`: `dashboard`, `organizations.accountActivity`, `superAdmins.{invitations,invite,resendInvitation,withdrawInvitation,resetTwoStep}`, `join.{get,start}`; `superAdmins.add` removed
+- `src/common/errors.ts`: `staff_account`, `staff_customer_account`, `next: 'resend_invitation'` + `invitationId`
+- `src/access/schema.ts`: `invitationPreview.staffAccount`
+- `src/auth/fields.ts`: `accountKind`
+- `src/auth/error-codes.ts`, `src/account/two-step-copy.ts` (+ test), `src/features/catalog.ts`: copy
+- `src/brand/bare-vento.ts` + `bare-vento.test.ts`: matcher, allow-list, comment stripper
+- `src/account/schema.ts`, `src/audit/actions.ts`: comment wording only
+
+**apps/api**
+- `drizzle/0013_staff_accounts.sql` (generated), `drizzle/0014_staff_account_guards.sql` (custom) + `drizzle/meta`
+- `src/db/schema/auth.ts`: `accountKind` enum and column
+- `src/db/schema/platform.ts`: `staffInvitationStatus`, `staffInvitations`, `platformChannel` + `account`
+- `src/db/schema/audit.ts`: `audit_events_action_created_idx`
+- `src/access/context.ts`: `AuthUser.accountKind`
+- `src/access/middleware.ts`: `authenticate` copies it; `memberMiddleware` NOT_FOUND for staff; copy
+- `src/router.ts`: `...CONSOLE_PUBLIC_PROCEDURES` in `PUBLIC_PROCEDURES`
+- `src/auth/policy.ts`: staff invitation constants
+- `src/auth/clear-second-factors.ts` + test: extracted wipe (reset and close modes)
+- `src/auth/auth.ts`: staff sign-in guard; `appName`, `issuer`
+- `src/auth/hooks/two-step-guard.ts`: setup mode calls `completeStaffJoin` for staff
+- `src/auth/hooks/verification.ts`: no reset email to joining or closed staff; staff note on a duplicate sign-up
+- `src/auth/security-store.ts`: `IdentityUser.accountKind`; staff requirement first
+- `src/auth/passkey-availability.ts`: no-organization staff rule in `passkeysAvailableHere`
+- `src/auth/webauthn-settings.ts`: `rpName`
+- `src/modules/audit/audit.service.ts`: no-membership branch hands staff events to the platform trail
+- `src/modules/account/account.service.ts`: `nextStep` for staff accounts
+- `src/modules/invitations/invitations.service.ts` (+ test): staff email refusals (create, resend, preview, accept, accept as new user)
+- `src/modules/onboarding/onboarding.service.ts` (+ test): refuse staff
+- `src/modules/members/members.service.ts`: uses `clear-second-factors.ts`; `roleKey` metadata on `member.access_changed`; copy
+- `src/platform/staff-accounts.ts` + test: state, discard, close
+- `src/platform/staff-account-events.ts`: platform-trail account events
+- `src/platform/operations/staff-invitations.ts` + `staff-invitations.ops.test.ts`: invite, resend, withdraw, start, complete, previews
+- `src/platform/operations/super-admin.ts`: grant and its preview removed; `resetSuperAdminTwoStep`; revoke closes staff accounts; copy
+- `src/platform/operations/describe.ts` (+ test): the five new actions
+- `src/platform/super-admins.ts`: `openInvitationCount`, copy
+- `src/platform/platform-audit.ts`, `src/platform/seed-plans.ts`: actor names
+- `src/platform/console/join.service.ts`: `get`, `start` (public)
+- `src/platform/console/staff-invitations.service.ts` + `staff-invitations.test.ts`: list, emails after commit
+- `src/platform/console/super-admins.service.ts`: rows with `canResetTwoStep`; joined, reset and removed emails
+- `src/platform/console/customer-activity.ts`: the feed query (Dashboard and organization card)
+- `src/platform/console/dashboard.service.ts` + `dashboard.service.test.ts`
+- `src/platform/console/organizations.service.ts`: `limitStanding`, `accountActivity`
+- `src/platform/console/releases.service.ts`: `planVersions`
+- `src/platform/console/activity.service.ts`: leaves out `channel = 'account'`; both scheduled names
+- `src/platform/console/console.router.ts`: new procedures, `CONSOLE_PUBLIC_PROCEDURES`, sign-in after `join.start`, password link after reset
+- `src/platform/cli/superadmin.ts`, `cli/context.ts` (`--email`), `cli/change-commands.ts`: invite, bootstrap link, grant refusal, registry
+- `src/email/mailer.ts`: tag `staff_invitation`
+- `src/email/templates/staff-invitation.ts` + `platform-notices.ts`: invitation, invited, joined, reset and removed notices; cases in `templates.test.ts`
+- `src/email/templates/*`, `platform/operations/*`, `platform/cli/*` and the other §1b.14 files: naming
+- `src/test/brand-copy.test.ts`
+- `src/test/factories.ts`: `createStaffAccount({ state: 'active' | 'joining' | 'closed', twoFactorEnabled })`, `createStaffInvitation({ status, started })`; `createSuperAdmin({ organization })` removed
+- `src/test/router-client.ts`: `consoleClientAs` takes a staff account
+- `src/test/procedure-guard.test.ts`: public join procedures; staff walk
+- `src/platform/console-access.test.ts`, `src/platform/console-parity.test.ts`, `src/platform/console/console.test.ts`: updated
+- `src/test/isolation.test.ts`: Dashboard and account activity
+- `src/test/e2e-fixtures.ts`, `src/db/seed.ts`: §1b.17
+
+**apps/web**
+- `src/routes/console/index.tsx` (Dashboard), `src/routes/console/organizations.index.tsx`, `src/routes/console/account.tsx`, `src/routes/_auth/staff-invitation.$token.tsx`, `src/routes/_auth.tsx`
+- `src/features/console/dashboard/{dashboard-page,dashboard-numbers,attention-queue,customer-activity-panel,plans-releases-panel,dashboard-skeleton}.tsx`, `feed-row.tsx`, `queries.ts`, `dashboard-words.ts` + test
+- `src/features/console/organizations/account-activity-card.tsx`; `organization-page.tsx`, `queries.ts`, links to `/console/organizations`
+- `src/features/console/super-admins/{invite-sheet,invitations-section,super-admin-actions,reset-two-step-dialog,withdraw-dialog}.tsx`, `queries.ts`; `super-admin-changes.tsx` (add sheet removed), `super-admins-page.tsx`
+- `src/features/console/account/my-account-page.tsx`
+- `src/features/console/join/{join-client.ts,staff-sign-up-page.tsx,join-form.tsx,join-two-step.tsx,join-passkey.tsx,join-closed.tsx,use-staff-join.ts}` + tests
+- `src/features/console/releases/release-sections.tsx`
+- `src/features/console/shell/{console-nav.ts,console-user-menu.tsx,console-more-sheet.tsx,console-top-bar.tsx,console-mobile-tabs.tsx,use-leave-console.ts,use-console-title.ts}` (+ `console-nav.test.ts`)
+- `src/features/security/security-cards.tsx` (new), `security-page.tsx` (uses it; super-admin line gone)
+- `src/features/two-step/use-two-step-setup.ts`: start from a known password; `src/routes/_app/two-step.setup.tsx`: staff sentence
+- `src/features/team/invite/{invite-rows.tsx,use-send-invitations.ts}`: staff row problem
+- `src/features/invitations/invitation-closed.tsx`, `src/routes/_auth/accept-invitation.$token.tsx`: staff email state
+- `src/components/shell/{user-menu-panel,more-sheet}.tsx`, `src/features/shell/command-results.tsx`: console entries removed
+- the §1b.14 web files: naming; `src/test/brand-copy.test.ts`
+- `e2e/console/{staff-sign-up,dashboard,my-account}.spec.ts` (new); `access`, `super-admins`, `organizations`, `accessibility` specs updated; `e2e/support/{console,fixtures}.ts`
+
+**Root:** `.env.example` (comments: domain, sender, "Talk to Vento Real Estate"); no new variables.
+
+## 1b.16 Tests
+
+**Shared:** `findBareVento` and `stripComments` (strings with `//` inside, JSX comments, the allow-list); staff schemas (email lower-cased, name rules, token length); two-step staff sentences.
+
+**API (Vitest, real Postgres, `withRollback`)**
+| Area | Cases |
+|---|---|
+| Migration 0014 (`staff-accounts.migration.test.ts`, on a fresh schema with a fixture before 0014) | a super-admin with an active membership is revoked with the platform row (reason, actor "Vento Real Estate (setup)", channel `command`) and keeps membership, password, two-step and passkeys; one with no membership becomes staff; console windows cleared; triggers: member insert for staff refused, `platform_admins` insert for a customer refused, kind update refused |
+| Staff invitations (`platform/console/staff-invitations.test.ts`, spec path) | invite happy path (row, 48 h, email to the invitee, notice to the others, event); refusals: customer account, active super-admin, open invitation (with `next` and id), sixth open, closed account allowed; fourth-super-admin line counts invited; resend: new link works, old link is expired, second within a minute refused, an expired one revived; withdraw: link shows withdrawn at once, stale when accepted meanwhile; expiry at 48 h exactly (fake clock); idempotent apply (same key → one row, one email) |
+| Staff sign-up (same file) | `join.get` for every status and an unknown token (no inviter); `start` creates a staff user with no membership, no terms, email verified, and signs in; resume asks for the password and ignores the name; wrong password counts towards the lock; verify-totp in setup mode makes them a super-admin, accepts the invitation, writes `superadmin.joined` (actor the new person) and the account events on the platform trail; invitation withdrawn between start and verify → no super-admin; the email got a customer account meanwhile → `customer_account`, nothing created; rate limits (21st `get`, 11th `start` in a minute → 429); wrong codes at set-up don't lock and a right code still works |
+| Discard | an unfinished account whose invitation expired is deleted on the next invite, resend, withdraw or refused sign-in, with its sessions, credential and factors; resend of a started invitation discards and starts fresh; no FK blocks the delete |
+| Staff rules | staff gets NOT_FOUND from every `member` procedure (walk, no writes); `onboarding.createOrganization` refused; customer `invitations.create` with a staff email → `staff_account` with the email listed and nothing sent; `resend` likewise; `preview.staffAccount`; `accept` and `acceptAsNewUser` refused; a customer sign-up with a staff email answers normally and sends the staff note |
+| Sign-in | active staff with code or passkey → `nextStep 'console'`, `second_factor_at` set; joining with an open invitation → allowed, `two_step_setup`; joining with an expired invitation → wrong-password answer and the account discarded; closed → wrong-password answer, counted; reset-password request for joining or closed staff sends nothing |
+| Reset two-step (console) | another super-admin: sessions gone, passkeys and authenticator removed, `password_reset_required`, reset link requested, notices; own row refused; at next sign-in two-step set-up before the console opens (`console_two_step_required` until then) |
+| Removal | staff account closed (no credential, no factors, no sessions), sign-in fails like a wrong password, name stays on Activity; re-invite and join work on the same user row |
+| Account events | a staff person's sign-in, two-step enabled, passkey added and `console.opened` land on the platform trail with channel `account`; Activity, `activity.people`, Dashboard recent changes and command-line queue never show them; a customer with no organization still only logs |
+| My account procedures | `account.security` for staff: `twoStepRequiredBy.reason 'super_admin'`, passkeys available with no organization, turn-off refused with the staff sentence; rename and remove passkey work |
+| Dashboard (`dashboard.service.test.ts`, spec path) | one seeded case per number, queue row and summary count, each compared with its source query; internal organizations excluded from every number, queue row and the feed and counted only as "Internal"; queue order and the 8-row cap with `more`; command-line rows include legacy null-channel rows but not scheduled ones; new owner only with `roleKey 'owner'`; at-limit vs over-limit; quiet uses created-at when nobody was ever active; facts-only JSON scan (no member names, emails, IPs, devices) on `dashboard.get` and `accountActivity`; timing on 2,000 seeded organizations reported |
+| Releases | `planVersions` with included and not-in plans; core and add-on features |
+| Commands (`console-parity.test.ts`, `superadmin` CLI tests) | `invite --break-glass` vs console invite: same audit fields and invitation email, link never printed; `invite --bootstrap` prints a working link only with no super-admin, re-run replaces it; `grant` refuses with the spec sentence; registry has `superadmin invite` and no `superadmin grant` |
+| Walks | access walk skips the two public procedures and checks they're in `PUBLIC_PROCEDURES`; anonymous walk; staff walk; area walk (`join.*` keep `area: 'console'`) |
+| Isolation | `accountActivity` of organization A carries no row of B; a console reset or removal touches no organization's data or audit trail |
+| Naming (`apps/api/src/test/brand-copy.test.ts`) | every rendered email template, operation message and shared copy has no bare "Vento"; help articles too |
+
+**Web units:** console nav (Dashboard first, tabs, `isCurrent` exact for `/console`); Dashboard words (plurals, "nobody active for 18 days", "Enterprise trial ends in 2 days"); invite sheet refusal with **Resend**; staff sign-up state machine (new, resume, bad links, signed in as someone else); `security-cards` renders on both pages; `apps/web/src/test/brand-copy.test.ts`.
+
+**Playwright** (desktop and mobile unless noted)
+| Spec | Checks |
+|---|---|
+| `e2e/console/staff-sign-up.spec.ts` (J-ADM-05) | fixture invitation → open the link from the mailbox → name and password → scan (TOTP helper) → code → backup codes → **Skip for now** → Dashboard with the welcome toast, no *Confirm it's you* (5 clicks); leave after the password and reopen → password only, resumes at two-step; expired, withdrawn and used links; signed in as a customer → **Sign out and continue**; virtual authenticator → **Add passkey** (desktop); 375 px |
+| `e2e/console/dashboard.spec.ts` (J-ADM-06) | sign in → Dashboard (0 clicks); a fixture's trial-ending, over-limit, no-plan and quiet organizations each appear with their action (asserted by the fixture's unique names, never by totals: the e2e database is shared); an internal fixture organization never appears; **Review** opens the organization; the search box opens Organizations filtered; 375 px layout; axe light and dark |
+| `e2e/console/my-account.spec.ts` (J-ADM-07) | change name; change password (other sessions end); new backup codes after a code; add, rename, remove a passkey (virtual authenticator, desktop); sign out other sessions; two-step shows "Required for Vento Real Estate staff" with no **Turn off** |
+| `e2e/console/super-admins.spec.ts` (J-ADM-03, changed) | invite (3 clicks) → Invitations row with expiry; resend; withdraw (link then shows withdrawn); a customer email refused; reset two-step on another super-admin; remove → that person's next request is signed out and their sign-in fails; no actions on own row; Activity by person |
+| `e2e/console/access.spec.ts` (changed) | staff sign-in lands on the Dashboard; `/settings/team` and `/` send staff to `/console`; customers and revoked super-admins: 404 and no console code; customer user menu, More and ⌘K have no console entry |
+| `e2e/console/organizations.spec.ts` (changed) | Organizations at `/console/organizations`; Account activity card; Releases feature page shows *Included in* links and *Not in* |
+
+## 1b.17 Seed and fixtures
+- **Seed (`src/db/seed.ts`, idempotent):** Ada Okafor (`ada@ventoerp.com`) and Tunde Bello (`tunde@ventoerp.com`) are staff accounts with no organization, made through `createStaffUser` (the same insert `join.start` uses) with an active `platform_admins` row, then two-step through Better Auth as today (secret printed the first time). On an existing local database, Ada's Vento Homes viewer membership is marked removed first (status `removed`, `removed_at`), and her `account_kind` can't be changed by the trigger, so the seed tells the developer to reset the database (`pnpm db:down && pnpm db:up && pnpm db:migrate && pnpm db:seed`) when it finds Ada as a customer, instead of half-converting her. One open staff invitation: Chika Obi (`chika@ventoerp.com`), invited by Ada, 48 hours; each seed run replaces its token and prints the link. "Vento" as Ada's company name in `upsertPerson` is dropped (staff have none).
+- **e2e fixtures (`src/test/e2e-fixtures.ts`):**
+  - `super-admin <active|revoked|two-step-reset>` (staff accounts; `member` and `no-org` removed);
+  - `staff-invitation <pending|expired|withdrawn|accepted|started> [inviterEmail]` → `{ email, name, link, inviterName }` (the link from the token it just made);
+  - `customer-account <email>` (for the "got a customer account meanwhile" case);
+  - `dashboard` → four standard organizations with unique names (trial ending in 2 days, people over the limit, no plan, nobody active for 18 days), one internal organization with all of these, and a break-glass row; prints the names;
+  - `age-staff-invitation <email> <hours>` (expiry without waiting).
+  - `e2e/support/console.ts` gains `signInAsStaff` and `openStaffInvitation`; the existing `age-console`, `age-second-factor`, `age-passkeys` and `platform-activity` stay.
+
+## 1b.18 Build order
+Slice 1 is built; 1b lands as reviewable commits on the same branch. The deploy migration and the removal of `superAdmins.add` land together with the invite flow, so there's never a build where nobody can become a super-admin.
+
+1. **Shared (½ day; blocks both tracks).** Console schemas and contract (dashboard, invitations, join, reset, account activity, plan links; `add` removed), error reasons, `invitationPreview.staffAccount`, `accountKind` field, two-step copy, `bare-vento.ts`. *Commit 1.*
+2. **In parallel:**
+   - **Backend (4 days)**
+     - B1. Migrations 0013 and 0014, schema, `accountKind` through Better Auth and `authenticate`, the three triggers, migration test. *Commit 2.*
+     - B2. `clear-second-factors.ts` (members reset switched to it, its tests green), `staff-accounts.ts`, `staff-account-events.ts` and the `recordAccountEvent` branch, staff rules (member middleware, onboarding, customer invitations, sign-in guard, reset-email skip, existing-account note, passkey availability, `nextStep`). Staff walk. *Commit 3.*
+     - B3. Staff invitation operations, `join.service.ts`, the verify-hook join, emails, console router (`superAdmins.*`, `join.*`, public list), reset two-step, revoke closes the account. *Commit 4: the security agent reviews this one early (public token procedures, the hook, account closure).*
+     - B4. Dashboard (`limitStanding`, `customer-activity.ts`, `dashboard.service.ts`), `accountActivity`, `planVersions`, `roleKey` metadata. *Commit 5.*
+     - B5. Commands (`invite`, bootstrap link, grant refusal, registry, parity), `describe.ts`, actor names. *Commit 6.*
+     - B6. Seed and e2e fixtures. *Commit 7.*
+   - **Frontend (4 days; against the commit-1 types with a mocked client until B3 and B4)**
+     - F1. Route moves (Dashboard at `/console`, Organizations at `/console/organizations`), nav, tabs, user menu and More (**My account**), `_auth.tsx` changes; customer console entries removed. *Commit 8.*
+     - F2. `security-cards.tsx` extraction (My security unchanged on screen) and My account. *Commit 9.*
+     - F3. Super-admins: invite sheet, Invitations section, row actions. *Commit 10.*
+     - F4. Staff sign-up route and states. *Commit 11.*
+     - F5. Dashboard and the Account activity card; Releases plan links. *Commit 12.*
+     - F6. Customer invite row problem and accept-page state.
+3. **Naming and domain (1 day, after both tracks merge locally, since it touches files from both):** the §1b.14 sweep, both copy tests, `.env.example`, `catalog.ts` "Ask". *Commit 13.*
+4. **Then (1–2 days):** e2e specs (*commit 14*), docs and decision records (*commit 15*), reviewer, ui-designer (Dashboard, staff sign-up, My account, Super-admins at 375 and dark), security audit of 1b, fixes, then the PR is ready for review.
+
+## 1b.19 Docs (the implementer commits these)
+- **Decision records** `docs/decisions/0022-the-product-is-always-called-vento-real-estate.md` and `0023-staff-accounts-are-separate-from-customer-accounts.md` (text below), two rows in `docs/decisions/README.md`. 0015's "Trust model" section gains one line: "A super-admin is a staff account, never a role on a customer account (decision 0023)." 0019 and 0021 are not edited; the new records say what they amend.
+- **`docs/DOMAIN.md`:** exactly the spec's "Changes to DOMAIN.md (1b)" (Super-admin, Console, Staff account, Staff invitation, Dashboard (console), Platform audit event, the "Vento" → "Vento Real Estate" notes, the access rules, the new **Naming** section). The AI table and `docs/PRODUCT.md`: "Ask Vento" → "Ask" (short form c approved).
+- **`docs/journeys/12-vento-admin.md`:** J-ADM-05, 06, 07 and the changed J-ADM-03 → `built` when merged; J-ADM-01 and 02 step 1 "sign in → Dashboard", J-ADM-02 the plans line; Test lines as §1b.16; "Behind the scenes" of J-ADM-05 uses `superadmin.joined` (the code's name). `docs/journeys/README.md` row unchanged apart from status.
+- **`docs/design/SCREENS.md` §15 and §0:** the 1b rows (already added by the product manager) → `built` as each lands; the §0 user-menu and My security rows lose the console line. **`docs/design/CHANGES.md`:** the §1b.13 deviations.
+- **`docs/RUNBOOK.md`:** §3 (`superadmin invite` replaces `grant` under break-glass; the link is emailed, never printed); §4 (first super-admin: `pnpm superadmin invite --bootstrap --email … --name …`, open the printed link within 48 hours, finish the staff sign-up, then sign in at `/console`); §6 (passkey domain `realestate.ventoerp.com`); deploy notes for 0013 (additive; index built inside the migration transaction) and 0014 (**who loses super-admin**: list `select u.email from platform_admins pa join users u … join members m … where pa.revoked_at is null and m.status = 'active'` before deploying and tell them; if none remains afterwards, run the bootstrap invitation at once); environment variables (`WEB_ORIGIN`, `EMAIL_FROM`, sender domain).
+- **`docs/ARCHITECTURE.md`:** host `realestate.ventoerp.com`; layout (`platform/staff-accounts.ts`, `operations/staff-invitations.ts`, `console/join.service.ts`, `dashboard.service.ts`); request flow: staff accounts stop at `memberMiddleware`; data: `users.account_kind`, `staff_invitations`, the platform trail's `account` channel; the commands row (`superadmin invite`).
+- **`docs/specs/README.md`:** admin-console stays `in build` until the PR merges, then `shipped`.
+- **`CHANGELOG.md`:** "Changed: the product is called Vento Real Estate everywhere, including emails and the authenticator app's entry for new set-ups." and "Security: Vento Real Estate staff now use separate staff accounts, never your organization's member list." (customers see nothing else new).
+- **`docs/help/`:** the naming sweep only; staff journeys stay out of the customer help centre (slice 1 note).
+- **Skills:** `add-module` §10 (a staff account gets NOT_FOUND from every `member` procedure; the staff walk checks new ones automatically); `testing-patterns` (`createStaffAccount`, `createStaffInvitation`, staff fixtures); `review-checklist` (the copy test must stay green; `platform/console/` still never reads buyer, money, document or KYC tables; Dashboard queries never select `actor_name`, `target_label`, IP or device from `audit_events`); `ux-writing` (the naming rule and the three short forms).
+
+### Decision record 0022
+```markdown
+# 0022 · The product is always called Vento Real Estate
+
+- **Date:** 2026-11-27
+- **Status:** proposed
+
+## Context
+Vento has other products (Vento Hotels; Vento Manufacturing, the original "Vento ERP"), so "Vento" alone on a screen, in an email or in an authenticator app doesn't say which product it is. The owner asked that this product always says "Vento Real Estate" (docs/specs/admin-console.md, slice 1b) and moved it to its own host, realestate.ventoerp.com. Until now the copy said "Vento" in many places, and the docs named app.ventoerp.com as the host.
+
+## Decision
+Every user-visible word says "Vento Real Estate", never "Vento" alone: product and page titles, the console ("Vento Real Estate console", "Vento Real Estate staff · all customers"), email senders, subjects, bodies and footers, the authenticator app issuer and the passkey relying-party name, customer audit entries (actor "Vento Real Estate"), errors, help articles, PDFs and the logo's accessible name; the possessive is "Vento Real Estate's". Three short forms are allowed (owner, 27 Nov 2026): the logo lockup "Vento | REAL ESTATE" counts as the full name; the console's phone top bar may read "Staff · all customers" beside the lockup; the AI feature is called "Ask", with the AI marker. Code and configuration names (`VentoMark`, `@vento/*`, `vento_app`, `VENTO_*`), customer data that contains the word, and past audit rows are not covered. A test scans web copy, API copy, rendered emails and help articles and fails on a bare "Vento" outside an allow-list. The product lives at realestate.ventoerp.com and the console at realestate.ventoerp.com/console; the host comes only from `WEB_ORIGIN`, so passkeys are bound to realestate.ventoerp.com (this updates the host named in decision 0019).
+
+## Consequences
+- Customers and staff always know which Vento product they're in; new copy can't drift back (the test fails the build).
+- Longer strings: buttons and titles are written for the full name; the three short forms are the only exceptions, and adding another needs the owner.
+- Moving the host before launch costs nothing. Moving it again later would make every passkey stop working (decision 0019); people would fall back to password and code.
+- Authenticator entries made before the change keep the old "Vento" label until two-step is set up again.
+
+## Alternatives considered
+- "Vento" with "Real Estate" only in the logo: ambiguous in emails, authenticator apps and audit trails, where there's no logo.
+- A product-name constant in code instead of a test: helps new code but doesn't catch a hard-coded string; the test does both jobs with no indirection in every sentence.
+- Keeping app.ventoerp.com: the generic host would be wrong once other Vento products share the domain.
+```
+
+### Decision record 0023
+```markdown
+# 0023 · Staff accounts are separate from customer accounts and join by invitation
+
+- **Date:** 2026-11-27
+- **Status:** proposed
+
+## Context
+Until now a Vento super-admin was any customer account with an extra `platform_admins` row (decision 0015's model). Staff reached the console from a customer workspace, a super-admin could also be an owner or viewer in an organization, and staff power was tangled with customer membership: a customer's two-step reset could touch a super-admin, the console needed a "Back to {organization}" link, and a super-admin with no organization couldn't manage passkeys (a consequence in decision 0021). The owner decided (docs/specs/admin-console.md, slice 1b, 27 Nov 2026) that staff accounts are only for the console, are made only by invitation, and that one email is either a staff or a customer account.
+
+## Decision
+`users.account_kind` is `customer` or `staff`, set when the account is made and never changed (database trigger). A staff account is created only by accepting a staff invitation (or the bootstrap invitation on an empty environment): a platform table `staff_invitations` with a hashed 256-bit token, 48 hours, one pending per email, resend once a minute (new link), withdraw at once, at most 5 open. The public staff sign-up sets a name and password, then two-step through Better Auth; verifying the code makes the person a super-admin and accepts the invitation in one transaction, so there is no super-admin without two-step. A staff account is never a member of an organization and can't create one or accept a customer invitation (service checks, plus triggers refusing a staff `members` row and a customer `platform_admins` row); every customer procedure answers it NOT_FOUND. Staff sign in on the normal sign-in page and land on the console Dashboard; their own sign-in is managed on My account in the console, with the same procedures and cards as My security. Another super-admin resets a lost two-step. Removing a super-admin closes the staff account (sessions, passkeys, authenticator and password removed; name kept on history); inviting the same email again starts fresh on the same account. A staff person's account events go to the platform trail (channel `account`), since they have no organization trail. On the command line, `superadmin invite` replaces `grant`: with `--break-glass` the link is emailed and never printed; `--bootstrap` prints a one-time link when there's no super-admin. At deploy, a super-admin who is also a member of an organization stops being a super-admin, keeps their customer access, and re-joins by invitation with a different email. This amends decision 0015 (a super-admin is a staff account, not a role on any account) and decision 0021 (no console entry in customer menus, no "Back to {organization}", and the no-organization passkey limitation is replaced by My account).
+
+## Consequences
+- Staff power and customer data never meet in one account; the support view (slice 2) becomes the only way staff see a customer workspace.
+- A staff member who wants to try the product as a customer needs a second email.
+- Unfinished staff sign-ups are deleted on the next staff-invitation action or sign-in attempt, not by a job; an expired one can linger until then.
+- At deploy, the owner's own account may stop being a super-admin; the bootstrap invitation must be run straight after (RUNBOOK).
+- A lone super-admin who loses both phone and backup codes can't be reset from the console; until a break-glass reset exists, production should have at least two super-admins.
+- Turning a former staff email into a customer account needs a migration (the kind is fixed).
+
+## Alternatives considered
+- Keep super-admins as customer accounts with a role: what the owner asked to end; mixes powers and keeps the passkey gap.
+- Derive "staff" from `platform_admins` alone: a removed super-admin or a half-finished sign-up would read as a customer, and could then join an organization with the same email.
+- A separate identity store or Better Auth instance for staff: two sign-in systems, two cookies, and passkeys under a second relying party, for no gain at this team size.
+- Staff self sign-up restricted to @ventoerp.com: no domain mailboxes yet (owner's decision 8, deferred).
+- Granting super-admin when the password is set, with two-step later: a window in which a super-admin has no second factor.
+```
+
+## Shared files touched by 1b (coordination with brick 4)
+| File | 1b's change | Size |
+|---|---|---|
+| `apps/api/src/access/middleware.ts` | `authenticate()` copies `accountKind` into `AuthUser`; `memberMiddleware` starts with `if (context.user.accountKind === 'staff') throw notFound()`; the session-expired sentence says "Vento Real Estate". No new middleware. | ~4 lines |
+| `apps/api/src/router.ts` | `PUBLIC_PROCEDURES` gains `...CONSOLE_PUBLIC_PROCEDURES` (`console.join.get`, `console.join.start`) and one import. | 2 lines |
+| `apps/api/src/modules/audit/*` | `audit.service.ts` `recordAccountEvent`: in the existing "no active membership" branch, `if (await recordStaffAccountEvent(db, input)) return 1` before the log line (plus one import). `recordAudit`, `redact` and the table are untouched. | ~3 lines |
+| `packages/shared/src/contract.ts` | **Not changed** (everything new is in the `@vento/shared/console` subpath). | – |
+| `packages/shared/src/audit/actions.ts` | **No new actions** (staff account events reuse existing ones; platform actions aren't listed there). One comment: "actor 'Vento'" → "actor 'Vento Real Estate'". | 1 comment |
+| `packages/shared/src/access/role-rules.ts` | **Not changed.** | – |
+| `packages/shared/src/account/schema.ts` | **No shape change.** Two comments say "Vento Real Estate" and "staff account". | 2 comments |
+| `apps/api/src/platform/cli/main.ts` | **Not changed** (`--email` is parsed in `cli/context.ts`; `invite` lives in `cli/superadmin.ts`). | – |
+
+Other shared files 1b touches, outside brick 4's list: `packages/shared/src/common/errors.ts` (append-only enum values), `access/schema.ts` (one field), `auth/fields.ts` (one field), `auth/error-codes.ts` and `account/two-step-copy.ts` (copy), `features/catalog.ts` (one label), and `apps/api/src/modules/members/members.service.ts` (the extracted helper and the `roleKey` metadata). Whichever branch merges second rebases; every overlap is a few appended or reworded lines.
+
+## 1b.20 Risks, decisions and questions
+
+**For the owner (one item)**
+1. **Production may run with a single super-admin, or none, right after deploy.** Your own account is probably a member of an organization, so it stops being a super-admin at deploy (your decision 2), and the bootstrap invitation makes exactly one staff account. A lone super-admin who loses both phone and backup codes can't be reset from the console (backlog 15 isn't built). *Recommended:* on deploy day, bootstrap your staff account and invite a second super-admin (Tunde) at once, and treat "two super-admins" as part of the deploy checklist. **Alternative:** pull backlog 15 (a break-glass `superadmin reset-two-step` command) into 1b, about half a day.
+
+**Decisions this plan makes (say if you disagree)**
+- **Staff sign-up has no Terms checkbox.** The customer terms are for customers; staff are covered by their employment terms.
+- **Resending a half-finished invitation starts it fresh** (the half-made account is discarded). That's also the way out of a forgotten password mid-sign-up: reset-password emails aren't sent to unfinished staff accounts.
+- **Unfinished accounts are deleted on the next staff-invitation action or sign-in attempt,** not by a scheduled job (there's no job system yet).
+- **A staff person's sign-ins and security events are kept on the platform trail but not shown on Activity** in 1b. Activity stays a list of changes, as in slice 1; they're there for investigations.
+- **"New owner" in the feed** works because the access-change event now also records the role key (one extra field on an existing event). Older events without it are left out.
+- **"Sign-ups not finished" counts the last 7 days,** the panel's own period (the spec's source table said 30).
+- **Platform action names stay in the existing style** (`superadmin.invited`, not `super_admin.invited`).
+- **Code attempts at staff sign-up use Better Auth's existing per-network limit** (at most 3 every 10 seconds), not a new 10-a-minute rule, so customer sign-in from a shared office network isn't squeezed. Wrong codes at sign-up never lock.
+
+**Risks**
+- **Better Auth's own two-step lockout at set-up:** the plugin's `accountLockout` (5 failures) might count set-up attempts and refuse a later right code for 15 minutes. Verify on day 1 (a test pins it). Fallback: the sign-up's **Start again** calls `/two-factor/enable` once more, which issues a fresh secret and resets the row.
+- **The join runs in Better Auth's after-hook,** after two-step is committed: if it fails (invitation withdrawn a moment before), the person has two-step but isn't a super-admin. Handled: `join.get` shows the withdrawn or expired state, and the next staff action discards the account. A test covers it.
+- **Deploy order:** 0014 revokes super-admins who are members before any staff account exists. If nobody remains, the console is unusable until the bootstrap link is used (48 hours). The RUNBOOK deploy note makes it one step: migrate, `superadmin invite --bootstrap`, finish the sign-up, invite a second super-admin.
+- **Local databases with the old seed:** Ada is a customer there and her kind can't change (trigger). The seed stops with the reset instructions rather than half-converting.
+- **Deleting an unfinished user** must not hit a restrict FK. A joining account writes no audit rows (account events only go to the platform trail after the join), and a test lists every FK to `users` and checks the delete.
+- **`memberMiddleware` change for everyone:** it reads a field already on the session's user, so no query is added; the staff walk proves it fires before any membership read.
+- **Dashboard scale:** the counts are sequential scans over `members`, `invitations` and `users`, and over-limit stays in memory. Measured on 2,000 seeded organizations; the partial index on `members.last_active_at` is the first thing to add if p95 goes over 300 ms.
+- **Removing the console entries from the customer shell** changes `user-menu-panel.tsx`, `more-sheet.tsx` and `command-results.tsx`; the bundle report must show Home's first load the same or smaller.
+
+**Follow-ups (not in 1b)**
+- Show staff sign-in and security events on My account or Activity.
+- Break-glass `superadmin reset-two-step` (backlog 15) if the owner doesn't pull it in.
+- Everything in the spec's "Console backlog (later)".
+
+Files read for slice 1b:
+- `docs/specs/admin-console.md` (1b and the amendments), slice 1 of this plan, `docs/journeys/12-vento-admin.md`, `docs/design/SCREENS.md` §15, `docs/RUNBOOK.md` headings, `docs/decisions/0000-template.md`
+- `apps/api/src/platform/{super-admins,platform-audit,seed-plans}.ts`, `platform/operations/super-admin.ts`, `platform/console/{console.router,apply-once,actor,super-admins.service,organizations.service,releases.service}.ts`, `platform/cli/{superadmin,change-commands,context,break-glass,main}.ts`
+- `apps/api/src/{orpc,router,api-contract,env}.ts`, `access/{middleware,console-middleware}.ts`, `auth/{auth,webauthn-settings,passkey-availability}.ts`, `auth/hooks/{two-step-guard,audit-hooks,verification}.ts`, `modules/account/{account.service,account.router}.ts`, `modules/invitations/{invitations.service,invitations.router,invitation-token}.ts`, `modules/members/{members.service,members.router}.ts`, `modules/audit/audit.service.ts`, `db/schema/{auth,platform,audit,access}.ts`, `db/{migrate,seed}.ts`, `drizzle/0004_platform_guards.sql`, `drizzle/0006_team_backfill.sql`, `test/e2e-fixtures.ts`
+- `packages/shared/src/{console/contract,console/schema,account/schema,account/two-step-copy,audit/actions,common/errors}.ts`
+- `apps/web/src/routes/{console,_app,_auth}.tsx`, `routes/console/index.tsx`, `routes/_app/two-step.setup.tsx`, `features/console/{shell/console-nav,shell/console-user-menu,words}.ts(x)`, `features/security/*` (imports), `components/vento-mark.tsx`, `scripts/bundle-check.mjs`, `.env.example`
