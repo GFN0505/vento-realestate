@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { browser, testApp, totpFromUri } from '@/test/auth-client'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import { onboard, setUpTwoStep, signIn, signUpVerified } from '@/test/flows'
 
 // Audit L4: an authenticator code works once. These commit (Better Auth runs on the pool).
@@ -11,7 +11,7 @@ describe('authenticator codes at sign-in', () => {
     const email = uniqueEmail('replay')
     const setUp = browser(app)
     await signUpVerified(setUp, mailer, email)
-    await onboard(setUp, `Replay Homes ${uniqueEmail('o')}`.slice(0, 60))
+    await onboard(setUp, `Replay Homes ${uniqueSuffix()}`.slice(0, 60))
     const { totpURI } = await setUpTwoStep(setUp)
     const code = totpFromUri(totpURI)
 

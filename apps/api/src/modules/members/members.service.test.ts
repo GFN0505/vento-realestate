@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { type DbOrTx, db } from '@/db/client'
 import { auditEvents, members, platformAdmins, sessions, twoFactors, users } from '@/db/schema'
 import { createInvitations } from '@/modules/invitations/invitations.service'
-import { uniqueEmail, withRollback } from '@/test/db'
+import { uniqueSuffix, withRollback } from '@/test/db'
 import {
   contextFor,
   createCustomRole,
@@ -414,7 +414,7 @@ describe('two owners removing each other at the same moment', () => {
   // Real commits on separate connections: the only way to prove the organization lock
   // serialises them (the test database is recreated each run).
   it('lets one succeed and refuses the other, who is no longer a member', async () => {
-    const org = await createOrganization(db, { name: `Owner Race ${uniqueEmail('org')}` })
+    const org = await createOrganization(db, { name: `Owner Race ${uniqueSuffix()}` })
     const second = await createMember(db, org, { role: 'owner', name: 'Ngozi Adeyemi' })
     // Both loaded their access before either acted, as two open browsers would have.
     const firstCtx = await contextFor(db, org.owner, org)

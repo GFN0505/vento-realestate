@@ -2,7 +2,7 @@ import { and, count, eq, gt } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { entities, invitations } from '@/db/schema'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import { createEntity, createMember, createOrganization } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
 
@@ -13,7 +13,7 @@ import { clientAs } from '@/test/router-client'
 describe('plan limits under concurrency', () => {
   it('lets exactly one of two simultaneous creates take the last entity place', async () => {
     const org = await createOrganization(db, {
-      name: `Race Entities ${uniqueEmail('org')}`,
+      name: `Race Entities ${uniqueSuffix()}`,
       planKey: 'starter',
     })
     await createEntity(db, org, { name: 'Race Holding Ltd', type: 'holding' })
@@ -40,7 +40,7 @@ describe('plan limits under concurrency', () => {
 
   it('lets exactly one of two simultaneous invitations take the last place for people', async () => {
     const org = await createOrganization(db, {
-      name: `Race People ${uniqueEmail('org')}`,
+      name: `Race People ${uniqueSuffix()}`,
       planKey: 'starter',
     })
     for (let i = 0; i < 8; i++) await createMember(db, org, { role: 'viewer' })

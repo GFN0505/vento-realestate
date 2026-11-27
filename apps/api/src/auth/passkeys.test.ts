@@ -15,7 +15,7 @@ import type { Snapshot } from '@/platform/availability'
 import { staticFeatureStore } from '@/platform/feature-store'
 import { loadSnapshot } from '@/platform/snapshot'
 import { browser, testApp } from '@/test/auth-client'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import { TEST_PASSWORD } from '@/test/factories'
 import { joinAsStaff, onboard, signUpVerified } from '@/test/flows'
 import { type SoftAuthenticator, softAuthenticator } from '@/test/soft-authenticator'
@@ -39,7 +39,7 @@ async function person(options: Parameters<typeof testApp>[0] = {}) {
   const b = browser(app)
   await signUpVerified(b, mailer, email)
   // A unique name: these commit, and the flags and plans command tests find organizations by name.
-  await onboard(b, `Passkey Homes ${uniqueEmail('o')}`.slice(0, 60))
+  await onboard(b, `Passkey Homes ${uniqueSuffix()}`.slice(0, 60))
   const me = await b.rpc('account/me')
   const organizationId = String((me.body.organization as { id: string }).id)
   const userId = String((me.body.user as { id: string }).id)

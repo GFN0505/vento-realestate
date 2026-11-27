@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { loadMembership } from '@/access/context'
 import { db } from '@/db/client'
 import { auditEvents, entities } from '@/db/schema'
-import { uniqueEmail, withRollback } from '@/test/db'
+import { uniqueSuffix, withRollback } from '@/test/db'
 import {
   archiveEntityRow,
   contextFor,
@@ -292,7 +292,7 @@ describe('entities', () => {
 describe('restoring under concurrency', () => {
   it('lets exactly one of two simultaneous restores take the last company place', async () => {
     const org = await createOrganization(db, {
-      name: `Race Restore ${uniqueEmail('org')}`,
+      name: `Race Restore ${uniqueSuffix()}`,
       planKey: 'starter',
     })
     await createEntity(db, org, { name: 'Race Holding Ltd', type: 'holding' })

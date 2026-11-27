@@ -5,7 +5,7 @@ import { type DbOrTx, db } from '@/db/client'
 import { roles } from '@/db/schema'
 import { createInvitations, resendInvitation } from '@/modules/invitations/invitations.service'
 import { updateMemberAccess } from '@/modules/members/members.service'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import {
   contextFor,
   createCustomRole,
@@ -22,7 +22,7 @@ import { deleteRole } from './roles.service'
 // second is seen waiting on a lock, so the second must wait and then re-check.
 
 const fresh = (label: string) =>
-  createOrganization(db, { name: `Race ${label} ${uniqueEmail('o')}`.slice(0, 80) })
+  createOrganization(db, { name: `Race ${label} ${uniqueSuffix()}`.slice(0, 80) })
 const client = (org: TestOrg, user = org.owner) =>
   clientAs(db, user, { activeOrganizationId: org.id }).client
 

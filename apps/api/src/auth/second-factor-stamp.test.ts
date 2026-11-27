@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { sessions, users } from '@/db/schema'
 import { browser, testApp, totpFromUri } from '@/test/auth-client'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import { TEST_PASSWORD } from '@/test/factories'
 import { onboard, setUpTwoStep, signIn, signUpVerified } from '@/test/flows'
 
@@ -32,7 +32,7 @@ async function ownerWithTwoStep() {
   const email = uniqueEmail('owner')
   const b = browser(app)
   await signUpVerified(b, mailer, email)
-  await onboard(b, `Stamp Homes ${uniqueEmail('o')}`.slice(0, 60))
+  await onboard(b, `Stamp Homes ${uniqueSuffix()}`.slice(0, 60))
   const twoStep = await setUpTwoStep(b)
   return { app, email, b, ...twoStep }
 }

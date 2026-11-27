@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { db } from '@/db/client'
 import { members, organizationPlans, sessions, twoFactors, users } from '@/db/schema'
 import { browser, testApp } from '@/test/auth-client'
-import { uniqueEmail } from '@/test/db'
+import { uniqueEmail, uniqueSuffix } from '@/test/db'
 import { TEST_PASSWORD } from '@/test/factories'
 import { joinAsStaff, onboard, setUpTwoStep, signUpVerified } from '@/test/flows'
 
@@ -20,7 +20,7 @@ async function person(superAdmin: boolean) {
   }
   const email = uniqueEmail('factor')
   await signUpVerified(b, mailer, email)
-  await onboard(b, `Factor Homes ${uniqueEmail('o')}`.slice(0, 60))
+  await onboard(b, `Factor Homes ${uniqueSuffix()}`.slice(0, 60))
   await setUpTwoStep(b)
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email))
   const userId = user?.id ?? ''

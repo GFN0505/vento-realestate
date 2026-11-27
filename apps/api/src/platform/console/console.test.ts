@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { db as pool } from '@/db/client'
 import { auditEvents, organizationPlans, platformAuditEvents, staffInvitations } from '@/db/schema'
-import { uniqueEmail, withRollback } from '@/test/db'
+import { uniqueEmail, uniqueSuffix, withRollback } from '@/test/db'
 import {
   addAddOnRow,
   createEntity,
@@ -21,7 +21,7 @@ import { changePlanChange } from './changes'
 
 const why = { reason: 'Signed annual plan' }
 const key = () => ({ idempotencyKey: randomUUID() })
-const unique = (name: string) => `${name} ${uniqueEmail('o').slice(0, 12)}`
+const unique = (name: string) => `${name} ${uniqueSuffix()}`
 
 describe('organizations', () => {
   it('lists facts only: the owner, counts and plan, never other members', () =>
