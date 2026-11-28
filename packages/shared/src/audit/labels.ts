@@ -6,6 +6,7 @@ import {
 } from '../access/permissions'
 import { MONTHS } from '../common/nigeria'
 import { AUDIT_ACTIONS, type AuditAction } from './actions'
+import { landWhat } from './land-labels'
 
 // The audit log in plain words (spec: no codes, ids or JSON). Every action needs an entry here;
 // the labels test fails otherwise, so a new AUDIT_ACTIONS value can't ship unlabelled.
@@ -226,6 +227,28 @@ export const AUDIT_ACTION_META: Readonly<Record<AuditAction, AuditActionMeta>> =
       ? 'Exported the audit log'
       : `Exported the audit log · ${n.toLocaleString('en-NG')} ${n === 1 ? 'entry' : 'entries'}`
   }),
+  'land.parcel.created': s('land', 'Added a parcel', landWhat.parcelCreated),
+  'land.parcel.updated': s('land', 'Changed a parcel', landWhat.parcelUpdated),
+  'land.parcel.archived': s(
+    'land',
+    'Archived a parcel',
+    named('Archived parcel', 'Archived the parcel'),
+  ),
+  'land.parcel.restored': s(
+    'land',
+    'Restored a parcel',
+    named('Restored parcel', 'Restored the parcel'),
+  ),
+  'land.title_stage.updated': s('land', 'Updated a title stage', landWhat.stageUpdated),
+  'land.title_stages.changed': s('land', 'Changed the title stages', landWhat.stagesChanged),
+  'land.document.uploaded': s('land', 'Uploaded a title document', landWhat.documentUploaded),
+  'land.document.removed': s('land', 'Removed a title document version', landWhat.documentRemoved),
+  'land.document.restored': s(
+    'land',
+    'Restored a title document version',
+    landWhat.documentRestored,
+  ),
+  'land.document.link_issued': s('land', 'Opened a title document', landWhat.linkIssued),
 }
 
 export function isAuditAction(value: string): value is AuditAction {
@@ -288,6 +311,24 @@ export const FIELD_LABELS: Readonly<Record<string, string>> = {
   when: 'When',
   approvedBy: 'Approved by',
   companies: 'Companies',
+  // Land & title (stored as words: company names, stage labels, sizes like "4.20 ha").
+  state: 'State',
+  lga: 'LGA',
+  area: 'Area or town',
+  size: 'Size',
+  company: 'Company',
+  acquiredOn: 'Acquisition date',
+  acquisitionCost: 'Acquisition cost',
+  seller: 'Bought from',
+  notes: 'Notes',
+  statusOn: 'Date',
+  reference: 'Reference',
+  issuedBy: 'Issued by',
+  note: 'What happened',
+  followUpOn: 'Follow up by',
+  stages: 'Title stages',
+  number: 'Number',
+  issuedOn: 'Issue date',
 }
 
 export const OTHER_DETAILS_CHANGED = 'Other details changed'
@@ -345,6 +386,8 @@ function formatValue(key: string, value: unknown): string | null | typeof UNREAD
     return MONTHS[value - 1] ?? String(value)
   }
   if (typeof value === 'number') return String(value)
+  if (typeof value === 'string' && key === 'acquisitionCost') return nairaText(value)
+  if (typeof value === 'string' && DATE_KEYS.has(key)) return dateText(value)
   if (typeof value === 'string') {
     if (key === 'entities' && value === 'all') return 'All companies'
     if (key === 'status' || key === 'type' || key === 'releaseGroup') return humanise(value)
@@ -354,6 +397,24 @@ function formatValue(key: string, value: unknown): string | null | typeof UNREAD
     return value.length === 0 ? 'None' : value.join(', ')
   }
   return UNREADABLE
+}
+
+const DATE_KEYS = new Set(['acquiredOn', 'statusOn', 'followUpOn', 'issuedOn'])
+
+/** "840000000.00" → "₦840,000,000.00". */
+function nairaText(amount: string): string {
+  const [whole = '', fraction] = amount.split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `₦${grouped}${fraction === undefined ? '' : `.${fraction}`}`
+}
+
+const SHORT_MONTHS = MONTHS.map((m) => m.slice(0, 3))
+
+/** "2025-09-02" → "2 Sep 2025"; anything else as it is. */
+function dateText(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!m) return value
+  return `${Number(m[3])} ${SHORT_MONTHS[Number(m[2]) - 1] ?? m[2]} ${m[1]}`
 }
 
 function humanise(code: string): string {

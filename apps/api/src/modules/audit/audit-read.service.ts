@@ -15,7 +15,19 @@ import {
   OTHER_ORGANIZATION_ACTOR,
   tooManyRowsMessage,
 } from '@vento/shared'
-import { and, desc, eq, gte, ilike, inArray, lt, or, type SQL, sql } from 'drizzle-orm'
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  or,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, type ServiceContext } from '@/access/context'
 import { SYSTEM_ACTOR } from '@/approvals/engine'
@@ -26,6 +38,7 @@ import { conflict, notFound } from '@/lib/errors'
 import { formatDate, formatTime } from '@/lib/format'
 import { likePattern } from '@/lib/like'
 import { pageOffset } from '@/lib/paginate'
+import { hiddenOnlyEdits, viewLandEvents } from '@/modules/land/land-visibility'
 import { ORGANIZATION_NOTICE_ACTOR } from '@/platform/platform-audit'
 import { recordAudit } from './audit.service'
 import { toCsv } from './csv'
@@ -52,18 +65,37 @@ export function dateRange(from: string, to: string): { start: Date; end: Date } 
  * organization the person belongs to (recordAccountEvent), so an admin of another organization
  * can be the actor of a row here (security L1).
  */
-const ACTOR_KNOWN_HERE = sql`(${auditEvents.actorUserId} is null or exists (
+const knownHere = (
+  userId: SQLWrapper,
+  organizationId: SQLWrapper,
+) => sql`(${userId} is null or exists (
   select 1 from members m
-  where m.organization_id = ${auditEvents.organizationId} and m.user_id = ${auditEvents.actorUserId}))`
+  where m.organization_id = ${organizationId} and m.user_id = ${userId}))`
 
-/** member: show as recorded; staff: Vento Real Estate; other: an admin of another organization. */
-const ACTOR_STANDING = sql<ActorStanding>`case
-  when ${ACTOR_KNOWN_HERE} then 'member'
+const ACTOR_KNOWN_HERE = knownHere(auditEvents.actorUserId, auditEvents.organizationId)
+
+/**
+ * member: show as recorded; staff: Vento Real Estate; other: an admin of another organization.
+ * For any user column (who last updated a title stage, too), read with `actorFor`.
+ */
+export function actorStandingOf(
+  userId: SQLWrapper,
+  organizationId: SQLWrapper,
+): SQL<ActorStanding> {
+  // Nested in sql``: drizzle leaves a single-table select's top-level columns unqualified,
+  // which would make `u.id = "id"` compare the subquery's own row.
+  const user = sql`${userId}`
+  return sql<ActorStanding>`case
+  when ${knownHere(userId, organizationId)} then 'member'
   when exists (select 1 from users u
-    where u.id = ${auditEvents.actorUserId} and u.account_kind = 'staff') then 'staff'
+    where u.id = ${user} and u.account_kind = 'staff') then 'staff'
   else 'other' end`
+}
 
-type ActorStanding = 'member' | 'staff' | 'other'
+/** The audit actor's standing; record timelines (a parcel's Activity) select it too. */
+export const ACTOR_STANDING = actorStandingOf(auditEvents.actorUserId, auditEvents.organizationId)
+
+export type ActorStanding = 'member' | 'staff' | 'other'
 
 function conditions(ctx: ServiceContext, f: Filters): SQL | undefined {
   const { start, end } = dateRange(f.from, f.to)
@@ -71,6 +103,7 @@ function conditions(ctx: ServiceContext, f: Filters): SQL | undefined {
     eq(auditEvents.organizationId, ctx.organizationId),
     gte(auditEvents.createdAt, start),
     lt(auditEvents.createdAt, end),
+    hiddenOnlyEdits(ctx.member),
   ]
   if (f.module) {
     const actions = auditActionsInModule(f.module)
@@ -156,25 +189,22 @@ function actorKind(row: Pick<EventRow, 'actorUserId' | 'actorName'>): AuditRow['
  * Estate's staff.
  */
 function whoOf(row: EventRow): Pick<AuditRow, 'actor' | 'device' | 'ipMasked'> {
+  const actor = actorFor(row)
+  if (row.actorStanding !== 'member') return { actor, device: null, ipMasked: null }
+  return { actor, device: row.userAgentSummary, ipMasked: row.ipMasked }
+}
+
+/** Who, as this organization may see them (no device or IP: record timelines never show them). */
+export function actorFor(
+  row: Pick<EventRow, 'actorUserId' | 'actorName' | 'actorStanding'>,
+): AuditRow['actor'] {
   if (row.actorStanding === 'staff') {
-    return {
-      actor: { userId: null, name: ORGANIZATION_NOTICE_ACTOR, kind: 'vento' },
-      device: null,
-      ipMasked: null,
-    }
+    return { userId: null, name: ORGANIZATION_NOTICE_ACTOR, kind: 'vento' }
   }
   if (row.actorStanding === 'other') {
-    return {
-      actor: { userId: null, name: OTHER_ORGANIZATION_ACTOR, kind: 'other_organization' },
-      device: null,
-      ipMasked: null,
-    }
+    return { userId: null, name: OTHER_ORGANIZATION_ACTOR, kind: 'other_organization' }
   }
-  return {
-    actor: { userId: row.actorUserId, name: row.actorName, kind: actorKind(row) },
-    device: row.userAgentSummary,
-    ipMasked: row.ipMasked,
-  }
+  return { userId: row.actorUserId, name: row.actorName, kind: actorKind(row) }
 }
 
 function toRow(row: EventRow): AuditRow {
@@ -210,7 +240,7 @@ export async function listAudit(
     () => ctx.db.select({ n: sql<number>`count(*)::int` }).from(auditEvents).where(where),
   ])
   return {
-    items: rows.map(toRow),
+    items: (await viewLandEvents(ctx.db, ctx, rows)).map(toRow),
     page: input.page,
     pageSize: input.pageSize,
     total: count?.n ?? 0,
@@ -278,6 +308,8 @@ function recordLink(targetType: string, targetId: string | null): string | null 
       return '/settings/organization'
     case 'approval_rule':
       return '/settings/approval-rules'
+    case 'parcel':
+      return targetId ? `/land/${targetId}` : null
     default:
       return null
   }
@@ -287,11 +319,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The entry sheet: every field, the approvals behind the change, and a link to the record. */
 export async function getAudit(ctx: ServiceContext, id: string): Promise<AuditDetail> {
-  const [row] = await ctx.db
+  const [stored] = await ctx.db
     .select(COLUMNS)
     .from(auditEvents)
-    .where(and(eq(auditEvents.organizationId, ctx.organizationId), eq(auditEvents.id, id)))
-  if (!row) throw notFound()
+    .where(
+      and(
+        eq(auditEvents.organizationId, ctx.organizationId),
+        eq(auditEvents.id, id),
+        hiddenOnlyEdits(ctx.member),
+      ),
+    )
+  if (!stored) throw notFound()
+  const [row = stored] = await viewLandEvents(ctx.db, ctx, [stored])
   const metadata = asJson(row.metadata)
   const requestId =
     typeof metadata?.approvalRequestId === 'string' && UUID.test(metadata.approvalRequestId)
@@ -375,7 +414,7 @@ export async function exportAudit(ctx: ServiceContext, input: Filters): Promise<
       )
       .orderBy(desc(auditEvents.createdAt), desc(auditEvents.id))
       .limit(EXPORT_PAGE)
-    for (const row of page) lines.push(csvRow(toRow(row)))
+    for (const row of await viewLandEvents(ctx.db, ctx, page)) lines.push(csvRow(toRow(row)))
     const last = page.at(-1)
     if (page.length < EXPORT_PAGE || !last || lines.length >= AUDIT_EXPORT_MAX_ROWS) break
     after = { at: last.at, id: last.id }

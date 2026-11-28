@@ -81,6 +81,11 @@ describe('pagination', () => {
     expect(paginationInput.safeParse({ pageSize: 101 }).success).toBe(false)
   })
 
+  it('caps the page at 10,000', () => {
+    expect(paginationInput.safeParse({ page: 10_000 }).success).toBe(true)
+    expect(paginationInput.safeParse({ page: 10_001 }).success).toBe(false)
+  })
+
   it('describes list output as items, page, pageSize and total', () => {
     const list = paginated(z.object({ name: z.string() }))
     const page = { items: [{ name: 'A-14' }], page: 1, pageSize: 25, total: 1 }

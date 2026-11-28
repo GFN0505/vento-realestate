@@ -10,9 +10,12 @@ export type Currency = z.infer<typeof currency>
 /** A calendar date with no time (due dates, permit dates): "2026-11-25". */
 export const isoDate = z.iso.date({ message: 'Enter a valid date' })
 
+/** Deepest page a list serves: past it, narrow the search (an OFFSET that deep is a full scan). */
+export const MAX_PAGE = 10_000
+
 /** Input for every list endpoint. */
 export const paginationInput = z.object({
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).max(MAX_PAGE).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 })
 export type PaginationInput = z.infer<typeof paginationInput>

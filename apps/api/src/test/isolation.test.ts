@@ -11,9 +11,13 @@ import {
   invitations,
   members,
   organizations,
+  parcels,
   passkeys,
   roles,
   sessions,
+  titleDocuments,
+  titleDocumentVersions,
+  titleStages,
   users,
 } from '@/db/schema'
 import { lagosIsoDate } from '@/lib/format'
@@ -31,9 +35,11 @@ import {
   createInvitation,
   createMember,
   createOrganization,
+  createParcel,
   createReadyFile,
   createSession,
   createSuperAdmin,
+  createTitleDocument,
   createUser,
   setOverride,
   setStage,
@@ -664,3 +670,161 @@ describe('organization isolation: files (decision 0025)', () => {
       expect(storage.hasObject(theirReady.objectKey)).toBe(true)
     }))
 })
+
+describe('organization isolation: land & title (slice 1)', () => {
+  it('answers not found for their parcels, stages, documents, versions and companies, writing nothing', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const myEntity = await createEntity(tx, mine, { name: 'Lekki Pearl Estates Ltd' })
+      const myParcel = await createParcel(tx, mine, { entityId: myEntity.id })
+      const theirs = await createOrganization(tx, { name: `Other Developer ${uniqueSuffix()}` })
+      const theirEntity = await createEntity(tx, theirs, { name: 'Their SPV Ltd' })
+      const parcel = await createParcel(tx, theirs, {
+        entityId: theirEntity.id,
+        stages: [{ type: 'c_of_o', status: 'granted', statusOn: '2025-01-10' }, 'survey_plan'],
+      })
+      const { client, storage } = clientAs(tx, mine.owner)
+      const doc = await createTitleDocument(tx, theirs, parcel, { type: 'c_of_o', storage })
+      const extra = await createTitleDocument(tx, theirs, parcel, { type: 'c_of_o', storage })
+      const removed = await createTitleDocument(tx, theirs, parcel, {
+        type: 'survey_plan',
+        removedReason: 'Wrong parcel',
+      })
+      const stage = parcel.stageOf('survey_plan')
+      const myFile = await createReadyFile(tx, mine, { uploadedBy: mine.owner, storage })
+      const before = await landRowsOf(tx, theirs.id)
+      const attempts: [string, () => Promise<unknown>][] = [
+        ['land.parcels.get', () => client.land.parcels.get({ id: parcel.id })],
+        [
+          'land.parcels.update',
+          () => client.land.parcels.update({ id: parcel.id, expectedVersion: 1, name: 'Taken' }),
+        ],
+        [
+          'land.parcels.update (their company)',
+          () =>
+            client.land.parcels.update({
+              id: myParcel.id,
+              expectedVersion: 1,
+              entityId: theirEntity.id,
+            }),
+        ],
+        ['land.parcels.archive', () => client.land.parcels.archive({ id: parcel.id })],
+        ['land.parcels.restore', () => client.land.parcels.restore({ id: parcel.id })],
+        ['land.parcels.activity', () => client.land.parcels.activity({ id: parcel.id })],
+        [
+          'land.parcels.create (their company)',
+          () =>
+            client.land.parcels.create({
+              name: 'Taken',
+              state: 'Lagos',
+              lga: 'Epe',
+              size: { value: '1', unit: 'ha' },
+              entityId: theirEntity.id,
+              documents: [{ fileId: myFile.id, type: 'c_of_o' }],
+            }),
+        ],
+        [
+          'land.stages.update',
+          () =>
+            client.land.stages.update({
+              id: stage.id,
+              expectedVersion: 1,
+              status: 'submitted',
+              on: '2026-11-02',
+              attachments: [{ fileId: myFile.id, type: 'survey_plan' }],
+            }),
+        ],
+        ['land.stages.undo', () => client.land.stages.undo({ id: stage.id, expectedVersion: 1 })],
+        [
+          'land.stages.set',
+          () =>
+            client.land.stages.set({ parcelId: parcel.id, expectedVersion: 1, types: ['c_of_o'] }),
+        ],
+        [
+          'land.documents.upload',
+          () =>
+            client.land.documents.upload({
+              parcelId: parcel.id,
+              type: 'c_of_o',
+              fileId: myFile.id,
+            }),
+        ],
+        [
+          'land.documents.versions',
+          () => client.land.documents.versions({ documentId: doc.document.id }),
+        ],
+        [
+          'land.documents.removeVersion',
+          () =>
+            client.land.documents.removeVersion({ versionId: extra.version.id, reason: 'Taken' }),
+        ],
+        [
+          'land.documents.restoreVersion',
+          () => client.land.documents.restoreVersion({ versionId: removed.version.id }),
+        ],
+        [
+          'land.documents.link',
+          () =>
+            client.land.documents.link({ versionId: doc.version.id, disposition: 'attachment' }),
+        ],
+      ]
+      for (const [name, attempt] of attempts) {
+        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      expect(await landRowsOf(tx, theirs.id)).toEqual(before)
+      const [file] = await tx.select().from(files).where(eq(files.id, myFile.id))
+      expect(file?.attachedAt).toBeNull()
+    }))
+
+  it('refuses their files and never lists, counts or names their parcels', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      const myEntity = await createEntity(tx, mine, { name: 'Lekki Pearl Estates Ltd' })
+      const myParcel = await createParcel(tx, mine, { entityId: myEntity.id })
+      const theirs = await createOrganization(tx, { name: `Other Developer ${uniqueSuffix()}` })
+      const theirEntity = await createEntity(tx, theirs, { name: 'Their SPV Ltd' })
+      await createParcel(tx, theirs, {
+        entityId: theirEntity.id,
+        name: 'Their secret plot',
+        stages: [{ type: 'c_of_o', status: 'queried', statusOn: '2026-11-01', note: 'x' }],
+      })
+      const { client, storage } = clientAs(tx, mine.owner)
+      const theirFile = await createReadyFile(tx, theirs, { uploadedBy: theirs.owner, storage })
+      await expect(
+        client.land.documents.upload({
+          parcelId: myParcel.id,
+          type: 'c_of_o',
+          fileId: theirFile.id,
+        }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST', data: { reason: 'file_unavailable' } })
+      const list = await client.land.parcels.list({ entityId: theirEntity.id })
+      expect(list).toMatchObject({ items: [], total: 0, summary: { count: 0 } })
+      expect(await client.land.parcels.nameTaken({ name: 'Their secret plot' })).toBeNull()
+      const home = await client.land.home({ entityId: theirEntity.id })
+      expect(home).toMatchObject({ hasParcels: false, queue: [], titledCount: 0 })
+      expect(JSON.stringify(await client.land.home({}))).not.toContain('Their secret plot')
+    }))
+})
+
+/** Every land row of an organization, to prove an attempt wrote nothing. */
+async function landRowsOf(tx: Parameters<typeof createParcel>[0], organizationId: string) {
+  return {
+    parcels: await tx.select().from(parcels).where(eq(parcels.organizationId, organizationId)),
+    stages: await tx
+      .select()
+      .from(titleStages)
+      .where(eq(titleStages.organizationId, organizationId)),
+    documents: await tx
+      .select()
+      .from(titleDocuments)
+      .where(eq(titleDocuments.organizationId, organizationId)),
+    versions: await tx
+      .select()
+      .from(titleDocumentVersions)
+      .where(eq(titleDocumentVersions.organizationId, organizationId)),
+    audit: await tx
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.organizationId, organizationId)),
+  }
+}

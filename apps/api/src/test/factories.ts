@@ -1,14 +1,24 @@
 import { createHash } from 'node:crypto'
-import type { ApprovalActionKey, PermissionSet, SystemRoleKey } from '@vento/shared'
+import type {
+  ApprovalActionKey,
+  NigerianState,
+  ParcelStatus,
+  PermissionSet,
+  SystemRoleKey,
+  TitleDocumentType,
+  TitleStageStatus,
+  TitleStageType,
+} from '@vento/shared'
 import {
   customRolePluralName,
   DEFAULT_ROLES,
   defaultPermissions,
+  defaultStagesFor,
   normalisePermissions,
   PERMISSION_MODULES,
 } from '@vento/shared'
 import { hashPassword } from 'better-auth/crypto'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { loadMembership, type ServiceContext } from '@/access/context'
 import { syncSystemRoles } from '@/access/system-roles'
 import type { DbOrTx } from '@/db/client'
@@ -29,14 +39,19 @@ import {
   organizationOverrides,
   organizationPlans,
   organizations,
+  parcels,
   passwordHistories,
   platformAdmins,
   rolePermissions,
   roles,
   sessions,
   staffInvitations,
+  titleDocuments,
+  titleDocumentVersions,
+  titleStages,
   users,
 } from '@/db/schema'
+import { nextNumber } from '@/lib/counters'
 import { newInvitationToken } from '@/modules/invitations/invitation-token'
 import type { OverrideKind } from '@/platform/availability'
 import { findPlanVersion } from '@/platform/operations/common'
@@ -623,4 +638,167 @@ export async function createReadyFile(
   if (!row) throw new Error('file insert failed')
   if (options.storage) await options.storage.putObject(key, bytes, 'application/pdf')
   return row
+}
+
+type StageSeed =
+  | TitleStageType
+  | {
+      type: TitleStageType
+      status?: TitleStageStatus
+      statusOn?: string | null
+      note?: string | null
+      followUpOn?: string | null
+      reference?: string | null
+      issuedBy?: string | null
+      updatedBy?: Pick<TestUser, 'id'>
+    }
+
+/**
+ * A parcel with its stages, written straight to the tables (no audit), with the next reference.
+ * Defaults: Plot 22, Folu Ayo in Ibeju-Lekki, Lagos, 4.20 ha, under acquisition, under a new
+ * company, the state's default stages not started. Statuses are taken as given (no titled check).
+ */
+export async function createParcel(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id' | 'owner'>,
+  options: {
+    entityId?: string
+    name?: string
+    state?: NigerianState
+    lga?: string
+    area?: string | null
+    sizeSqm?: string
+    status?: ParcelStatus
+    acquiredOn?: string | null
+    acquisitionCost?: string | null
+    seller?: string | null
+    stages?: StageSeed[]
+    archived?: boolean
+  } = {},
+) {
+  const entityId = options.entityId ?? (await createEntity(db, org)).id
+  const state = options.state ?? 'Lagos'
+  const sizeSqm = options.sizeSqm ?? '42000.00'
+  const [parcel] = await db
+    .insert(parcels)
+    .values({
+      organizationId: org.id,
+      entityId,
+      referenceNumber: await nextNumber(db, org.id, 'parcel'),
+      name: options.name ?? 'Plot 22, Folu Ayo',
+      state,
+      lga: options.lga ?? (state === 'FCT' ? 'Abuja Municipal' : 'Ibeju-Lekki'),
+      area: options.area === undefined ? 'Ibeju-Lekki' : options.area,
+      sizeSqm,
+      sizeUnit: 'sqm',
+      sizeEntered: sizeSqm,
+      status: options.status ?? 'under_acquisition',
+      acquiredOn: options.acquiredOn ?? null,
+      acquisitionCost: options.acquisitionCost ?? null,
+      seller: options.seller ?? null,
+      archivedAt: options.archived ? new Date() : null,
+      archivedByUserId: options.archived ? org.owner.id : null,
+    })
+    .returning()
+  if (!parcel) throw new Error('parcel insert failed')
+  const seeds = (options.stages ?? defaultStagesFor(state)).map((s) =>
+    typeof s === 'string' ? { type: s } : s,
+  )
+  const stages = await db
+    .insert(titleStages)
+    .values(
+      seeds.map((s) => ({
+        organizationId: org.id,
+        parcelId: parcel.id,
+        type: s.type,
+        status: s.status ?? 'not_started',
+        statusOn: s.statusOn ?? null,
+        note: s.note ?? null,
+        followUpOn: s.followUpOn ?? null,
+        reference: s.reference ?? null,
+        issuedBy: s.issuedBy ?? null,
+        updatedByUserId: (s.updatedBy ?? org.owner).id,
+      })),
+    )
+    .returning()
+  const stageOf = (type: TitleStageType) => {
+    const found = stages.find((s) => s.type === type)
+    if (!found) throw new Error(`parcel has no ${type} stage`)
+    return found
+  }
+  return { ...parcel, stages, stageOf }
+}
+
+/**
+ * A document version in a parcel's vault, on an attached file (bytes in `storage` when given).
+ * A second call with the same type (and name) adds the next version, as an upload does.
+ */
+export async function createTitleDocument(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id' | 'owner'>,
+  parcel: { id: string },
+  options: {
+    type: TitleDocumentType
+    name?: string | null
+    uploadedBy?: Pick<TestUser, 'id'>
+    storage?: Storage
+    issuedOn?: string | null
+    /** Removed with this reason (hidden from the vault). */
+    removedReason?: string
+  },
+) {
+  const uploadedBy = options.uploadedBy ?? org.owner
+  const name = options.name ?? (options.type === 'other' ? 'Query letter' : null)
+  const file = await createReadyFile(db, org, {
+    uploadedBy,
+    attached: true,
+    ...(options.storage && { storage: options.storage }),
+  })
+  const [existing] = await db
+    .select()
+    .from(titleDocuments)
+    .where(
+      and(
+        eq(titleDocuments.parcelId, parcel.id),
+        eq(titleDocuments.type, options.type),
+        sql`lower(coalesce(${titleDocuments.name}, '')) = lower(${name ?? ''})`,
+      ),
+    )
+  const document =
+    existing ??
+    (
+      await db
+        .insert(titleDocuments)
+        .values({
+          organizationId: org.id,
+          parcelId: parcel.id,
+          type: options.type,
+          name,
+          createdByUserId: uploadedBy.id,
+        })
+        .returning()
+    )[0]
+  if (!document) throw new Error('title document insert failed')
+  const [last] = await db
+    .select({ n: sql<number>`coalesce(max(${titleDocumentVersions.versionNo}), 0)::int` })
+    .from(titleDocumentVersions)
+    .where(eq(titleDocumentVersions.documentId, document.id))
+  const [version] = await db
+    .insert(titleDocumentVersions)
+    .values({
+      organizationId: org.id,
+      documentId: document.id,
+      versionNo: (last?.n ?? 0) + 1,
+      fileId: file.id,
+      issuedOn: options.issuedOn ?? null,
+      uploadedByUserId: uploadedBy.id,
+      ...(options.removedReason && {
+        removedAt: new Date(),
+        removedByUserId: uploadedBy.id,
+        removedReason: options.removedReason,
+      }),
+    })
+    .returning()
+  if (!version) throw new Error('title document version insert failed')
+  return { document, version, file }
 }

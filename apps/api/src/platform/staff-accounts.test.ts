@@ -100,6 +100,8 @@ describe('discarding unfinished staff accounts', () => {
           'organization_trials.cancelled_by_user_id',
           'organization_trials.created_by_user_id',
           'organizations.single_company_confirmed_by_user_id',
+          // Land & title records, like uploads, are written only through `member` procedures.
+          'parcels.archived_by_user_id',
           'plan_versions.published_by_user_id',
           'platform_admins.granted_by_user_id',
           'platform_admins.revoked_by_user_id',
@@ -108,6 +110,10 @@ describe('discarding unfinished staff accounts', () => {
           'staff_invitations.invited_by_user_id',
           'staff_invitations.user_id',
           'staff_invitations.withdrawn_by_user_id',
+          'title_document_versions.removed_by_user_id',
+          'title_document_versions.uploaded_by_user_id',
+          'title_documents.created_by_user_id',
+          'title_stages.updated_by_user_id',
         ].sort(),
       )
     }))

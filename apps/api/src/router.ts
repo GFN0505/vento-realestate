@@ -8,6 +8,7 @@ import { entitiesRouter } from '@/modules/entities/entities.router'
 import { filesRouter } from '@/modules/files/files.router'
 import { healthRouter } from '@/modules/health/health.router'
 import { invitationsRouter } from '@/modules/invitations/invitations.router'
+import { landRouter } from '@/modules/land/land.router'
 import { membersRouter } from '@/modules/members/members.router'
 import { onboardingRouter } from '@/modules/onboarding/onboarding.router'
 import { organizationRouter } from '@/modules/organization/organization.router'
@@ -32,6 +33,7 @@ export const router = os.router({
   approvalRules: approvalRulesRouter,
   audit: auditRouter,
   files: filesRouter,
+  land: landRouter,
   console: consoleRouter,
 })
 export type Router = typeof router

@@ -52,6 +52,7 @@ import {
   staffInvitations,
   users,
 } from './schema'
+import { assertStorageUp, START_STORAGE, seedLand } from './seed-land'
 
 // Demo data from docs/design/DESIGN-NOTES.md for local development and demos. Run by hand
 // (`pnpm db:seed`), never on app start, never in production. Safe to run again: it upserts.
@@ -486,6 +487,8 @@ async function seed() {
       `SEED_PASSWORD must meet the password rules: at least 8 characters, an uppercase letter, a lowercase letter, a number and a special character. Missing: ${rules}. Update it in .env.`,
     )
   }
+  // Land's sample documents need the bucket: stop before writing anything if it's down.
+  await assertStorageUp(seedStorage)
   const passwordHash = await hashPassword(password)
 
   const links = await db.transaction(async (tx) => {
@@ -529,6 +532,7 @@ async function seed() {
     return upsertInvitations(tx, organizationId, roleIds, ownerId)
   })
   await seedApprovalsAndAudit()
+  const parcelCount = await seedVentoLand()
 
   await bootstrapStartingData(db)
   await seedLekki(passwordHash)
@@ -543,6 +547,7 @@ async function seed() {
     people: PEOPLE.length + LEKKI_PEOPLE.length,
     customRoles: CUSTOM_ROLES.map((r) => r.name),
     archivedCompanies: [ARCHIVED_ENTITY.name],
+    parcels: parcelCount,
   })
   const everyone = [...PEOPLE, ...LEKKI_PEOPLE, ...SUPER_ADMINS].map((p) => p.email)
   process.stdout.write(
@@ -664,8 +669,8 @@ async function seedLekki(passwordHash: string) {
 // waits for Olumide, and about forty audit events over the last 7 days make the log read like the
 // board.
 
-// One client for the whole run: nothing connects until the first call. Nothing in the seed
-// touches files yet; land's seed (PR 2) puts sample documents here.
+// One client for the whole run: nothing connects until the first call. Land's seed puts its
+// sample documents here.
 const seedStorage = createStorage(env)
 
 /** The service context of a seeded person in Vento Homes Ltd, as the middleware would build it. */
@@ -687,6 +692,42 @@ async function contextAs(email: string, organizationId: string): Promise<Service
     features: await availabilityForOrganization(db, organizationId),
     storage: seedStorage,
   }
+}
+
+/**
+ * Land & title's golden-thread parcels (seed-land.ts), with Ngozi as the officer.
+ */
+async function seedVentoLand(): Promise<number> {
+  const [org] = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.name, ORGANIZATION))
+  if (!org) throw new Error(`${ORGANIZATION} is missing`)
+  const rows = await db
+    .select({ id: entities.id, name: entities.name, rcNumber: entities.rcNumber })
+    .from(entities)
+    .where(eq(entities.organizationId, org.id))
+  const company = (rc: string) => {
+    const found = rows.find((r) => r.rcNumber === rc)
+    if (!found) throw new Error(`Company ${rc} is missing`)
+    return { id: found.id, name: found.name }
+  }
+  const [officer] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.email, 'ngozi@ventohomes.ng'))
+  if (!officer) throw new Error('Ngozi Adeyemi is missing')
+  const seeded = await seedLand(db, {
+    organizationId: org.id,
+    companies: {
+      victoria: company('RC 1652310'),
+      parkview: company('RC 1789234'),
+      lekki: company('RC 1904417'),
+    },
+    officer,
+    storage: seedStorage,
+  })
+  return seeded.length
 }
 
 async function seedApprovalsAndAudit(): Promise<void> {
@@ -1074,8 +1115,11 @@ try {
   await seed()
 } catch (error) {
   // Instructions for the developer, readable as is (not only inside the log line).
-  if (error instanceof Error && error.message === STALE_STAFF_MESSAGE) {
-    process.stderr.write(`\n${STALE_STAFF_MESSAGE}\n\n`)
+  if (
+    error instanceof Error &&
+    (error.message === STALE_STAFF_MESSAGE || error.message === START_STORAGE)
+  ) {
+    process.stderr.write(`\n${error.message}\n\n`)
   }
   logger.error('Seed failed', { error: error instanceof Error ? error.message : String(error) })
   process.exitCode = 1

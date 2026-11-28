@@ -16,3 +16,10 @@ export function hasHiddenCharacters(value: string): boolean {
 }
 
 export const HIDDEN_CHARACTERS_MESSAGE = 'Remove hidden characters, like line breaks or tabs'
+
+/** Like hasHiddenCharacters, for longer text (notes, reasons) where line breaks are fine. */
+export function hasHiddenCharactersInText(value: string): boolean {
+  return HIDDEN_CHARACTERS.test(value.replace(/\r?\n/g, ''))
+}
+
+export const HIDDEN_CHARACTERS_IN_TEXT_MESSAGE = 'Remove hidden characters, like tabs'
