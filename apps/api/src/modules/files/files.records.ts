@@ -36,31 +36,55 @@ const attachable = (
   )
 
 /**
- * Marks the caller's finished upload as held by a record, inside the record's own transaction.
- * First a bucket-side copy from `incoming/` to `kept/` (checked by size), then one conditional
- * update that records the kept key: the file must be this organization's, uploaded by this
- * person, for this purpose, ready and not held by another record. Anything else (another
- * organization's included) is the same BAD_REQUEST `file_unavailable`, so it says nothing about
- * other rows. The sweep removes the `incoming/` copy later.
+ * Copies the caller's finished upload from `incoming/` to `kept/` (checked by size), before the
+ * record's transaction opens, so no row lock is held across a bucket round trip (review: the
+ * parcel counter was). Idempotent: a copy already there is reused. Then `attachFile(…, { kept:
+ * true })` inside the transaction only checks and updates. A file that isn't attachable is
+ * BAD_REQUEST `file_unavailable` here already.
+ */
+export async function keepUpload(
+  ctx: Pick<ServiceContext, 'db' | 'organizationId' | 'user'> & { storage: Storage },
+  fileId: string,
+  purpose: FilePurpose,
+): Promise<void> {
+  const [file] = await ctx.db
+    .select({ objectKey: files.objectKey, sizeBytes: files.sizeBytes })
+    .from(files)
+    .where(attachable(ctx, fileId, purpose))
+  if (!file) throw badRequest('file_unavailable', FILE_UNAVAILABLE)
+  await keepCopy(ctx.storage, file.objectKey, keptKey(ctx.organizationId, fileId), file.sizeBytes)
+}
+
+/**
+ * Marks the caller's finished upload as held by a record, inside the record's own transaction:
+ * one conditional update that records the kept key. The file must be this organization's,
+ * uploaded by this person, for this purpose, ready and not held by another record. Anything else
+ * (another organization's included) is the same BAD_REQUEST `file_unavailable`, so it says
+ * nothing about other rows. The sweep removes the `incoming/` copy later.
  *
- * The copy can't be part of the transaction. If the update loses a race, or the caller's
- * transaction rolls back, the `kept/` copy is an orphan nothing points at. That's accepted for
- * now (a few MB, never served: links read only keys recorded on attached rows) and reconciled
- * later against the bucket listing. A retry reuses it rather than overwriting (bucket lock).
+ * Without `kept` (keepUpload already ran) it makes the bucket-side copy first, inside the
+ * caller's transaction. The copy can't be part of the transaction. If the update loses a race,
+ * or the caller's transaction rolls back, the `kept/` copy is an orphan nothing points at.
+ * That's accepted for now (a few MB, never served: links read only keys recorded on attached
+ * rows) and reconciled later against the bucket listing. A retry reuses it rather than
+ * overwriting (bucket lock).
  */
 export async function attachFile(
   tx: DbOrTx,
   ctx: Pick<ServiceContext, 'organizationId' | 'user'> & { storage: Storage },
   fileId: string,
   purpose: FilePurpose,
+  options: { kept?: boolean } = {},
 ): Promise<AttachedFile> {
-  const [file] = await tx
-    .select({ objectKey: files.objectKey, sizeBytes: files.sizeBytes })
-    .from(files)
-    .where(attachable(ctx, fileId, purpose))
-  if (!file) throw badRequest('file_unavailable', FILE_UNAVAILABLE)
   const kept = keptKey(ctx.organizationId, fileId)
-  await keepCopy(ctx.storage, file.objectKey, kept, file.sizeBytes)
+  if (!options.kept) {
+    const [file] = await tx
+      .select({ objectKey: files.objectKey, sizeBytes: files.sizeBytes })
+      .from(files)
+      .where(attachable(ctx, fileId, purpose))
+    if (!file) throw badRequest('file_unavailable', FILE_UNAVAILABLE)
+    await keepCopy(ctx.storage, file.objectKey, kept, file.sizeBytes)
+  }
   const [row] = await tx
     .update(files)
     .set({ attachedAt: new Date(), objectKey: kept })

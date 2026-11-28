@@ -29,6 +29,14 @@ export const badRequestReason = z.enum([
   'upload_incomplete',
   /** A file id a record can't use: not this person's, not finished, or already used elsewhere. */
   'file_unavailable',
+  /** An LGA that isn't in the parcel's state ("Pick an LGA in Lagos."). */
+  'lga_not_in_state',
+  /** A date after today in Lagos ("Enter a date on or before today."). */
+  'future_date',
+  /** Granted without a document of the stage's type in the sheet or the vault. */
+  'granted_needs_document',
+  /** *What happened* is needed: queried, rejected, or leaving granted. */
+  'note_required',
 ])
 export type BadRequestReason = z.infer<typeof badRequestReason>
 
@@ -129,6 +137,20 @@ export const conflictReason = z.enum([
   'role_in_rule',
   /** An export over the row cap; `count` is how many rows the filters match. */
   'too_many_rows',
+  /** Someone saved the record since it was loaded; `changedByName` says who (land). */
+  'stale',
+  /** The parcel is archived: read-only until restored. */
+  'parcel_archived',
+  /** Edit stages: a stage that has started or has documents stays. */
+  'stage_started',
+  /** Removing the only file behind a granted stage. */
+  'evidence_for_granted',
+  /** Undo after 2 minutes, by someone else, or after a later change: it's a new update now. */
+  'undo_expired',
+  /** **Add as a separate document** with a name this type already uses on the parcel. */
+  'document_name_taken',
+  /** The parcel's vault is full (200 documents); new versions of existing ones still go in. */
+  'too_many_documents',
 ])
 export type ConflictReason = z.infer<typeof conflictReason>
 
@@ -192,7 +214,7 @@ export const errorMap = {
        * when it's archived. Only companies within the viewer's access are named.
        */
       entity: z.object({ id, name: z.string(), archived: z.boolean() }).optional(),
-      /** `role_changed` / `platform_stale`: who saved it last, e.g. "Aisha Bello". */
+      /** `role_changed` / `platform_stale` / `stale`: who saved it last, e.g. "Aisha Bello". */
       changedByName: z.string().optional(),
       /** `role_in_use`: active members and open invitations holding the role. */
       holders: z

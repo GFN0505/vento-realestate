@@ -1,7 +1,7 @@
 # Plan: Land & title, slice 1 (parcels and title)
 
 - **Status:** approved (owner, 27 Nov 2026, all six points in §13 as recommended: lawyer checks the stages before PR 2's migration; Cloudflare R2 EU unless production hosting is on AWS, then S3 af-south-1; NDPA basis and DPIA before `land` leaves `internal`; Chainguard MinIO locally; no malware scan while `internal`; at least one stage per parcel and named separate documents). Three PRs, storage first.
-- **Changed while building PR 1 (27–28 Nov, after review and security audit):** keys are now `incoming/org/{org}/{id}` until attached, then copied to `kept/org/{org}/{id}` (columns `incomingKey`, `keptKey`, `incomingDeletedAt`; there is no `objectKey`). `attachFile(tx, ctx with storage, fileId, purpose)` and `signDownload(ctx, fileId, { purpose, disposition, filename })` live in `apps/api/src/modules/files/files.records.ts`, not `files.service.ts`; `signDownload` only signs attached files of the matching purpose. Files have a `deleting` status (tombstone). Part links sign their exact size. The 20-upload cap counts unattached ready files too. PR 2's `land.documents.link` must write an audit event for each link issued (decision 0025).
+- **Changed while building PR 1 (27–28 Nov, after review and security audit):** keys are now `incoming/org/{org}/{id}` until attached, then copied to `kept/org/{org}/{id}` (one `objectKey` column that moves once from the `incoming/` key to the `kept/` key at attach, plus `incomingDeletedAt` for the sweep's removal of the incoming copy). `attachFile(tx, ctx with storage, fileId, purpose)` and `signDownload(ctx, fileId, { purpose, disposition, filename })` live in `apps/api/src/modules/files/files.records.ts`, not `files.service.ts`; `signDownload` only signs attached files of the matching purpose. Files have a `deleting` status (tombstone). Part links sign their exact size. The 20-upload cap counts unattached ready files too. PR 2's `land.documents.link` must write an audit event for each link issued (decision 0025).
 - **Spec:** [docs/specs/land-and-title.md](../specs/land-and-title.md) (approved 27 Nov 2026, all 12 recommendations)
 - **Journeys:** J-LND-01 (without the boundary), J-LND-02
 - **Branch:** `feat/land-and-title`, from `main` at `6af2840` (brick 4 merged in PR #10; migrations up to `0017_approvals_guards.sql`)
@@ -351,7 +351,7 @@ Stored as `numeric(14,2)` + `NGN`. It is never selected for viewers who may not 
 - `costHidden: boolean`, so the UI can tell "not recorded" from "not yours to see"
 
 **`parcelDetail`** = `parcelRow` plus:
-- `seller`, `notes`, `version`
+- `seller` (null when hidden), `sellerHidden: boolean` (the cost rule, owner 28 Nov 2026), `notes`, `version`
 - `stages[]` (all fields + `updatedBy {name}`)
 - `documents[]` (type, name, stageType, latest non-removed version, `earlierCount`)
 - `suggestedIssuers: Partial<Record<stageType, string>>` (last `issuedBy` per stage type on parcels in the same state)

@@ -66,6 +66,23 @@ export const AUDIT_ACTIONS = [
   'approval_rule.updated',
   'approval_rule.deleted',
   'audit.exported',
+  // Land & title (slice 1). Every event targets the parcel; metadata carries entityId,
+  // stageType, documentType, documentId, versionId and versionNo where they apply.
+  'land.parcel.created',
+  'land.parcel.updated',
+  'land.parcel.archived',
+  'land.parcel.restored',
+  /** `metadata.status`; `metadata.fromAdd` for a stage granted by a document on Add parcel; `metadata.undo`. */
+  'land.title_stage.updated',
+  /** `metadata.added`, `metadata.removed`: stage types. */
+  'land.title_stages.changed',
+  'land.document.uploaded',
+  /** `metadata.reason`. */
+  'land.document.removed',
+  /** Undo of a remove. */
+  'land.document.restored',
+  /** A signed link was issued (decision 0025): `metadata.disposition`, never the link itself. */
+  'land.document.link_issued',
 ] as const
 export const auditAction = z.enum(AUDIT_ACTIONS)
 export type AuditAction = z.infer<typeof auditAction>

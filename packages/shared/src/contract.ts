@@ -9,6 +9,7 @@ import { approvalRulesContract, approvalsContract } from './approvals/contract'
 import { auditContract } from './audit/contract'
 import { filesContract } from './files/contract'
 import { healthContract } from './health/contract'
+import { landContract } from './land/contract'
 import { entitiesContract, onboardingContract, organizationContract } from './organization/contract'
 import { checklistContract, teamContract } from './team/contract'
 
@@ -29,5 +30,6 @@ export const contract = {
   approvalRules: approvalRulesContract,
   audit: auditContract,
   files: filesContract,
+  land: landContract,
 }
 export type Contract = typeof contract

@@ -43,6 +43,7 @@
  *   tsx src/test/e2e-fixtures.ts age-passkeys <email>  makes that person's passkeys 20 minutes old (added before the aged proof, so they may open the console)
  *   tsx src/test/e2e-fixtures.ts flag-stage <flag> <off|internal|pilot|on>  sets a global release stage (releases.spec.ts only, to restore its own keys)
  *   tsx src/test/e2e-fixtures.ts platform-activity <email>  a break-glass row by that super-admin in Vento's activity (channel command)
+ *   tsx src/test/e2e-fixtures.ts land                 Land & title: the six golden-thread parcels with sample files in the bucket; owner, Ngozi (Land & legal), Grace (sales, no cost), Aisha (finance), a Land & legal limited to Victoria Gardens
  *
  * Organizations from `member`, `team` and `multi-org` are internal (everything, "Soon" tags), as
  * every organization was before feature flags. Fixtures only change per-organization data, never
@@ -1312,7 +1313,98 @@ async function platformActivity(email: string | undefined) {
   return { email }
 }
 
+/**
+ * Land & title (PR 3 e2e): an internal organization with the three companies, the six
+ * golden-thread parcels from the seed (sample PDFs and PNGs in the real bucket, queue items
+ * counted from today), and the people the journeys need. Prints parcel and stage ids.
+ */
+async function createLandFixture() {
+  const { db } = await import('@/db/client')
+  const { env } = await import('@/env')
+  const { createStorage } = await import('@/storage')
+  const { seedLand } = await import('@/db/seed-land')
+  const { titleStages } = await import('@/db/schema')
+  const { DEFAULT_ROLES } = await import('@vento/shared')
+  const { eq } = await import('drizzle-orm')
+  const {
+    createEntity,
+    createMember: addMember,
+    createOrganization,
+    TEST_PASSWORD,
+  } = await import('./factories')
+
+  const suffix = Date.now().toString(36)
+  const owner = await passwordUser(db, 'Olumide Bankole', 'e2e.land.owner')
+  const org = await createOrganization(db, { name: `Vento Homes ${suffix}`, owner })
+  const company = async (name: string, type: 'holding' | 'spv') => {
+    const e = await createEntity(db, org, { name, type })
+    return { id: e.id, name: e.name }
+  }
+  const companies = {
+    victoria: await company('Victoria Gardens Dev. Ltd', 'holding'),
+    parkview: await company('Parkview Residences SPV Ltd', 'spv'),
+    lekki: await company('Lekki Pearl Estates Ltd', 'spv'),
+  }
+  const people = [
+    { key: 'landLegal', role: 'land_legal', name: 'Ngozi Adeyemi', entityIds: undefined },
+    { key: 'sales', role: 'sales', name: 'Grace Umeh', entityIds: undefined },
+    { key: 'finance', role: 'finance', name: 'Aisha Bello', entityIds: undefined },
+    { key: 'limited', role: 'land_legal', name: 'Bola Ade', entityIds: [companies.victoria.id] },
+  ] as const
+  const members: Record<string, { email: string; name: string; totpSecret?: string }> = {
+    owner: { email: owner.email, name: owner.name, totpSecret: await turnOnTwoStep(owner.email) },
+  }
+  const users: Record<string, { id: string; name: string; email: string }> = {}
+  for (const p of people) {
+    const user = await passwordUser(db, p.name, `e2e.land.${p.key.toLowerCase()}`)
+    await addMember(db, org, {
+      role: p.role,
+      user,
+      ...(p.entityIds && { entityIds: [...p.entityIds] }),
+    })
+    users[p.key] = user
+    const needsTwoStep = DEFAULT_ROLES.find((r) => r.key === p.role)?.requiresTwoStep
+    members[p.key] = {
+      email: user.email,
+      name: p.name,
+      ...(needsTwoStep && { totpSecret: await turnOnTwoStep(user.email) }),
+    }
+  }
+  const officer = users.landLegal
+  if (!officer) throw new Error('Ngozi was not created')
+  const seeded = await seedLand(db, {
+    organizationId: org.id,
+    companies,
+    officer,
+    storage: createStorage(env),
+  })
+  const parcels: Record<string, { id: string; name: string; stages: Record<string, string> }> = {}
+  for (const p of seeded) {
+    const stages = await db
+      .select({ id: titleStages.id, type: titleStages.type })
+      .from(titleStages)
+      .where(eq(titleStages.parcelId, p.id))
+    parcels[`P-${String(p.reference).padStart(4, '0')}`] = {
+      id: p.id,
+      name: p.name,
+      stages: Object.fromEntries(stages.map((s) => [s.type, s.id])),
+    }
+  }
+  return {
+    organizationId: org.id,
+    organizationName: org.name,
+    password: TEST_PASSWORD,
+    entities: companies,
+    members,
+    parcels,
+  }
+}
+
 async function main() {
+  const { assertLocalOnly } = await import('@/lib/local-only')
+  const { env } = await import('@/env')
+  // Fixtures make accounts with a known password: never against a real database.
+  assertLocalOnly({ ...env, CI: process.env.CI })
   const [name, arg, arg2, arg3, arg4] = process.argv.slice(2)
   const runs: Record<string, () => Promise<unknown>> = {
     member: createMember,
@@ -1356,6 +1448,7 @@ async function main() {
     'age-passkeys': () => agePasskeys(arg),
     'flag-stage': () => flagStage(arg, arg2),
     'platform-activity': () => platformActivity(arg),
+    land: createLandFixture,
   }
   const run = name ? runs[name] : undefined
   if (!run) throw new Error(`Unknown fixture "${name}". Use: ${Object.keys(runs).join(', ')}`)

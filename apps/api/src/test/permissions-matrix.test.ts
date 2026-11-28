@@ -14,6 +14,11 @@ import {
   createInvitation,
   createMember,
   createOrganization,
+  createParcel,
+  createReadyFile,
+  createTitleDocument,
+  type TestOrg,
+  type TestUser,
 } from './factories'
 import { clientAs } from './router-client'
 
@@ -265,6 +270,184 @@ describe('permissions matrix: the default role table is the expected result', ()
       ).rejects.toMatchObject({
         message: 'Only owners and admins can invite people. Ask Olumide Bankole (owner).',
         data: { reason: 'permission', askName: 'Olumide Bankole', askRole: 'owner' },
+      })
+    }))
+})
+
+type LandCase = { name: string; action: PermissionAction; call: (c: Client) => Promise<unknown> }
+
+/**
+ * A parcel per changing call (so one call never spoils the next), under Parkview, and the
+ * cases every land procedure takes. Files are uploaded by the caller, as attaching requires.
+ */
+async function landWorld(tx: DbOrTx, org: TestOrg, actor: TestUser, entityId: string) {
+  const { client, storage } = clientAs(tx, actor)
+  const file = async () => (await createReadyFile(tx, org, { uploadedBy: actor, storage })).id
+  const parcel = (name: string) => createParcel(tx, org, { entityId, name })
+  const viewed = await parcel('Viewed plot')
+  const doc = await createTitleDocument(tx, org, viewed, { type: 'survey_plan', storage })
+  const staged = await parcel('Staged plot')
+  const stage = staged.stageOf('c_of_o')
+  const reshaped = await parcel('Reshaped plot')
+  const edited = await parcel('Edited plot')
+  const archived = await parcel('Archived plot')
+  const restored = await createParcel(tx, org, { entityId, name: 'Restored plot', archived: true })
+  const vault = await parcel('Vault plot')
+  const twice = await createTitleDocument(tx, org, vault, { type: 'family_receipt' })
+  const gone = await createTitleDocument(tx, org, vault, {
+    type: 'other',
+    removedReason: 'Wrong parcel',
+  })
+  const [createFile, uploadFile] = [await file(), await file()]
+  const cases: LandCase[] = [
+    { name: 'land.parcels.list', action: 'view', call: (x) => x.land.parcels.list({}) },
+    {
+      name: 'land.parcels.get',
+      action: 'view',
+      call: (x) => x.land.parcels.get({ id: viewed.id }),
+    },
+    {
+      name: 'land.parcels.nameTaken',
+      action: 'view',
+      call: (x) => x.land.parcels.nameTaken({ name: 'Viewed plot' }),
+    },
+    {
+      name: 'land.parcels.activity',
+      action: 'view',
+      call: (x) => x.land.parcels.activity({ id: viewed.id }),
+    },
+    {
+      name: 'land.documents.versions',
+      action: 'view',
+      call: (x) => x.land.documents.versions({ documentId: doc.document.id }),
+    },
+    {
+      name: 'land.documents.link',
+      action: 'view',
+      call: (x) => x.land.documents.link({ versionId: doc.version.id, disposition: 'inline' }),
+    },
+    { name: 'land.home', action: 'view', call: (x) => x.land.home({}) },
+    {
+      name: 'land.parcels.create',
+      action: 'create',
+      call: (x) =>
+        x.land.parcels.create({
+          name: 'New plot',
+          state: 'Lagos',
+          lga: 'Epe',
+          size: { value: '2', unit: 'ha' },
+          entityId,
+          documents: [{ fileId: createFile, type: 'survey_plan' }],
+        }),
+    },
+    {
+      name: 'land.documents.upload',
+      action: 'create',
+      call: (x) =>
+        x.land.documents.upload({ parcelId: viewed.id, type: 'c_of_o', fileId: uploadFile }),
+    },
+    {
+      name: 'land.parcels.update',
+      action: 'edit',
+      call: (x) => x.land.parcels.update({ id: edited.id, expectedVersion: 1, notes: 'Fenced' }),
+    },
+    {
+      name: 'land.stages.update',
+      action: 'edit',
+      call: (x) =>
+        x.land.stages.update({
+          id: stage.id,
+          expectedVersion: 1,
+          status: 'submitted',
+          on: '2026-11-02',
+        }),
+    },
+    // Undoes the update just above (the caller's own), so it needs that one to have run.
+    {
+      name: 'land.stages.undo',
+      action: 'edit',
+      call: (x) => x.land.stages.undo({ id: stage.id, expectedVersion: 2 }),
+    },
+    {
+      name: 'land.stages.set',
+      action: 'edit',
+      call: (x) =>
+        x.land.stages.set({
+          parcelId: reshaped.id,
+          expectedVersion: 1,
+          types: ['survey_plan', 'c_of_o'],
+        }),
+    },
+    {
+      name: 'land.parcels.archive',
+      action: 'delete',
+      call: (x) => x.land.parcels.archive({ id: archived.id }),
+    },
+    {
+      name: 'land.parcels.restore',
+      action: 'delete',
+      call: (x) => x.land.parcels.restore({ id: restored.id }),
+    },
+    {
+      name: 'land.documents.removeVersion',
+      action: 'delete',
+      call: (x) =>
+        x.land.documents.removeVersion({ versionId: twice.version.id, reason: 'Wrong parcel' }),
+    },
+    {
+      name: 'land.documents.restoreVersion',
+      action: 'delete',
+      call: (x) => x.land.documents.restoreVersion({ versionId: gone.version.id }),
+    },
+  ]
+  return { client, cases }
+}
+
+async function landActor(tx: DbOrTx, role: SystemRoleKey | 'parkview_land_legal') {
+  const org = await createOrganization(tx)
+  const parkview = await createEntity(tx, org)
+  const lekki = await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
+  const actor =
+    role === 'owner'
+      ? org.owner
+      : role === 'parkview_land_legal'
+        ? (await createMember(tx, org, { role: 'land_legal', entityIds: [parkview.id] })).user
+        : (await createMember(tx, org, { role })).user
+  return { org, parkview, lekki, actor }
+}
+
+describe('permissions matrix: Land & title', () => {
+  it.each(SYSTEM_ROLE_KEYS)('%s', (role) =>
+    withRollback(async (tx) => {
+      const { org, parkview, actor } = await landActor(tx, role)
+      const { client, cases } = await landWorld(tx, org, actor, parkview.id)
+      for (const c of cases) {
+        const expected = defaultRoleAllows(role, 'land', c.action) ? 'allowed' : 'denied'
+        expect({ procedure: c.name, result: await outcome(() => c.call(client)) }).toEqual({
+          procedure: c.name,
+          result: expected,
+        })
+      }
+    }),
+  )
+
+  it('lets Land & legal limited to Parkview do everything there and nothing on Lekki’s parcels', () =>
+    withRollback(async (tx) => {
+      const { org, parkview, lekki, actor } = await landActor(tx, 'parkview_land_legal')
+      const own = await landWorld(tx, org, actor, parkview.id)
+      for (const c of own.cases) {
+        expect({ procedure: c.name, result: await outcome(() => c.call(own.client)) }).toEqual({
+          procedure: c.name,
+          result: 'allowed',
+        })
+      }
+      const other = await landWorld(tx, org, actor, lekki.id)
+      const listing = new Set(['land.parcels.list', 'land.parcels.nameTaken', 'land.home'])
+      for (const c of other.cases.filter((x) => !listing.has(x.name))) {
+        await expect(c.call(other.client), c.name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      expect(await other.client.land.parcels.list({ entityId: lekki.id })).toMatchObject({
+        total: 0,
       })
     }))
 })
