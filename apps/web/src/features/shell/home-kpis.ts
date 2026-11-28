@@ -9,7 +9,15 @@ import { canViewModule, type NavAccess } from './nav'
  * its module's entry does: the organization has it and the role can view it (decision 12).
  */
 
-export type HomeKpi = { label: string; icon: KpiGlyphName; module: PermissionModule }
+/** A tile whose module has shipped its number; the module's own (lazy) code fills it in. */
+export type LiveKpi = 'land_titles'
+
+export type HomeKpi = {
+  label: string
+  icon: KpiGlyphName
+  module: PermissionModule
+  live?: LiveKpi
+}
 
 const EXECUTIVE: readonly HomeKpi[] = [
   { label: 'Cash across companies', icon: 'landmark', module: 'finance' },
@@ -23,7 +31,7 @@ export const HOME_KPIS: Record<SystemRoleKey, readonly HomeKpi[]> = {
   admin: EXECUTIVE,
   viewer: EXECUTIVE,
   land_legal: [
-    { label: 'Titles in progress', icon: 'scroll-text', module: 'land' },
+    { label: 'Titles in progress', icon: 'scroll-text', module: 'land', live: 'land_titles' },
     { label: 'Active encumbrances', icon: 'shield-alert', module: 'land' },
     { label: 'Contracts for legal review', icon: 'file-search', module: 'documents' },
     { label: 'Deeds to prepare', icon: 'file-pen', module: 'documents' },
@@ -80,11 +88,29 @@ export function homeKpis(access: NavAccess, roleKey: SystemRoleKey | null): Home
   return picked
 }
 
-/** "Numbers appear as Finance and Sales go live." Module names come from the tiles shown. */
+/**
+ * "Numbers appear as Finance and Sales go live." Module names come from the tiles still waiting.
+ * A module with a live tile is live: its other tiles arrive with its next slice, unannounced.
+ */
 export function kpiNote(kpis: readonly HomeKpi[], labelOf: (m: PermissionModule) => string) {
-  const names = [...new Set(kpis.map((k) => labelOf(k.module)))]
+  const live = new Set(kpis.filter((k) => k.live).map((k) => k.module))
+  const waiting = kpis.filter((k) => !live.has(k.module))
+  const names = [...new Set(waiting.map((k) => labelOf(k.module)))]
   if (names.length === 0) return null
   const list =
     names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
   return `Numbers appear as ${list} ${names.length === 1 ? 'goes' : 'go'} live.`
+}
+
+/** Land & legal's queue, pipeline and phone upload (slice 1): their role, with Land & title shown. */
+export function showsLandSection(access: NavAccess & { roleKey: SystemRoleKey | null }): boolean {
+  return access.roleKey === 'land_legal' && canViewModule(access, 'land')
+}
+
+/** Whether Home needs the Land & title chunk and its read: a live tile, or the section. */
+export function needsLandHome(access: NavAccess & { roleKey: SystemRoleKey | null }): boolean {
+  return (
+    showsLandSection(access) ||
+    homeKpis(access, access.roleKey).some((k) => k.live === 'land_titles')
+  )
 }

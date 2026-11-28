@@ -67,7 +67,8 @@ const SIZE_PATTERN = /^\d{1,10}(\.\d{1,4})?$/
 const sizeValue = z
   .string()
   .trim()
-  .regex(SIZE_PATTERN, { message: 'Enter a size like 4.2 or 600' })
+  // abort: a size that isn't a number never reaches Decimal (which throws on "" or "4,2").
+  .regex(SIZE_PATTERN, { message: 'Enter a size like 4.2 or 600', abort: true })
   .refine((v) => new Decimal(v).gt(0), { message: 'Enter a size above zero' })
 
 const PLOT_PATTERN = /^\d{1,8}(\.\d{1,2})?$/
@@ -75,7 +76,7 @@ const PLOT_PATTERN = /^\d{1,8}(\.\d{1,2})?$/
 const plotSize = z
   .string()
   .trim()
-  .regex(PLOT_PATTERN, { message: 'Enter a plot size in m², like 600 or 648' })
+  .regex(PLOT_PATTERN, { message: 'Enter a plot size in m², like 600 or 648', abort: true })
   .refine((v) => new Decimal(v).gt(0), { message: 'Enter a plot size above zero' })
 
 export const parcelSizeInput = z

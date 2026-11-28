@@ -12,6 +12,9 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 }
 
+// jsdom has no layout, so no scrolling: forms scroll their first error into view on submit.
+Element.prototype.scrollIntoView ??= () => {}
+
 // CI runners are about 4x slower than a laptop: a form's submit → refusal → message chain can
 // take over the 1 s default there, so findBy/waitFor wait longer before failing.
 configure({ asyncUtilTimeout: 5000 })

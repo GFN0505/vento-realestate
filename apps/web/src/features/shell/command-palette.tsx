@@ -1,7 +1,8 @@
 import { useNavigate } from '@tanstack/react-router'
+import { useCommandState } from 'cmdk'
 import { XIcon } from 'lucide-react'
 import { Dialog as DialogPrimitive } from 'radix-ui'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Command, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
 import { commandScore } from './command-filter'
@@ -68,8 +69,8 @@ export function CommandPalette() {
               </DialogPrimitive.Close>
               <Kbd className="max-sm:hidden">Esc</Kbd>
             </CommandInput>
-            <CommandList className="max-sm:pb-[env(safe-area-inset-bottom)]">
-              <CommandEmpty>No pages or actions match "{search.trim()}".</CommandEmpty>
+            <CommandEmpty>No pages or actions match "{search.trim()}".</CommandEmpty>
+            <ResultsList>
               <CommandResults
                 page={page}
                 search={search}
@@ -83,7 +84,7 @@ export function CommandPalette() {
                   void navigate({ to })
                 }}
               />
-            </CommandList>
+            </ResultsList>
             <div className="flex gap-4 border-t px-[18px] py-2.5 text-[11px] text-muted-foreground max-sm:hidden">
               <span>↑↓ to move</span>
               <span>↵ to open</span>
@@ -93,5 +94,19 @@ export function CommandPalette() {
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+  )
+}
+
+/**
+ * With nothing matching, the list (a listbox) is hidden and only the "No pages or actions
+ * match" line shows: an empty listbox is an error to screen readers (axe
+ * `aria-required-children`). Its rows stay mounted so the filter can bring them back.
+ */
+function ResultsList({ children }: { children: ReactNode }) {
+  const empty = useCommandState((state) => state.filtered.count === 0)
+  return (
+    <CommandList hidden={empty} className="max-sm:pb-[env(safe-area-inset-bottom)]">
+      {children}
+    </CommandList>
   )
 }

@@ -46,3 +46,10 @@ export const sameFile = (a: File, b: File) =>
 export function waitingForUploads(count: number): string {
   return `Waiting for ${count} ${count === 1 ? 'upload' : 'uploads'}…`
 }
+
+/** Above a save button that waits on failed files: "1 file didn't upload. Try again or remove it." */
+export function failedUploadsLine(count: number): string {
+  return count === 1
+    ? "1 file didn't upload. Try again or remove it."
+    : `${count} files didn't upload. Try again or remove them.`
+}

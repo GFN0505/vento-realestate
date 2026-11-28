@@ -13,7 +13,7 @@ The in-app help centre and contextual help, written for customers (not developer
 ```
 docs/help/
   getting-started/   sign in, set up your organization, invite your team, import from Excel
-  land/              parcels, title stages, encumbrances
+  land-and-title/    parcels, title stages, title documents, encumbrances
   projects/          projects, BoQ, site diary, purchase orders
   sales/             units and prices, leads, subscriptions, reminders, cancellations, handover
   finance/           receipts, Paystack, bank matching, foreign currency, WHT, period close
@@ -41,5 +41,8 @@ docs/help/
 | [Approve or reject a request](getting-started/approve-or-reject-a-request.md) | J-EXE-02 | written |
 | [Set approval rules](getting-started/set-approval-rules.md) | J-ONB-12 | written |
 | [Read the audit log](getting-started/read-the-audit-log.md) | J-ONB-13 | written |
+| [Add a parcel](land-and-title/add-a-parcel.md) | J-LND-01 | written |
+| [Move a title stage](land-and-title/move-a-title-stage.md) | J-LND-02 | written |
+| [Manage title documents](land-and-title/manage-title-documents.md) | J-LND-02 | written |
 
 Status: `todo` · `written` · `published`

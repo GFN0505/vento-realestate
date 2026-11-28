@@ -48,6 +48,8 @@ import { Route as ConsolePlansIndexRouteImport } from './routes/console/plans.in
 import { Route as ConsolePlansPlanKeyRouteImport } from './routes/console/plans.$planKey'
 import { Route as ConsoleReleasesIndexRouteImport } from './routes/console/releases.index'
 import { Route as ConsoleReleasesKeyRouteImport } from './routes/console/releases.$key'
+import { Route as AppShellLandIndexRouteImport } from './routes/_app/_shell/land/index'
+import { Route as AppShellLandParcelIdRouteImport } from './routes/_app/_shell/land/$parcelId'
 import { Route as AppShellSettingsIndexRouteImport } from './routes/_app/_shell/settings/index'
 import { Route as AppShellSettingsApprovalRulesRouteImport } from './routes/_app/_shell/settings/approval-rules'
 import { Route as AppShellSettingsAuditLogRouteImport } from './routes/_app/_shell/settings/audit-log'
@@ -255,6 +257,16 @@ const ConsoleReleasesKeyRoute = ConsoleReleasesKeyRouteImport.update({
   path: '/releases/$key',
   getParentRoute: () => ConsoleRoute,
 } as any)
+const AppShellLandIndexRoute = AppShellLandIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppShellLandRoute,
+} as any)
+const AppShellLandParcelIdRoute = AppShellLandParcelIdRouteImport.update({
+  id: '/$parcelId',
+  path: '/$parcelId',
+  getParentRoute: () => AppShellLandRoute,
+} as any)
 const AppShellSettingsIndexRoute = AppShellSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -336,7 +348,7 @@ export interface FileRoutesByFullPath {
   '/finance': typeof AppShellFinanceRoute
   '/help': typeof AppShellHelpRoute
   '/hr': typeof AppShellHrRoute
-  '/land': typeof AppShellLandRoute
+  '/land': typeof AppShellLandRouteWithChildren
   '/projects': typeof AppShellProjectsRoute
   '/reports': typeof AppShellReportsRoute
   '/sales': typeof AppShellSalesRoute
@@ -350,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/console/organizations/': typeof ConsoleOrganizationsIndexRoute
   '/console/plans/': typeof ConsolePlansIndexRoute
   '/console/releases/': typeof ConsoleReleasesIndexRoute
+  '/land/$parcelId': typeof AppShellLandParcelIdRoute
   '/settings/approval-rules': typeof AppShellSettingsApprovalRulesRoute
   '/settings/audit-log': typeof AppShellSettingsAuditLogRoute
   '/settings/companies': typeof AppShellSettingsCompaniesRoute
@@ -357,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/settings/roles': typeof AppShellSettingsRolesRouteWithChildren
   '/settings/security': typeof AppShellSettingsSecurityRoute
   '/settings/team': typeof AppShellSettingsTeamRoute
+  '/land/': typeof AppShellLandIndexRoute
   '/settings/': typeof AppShellSettingsIndexRoute
   '/settings/roles/$roleId': typeof AppShellSettingsRolesRoleIdRoute
   '/settings/roles/': typeof AppShellSettingsRolesIndexRoute
@@ -383,7 +397,6 @@ export interface FileRoutesByTo {
   '/finance': typeof AppShellFinanceRoute
   '/help': typeof AppShellHelpRoute
   '/hr': typeof AppShellHrRoute
-  '/land': typeof AppShellLandRoute
   '/projects': typeof AppShellProjectsRoute
   '/reports': typeof AppShellReportsRoute
   '/sales': typeof AppShellSalesRoute
@@ -396,12 +409,14 @@ export interface FileRoutesByTo {
   '/console/organizations': typeof ConsoleOrganizationsIndexRoute
   '/console/plans': typeof ConsolePlansIndexRoute
   '/console/releases': typeof ConsoleReleasesIndexRoute
+  '/land/$parcelId': typeof AppShellLandParcelIdRoute
   '/settings/approval-rules': typeof AppShellSettingsApprovalRulesRoute
   '/settings/audit-log': typeof AppShellSettingsAuditLogRoute
   '/settings/companies': typeof AppShellSettingsCompaniesRoute
   '/settings/organization': typeof AppShellSettingsOrganizationRoute
   '/settings/security': typeof AppShellSettingsSecurityRoute
   '/settings/team': typeof AppShellSettingsTeamRoute
+  '/land': typeof AppShellLandIndexRoute
   '/settings': typeof AppShellSettingsIndexRoute
   '/settings/roles/$roleId': typeof AppShellSettingsRolesRoleIdRoute
   '/settings/roles': typeof AppShellSettingsRolesIndexRoute
@@ -432,7 +447,7 @@ export interface FileRoutesById {
   '/_app/_shell/finance': typeof AppShellFinanceRoute
   '/_app/_shell/help': typeof AppShellHelpRoute
   '/_app/_shell/hr': typeof AppShellHrRoute
-  '/_app/_shell/land': typeof AppShellLandRoute
+  '/_app/_shell/land': typeof AppShellLandRouteWithChildren
   '/_app/_shell/projects': typeof AppShellProjectsRoute
   '/_app/_shell/reports': typeof AppShellReportsRoute
   '/_app/_shell/sales': typeof AppShellSalesRoute
@@ -447,6 +462,7 @@ export interface FileRoutesById {
   '/console/organizations/': typeof ConsoleOrganizationsIndexRoute
   '/console/plans/': typeof ConsolePlansIndexRoute
   '/console/releases/': typeof ConsoleReleasesIndexRoute
+  '/_app/_shell/land/$parcelId': typeof AppShellLandParcelIdRoute
   '/_app/_shell/settings/approval-rules': typeof AppShellSettingsApprovalRulesRoute
   '/_app/_shell/settings/audit-log': typeof AppShellSettingsAuditLogRoute
   '/_app/_shell/settings/companies': typeof AppShellSettingsCompaniesRoute
@@ -454,6 +470,7 @@ export interface FileRoutesById {
   '/_app/_shell/settings/roles': typeof AppShellSettingsRolesRouteWithChildren
   '/_app/_shell/settings/security': typeof AppShellSettingsSecurityRoute
   '/_app/_shell/settings/team': typeof AppShellSettingsTeamRoute
+  '/_app/_shell/land/': typeof AppShellLandIndexRoute
   '/_app/_shell/settings/': typeof AppShellSettingsIndexRoute
   '/_app/_shell/settings/roles/$roleId': typeof AppShellSettingsRolesRoleIdRoute
   '/_app/_shell/settings/roles/': typeof AppShellSettingsRolesIndexRoute
@@ -497,6 +514,7 @@ export interface FileRouteTypes {
     | '/console/organizations/'
     | '/console/plans/'
     | '/console/releases/'
+    | '/land/$parcelId'
     | '/settings/approval-rules'
     | '/settings/audit-log'
     | '/settings/companies'
@@ -504,6 +522,7 @@ export interface FileRouteTypes {
     | '/settings/roles'
     | '/settings/security'
     | '/settings/team'
+    | '/land/'
     | '/settings/'
     | '/settings/roles/$roleId'
     | '/settings/roles/'
@@ -530,7 +549,6 @@ export interface FileRouteTypes {
     | '/finance'
     | '/help'
     | '/hr'
-    | '/land'
     | '/projects'
     | '/reports'
     | '/sales'
@@ -543,12 +561,14 @@ export interface FileRouteTypes {
     | '/console/organizations'
     | '/console/plans'
     | '/console/releases'
+    | '/land/$parcelId'
     | '/settings/approval-rules'
     | '/settings/audit-log'
     | '/settings/companies'
     | '/settings/organization'
     | '/settings/security'
     | '/settings/team'
+    | '/land'
     | '/settings'
     | '/settings/roles/$roleId'
     | '/settings/roles'
@@ -593,6 +613,7 @@ export interface FileRouteTypes {
     | '/console/organizations/'
     | '/console/plans/'
     | '/console/releases/'
+    | '/_app/_shell/land/$parcelId'
     | '/_app/_shell/settings/approval-rules'
     | '/_app/_shell/settings/audit-log'
     | '/_app/_shell/settings/companies'
@@ -600,6 +621,7 @@ export interface FileRouteTypes {
     | '/_app/_shell/settings/roles'
     | '/_app/_shell/settings/security'
     | '/_app/_shell/settings/team'
+    | '/_app/_shell/land/'
     | '/_app/_shell/settings/'
     | '/_app/_shell/settings/roles/$roleId'
     | '/_app/_shell/settings/roles/'
@@ -887,6 +909,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleReleasesKeyRouteImport
       parentRoute: typeof ConsoleRoute
     }
+    '/_app/_shell/land/': {
+      id: '/_app/_shell/land/'
+      path: '/'
+      fullPath: '/land/'
+      preLoaderRoute: typeof AppShellLandIndexRouteImport
+      parentRoute: typeof AppShellLandRoute
+    }
+    '/_app/_shell/land/$parcelId': {
+      id: '/_app/_shell/land/$parcelId'
+      path: '/$parcelId'
+      fullPath: '/land/$parcelId'
+      preLoaderRoute: typeof AppShellLandParcelIdRouteImport
+      parentRoute: typeof AppShellLandRoute
+    }
     '/_app/_shell/settings/': {
       id: '/_app/_shell/settings/'
       path: '/'
@@ -960,6 +996,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppShellLandRouteChildren {
+  AppShellLandParcelIdRoute: typeof AppShellLandParcelIdRoute
+  AppShellLandIndexRoute: typeof AppShellLandIndexRoute
+}
+
+const AppShellLandRouteChildren: AppShellLandRouteChildren = {
+  AppShellLandParcelIdRoute: AppShellLandParcelIdRoute,
+  AppShellLandIndexRoute: AppShellLandIndexRoute,
+}
+
+const AppShellLandRouteWithChildren = AppShellLandRoute._addFileChildren(
+  AppShellLandRouteChildren,
+)
+
 interface AppShellSettingsRolesRouteChildren {
   AppShellSettingsRolesRoleIdRoute: typeof AppShellSettingsRolesRoleIdRoute
   AppShellSettingsRolesIndexRoute: typeof AppShellSettingsRolesIndexRoute
@@ -1009,7 +1059,7 @@ interface AppShellRouteChildren {
   AppShellFinanceRoute: typeof AppShellFinanceRoute
   AppShellHelpRoute: typeof AppShellHelpRoute
   AppShellHrRoute: typeof AppShellHrRoute
-  AppShellLandRoute: typeof AppShellLandRoute
+  AppShellLandRoute: typeof AppShellLandRouteWithChildren
   AppShellProjectsRoute: typeof AppShellProjectsRoute
   AppShellReportsRoute: typeof AppShellReportsRoute
   AppShellSalesRoute: typeof AppShellSalesRoute
@@ -1026,7 +1076,7 @@ const AppShellRouteChildren: AppShellRouteChildren = {
   AppShellFinanceRoute: AppShellFinanceRoute,
   AppShellHelpRoute: AppShellHelpRoute,
   AppShellHrRoute: AppShellHrRoute,
-  AppShellLandRoute: AppShellLandRoute,
+  AppShellLandRoute: AppShellLandRouteWithChildren,
   AppShellProjectsRoute: AppShellProjectsRoute,
   AppShellReportsRoute: AppShellReportsRoute,
   AppShellSalesRoute: AppShellSalesRoute,

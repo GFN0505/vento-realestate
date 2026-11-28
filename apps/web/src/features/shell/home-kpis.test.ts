@@ -36,7 +36,10 @@ describe('home numbers', () => {
       features: NAV_FLAGS.filter((f) => f !== 'finance'),
     })
     expect(homeKpis(noFinance, 'owner').every((k) => k.module !== 'finance')).toBe(true)
-    expect(homeKpis(navAccess(perms('owner'), { internal: false }), 'owner')).toEqual([])
+    const noLand = NAV_FLAGS.filter((f) => f !== 'land')
+    expect(
+      homeKpis(navAccess(perms('owner'), { internal: false, features: noLand }), 'owner'),
+    ).toEqual([])
   })
 
   it('names the modules the numbers wait for', () => {
@@ -44,5 +47,21 @@ describe('home numbers', () => {
     expect(kpiNote(HOME_KPIS.owner, label)).toBe('Numbers appear as Finance and Sales go live.')
     expect(kpiNote(HOME_KPIS.sales, label)).toBe('Numbers appear as Sales goes live.')
     expect(kpiNote([], label)).toBeNull()
+  })
+
+  it('fills Titles in progress from Land & title, the only live tile so far', () => {
+    const live = Object.values(HOME_KPIS)
+      .flat()
+      .filter((k) => k.live)
+    expect(live).toEqual([
+      { label: 'Titles in progress', icon: 'scroll-text', module: 'land', live: 'land_titles' },
+    ])
+  })
+
+  it('stops naming a module once one of its tiles is live', () => {
+    const label = (m: string) => (m === 'land' ? 'Land & title' : 'Documents')
+    expect(kpiNote(HOME_KPIS.land_legal, label)).toBe('Numbers appear as Documents goes live.')
+    const landOnly = HOME_KPIS.land_legal.filter((k) => k.module === 'land')
+    expect(kpiNote(landOnly, label)).toBeNull()
   })
 })

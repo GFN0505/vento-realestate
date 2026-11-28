@@ -200,7 +200,17 @@ describe('availability', () => {
   })
 
   it('shows unbuilt modules only to internal organizations', () => {
-    expect(labels(visibleNav(navAccess(owner, { internal: false })))).toEqual(['Home', 'Settings'])
+    const noLand = NAV_FLAGS.filter((f) => f !== 'land')
+    expect(labels(visibleNav(navAccess(owner, { internal: false, features: noLand })))).toEqual([
+      'Home',
+      'Settings',
+    ])
+    // Land & title is built: a customer organization with the feature sees it, untagged.
+    expect(labels(visibleNav(navAccess(owner, { internal: false })))).toEqual([
+      'Home',
+      'Land & title',
+      'Settings',
+    ])
     expect(canView(navAccess(owner, { internal: false }), built(navItem('sales')))).toBe(true)
   })
 

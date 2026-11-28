@@ -12,6 +12,7 @@ export type ShortcutId =
   | 'team-invite'
   | 'team-search'
   | 'companies-add'
+  | 'land-add'
   | 'roles-new'
   | 'approvals-next'
   | 'approvals-previous'
@@ -96,6 +97,14 @@ export const SHORTCUTS: readonly Shortcut[] = [
     trigger: { kind: 'key', key: 'n' },
     allowInFields: false,
     page: { path: '/settings/companies', name: 'Companies' },
+  },
+  {
+    id: 'land-add',
+    label: 'Add parcel',
+    keys: ['N'],
+    trigger: { kind: 'key', key: 'n' },
+    allowInFields: false,
+    page: { path: '/land', name: 'Land & title' },
   },
   {
     id: 'roles-new',

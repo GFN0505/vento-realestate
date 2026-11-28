@@ -4,11 +4,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { canSeeChecklist } from '@/features/checklist/checklist-queries'
 import { HomeChecklist } from '@/features/checklist/home-checklist'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
+import { LazyLandHomeSection, LazyTitlesTile } from '@/features/land/home/land-home-lazy'
 import { TrialLine } from '@/features/plan/trial-line'
 import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-permissions'
+import { can } from '@/lib/permissions'
+import { cn } from '@/lib/utils'
 import { greeting, longDateInLagos } from './greeting'
 import { HomeHero } from './home-hero'
-import { homeKpis, kpiNote } from './home-kpis'
+import { homeKpis, kpiNote, showsLandSection } from './home-kpis'
 import { KpiIcon } from './kpi-icon'
 import { navItemForModule, workspaceModules } from './nav'
 import { usePageTitle } from './use-page-title'
@@ -22,7 +25,8 @@ const NoCompanyCard = lazy(() =>
 
 /**
  * Home (boards ExecutiveHome and the role homes): a hero greeting on the brand's navy, the setup
- * checklist for owners and admins, the role's four numbers, then the modules this member can open. The same shape for every role and
+ * checklist for owners and admins, the role's four numbers, the role's queue and panels as their
+ * modules ship (Land & legal so far), then the modules this member can open. The same shape for every role and
  * in Preview. Honest: a number appears only when the module that owns it ships.
  */
 export function HomePage() {
@@ -42,8 +46,17 @@ export function HomePage() {
       (entity.entity?.name ?? (entity.noCompany ? 'No company' : 'All companies'))
     )
 
+  const landSection = showsLandSection(access) && !entity.noCompany
+  // Phones: room at the foot of the page for Land & legal's sticky Upload document.
+  const stickyRoom = landSection && can(access.permissions, 'land', 'create')
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 lg:gap-9">
+    <div
+      className={cn(
+        'mx-auto flex w-full max-w-6xl flex-col gap-7 lg:gap-9',
+        stickyRoom && 'max-md:pb-14',
+      )}
+    >
       <HomeHero
         greeting={greeting(me.user.name)}
         date={longDateInLagos()}
@@ -63,13 +76,22 @@ export function HomePage() {
       {kpis.length > 0 && !entity.noCompany && (
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {kpis.map((kpi) => (
-              <StatCard key={kpi.label} label={kpi.label} icon={<KpiIcon name={kpi.icon} />} />
-            ))}
+            {kpis.map((kpi) =>
+              kpi.live === 'land_titles' ? (
+                <LazyTitlesTile
+                  key={kpi.label}
+                  label={kpi.label}
+                  icon={<KpiIcon name={kpi.icon} />}
+                />
+              ) : (
+                <StatCard key={kpi.label} label={kpi.label} icon={<KpiIcon name={kpi.icon} />} />
+              ),
+            )}
           </div>
           {note && <p className="text-muted-foreground text-xs">{note}</p>}
         </section>
       )}
+      {landSection && <LazyLandHomeSection />}
       {!entity.noCompany && <WorkspaceGrid modules={modules} access={access} />}
     </div>
   )

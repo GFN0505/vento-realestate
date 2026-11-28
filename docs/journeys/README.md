@@ -38,9 +38,9 @@ Each journey has an ID (`J-<AREA>-<NN>`), and these parts:
 | J-ONB-10 | Require two-step for everyone | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built |
 | J-ONB-12 | Set approval rules | Owner | [01-onboarding-and-access](01-onboarding-and-access.md) | built (brick 4) |
 | J-ONB-13 | Find out who changed something (audit log) | Owner / admin | [01-onboarding-and-access](01-onboarding-and-access.md) | built (brick 4) |
-| J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
-| J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
-| J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft |
+| J-LND-01 | Register a parcel and start title perfection | Land & legal | [02-land-and-title](02-land-and-title.md) | built (slice 1, on `feat/land-web`; boundary in slice 3) |
+| J-LND-02 | Move a title stage forward with evidence | Land & legal | [02-land-and-title](02-land-and-title.md) | built (slice 1, on `feat/land-web`) |
+| J-LND-03 | Record and clear an encumbrance | Land & legal | [02-land-and-title](02-land-and-title.md) | draft (slice 2) |
 | J-PRJ-01 | Create a project with phases, budget and BoQ | Project manager | [03-projects-and-site](03-projects-and-site.md) | draft |
 | J-PRJ-02 | Log a site diary entry from site | Site engineer | [03-projects-and-site](03-projects-and-site.md) | draft |
 | J-PRJ-03 | Request materials, raise and receive a PO | Site engineer, PM | [03-projects-and-site](03-projects-and-site.md) | draft |
@@ -173,3 +173,8 @@ Writing these journeys meant picking defaults the product docs don't settle. The
 
 **Still need the owner's yes (admin-console slice 1b)**
 - "Gone quiet" is **14 days** without member activity; the queue shows at most 8 rows.
+
+**Still need the owner's yes (Land & title slice 1 build)**
+- Add parcel remembers the **last state and company per organization on this device**; the switcher's company, or the only one, still comes first.
+- A stage update's **Undo lasts the toast (8 seconds)** on screen; the server allows it for 2 minutes by its author.
+- Land & legal's queue, Title pipeline and phone **Upload document** show for the **Land & legal role only**; owners and admins keep their executive tiles and get land items on Home with slice 2 (the MD's blocker item).

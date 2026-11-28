@@ -31,6 +31,7 @@ import { checklistQuery } from '@/features/checklist/checklist-queries'
 import { showChecklist } from '@/features/checklist/checklist-visibility'
 import { openAddCompany } from '@/features/companies/open-add-company'
 import { useCurrentEntity } from '@/features/entity/use-current-entity'
+import { ParcelCommands } from '@/features/land/parcel-commands'
 import { useSwitchOrganization } from '@/features/organization/switch-organization'
 import { UpgradeHintRows } from '@/features/plan/upgrade-hint-rows'
 import {
@@ -198,6 +199,7 @@ export function CommandResults({ page, search, onPreviewPage, close, navigate }:
           )
         })}
       </CommandGroup>
+      <ParcelCommands search={search} close={close} />
       {canSeeRoles && roles.length > 0 && (
         <CommandGroup heading="Roles">
           {roles.map((role) => (

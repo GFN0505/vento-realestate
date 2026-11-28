@@ -7,6 +7,10 @@ type Props = {
   icon: ReactNode
   /** The number. Omit until the module that owns it ships: the tile shows a quiet placeholder. */
   value?: ReactNode
+  /** One short line under the value: "1 stalled over 90 days". */
+  detail?: ReactNode
+  /** Replaces the empty baseline once the module has something to draw (a breakdown bar). */
+  chart?: ReactNode
   className?: string
 }
 
@@ -15,7 +19,7 @@ type Props = {
  * a large tabular value over a soft chart area. With no value yet it shows a refined placeholder
  * and an empty baseline: never a made-up figure or a fake trend.
  */
-export function StatCard({ label, icon, value, className }: Props) {
+export function StatCard({ label, icon, value, detail, chart, className }: Props) {
   const empty = value === undefined
   const wash = useId()
   return (
@@ -50,31 +54,42 @@ export function StatCard({ label, icon, value, className }: Props) {
           value
         )}
       </div>
-      {/* The chart area: an empty baseline over a faint brand wash, ready for a real trend. */}
-      <svg
-        aria-hidden
-        viewBox="0 0 200 48"
-        preserveAspectRatio="none"
-        className="-mx-4 sm:-mx-5 -mb-4 sm:-mb-5 mt-auto h-10 w-[calc(100%+2rem)] text-brand sm:w-[calc(100%+2.5rem)]"
-      >
-        <defs>
-          <linearGradient id={wash} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="currentColor" stopOpacity="0.1" />
-            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <rect x="0" y="30" width="200" height="18" fill={`url(#${wash})`} />
-        <line
-          x1="0"
-          x2="200"
-          y1="30"
-          y2="30"
-          stroke="currentColor"
-          strokeOpacity="0.28"
-          strokeDasharray="2 4"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
+      {detail && (
+        <div className="mt-2 min-w-0 text-[12px] text-muted-foreground tabular-nums leading-snug">
+          {detail}
+        </div>
+      )}
+      {chart ? <div className="mt-auto pt-3">{chart}</div> : <Baseline id={wash} />}
     </div>
+  )
+}
+
+/** The chart area: an empty baseline over a faint brand wash, ready for a real trend. */
+function Baseline({ id }: { id: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 200 48"
+      preserveAspectRatio="none"
+      className="-mx-4 sm:-mx-5 -mb-4 sm:-mb-5 mt-auto h-10 w-[calc(100%+2rem)] text-brand sm:w-[calc(100%+2.5rem)]"
+    >
+      <defs>
+        <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.1" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="30" width="200" height="18" fill={`url(#${id})`} />
+      <line
+        x1="0"
+        x2="200"
+        y1="30"
+        y2="30"
+        stroke="currentColor"
+        strokeOpacity="0.28"
+        strokeDasharray="2 4"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   )
 }
