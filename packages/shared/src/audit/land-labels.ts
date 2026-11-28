@@ -10,6 +10,7 @@ import {
   type TitleStageStatus,
   type TitleStageType,
 } from '../land/catalog'
+import { ENCUMBRANCE_TYPES, ENCUMBRANCE_WORDS, type EncumbranceType } from '../land/encumbrance'
 
 // Land & title audit events in plain words. With the parcel's name (the audit log) the sentence
 // ends "· Plot 22, Folu Ayo"; without it (the parcel's own Activity) it stops before.
@@ -56,6 +57,14 @@ function versionWords(e: Event): string | null {
   return typeof n === 'number' && Number.isInteger(n) ? `${word} v${n}` : word
 }
 
+/** "caveat", "court order"; "encumbrance" when the event doesn't say. */
+function encumbranceWord(e: Event): string {
+  const type = oneOf<EncumbranceType>(ENCUMBRANCE_TYPES, text(e, 'encumbranceType'))
+  return type ? ENCUMBRANCE_WORDS[type] : 'encumbrance'
+}
+
+const article = (word: string): string => (/^[aeiou]/.test(word) ? 'an' : 'a')
+
 export const landWhat = {
   parcelCreated: (e: Event): string =>
     e.targetLabel ? `Added parcel ${e.targetLabel}` : 'Added the parcel',
@@ -101,6 +110,17 @@ export const landWhat = {
     const doc = versionWords(e)
     return onParcel(doc ? `Restored ${doc}` : 'Restored a title document version', e)
   },
+
+  encumbranceRecorded: (e: Event): string => {
+    const word = encumbranceWord(e)
+    const blocks = e.metadata?.blocksSales === true ? ', blocking sales' : ''
+    return onParcel(`Recorded ${article(word)} ${word}${blocks}`, e)
+  },
+
+  encumbranceUpdated: (e: Event): string =>
+    onParcel(`Changed the ${encumbranceWord(e)}'s details`, e),
+
+  encumbranceCleared: (e: Event): string => onParcel(`Cleared the ${encumbranceWord(e)}`, e),
 
   linkIssued: (e: Event): string => {
     const doc = versionWords(e) ?? 'a title document'

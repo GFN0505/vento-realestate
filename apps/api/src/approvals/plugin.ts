@@ -55,9 +55,21 @@ export type Described = {
 /** The permission the action needs, checked on the maker again when the last approval lands. */
 export type PluginPermission = { module: PermissionModule; action: PermissionAction }
 
+/**
+ * Preview only (security M4): whether a rule would apply to this record at all, and the record's
+ * company, worked out from the record itself (never from the caller's input). An id outside the
+ * viewer's scope throws NOT_FOUND.
+ */
+export type Applies = { applies: boolean; entityId: string | null }
+
 export type ApprovalPlugin<P, R extends ExecuteResult = ExecuteResult> = {
   key: ApprovalActionKey
   permission: PluginPermission
+  /**
+   * Any other permission the maker needs (clearing an encumbrance also uploads its evidence, so
+   * Land & title create). Checked by preview and, with `permission`, when the last approval lands.
+   */
+  alsoRequires?: readonly PluginPermission[]
   /** What's stored on the request. Never secrets. Re-validated before it runs. */
   payload: z.ZodType<P>
   /** The record: one pending request per record and action. */
@@ -71,20 +83,24 @@ export type ApprovalPlugin<P, R extends ExecuteResult = ExecuteResult> = {
    * changed) and does the action, writing its own audit event with approvalMetadata(meta).
    */
   execute(tx: DbOrTx, ctx: ServiceContext, p: P, meta: ExecuteMeta): Promise<R>
-  /** Preview only: whether a rule would apply to this record at all (default yes). */
-  appliesTo?(tx: DbOrTx, ctx: ServiceContext, subject: ApprovalSubject): Promise<boolean>
+  /** Preview only (default: applies, organization-wide). */
+  appliesTo?(tx: DbOrTx, ctx: ServiceContext, subject: ApprovalSubject): Promise<Applies>
 }
 
 /** The same plug-in with its payload type erased behind parsing, for the registry. */
 export type RegisteredPlugin = {
   key: ApprovalActionKey
   permission: PluginPermission
+  /** `permission` first, then `alsoRequires`. */
+  permissions: readonly PluginPermission[]
   subject(raw: unknown): ApprovalSubject
   describe(tx: DbOrTx, ctx: ServiceContext, raw: unknown): Promise<Described>
   excluded(tx: DbOrTx, ctx: ServiceContext, raw: unknown): Promise<ApprovalExclusion[]>
   execute(tx: DbOrTx, ctx: ServiceContext, raw: unknown, meta: ExecuteMeta): Promise<ExecuteResult>
-  appliesTo(tx: DbOrTx, ctx: ServiceContext, subject: ApprovalSubject): Promise<boolean>
+  appliesTo(tx: DbOrTx, ctx: ServiceContext, subject: ApprovalSubject): Promise<Applies>
 }
+
+const ORGANIZATION_WIDE: Applies = { applies: true, entityId: null }
 
 export function registerPlugin<P, R extends ExecuteResult>(
   plugin: ApprovalPlugin<P, R>,
@@ -93,12 +109,13 @@ export function registerPlugin<P, R extends ExecuteResult>(
   return {
     key: plugin.key,
     permission: plugin.permission,
+    permissions: [plugin.permission, ...(plugin.alsoRequires ?? [])],
     subject: (raw) => plugin.subject(parse(raw)),
     describe: (tx, ctx, raw) => plugin.describe(tx, ctx, parse(raw)),
     excluded: (tx, ctx, raw) => plugin.excluded(tx, ctx, parse(raw)),
     execute: (tx, ctx, raw, meta) => plugin.execute(tx, ctx, parse(raw), meta),
     appliesTo: (tx, ctx, subject) =>
-      plugin.appliesTo ? plugin.appliesTo(tx, ctx, subject) : Promise.resolve(true),
+      plugin.appliesTo ? plugin.appliesTo(tx, ctx, subject) : Promise.resolve(ORGANIZATION_WIDE),
   }
 }
 

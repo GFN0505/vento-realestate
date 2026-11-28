@@ -143,7 +143,7 @@ describe('Document vault', () => {
   it('offers no upload or remove to people who can only view', async () => {
     const parcel = parcelFixture({
       documents: [cofo],
-      can: { edit: false, create: false, delete: false },
+      can: { edit: false, create: false, delete: false, record: false, clear: false },
     })
     const { queryClient } = renderVault(parcel)
     queryClient.setQueryData(documentVersionsQuery(cofo.id).queryKey, [cofoLatest])

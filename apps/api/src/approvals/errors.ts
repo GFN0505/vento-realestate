@@ -1,7 +1,9 @@
 import {
   APPROVAL_COPY,
+  type ApprovalActionKey,
   decidedMomentAgoMessage,
   noApproverMessage,
+  noRuleMessage,
   staleMessage,
 } from '@vento/shared'
 import { badRequest, conflict, forbidden } from '@/lib/errors'
@@ -36,6 +38,10 @@ export const notPending = (message = 'This request has already ended.') =>
 
 export const noApprover = (entityName: string | null) =>
   conflict('no_approver', noApproverMessage(entityName))
+
+/** An action that refuses without a rule found none for the record's company (decision 0026). */
+export const noRule = (actionKey: ApprovalActionKey, entityName: string | null) =>
+  conflict('no_rule', noRuleMessage(actionKey, entityName))
 
 export const ownRequest = () =>
   forbidden(

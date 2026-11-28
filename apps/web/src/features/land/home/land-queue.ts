@@ -1,6 +1,7 @@
 import {
   documentTypeForStage,
   type LandQueueItem,
+  type LandStageQueueItem,
   TITLE_DOCUMENTS,
   type TitleStageType,
 } from '@vento/shared'
@@ -19,7 +20,7 @@ export type LandQueueRow = HomeQueueItem & { parcelId: string; stageType: TitleS
 export const LAND_QUEUE_LIMIT = 20
 
 /** The one with more at stake first, when two fall on the same day. */
-const IMPACT: Record<LandQueueItem['kind'], number> = { query: 0, follow_up: 1, stalled: 2 }
+const IMPACT: Record<LandStageQueueItem['kind'], number> = { query: 0, follow_up: 1, stalled: 2 }
 
 /** "survey plan", "C of O", "governor's consent": the stage as it reads mid-sentence. */
 const stageWord = (type: TitleStageType) => TITLE_DOCUMENTS[documentTypeForStage(type)].word
@@ -28,7 +29,7 @@ const stageWord = (type: TitleStageType) => TITLE_DOCUMENTS[documentTypeForStage
 const when = (date: string, today: string) =>
   date.slice(0, 4) === today.slice(0, 4) ? formatDayMonth(date) : formatDate(date)
 
-function words(item: LandQueueItem, today: string): Omit<HomeQueueItem, 'key' | 'action'> {
+function words(item: LandStageQueueItem, today: string): Omit<HomeQueueItem, 'key' | 'action'> {
   switch (item.kind) {
     case 'query':
       return {
@@ -56,7 +57,9 @@ function words(item: LandQueueItem, today: string): Omit<HomeQueueItem, 'key' | 
 
 /** Oldest due first, then by impact, then by parcel name; at most 20. */
 export function landQueueRows(items: readonly LandQueueItem[], today: string): LandQueueRow[] {
-  return [...items]
+  // Hearing and next-date items (encumbrances) get their words with the encumbrance screens.
+  return items
+    .filter((item): item is LandStageQueueItem => item.kind !== 'next_date')
     .sort(
       (a, b) =>
         a.due.localeCompare(b.due) ||

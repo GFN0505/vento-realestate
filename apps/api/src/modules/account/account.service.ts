@@ -138,7 +138,7 @@ export async function getMe(
       () => featuresAndPlan(db, membership, store),
       () => twoStepRequiredBy(db, user, membership),
       () => activeSuperAdmin(db, user.id),
-      () => approvalsFor(db, membership),
+      () => approvalsFor(db, membership, store),
     ],
   )
   // A staff account never onboards (decision 0023): an active super-admin with two-step goes
@@ -196,12 +196,21 @@ export async function getMe(
 async function approvalsFor(
   db: DbOrTx,
   membership: Membership | null,
+  store: FeatureStore,
 ): Promise<{ waiting: number; canSee: boolean }> {
   if (!membership) return { waiting: 0, canSee: false }
   const ctx = { organizationId: membership.organizationId, member: membership.member }
   const approver = approvableModules(membership.member.permissions).length > 0
   // An approver always sees Approvals; only a maker without Approve needs the second query.
-  if (approver) return { waiting: await countWaiting(db, ctx), canSee: true }
+  if (approver) {
+    // Requests of a feature the organization doesn't have aren't counted (security L2).
+    const features = organizationAvailability(
+      await store.get(),
+      { organizationId: membership.organizationId, ...membership.plan },
+      new Date(),
+    )
+    return { waiting: await countWaiting(db, { ...ctx, features }), canSee: true }
+  }
   return { waiting: 0, canSee: await madeRecentRequest(db, ctx) }
 }
 

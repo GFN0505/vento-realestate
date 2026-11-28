@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { totpCode } from './totp'
 
 /**
@@ -23,4 +23,15 @@ export async function completeTwoStepSetup(page: Page, password: string): Promis
   await page.getByRole('checkbox', { name: "I've saved my backup codes" }).check()
   await page.getByRole('button', { name: 'Continue' }).click()
   return secret
+}
+
+/**
+ * Puts a new code in six boxes that already hold one. `fill` alone isn't enough there: input-otp
+ * keeps the caret on the last box, so a fill (or a clear) only changes the last digit.
+ */
+export async function replaceCode(boxes: Locator, code: string): Promise<void> {
+  for (let i = 0; i < 6; i++) await boxes.press('Backspace')
+  await expect(boxes).toHaveValue('')
+  await boxes.fill(code)
+  await expect(boxes).toHaveValue(code)
 }

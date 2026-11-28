@@ -39,7 +39,9 @@ describe('approval rules: reading', () => {
       expect(list.items.map((g) => [g.actionKey, g.rules.map((r) => r.chain)])).toEqual([
         ['access.role.update', ['Owner or Admin']],
         ['access.member.make_owner', ['Owner']],
+        ['land.encumbrance.clear', ['Admin, Land & legal or Finance → Owner']],
       ])
+      expect(list.items.map((g) => g.uncovered)).toEqual([[], [], []])
       expect(list.items[0]?.rules[0]).toMatchObject({
         whenText: 'Any amount',
         entities: 'all',
@@ -66,6 +68,60 @@ describe('approval rules: reading', () => {
       })
       expect(rule.chain).toBe('Owner → Board')
       expect(rule.gaps).toEqual([{ position: 2, entity: null, text: 'Nobody can approve step 2' }])
+    }))
+})
+
+describe('approval rules: actions that need a feature or a rule (decision 0026)', () => {
+  it('hides Clear an encumbrance where Land & title isn’t available, and refuses rules for it', () =>
+    withRollback(async (tx) => {
+      const org = await createOrganization(tx, { planKey: 'starter' })
+      await seedDefaultRules(tx, org.id, org.ownerMemberId)
+      const { client } = clientAs(tx, org.owner)
+      const list = await client.approvalRules.list()
+      expect(list.items.map((g) => g.actionKey)).toEqual([
+        'access.role.update',
+        'access.member.make_owner',
+      ])
+      await expect(
+        client.approvalRules.create({
+          actionKey: 'land.encumbrance.clear',
+          when: { kind: 'any' },
+          steps: [[org.roleIds.get('owner') ?? '']],
+          entityIds: 'all',
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    }))
+
+  it('warns about companies no rule covers for clearing, and about no rule at all', () =>
+    withRollback(async (tx) => {
+      const { org, owner } = await world(tx)
+      const lekki = await createEntity(tx, org, { name: 'Lekki Pearl Estates Ltd' })
+      const parkview = await createEntity(tx, org, { name: 'Parkview Residences SPV Ltd' })
+      const { client } = clientAs(tx, org.owner)
+      const clearing = async () =>
+        (await client.approvalRules.list()).items.find(
+          (g) => g.actionKey === 'land.encumbrance.clear',
+        )
+      const seeded = (await clearing())?.rules[0]
+      await client.approvalRules.delete({ id: seeded?.id ?? '', version: seeded?.version ?? 1 })
+      expect((await clearing())?.uncovered).toEqual([
+        {
+          entity: null,
+          text: 'No rule yet. Clearing an encumbrance is refused until one is added.',
+        },
+      ])
+      await client.approvalRules.create({
+        actionKey: 'land.encumbrance.clear',
+        when: { kind: 'any' },
+        steps: [[owner]],
+        entityIds: [lekki.id],
+      })
+      expect((await clearing())?.uncovered).toEqual([
+        {
+          entity: { id: parkview.id, name: parkview.name },
+          text: `No rule covers ${parkview.name}. Clearing an encumbrance is refused there until one is added.`,
+        },
+      ])
     }))
 })
 

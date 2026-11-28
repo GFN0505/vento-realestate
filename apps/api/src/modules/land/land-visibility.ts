@@ -9,7 +9,9 @@ import { auditEvents, entities, titleDocuments } from '@/db/schema'
 // audit log (Settings). The acquisition (cost, date) and "Bought from" go only to people who can
 // edit Land & title or view Finance (spec question 5; seller: owner, 28 Nov 2026). Companies and
 // document names are stored as ids in audit metadata and named when read, so a viewer outside a
-// company never reads its name and the log keeps no family names.
+// company never reads its name and the log keeps no family names. An encumbrance's claimant,
+// lawyer, notes and files go only to people who can edit or approve in Land & title (owner, 28
+// Nov 2026).
 
 /** Acquisition cost and date, and the seller: people who can edit Land & title or view Finance. */
 export function canSeeAcquisition(member: Pick<MemberContext, 'permissions'>): boolean {
@@ -22,6 +24,29 @@ export function canSeeAcquisition(member: Pick<MemberContext, 'permissions'>): b
 /** Audit before/after keys only `canSeeAcquisition` viewers receive. */
 export const ACQUISITION_KEYS = ['acquisitionCost', 'acquiredOn', 'seller'] as const
 
+/**
+ * An encumbrance's claimant, lawyer, notes and its evidence and clearance files: people who can
+ * edit Land & title or approve in it (Land & legal, owners, admins, Finance; owner, 28 Nov 2026).
+ * Everyone else who views Land & title sees its type, reference, dates, status and the block.
+ */
+export function canSeeEncumbranceDetails(member: Pick<MemberContext, 'permissions'>): boolean {
+  return (
+    hasPermission(member.permissions, 'land', 'edit') ||
+    hasPermission(member.permissions, 'land', 'approve')
+  )
+}
+
+/**
+ * Audit before/after keys only `canSeeEncumbranceDetails` viewers receive. The trail keeps only
+ * markers for them ("(recorded)", "(changed)"; security M3), and even those say a claim has a
+ * lawyer or notes.
+ */
+export const ENCUMBRANCE_DETAIL_KEYS = ['claimant', 'lawyer', 'notes', 'clearanceNote'] as const
+
+const ENCUMBRANCE_KEYS_SQL = sql.raw(
+  `array[${ENCUMBRANCE_DETAIL_KEYS.map((k) => `'${k}'`).join(', ')}]::text[]`,
+)
+
 /** How a company outside the viewer's access reads in a change. */
 export const ANOTHER_COMPANY = 'Another company'
 
@@ -32,12 +57,20 @@ const KEYS_SQL = sql.raw(`array[${ACQUISITION_KEYS.map((k) => `'${k}'`).join(', 
  * parcel" still says the cost moved). In SQL, so pages and totals stay right.
  */
 export function hiddenOnlyEdits(member: Pick<MemberContext, 'permissions'>): SQL | undefined {
-  if (canSeeAcquisition(member)) return undefined
-  return sql`not (${auditEvents.action} = 'land.parcel.updated'
+  const parcelEdits = canSeeAcquisition(member)
+    ? undefined
+    : sql`not (${auditEvents.action} = 'land.parcel.updated'
     and ${auditEvents.metadata}->>'fromEntityId' is null
     and (coalesce(${auditEvents.before}, '{}'::jsonb) - ${KEYS_SQL}) = '{}'::jsonb
     and (coalesce(${auditEvents.after}, '{}'::jsonb) - ${KEYS_SQL}) = '{}'::jsonb
     and (coalesce(${auditEvents.before}, '{}'::jsonb) || coalesce(${auditEvents.after}, '{}'::jsonb)) ?| ${KEYS_SQL})`
+  // An encumbrance edit of only its claimant, lawyer or notes says nothing to the others.
+  const encumbranceEdits = canSeeEncumbranceDetails(member)
+    ? undefined
+    : sql`not (${auditEvents.action} = 'land.encumbrance.updated'
+    and (coalesce(${auditEvents.before}, '{}'::jsonb) - ${ENCUMBRANCE_KEYS_SQL}) = '{}'::jsonb
+    and (coalesce(${auditEvents.after}, '{}'::jsonb) - ${ENCUMBRANCE_KEYS_SQL}) = '{}'::jsonb)`
+  return and(parcelEdits, encumbranceEdits)
 }
 
 type Json = Record<string, unknown> | null
@@ -116,6 +149,7 @@ export async function viewLandEvents<T extends LandEventRow>(
 ): Promise<T[]> {
   if (!rows.some((r) => r.action.startsWith('land.'))) return [...rows]
   const seesAcquisition = canSeeAcquisition(ctx.member)
+  const seesEncumbrances = canSeeEncumbranceDetails(ctx.member)
   const seesDocuments = hasPermission(ctx.member.permissions, 'land', 'view')
   const found = await names(db, ctx.organizationId, idsOf(rows), seesDocuments)
   const limits = ctx.member.entityIds
@@ -132,6 +166,10 @@ export async function viewLandEvents<T extends LandEventRow>(
     if (!seesAcquisition) {
       before = without(before, ACQUISITION_KEYS)
       after = without(after, ACQUISITION_KEYS)
+    }
+    if (!seesEncumbrances && r.action.startsWith('land.encumbrance.')) {
+      before = without(before, ENCUMBRANCE_DETAIL_KEYS)
+      after = without(after, ENCUMBRANCE_DETAIL_KEYS)
     }
     if (r.action === 'land.parcel.created') {
       after = { ...after, company: company(str(m?.entityId)) }

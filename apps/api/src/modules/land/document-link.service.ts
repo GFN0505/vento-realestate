@@ -14,6 +14,7 @@ import { recordAudit } from '@/modules/audit/audit.service'
 import { type DownloadLink, signDownload } from '@/modules/files/files.records'
 import { versionsOf } from './document-read'
 import { loadVersion, versionMetadata } from './documents-write'
+import { assertDocumentVisible } from './encumbrance-documents'
 import { loadParcel, parcelScope, parcelTarget } from './land-access'
 
 // Reading the vault: a document's versions, and the short-lived link to one (decision 0025).
@@ -25,7 +26,7 @@ export async function listVersions(
   documentId: string,
 ): Promise<DocumentVersion[]> {
   const [doc] = await ctx.db
-    .select({ id: titleDocuments.id })
+    .select({ id: titleDocuments.id, type: titleDocuments.type })
     .from(titleDocuments)
     .innerJoin(
       parcels,
@@ -36,6 +37,7 @@ export async function listVersions(
     )
     .where(and(parcelScope(ctx), eq(titleDocuments.id, documentId)))
   if (!doc) throw notFound()
+  assertDocumentVisible(ctx, doc.type)
   return (await versionsOf(ctx.db, ctx.organizationId, [documentId])).get(documentId) ?? []
 }
 
@@ -64,6 +66,31 @@ export function assertLinkAllowed(
   }
 }
 
+/** Encumbrance records and clearing requests each person may make per organization (security L4). */
+export const ENCUMBRANCE_WRITES_PER_WINDOW = 20
+export const ENCUMBRANCE_WRITE_WINDOW_MS = 10 * 60_000
+
+/**
+ * 20 records or clearing requests per person per organization in 10 minutes, together: each
+ * files a document and emails owners or approvers. Checked before anything is read, as links are.
+ */
+export function assertEncumbranceWriteAllowed(
+  limiter: RateLimiter,
+  ctx: Pick<ServiceContext, 'organizationId' | 'user'>,
+): void {
+  const wait = limiter.hit(
+    `landEncumbrance:${ctx.organizationId}:${ctx.user.id}`,
+    ENCUMBRANCE_WRITES_PER_WINDOW,
+    ENCUMBRANCE_WRITE_WINDOW_MS,
+  )
+  if (wait > 0) {
+    throw tooManyRequests(
+      "You've recorded or sent a lot of encumbrances in the last few minutes. Try again shortly.",
+      wait,
+    )
+  }
+}
+
 /**
  * A 5-minute link to a version (preview or download), for anyone who can view the parcel, also
  * archived ones. A removed version's file is opened only by people who can remove documents
@@ -77,6 +104,8 @@ export async function documentLink(
 ): Promise<DownloadLink> {
   return ctx.db.transaction(async (tx) => {
     const v = await loadVersion(tx, ctx, input.versionId)
+    // Encumbrance evidence: only for people who can see encumbrance details (owner, 28 Nov 2026).
+    assertDocumentVisible(ctx, v.type)
     if (v.removedAt && !hasPermission(ctx.member.permissions, 'land', 'delete')) throw notFound()
     const parcel = await loadParcel(tx, ctx, v.parcelId)
     await recordAudit(tx, {

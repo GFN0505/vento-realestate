@@ -17,12 +17,14 @@ import {
   RULE_ACTION_KEYS,
   type SystemRoleKey,
   stepText,
+  uncoveredText,
   type updateApprovalRuleInput,
   whenText,
 } from '@vento/shared'
 import { and, desc, eq, inArray, like, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, lockViewer, type ServiceContext } from '@/access/context'
+import { actionAvailable as featureHasAction } from '@/approvals/availability'
 import { type LoadedRule, loadRules } from '@/approvals/rules'
 import { webUrl } from '@/auth/hooks/deps'
 import type { DbOrTx } from '@/db/client'
@@ -132,12 +134,50 @@ export function canEditRules(ctx: Pick<ServiceContext, 'member'>): boolean {
   return ctx.member.roleKey === 'owner' && ctx.member.entityIds === null
 }
 
+/** Whether the organization has the action's feature (platform actions: always). */
+export function actionAvailable(
+  ctx: Pick<ServiceContext, 'features'>,
+  actionKey: ApprovalActionKey,
+): boolean {
+  return featureHasAction(ctx.features, actionKey)
+}
+
+type Company = { id: string; name: string }
+
+/**
+ * An action that refuses without a rule (decision 0026): the active companies no rule covers,
+ * where it's refused. An all-company rule covers everything; no rule at all is one warning.
+ */
+function uncoveredOf(
+  actionKey: ApprovalActionKey,
+  rules: readonly LoadedRule[],
+  companies: readonly Company[],
+) {
+  if (APPROVAL_ACTIONS[actionKey].whenNoRule === 'run') return []
+  if (rules.length === 0) return [{ entity: null, text: uncoveredText(actionKey, null) }]
+  if (rules.some((r) => r.entities === 'all')) return []
+  const covered = new Set(rules.flatMap((r) => (r.entities === 'all' ? [] : r.entityIds)))
+  return companies
+    .filter((c) => !covered.has(c.id))
+    .map((c) => ({ entity: c, text: uncoveredText(actionKey, c.name) }))
+}
+
+async function activeCompanies(db: DbOrTx, organizationId: string): Promise<Company[]> {
+  return db
+    .select({ id: entities.id, name: entities.name })
+    .from(entities)
+    .where(and(eq(entities.organizationId, organizationId), eq(entities.status, 'active')))
+    .orderBy(sql`lower(${entities.name})`, entities.id)
+}
+
 export async function listRules(ctx: ServiceContext): Promise<ApprovalRulesList> {
-  const [rules, people] = await runQueries(ctx.db, [
+  const [rules, people, companies] = await runQueries(ctx.db, [
     () => loadRules(ctx.db, ctx.organizationId),
     () => approvers(ctx.db, ctx.organizationId),
+    () => activeCompanies(ctx.db, ctx.organizationId),
   ])
-  const items = RULE_ACTION_KEYS.map((actionKey) => {
+  // Rules for a feature the organization doesn't have stay hidden (decision 0026).
+  const items = RULE_ACTION_KEYS.filter((k) => actionAvailable(ctx, k)).map((actionKey) => {
     const forAction = rules.filter((r) => r.actionKey === actionKey)
     return {
       actionKey,
@@ -145,6 +185,7 @@ export async function listRules(ctx: ServiceContext): Promise<ApprovalRulesList>
       module: APPROVAL_ACTIONS[actionKey].module,
       belowThreshold: belowThresholdLine(forAction.filter((r) => r.entities === 'all')),
       rules: forAction.map((r) => toRow(r, people)),
+      uncovered: uncoveredOf(actionKey, forAction, companies),
     }
   })
   return { items, canEdit: canEditRules(ctx) }
@@ -309,6 +350,7 @@ async function reload(tx: DbOrTx, organizationId: string, id: string): Promise<L
 export type RuleChange = { notice: string; rule: ApprovalRuleRow; emails: EmailMessage[] }
 
 export async function createRule(ctx: ServiceContext, input: RuleInput): Promise<RuleChange> {
+  if (!actionAvailable(ctx, input.actionKey)) throw notFound()
   return ctx.db.transaction(async (tx) => {
     const live = await lockOwner(tx, ctx)
     await assertRoles(tx, live.organizationId, input)
@@ -378,6 +420,7 @@ export async function updateRule(
   ctx: ServiceContext,
   input: z.output<typeof updateApprovalRuleInput>,
 ): Promise<RuleChange> {
+  if (!actionAvailable(ctx, input.actionKey)) throw notFound()
   return ctx.db.transaction(async (tx) => {
     const live = await lockOwner(tx, ctx)
     const locked = await lockRule(tx, live.organizationId, input.id)

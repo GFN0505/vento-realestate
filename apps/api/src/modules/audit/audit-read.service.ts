@@ -33,7 +33,7 @@ import { actorOf, type ServiceContext } from '@/access/context'
 import { SYSTEM_ACTOR } from '@/approvals/engine'
 import type { DbOrTx } from '@/db/client'
 import { runQueries } from '@/db/run-queries'
-import { approvalDecisions, auditEvents } from '@/db/schema'
+import { approvalDecisions, auditEvents, encumbrances } from '@/db/schema'
 import { conflict, notFound } from '@/lib/errors'
 import { formatDate, formatTime } from '@/lib/format'
 import { likePattern } from '@/lib/like'
@@ -315,6 +315,21 @@ function recordLink(targetType: string, targetId: string | null): string | null 
   }
 }
 
+/** recordLink, plus the records whose page is their parent's (an encumbrance: its parcel's tab). */
+async function linkOf(
+  ctx: ServiceContext,
+  targetType: string,
+  targetId: string | null,
+): Promise<string | null> {
+  if (targetType !== 'encumbrance') return recordLink(targetType, targetId)
+  if (!targetId || !UUID.test(targetId)) return null
+  const [row] = await ctx.db
+    .select({ parcelId: encumbrances.parcelId })
+    .from(encumbrances)
+    .where(and(eq(encumbrances.organizationId, ctx.organizationId), eq(encumbrances.id, targetId)))
+  return row ? `/land/${row.parcelId}?tab=encumbrances` : null
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The entry sheet: every field, the approvals behind the change, and a link to the record. */
@@ -352,7 +367,7 @@ export async function getAudit(ctx: ServiceContext, id: string): Promise<AuditDe
   return {
     ...toRow(row),
     record: row.targetLabel
-      ? { label: row.targetLabel, link: recordLink(row.targetType, row.targetId) }
+      ? { label: row.targetLabel, link: await linkOf(ctx, row.targetType, row.targetId) }
       : null,
     approvedBy,
     noApprover: metadata?.noApprover === true,

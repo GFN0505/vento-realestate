@@ -18,6 +18,7 @@ import {
 import { and, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { loadMembership, type ServiceContext } from '@/access/context'
+import { actionAvailable } from '@/approvals/availability'
 import type { DbOrTx } from '@/db/client'
 import {
   approvalDecisions,
@@ -42,6 +43,7 @@ import {
   alreadyPending,
   decidedMomentAgo,
   noApprover,
+  noRule,
   notEligible,
   notPending,
   ownRequest,
@@ -77,7 +79,8 @@ type RequestRow = typeof approvalRequests.$inferSelect
 
 /**
  * The one call a guarded action makes (decision 0024), inside the caller's transaction. No rule:
- * the action runs at once, as before brick 4. A rule: a request is saved with the rule's steps
+ * the action runs at once, as before brick 4, unless the catalog says `whenNoRule: 'refuse'`
+ * (decision 0026), which refuses before anything is saved. A rule: a request is saved with the rule's steps
  * copied, and nothing else changes until the last approval. Nobody else can approve: the
  * catalog decides between going ahead (marked in the audit) and refusing before anything is saved.
  */
@@ -97,7 +100,13 @@ export async function requestOrRun<P, R extends ExecuteResult>(
     entityId: described.entityId,
     ngnAmount: amount?.ngnValue ?? null,
   })
-  if (!rule) return { ran: true, result: await plugin.execute(tx, ctx, payload, RAN_AT_ONCE) }
+  if (!rule) {
+    // Decision 0026: some actions never run on one person's word, even with the rule deleted.
+    if (meta.whenNoRule === 'refuse') {
+      throw noRule(plugin.key, await entityName(tx, ctx.organizationId, described.entityId))
+    }
+    return { ran: true, result: await plugin.execute(tx, ctx, payload, RAN_AT_ONCE) }
+  }
 
   const exclusions = await plugin.excluded(tx, ctx, payload)
   const firstStep = rule.steps[0] ?? []
@@ -345,7 +354,10 @@ async function decideInTx(
   // the organization, so this can't deadlock with it).
   await lockOrganization(tx, ctx.organizationId)
   const request = await lockRequest(tx, ctx.organizationId, input.requestId)
-  if (!request) throw notFound()
+  // A request of a feature the organization no longer has reads as missing (security L2), as
+  // every procedure of that feature does: nothing of it runs.
+  if (!request || !isApprovalActionKey(request.actionKey)) throw notFound()
+  if (!actionAvailable(ctx.features, request.actionKey)) throw notFound()
   const standing = await viewerStanding(tx, ctx.organizationId, request.id, {
     memberId: ctx.member.id,
     userId: ctx.user.id,
@@ -444,7 +456,7 @@ async function decideInTx(
   try {
     if (
       !maker ||
-      !hasPermission(maker.member.permissions, plugin.permission.module, plugin.permission.action)
+      !plugin.permissions.every((p) => hasPermission(maker.member.permissions, p.module, p.action))
     ) {
       throw new StaleError('The maker left or lost the permission')
     }
@@ -662,7 +674,14 @@ async function endRequest(
 export async function cancelRequest(ctx: ServiceContext, id: string): Promise<{ notice: string }> {
   const outcome = await ctx.db.transaction(async (tx) => {
     const request = await lockRequest(tx, ctx.organizationId, id)
-    if (!request || request.makerMemberId !== ctx.member.id) throw notFound()
+    if (
+      !request ||
+      request.makerMemberId !== ctx.member.id ||
+      !isApprovalActionKey(request.actionKey) ||
+      !actionAvailable(ctx.features, request.actionKey)
+    ) {
+      throw notFound()
+    }
     if (request.status !== 'pending') throw await endedError(tx, request)
     if (request.expiresAt <= new Date()) {
       await endRequest(tx, request, 'expired', 'timeout', SYSTEM_ACTOR)

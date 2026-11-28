@@ -2,12 +2,20 @@ import { z } from 'zod'
 import { forFeature } from '../common/errors'
 import { id, paginated } from '../common/schemas'
 import {
+  recordEncumbranceInput,
+  requestClearInput,
+  requestClearOutput,
+  updateEncumbranceInput,
+} from './encumbrance-schema'
+import {
   createParcelInput,
   documentLinkInput,
   documentLinkOutput,
   documentOutput,
   documentVersion,
   documentVersionsInput,
+  landBlockers,
+  landBlockersInput,
   landHome,
   landHomeInput,
   listParcelsInput,
@@ -49,7 +57,10 @@ export const parcelsContract = {
    * `lga_not_in_state`, `future_date`; NOT_FOUND when either company is outside access.
    */
   update: land.input(updateParcelInput).output(parcelDetail),
-  /** land.delete. Leaves the list; reachable read-only by link. Also Undo after restore. */
+  /**
+   * land.delete. Leaves the list; reachable read-only by link. Also Undo after restore. CONFLICT
+   * `encumbered` while an encumbrance is active ("Clear the caveat before archiving this parcel.").
+   */
   archive: land.input(byId).output(parcelRow),
   /** land.delete. Also Undo after archive. */
   restore: land.input(byId).output(parcelRow),
@@ -73,12 +84,17 @@ export const stagesContract = {
 export const documentsContract = {
   /**
    * land.create. A same-type (or same-name) file becomes the next version. BAD_REQUEST
-   * `file_unavailable`, `future_date`; CONFLICT `parcel_archived`, `entity_archived`.
+   * `file_unavailable`, `future_date`, `evidence_from_encumbrance` (a new encumbrance evidence
+   * document: those come from the encumbrance sheets); CONFLICT `parcel_archived`,
+   * `entity_archived`.
    */
   upload: land.input(uploadDocumentInput).output(uploadDocumentOutput),
   /** land.view. Newest first, removed ones included and flagged. */
   versions: land.input(documentVersionsInput).output(z.array(documentVersion)),
-  /** land.delete. CONFLICT `evidence_for_granted`, `parcel_archived`, `entity_archived`. */
+  /**
+   * land.delete. CONFLICT `evidence_for_granted`, `evidence_for_encumbrance`, `parcel_archived`,
+   * `entity_archived`.
+   */
   removeVersion: land.input(removeVersionInput).output(documentOutput),
   /** land.delete. Undo of a remove. */
   restoreVersion: land.input(versionIdInput).output(documentOutput),
@@ -88,10 +104,35 @@ export const documentsContract = {
   link: land.input(documentLinkInput).output(documentLinkOutput),
 }
 
+export const encumbrancesContract = {
+  /**
+   * land.create. Saved active; a blocking one blocks sales in the same transaction; owners are
+   * emailed after commit. BAD_REQUEST `future_date`, `file_unavailable`; CONFLICT
+   * `parcel_archived`, `entity_archived`.
+   */
+  record: land.input(recordEncumbranceInput).output(parcelDetail),
+  /**
+   * land.edit. Details only. CONFLICT `stale` (changedByName), `clearing_pending`,
+   * `encumbrance_cleared`, `parcel_archived`, `entity_archived`; BAD_REQUEST `future_date`.
+   */
+  update: land.input(updateEncumbranceInput).output(parcelDetail),
+  /**
+   * land.edit and land.create (the evidence upload). Files the clearance evidence, then asks for
+   * approval (*Clear an encumbrance*); nothing unblocks until the last approval. BAD_REQUEST
+   * `future_date`, `cleared_before_served`, `reason_required`, `file_unavailable`; CONFLICT
+   * `approval_pending` (requestId), `no_approver`, `no_rule`, `stale`, `encumbrance_cleared`,
+   * `parcel_archived`, `entity_archived`.
+   */
+  requestClear: land.input(requestClearInput).output(requestClearOutput),
+}
+
 export const landContract = {
   parcels: parcelsContract,
   stages: stagesContract,
   documents: documentsContract,
-  /** land.view. The Land & legal home: tile, pipeline and queue, within the company filter. */
+  encumbrances: encumbrancesContract,
+  /** land.view. The Land & legal home: tiles, panels and queue, within the company filter. */
   home: land.input(landHomeInput).output(landHome),
+  /** land.view. Blocked parcels for the executive home's *Needs attention*, oldest first. */
+  blockers: land.input(landBlockersInput).output(landBlockers),
 }

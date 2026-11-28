@@ -249,6 +249,13 @@ export const AUDIT_ACTION_META: Readonly<Record<AuditAction, AuditActionMeta>> =
     landWhat.documentRestored,
   ),
   'land.document.link_issued': s('land', 'Opened a title document', landWhat.linkIssued),
+  'land.encumbrance.recorded': s('land', 'Recorded an encumbrance', landWhat.encumbranceRecorded),
+  'land.encumbrance.updated': s(
+    'land',
+    "Changed an encumbrance's details",
+    landWhat.encumbranceUpdated,
+  ),
+  'land.encumbrance.cleared': s('land', 'Cleared an encumbrance', landWhat.encumbranceCleared),
 }
 
 export function isAuditAction(value: string): value is AuditAction {
@@ -329,6 +336,13 @@ export const FIELD_LABELS: Readonly<Record<string, string>> = {
   stages: 'Title stages',
   number: 'Number',
   issuedOn: 'Issue date',
+  // Encumbrances (slice 2).
+  claimant: 'Claimant or holder',
+  servedOn: 'Date served or lodged',
+  lawyer: 'Lawyer',
+  nextOn: 'Next date',
+  clearedOn: 'Cleared on',
+  clearanceNote: 'Clearance note',
 }
 
 export const OTHER_DETAILS_CHANGED = 'Other details changed'
@@ -399,7 +413,15 @@ function formatValue(key: string, value: unknown): string | null | typeof UNREAD
   return UNREADABLE
 }
 
-const DATE_KEYS = new Set(['acquiredOn', 'statusOn', 'followUpOn', 'issuedOn'])
+const DATE_KEYS = new Set([
+  'acquiredOn',
+  'statusOn',
+  'followUpOn',
+  'issuedOn',
+  'servedOn',
+  'nextOn',
+  'clearedOn',
+])
 
 /** "840000000.00" → "₦840,000,000.00". */
 function nairaText(amount: string): string {

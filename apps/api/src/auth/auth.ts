@@ -213,6 +213,22 @@ function optionalDate(value: unknown): Date | null {
 
 type HookContext = Parameters<typeof deleteSessionCookie>[0]
 
+/**
+ * The 401 our before-hooks give when they can't tell who is asking. Better Auth turns any error
+ * in its session lookup into null, and the endpoint then looks the session up again on its own:
+ * a guard that stepped aside here would let the plugin act on the password alone.
+ */
+function noSession(): never {
+  throw authError('UNAUTHORIZED', 'UNAUTHORIZED', 'Your session has ended. Sign in again.')
+}
+
+/** The signed-in person for a guarded endpoint; refuses (never skips) when it can't be read. */
+async function signedIn(
+  ctx: Parameters<typeof getSessionFromCtx>[0],
+): Promise<NonNullable<Awaited<ReturnType<typeof getSessionFromCtx>>>> {
+  return (await getSessionFromCtx(ctx)) ?? noSession()
+}
+
 /** Drops a cookie already set on this response (Better Auth keeps them in two scopes). */
 function dropPendingCookie(ctx: HookContext, name: string): void {
   const scoped = ctx as unknown as {
@@ -241,10 +257,10 @@ function sessionCookies(ctx: HookContext): SessionCookies {
 }
 
 /** The session fields the passkey hooks read, from Better Auth's loosely typed session. */
-function hookSession(
-  found: { session: Record<string, unknown>; user: { id: string } } | null,
-): HookSession | null {
-  if (!found) return null
+function hookSession(found: {
+  session: Record<string, unknown>
+  user: { id: string }
+}): HookSession {
   const active = found.session.activeOrganizationId
   return {
     userId: found.user.id,
@@ -435,23 +451,19 @@ export function createAuth(options: CreateAuthOptions) {
             return
           }
           case '/change-password': {
-            const session = await getSessionFromCtx(ctx)
-            if (session) await assertNotLocked(deps, session.user.email)
-            await assertPasswordAllowed(
-              deps,
-              bodyField(ctx.body, 'newPassword'),
-              session
-                ? { userId: session.user.id, verify: ctx.context.password.verify }
-                : undefined,
-            )
+            const session = await signedIn(ctx)
+            await assertNotLocked(deps, session.user.email)
+            await assertPasswordAllowed(deps, bodyField(ctx.body, 'newPassword'), {
+              userId: session.user.id,
+              verify: ctx.context.password.verify,
+            })
             // A changed password always signs out every other device, whatever the client asks.
             return { context: { body: { ...(ctx.body as object), revokeOtherSessions: true } } }
           }
           case '/two-factor/enable':
           case '/two-factor/generate-backup-codes': {
             // A locked account can't confirm anything with a password (plan question 11).
-            const session = await getSessionFromCtx(ctx)
-            if (!session) return
+            const session = await signedIn(ctx)
             await assertNotLocked(deps, session.user.email)
             // New backup codes are a way into the console: a super-admin proves a code first.
             if (ctx.path === '/two-factor/generate-backup-codes') {
@@ -463,18 +475,10 @@ export function createAuth(options: CreateAuthOptions) {
             return
           }
           case '/passkey/generate-register-options':
-            await beforePasskeyRegistration(
-              deps,
-              hookSession(await getSessionFromCtx(ctx)),
-              'options',
-            )
+            await beforePasskeyRegistration(deps, hookSession(await signedIn(ctx)), 'options')
             return
           case '/passkey/verify-registration': {
-            await beforePasskeyRegistration(
-              deps,
-              hookSession(await getSessionFromCtx(ctx)),
-              'verify',
-            )
+            await beforePasskeyRegistration(deps, hookSession(await signedIn(ctx)), 'verify')
             // A client-chosen name would win over ours; it's renamed afterwards if wanted. Blank,
             // not removed: Better Auth merges hook changes into the body and skips undefined.
             // Never a second session: one made here would skip our sign-in checks and audit.
@@ -499,9 +503,8 @@ export function createAuth(options: CreateAuthOptions) {
             await assertCanResendVerification(deps, bodyEmail(ctx.body))
             return
           case '/two-factor/disable': {
-            const session = await getSessionFromCtx(ctx)
-            const user = session ? await findUserById(db, session.user.id) : null
-            if (!user) return
+            const session = await signedIn(ctx)
+            const user = (await findUserById(db, session.user.id)) ?? noSession()
             await assertNotLocked(deps, user.email)
             await guardTurnOff(deps, {
               user,

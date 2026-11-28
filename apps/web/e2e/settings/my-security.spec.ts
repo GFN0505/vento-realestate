@@ -17,6 +17,7 @@ import {
   signInWithTotp,
 } from '../support/sign-in'
 import { nextTotpCode } from '../support/totp'
+import { replaceCode } from '../support/two-step'
 
 // J-ONB-09: secure your own account. Entry points run on both projects; the rest changes one
 // person's account on a laptop, each test in its own organization so nothing else is touched.
@@ -363,8 +364,11 @@ test.describe('on a laptop', () => {
     await dialog.getByRole('button', { name: 'Turn off two-step' }).click()
     await expect(dialog.getByText("That's not your password.")).toBeVisible()
 
+    // A wrong password leaves the unchecked code in the boxes; it is replaced, not added to
+    // (a valid code ending in 0 would otherwise go again and rightly turn two-step off).
+    await expect(dialog.getByLabel('6-digit code')).toHaveValue(/^\d{6}$/)
     await dialog.getByLabel('Password', { exact: true }).fill(password)
-    await dialog.getByLabel('6-digit code').fill('000000')
+    await replaceCode(dialog.getByLabel('6-digit code'), '000000')
     await dialog.getByRole('button', { name: 'Turn off two-step' }).click()
     await expect(dialog.getByRole('alert').filter({ hasText: /didn't match|code/ })).toBeVisible()
 

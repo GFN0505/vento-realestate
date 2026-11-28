@@ -83,6 +83,13 @@ export const AUDIT_ACTIONS = [
   'land.document.restored',
   /** A signed link was issued (decision 0025): `metadata.disposition`, never the link itself. */
   'land.document.link_issued',
+  // Land & title (slice 2). Target the parcel too; metadata adds encumbranceId, encumbranceType
+  // and blocksSales. The engine's approval.* events for clearing target the encumbrance.
+  'land.encumbrance.recorded',
+  /** Before and after of the details changed. */
+  'land.encumbrance.updated',
+  /** `metadata.approvedBy` and `approvalRequestId` (approvalMetadata). */
+  'land.encumbrance.cleared',
 ] as const
 export const auditAction = z.enum(AUDIT_ACTIONS)
 export type AuditAction = z.infer<typeof auditAction>

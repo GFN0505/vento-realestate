@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type {
   ApprovalActionKey,
+  EncumbranceType,
   NigerianState,
   ParcelStatus,
   PermissionSet,
@@ -28,6 +29,7 @@ import {
   approvalRuleStepRoles,
   approvalRuleSteps,
   approvalRules,
+  encumbrances,
   entities,
   featureReleases,
   files,
@@ -801,4 +803,100 @@ export async function createTitleDocument(
     .returning()
   if (!version) throw new Error('title document version insert failed')
   return { document, version, file }
+}
+
+let encumbranceCount = 0
+
+/**
+ * An encumbrance straight into the tables (no audit, no email), with its evidence filed as a
+ * named `encumbrance_evidence` document. Defaults: an active caveat by the Ogunleye family,
+ * served 4 Nov 2026, blocking sales. `cleared` files a clearance document and clears it.
+ */
+export async function createEncumbrance(
+  db: DbOrTx,
+  org: Pick<TestOrg, 'id' | 'owner'>,
+  parcel: { id: string },
+  options: {
+    type?: EncumbranceType
+    blocksSales?: boolean
+    claimant?: string
+    servedOn?: string
+    reference?: string | null
+    nextOn?: string | null
+    recordedBy?: Pick<TestUser, 'id'>
+    storage?: Storage
+    cleared?: { on: string; note?: string | null; by?: Pick<TestUser, 'id'> }
+  } = {},
+) {
+  encumbranceCount += 1
+  const type = options.type ?? 'caveat'
+  const by = options.recordedBy ?? org.owner
+  const named = async (name: string) =>
+    createTitleDocument(db, org, parcel, {
+      type: 'encumbrance_evidence',
+      name,
+      uploadedBy: by,
+      ...(options.storage && { storage: options.storage }),
+    })
+  const evidence = await named(`Evidence ${encumbranceCount}`)
+  const clearance = options.cleared ? await named(`Clearance ${encumbranceCount}`) : null
+  const [row] = await db
+    .insert(encumbrances)
+    .values({
+      organizationId: org.id,
+      parcelId: parcel.id,
+      type,
+      blocksSales: options.blocksSales ?? type !== 'mortgage',
+      claimant: options.claimant ?? 'Ogunleye family',
+      servedOn: options.servedOn ?? '2026-11-04',
+      reference: options.reference === undefined ? 'CV/LAG/2026/114' : options.reference,
+      nextOn: options.nextOn ?? null,
+      evidenceDocumentId: evidence.document.id,
+      evidenceVersionId: evidence.version.id,
+      recordedByUserId: by.id,
+    })
+    .returning()
+  if (!row) throw new Error('encumbrance insert failed')
+  if (!options.cleared || !clearance) return { ...row, evidence, clearance }
+  const cleared = await clearEncumbranceRow(db, row, {
+    ...options.cleared,
+    by: options.cleared.by ?? by,
+    clearance: { documentId: clearance.document.id, versionId: clearance.version.id },
+  })
+  return { ...cleared, evidence, clearance }
+}
+
+/**
+ * Sets an encumbrance `cleared` straight in the table. Clearing needs an approved request (0023's
+ * encumbrances_cleared_by_approval); a factory skips the engine, so triggers are off for this one
+ * write, inside the test's transaction (the table's checks still hold).
+ */
+export async function clearEncumbranceRow(
+  db: DbOrTx,
+  row: { id: string; version: number },
+  options: {
+    on: string
+    note?: string | null
+    by: Pick<TestUser, 'id'>
+    clearance: { documentId: string; versionId: string }
+  },
+) {
+  await db.execute(sql`set local session_replication_role = replica`)
+  const [cleared] = await db
+    .update(encumbrances)
+    .set({
+      status: 'cleared',
+      clearedOn: options.on,
+      clearanceDocumentId: options.clearance.documentId,
+      clearanceVersionId: options.clearance.versionId,
+      clearanceNote: options.note ?? null,
+      clearedAt: new Date(),
+      clearedByUserId: options.by.id,
+      version: row.version + 1,
+    })
+    .where(eq(encumbrances.id, row.id))
+    .returning()
+  await db.execute(sql`set local session_replication_role = origin`)
+  if (!cleared) throw new Error('encumbrance clear failed')
+  return cleared
 }

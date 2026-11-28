@@ -695,7 +695,8 @@ async function contextAs(email: string, organizationId: string): Promise<Service
 }
 
 /**
- * Land & title's golden-thread parcels (seed-land.ts), with Ngozi as the officer.
+ * Land & title's golden-thread parcels (seed-land.ts), with Ngozi as the officer and Aisha and
+ * Olumide approving the cleared caveat.
  */
 async function seedVentoLand(): Promise<number> {
   const [org] = await db
@@ -712,11 +713,15 @@ async function seedVentoLand(): Promise<number> {
     if (!found) throw new Error(`Company ${rc} is missing`)
     return { id: found.id, name: found.name }
   }
-  const [officer] = await db
-    .select({ id: users.id, name: users.name, email: users.email })
-    .from(users)
-    .where(eq(users.email, 'ngozi@ventohomes.ng'))
-  if (!officer) throw new Error('Ngozi Adeyemi is missing')
+  const person = async (email: string) => {
+    const [row] = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.email, email))
+    if (!row) throw new Error(`Seed person missing: ${email}`)
+    return row
+  }
+  const officer = await person('ngozi@ventohomes.ng')
   const seeded = await seedLand(db, {
     organizationId: org.id,
     companies: {
@@ -725,6 +730,11 @@ async function seedVentoLand(): Promise<number> {
       lekki: company('RC 1904417'),
     },
     officer,
+    // Clearing Plot 22's caveat: Aisha approves step 1, Olumide step 2 (J-LND-03).
+    approvers: {
+      finance: await person('aisha@ventohomes.ng'),
+      owner: await person('olumide@ventohomes.ng'),
+    },
     storage: seedStorage,
   })
   return seeded.length

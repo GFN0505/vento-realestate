@@ -28,6 +28,7 @@ describe('role approvals', () => {
         label: "Change a role's permissions",
         module: 'settings',
         belowThreshold: null,
+        uncovered: [],
         rules: [
           rule({
             steps: [

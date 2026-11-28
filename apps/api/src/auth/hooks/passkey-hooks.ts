@@ -48,12 +48,11 @@ const unavailable = () =>
  */
 export async function beforePasskeyRegistration(
   deps: AuthDeps,
-  session: HookSession | null,
+  // Never null: the before-hook refuses first when it can't read the session (fail closed).
+  session: HookSession,
   step: 'options' | 'verify',
   now = new Date(),
 ): Promise<void> {
-  // No session: the plugin answers 401 itself.
-  if (!session) return
   if (!(await passkeysAvailableHere(deps.db, deps.features, session))) throw unavailable()
   const confirmedAt = session.reauthenticatedAt?.getTime() ?? 0
   if (step === 'options' && now.getTime() - confirmedAt > REAUTH_WINDOW_MS) {

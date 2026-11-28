@@ -1,4 +1,4 @@
-import type { CreateParcelInput } from '@vento/shared'
+import type { CreateParcelInput, RecordEncumbranceInput } from '@vento/shared'
 import type { DbOrTx } from '@/db/client'
 import { createMemoryStorage } from '@/storage/memory-driver'
 import {
@@ -43,6 +43,24 @@ export function addParcel(
     size: { value: '4.2', unit: 'ha' },
     status: 'acquired',
     entityId,
+    ...overrides,
+  }
+}
+
+/** Record encumbrance's input: Ngozi's caveat by the Ogunleye family on `parcelId`. */
+export function recordCaveat(
+  parcelId: string,
+  fileId: string,
+  overrides: Partial<RecordEncumbranceInput> = {},
+): RecordEncumbranceInput {
+  return {
+    parcelId,
+    type: 'caveat',
+    blocksSales: true,
+    claimant: 'Ogunleye family',
+    servedOn: '2026-11-04',
+    reference: 'CV/LAG/2026/114',
+    evidence: { fileId },
     ...overrides,
   }
 }

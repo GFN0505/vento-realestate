@@ -1,5 +1,5 @@
 import { TITLE_DOCUMENTS, type TitleDocumentType, type TitleStageType } from '@vento/shared'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull, ne, sql } from 'drizzle-orm'
 import { actorOf, type ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
 import { parcels, titleDocuments, titleDocumentVersions } from '@/db/schema'
@@ -30,7 +30,11 @@ export type NewVersion = {
   file?: 'incoming' | 'kept' | 'attached'
 }
 
-/** Documents a parcel may hold (review: an unbounded vault). Versions of one aren't counted. */
+/**
+ * Documents a parcel may hold (review: an unbounded vault). Versions of one aren't counted, nor
+ * encumbrance evidence (review #7): a full vault must never stop someone recording a court order
+ * or asking to clear one, and those come two per encumbrance, created only by its sheets.
+ */
 export const MAX_DOCUMENTS_PER_PARCEL = 200
 
 export type AddedVersion = {
@@ -146,7 +150,7 @@ async function findOrCreateDocument(
     }
     return existing.id
   }
-  await refuseFullVault(tx, ctx.organizationId, parcelId)
+  if (input.type !== 'encumbrance_evidence') await refuseFullVault(tx, ctx.organizationId, parcelId)
   const [created] = await tx
     .insert(titleDocuments)
     .values({
@@ -167,7 +171,11 @@ async function refuseFullVault(tx: DbOrTx, organizationId: string, parcelId: str
     .select({ n: sql<number>`count(*)::int` })
     .from(titleDocuments)
     .where(
-      and(eq(titleDocuments.organizationId, organizationId), eq(titleDocuments.parcelId, parcelId)),
+      and(
+        eq(titleDocuments.organizationId, organizationId),
+        eq(titleDocuments.parcelId, parcelId),
+        ne(titleDocuments.type, 'encumbrance_evidence'),
+      ),
     )
   if ((row?.n ?? 0) < MAX_DOCUMENTS_PER_PARCEL) return
   throw conflict(

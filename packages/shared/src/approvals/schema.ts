@@ -162,6 +162,11 @@ export const approvalRuleGroup = z.object({
   module: permissionModule,
   belowThreshold: z.string().nullable(),
   rules: z.array(approvalRuleRow),
+  /**
+   * Actions that refuse without a rule (decision 0026): companies no rule covers, where the
+   * action is refused. `entity` null: no rule at all. Always empty for the others.
+   */
+  uncovered: z.array(z.object({ entity: entityRef.nullable(), text: z.string() })),
 })
 
 export const approvalRulesList = z.object({
@@ -188,6 +193,11 @@ export const approvalChange = z.object({
   field: z.string(),
   before: z.string().nullable(),
   after: z.string().nullable(),
+  /**
+   * An app path to what `after` names, e.g. the exact evidence version a clearing request was
+   * made with (security M1). Optional: summaries stored before it existed still parse.
+   */
+  link: z.string().nullish(),
 })
 export type ApprovalChange = z.infer<typeof approvalChange>
 
@@ -201,6 +211,11 @@ export const approvalSummary = z.object({
   recordLink: z.string().nullable(),
   amount: approvalAmount.nullable(),
   changes: z.array(approvalChange),
+  /**
+   * The approve button's words when the plug-in has its own ("Clear caveat and unblock sales").
+   * Optional: summaries stored before it existed still parse.
+   */
+  actionLabel: z.string().nullish(),
 })
 export type ApprovalSummary = z.infer<typeof approvalSummary>
 

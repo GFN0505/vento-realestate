@@ -13,6 +13,8 @@ export type EmailTag =
   | 'platform_notice'
   | 'staff_invitation'
   | 'approval'
+  /** Land & title alerts to owners (an encumbrance recorded). */
+  | 'land_alert'
 
 export type EmailMessage = {
   to: string

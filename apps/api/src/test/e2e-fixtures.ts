@@ -1316,14 +1316,16 @@ async function platformActivity(email: string | undefined) {
 /**
  * Land & title (PR 3 e2e): an internal organization with the three companies, the six
  * golden-thread parcels from the seed (sample PDFs and PNGs in the real bucket, queue items
- * counted from today), and the people the journeys need. Prints parcel and stage ids.
+ * counted from today, slice 2's encumbrances with the default clearing rule), and the people the
+ * journeys need. Prints parcel, stage and encumbrance ids.
  */
 async function createLandFixture() {
   const { db } = await import('@/db/client')
   const { env } = await import('@/env')
   const { createStorage } = await import('@/storage')
   const { seedLand } = await import('@/db/seed-land')
-  const { titleStages } = await import('@/db/schema')
+  const { seedDefaultRules } = await import('@/modules/approval-rules/approval-rules.service')
+  const { encumbrances, titleStages } = await import('@/db/schema')
   const { DEFAULT_ROLES } = await import('@vento/shared')
   const { eq } = await import('drizzle-orm')
   const {
@@ -1371,23 +1373,41 @@ async function createLandFixture() {
     }
   }
   const officer = users.landLegal
-  if (!officer) throw new Error('Ngozi was not created')
+  const finance = users.finance
+  if (!officer || !finance) throw new Error('Ngozi or Aisha was not created')
+  // The clearing rule (slice 2), as sign-up writes it: the seed's cleared caveat runs through it.
+  await seedDefaultRules(db, org.id, org.ownerMemberId)
   const seeded = await seedLand(db, {
     organizationId: org.id,
     companies,
     officer,
+    approvers: { finance, owner },
     storage: createStorage(env),
   })
-  const parcels: Record<string, { id: string; name: string; stages: Record<string, string> }> = {}
+  const parcels: Record<
+    string,
+    {
+      id: string
+      name: string
+      stages: Record<string, string>
+      encumbrances: { id: string; type: string; status: string }[]
+    }
+  > = {}
   for (const p of seeded) {
     const stages = await db
       .select({ id: titleStages.id, type: titleStages.type })
       .from(titleStages)
       .where(eq(titleStages.parcelId, p.id))
+    // P-0012's caveat is cleared, so J-LND-03 starts with nothing active there.
+    const claims = await db
+      .select({ id: encumbrances.id, type: encumbrances.type, status: encumbrances.status })
+      .from(encumbrances)
+      .where(eq(encumbrances.parcelId, p.id))
     parcels[`P-${String(p.reference).padStart(4, '0')}`] = {
       id: p.id,
       name: p.name,
       stages: Object.fromEntries(stages.map((s) => [s.type, s.id])),
+      encumbrances: claims,
     }
   }
   return {

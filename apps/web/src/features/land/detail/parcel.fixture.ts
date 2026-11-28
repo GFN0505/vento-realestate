@@ -80,6 +80,7 @@ export function parcelFixture(overrides: Partial<ParcelDetail> = {}): ParcelDeta
     stagesTotal: 3,
     acquisition: null,
     costHidden: false,
+    encumbrance: null,
     updatedAt: '2026-11-20T10:00:00.000Z',
     seller: null,
     sellerHidden: false,
@@ -88,7 +89,9 @@ export function parcelFixture(overrides: Partial<ParcelDetail> = {}): ParcelDeta
     stages,
     documents: [documentFixture()],
     suggestedIssuers: { c_of_o: 'Lands Bureau, Lagos' },
-    can: { edit: true, create: true, delete: true },
+    blocked: false,
+    encumbrances: [],
+    can: { edit: true, create: true, delete: true, record: true, clear: true },
     readOnly: null,
     ...overrides,
   }

@@ -37,6 +37,12 @@ export const badRequestReason = z.enum([
   'granted_needs_document',
   /** *What happened* is needed: queried, rejected, or leaving granted. */
   'note_required',
+  /** Cleared before it was served ("Enter a date on or after 4 Nov 2026."). */
+  'cleared_before_served',
+  /** Upload document with type encumbrance evidence: those come from the encumbrance sheets. */
+  'evidence_from_encumbrance',
+  /** A next date more than a year before the date served or more than 10 years ahead. */
+  'next_on_out_of_range',
 ])
 export type BadRequestReason = z.infer<typeof badRequestReason>
 
@@ -151,6 +157,24 @@ export const conflictReason = z.enum([
   'document_name_taken',
   /** The parcel's vault is full (200 documents); new versions of existing ones still go in. */
   'too_many_documents',
+  /**
+   * An action that refuses without a rule (decision 0026) found none for the record's company:
+   * "Clearing an encumbrance needs an approval rule…".
+   */
+  'no_rule',
+  /** Archiving a parcel with an active encumbrance ("Clear the caveat before archiving …"). */
+  'encumbered',
+  /** Editing an encumbrance while a request to clear it waits. */
+  'clearing_pending',
+  /** The encumbrance is cleared: frozen, nothing changes it. */
+  'encumbrance_cleared',
+  /** Removing the only kept version of an encumbrance's evidence or clearance. */
+  'evidence_for_encumbrance',
+  /**
+   * A new sale on a parcel an active encumbrance blocks (decision 0027): "Court order
+   * FHC/L/CS/1182/2026 blocks new sales on Plot 22, Folu Ayo." Raised for Projects and Sales.
+   */
+  'sales_blocked',
 ])
 export type ConflictReason = z.infer<typeof conflictReason>
 
