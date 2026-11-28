@@ -250,7 +250,7 @@ Indexes: `(org, entity_id)`; `(org, status) where archived_at is null`; `(org, l
 Constraints and indexes:
 - `unique(parcel_id, type)`.
 - `unique(organization_id, parcel_id, id)`, so documents can reference a stage on the same parcel.
-- Checks: `status='not_started' ⇔ status_on is null`; `status in ('queried','rejected') ⇒ note is not null`; `follow_up_on is null or status in ('submitted','queried')`.
+- Checks: `status='not_started' ⇒ status_on is null` (a stage granted from Add parcel may have no date); `status in ('queried','rejected') ⇒ note is not null`; `follow_up_on is null or status in ('submitted','queried')`.
 - Indexes: `(org, parcel_id)`; `(org, status, status_on)`; `(org, follow_up_on) where follow_up_on is not null`.
 
 **`title_documents`**
@@ -301,7 +301,7 @@ Each raises `check_violation` named in CONSTRAINT. `GuardName` in `lib/errors.ts
   - The web lazy-loads the file only in the parcel editor.
 - **Stage and document catalogs** live in `packages/shared/src/land/catalog.ts`:
   - stage order and labels;
-  - `DEFAULT_STAGES = [survey_plan, excision_gazette, c_of_o, governors_consent]`;
+  - `defaultStagesFor(state)`: `[survey_plan, excision_gazette, c_of_o]`, or `[survey_plan, r_of_o, c_of_o]` for the FCT (owner, 28 Nov 2026; spec open question 6);
   - `likelyNextStatus` (not_started or in_progress → submitted; submitted or queried → granted);
   - document type labels, `multiple` flag, and the `stageType` each document type maps to.
 
@@ -341,7 +341,7 @@ Stored as `numeric(14,2)` + `NGN`. It is never selected for viewers who may not 
 - `size: { value: decimalString (≤4 dp, >0), unit, plotSizeSqm? }`
 - `status: 'prospect'|'under_acquisition'|'acquired'`
 - `entityId`, `acquiredOn?` (≤ today), `acquisitionCost?: money`, `seller?`, `notes?`
-- `documents: [{ fileId, type, name? }]` (≤10)
+- `documents: [{ fileId, type, name?, number?, issuedOn? }]` (≤10), and `stages?: TitleStageType[]` (≥1, default `defaultStagesFor(state)`). A stage whose document type is in `documents` is created `granted` (`statusOn` = `issuedOn` or null), so the status check becomes `status='not_started' ⇒ status_on is null` (granted may have no date). Then `resolveParcelStatus` runs as usual (owner, 28 Nov 2026).
 - `superRefine` gives "Pick an LGA in Lagos."
 
 **`parcelRow`:**
@@ -494,7 +494,7 @@ Dates are relative to the run date, so the queue always has items. Backdated aud
 | Parcel | Seed |
 |---|---|
 | **P-0012 Plot 22, Folu Ayo** | Ibeju-Lekki, Lagos · 4.20 ha · Lekki Pearl Estates Ltd · acquired 2025 · ₦840,000,000 · family receipt + survey plan; survey plan and excision gazette granted, C of O in_progress, governor's consent not_started. Caveat history waits for slice 2. |
-| **P-0009 Victoria Gardens tract** | Ajah, Eti-Osa · 6.80 ha · Victoria Gardens Dev. Ltd · four default stages granted with documents → `titled` |
+| **P-0009 Victoria Gardens tract** | Ajah, Eti-Osa · 6.80 ha · Victoria Gardens Dev. Ltd · the three default stages granted with documents → `titled` |
 | **P-0015 Parkview Block B** | Gbagada, Kosofe · 1.10 ha · Parkview Residences SPV Ltd · C of O submitted, follow-up yesterday (queue) |
 | **P-0018 Idu family land** | Idu, Abuja Municipal, FCT · 12.00 ha · Vento Homes Ltd · stages survey plan (granted), R of O (queried 3 Nov, "Registry asked for the family's consent letter") (queue), C of O in_progress 94 days ago (stalled) |
 | **P-0021 Epe farmland** | Epe · 20.00 ha · `prospect`, default stages not_started |
@@ -580,8 +580,8 @@ The six parcels total 45.00 ha, matching the board.
 **Parcels:**
 - Create:
   - references P-0001, P-0002, never reused after archive, distinct under concurrent creates (`land.concurrency.test.ts`);
-  - default four stages;
-  - documents attached in the same transaction;
+  - default stages for the state (three; FCT uses R of O);
+  - documents attached in the same transaction; a stage with an uploaded document starts `granted`; all stages documented + `acquired` → `titled` on create; a family receipt grants nothing;
   - a foreign or already-attached file refused;
   - a company outside access → NOT_FOUND; an archived company refused.
 - Duplicate-name hint.
@@ -651,7 +651,7 @@ The six parcels total 45.00 ha, matching the board.
 
 ## 13. Risks and open points for the owner
 
-1. **A property lawyer must check the stage order and the default four before PR 2's migration.** This is a pre-build dependency.
+1. **Stage order and defaults: decided by the owner on 28 Nov 2026** (common Nigerian practice now, a lawyer can correct it later; see spec open question 6). No longer blocks PR 2. The notes below explain why correcting it later is cheap.
    - Order lives in shared code, so reordering later is cheap. The set of stage and document enum values and the defaults should be confirmed first.
    - *Recommendation:* get sign-off this week, and ask specifically whether FCT parcels need their own default (R of O instead of excision gazette).
 2. **Storage provider, region and account (owner's choice).**
