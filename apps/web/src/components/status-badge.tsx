@@ -31,6 +31,7 @@ const dot = {
 } as const
 
 type Tone = NonNullable<VariantProps<typeof statusVariants>['tone']>
+export type StatusTone = Tone
 
 export function StatusBadge({
   tone = 'slate',

@@ -94,7 +94,7 @@ const KEYWORD_OF: Partial<Record<Label, string>> = {
   Settings: 'permissions',
 }
 
-const stripSoon = (text: string) => text.replace(/Soon$/, '').trim()
+const stripSoon = (text: string) => text.replace(/(Soon|Early access)$/, '').trim()
 const withoutFooter = (names: string[]) => names.filter((n) => !FOOTER.includes(n as Label))
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\&]/g, '\\$&')
 const startsWith = (text: string) => new RegExp(`^${escapeRegExp(text)}`)
@@ -139,11 +139,14 @@ for (const [role, { visible, tabs, approves }] of Object.entries(ROLES)) {
         }
       } else {
         const links = page.getByRole('navigation', { name: 'Main' }).getByRole('link')
-        // "Sales, coming soon" is the link's accessible text; strip it back to the label.
+        // "Sales, coming soon" and "Land & title, early access" are the links' accessible text;
+        // strip them back to the label.
         await expect
           .poll(async () =>
             withoutFooter(
-              (await links.allTextContents()).map((t) => t.replace(/, coming soon.*$/, '')),
+              (await links.allTextContents()).map((t) =>
+                t.replace(/, (coming soon|early access).*$/, ''),
+              ),
             ),
           )
           .toEqual(['Home', ...(approves ? ['Approvals'] : []), ...modules])

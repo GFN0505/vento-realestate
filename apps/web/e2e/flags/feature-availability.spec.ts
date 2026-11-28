@@ -150,11 +150,11 @@ test.describe('a standard organization on Starter', () => {
     page,
   }, testInfo) => {
     const org = createStarterOrgFixture()
-    setReleaseOverride(org.organizationId, 'land', 'on')
+    setReleaseOverride(org.organizationId, 'sales', 'on')
     await signInWithPassword(page, { email: org.sales.email, password: org.password })
 
     await expectNoModulesAnywhere(page, isMobile(testInfo))
-    await page.goto('/land')
+    await page.goto('/sales')
     await expect(page.getByRole('heading', { name: "We can't find that page" })).toBeVisible()
   })
 })
@@ -168,14 +168,16 @@ test.describe('an internal organization', () => {
     if (!owner) throw new Error('No owner in the team')
     await signInWithTotp(page, totpCredentials(owner, team.password))
 
-    await page.goto('/land')
+    await page.goto('/sales')
 
-    await expect(page.getByRole('heading', { name: 'Land & title' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sales' })).toBeVisible()
     await expect(page.getByText('Coming soon', { exact: true })).toBeVisible()
     await expect(page.getByText("isn't available on your account")).toHaveCount(0)
     if (!isMobile(testInfo)) {
       const nav = page.getByRole('navigation', { name: 'Main' })
-      await expect(nav.getByRole('link', { name: /^Land & title/ })).toContainText('Soon')
+      await expect(nav.getByRole('link', { name: /^Sales/ })).toContainText('Soon')
+      // Land & title is built, so it has no Soon tag.
+      await expect(nav.getByRole('link', { name: /^Land & title/ })).not.toContainText('Soon')
     }
   })
 

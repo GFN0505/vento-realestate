@@ -14,6 +14,6 @@ A spec links to the journeys it adds or changes (`docs/journeys/`), the screens 
 | [My security and passkeys (brick 3d)](my-security.md) | Platform | J-ONB-04, J-ONB-09, J-ONB-10, J-ONB-06 | shipped (PR #8) |
 | [Vento Real Estate console (super-admin)](admin-console.md) | Platform | J-ADM-01, J-ADM-02, J-ADM-03, J-ADM-05, J-ADM-06, J-ADM-07, J-ADM-04, J-ONB-11 | shipped (slices 1 and 1b, PR #9; slice 2 in the console backlog) |
 | [Approvals and audit (brick 4)](approvals-and-audit.md) | Platform | J-EXE-02, J-ONB-12, J-ONB-13, J-ONB-08, J-ONB-06 | shipped (PR #10) |
-| [Land & title](land-and-title.md) | Land & title | J-LND-01, J-LND-02, J-LND-03 | approved (3 slices; slice 1 next) |
+| [Land & title](land-and-title.md) | Land & title | J-LND-01, J-LND-02, J-LND-03 | approved (3 slices; slice 1 built on `feat/land-web`, slice 2 next) |
 
 Status: `draft` · `approved` (owner agreed, ready to plan) · `in build` · `shipped` · `dropped`

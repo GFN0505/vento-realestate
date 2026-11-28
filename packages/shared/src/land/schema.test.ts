@@ -33,6 +33,16 @@ describe('createParcelInput', () => {
     expect(r.error?.issues[0]?.path).toEqual(['lga'])
   })
 
+  it('refuses a size that is not a number with its message, never a crash', () => {
+    expect(
+      messages(createParcelInput.safeParse({ ...valid, size: { value: '', unit: 'ha' } })),
+    ).toEqual(['Enter a size like 4.2 or 600'])
+    const plots = { value: '12', unit: 'plots', plotSizeSqm: '6,00' }
+    expect(messages(createParcelInput.safeParse({ ...valid, size: plots }))).toEqual([
+      'Enter a plot size in m², like 600 or 648',
+    ])
+  })
+
   it('stores the listed LGA for what people type', () => {
     expect(createParcelInput.parse({ ...valid, state: 'FCT', lga: 'amac' }).lga).toBe(
       'Abuja Municipal',

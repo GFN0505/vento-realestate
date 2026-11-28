@@ -2,13 +2,15 @@ import { CheckIcon, XIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-export type TimelineMark = 'done' | 'rejected' | 'now' | 'later'
+/** `event`: something that happened, in a record's activity (neither good nor bad). */
+export type TimelineMark = 'done' | 'rejected' | 'now' | 'later' | 'event'
 
 const marks: Record<TimelineMark, string> = {
   done: 'border-status-emerald bg-status-emerald-bg text-status-emerald-fg',
   rejected: 'border-status-rose bg-status-rose-bg text-status-rose-fg',
   now: 'border-status-amber bg-status-amber-bg',
   later: 'border-border bg-card',
+  event: 'border-border bg-card',
 }
 
 type Props = {
@@ -45,6 +47,7 @@ export function TimelineItem({ mark, title, meta, detail, spoken, last = false }
         {mark === 'done' && <CheckIcon className="size-3" strokeWidth={3} />}
         {mark === 'rejected' && <XIcon className="size-3" strokeWidth={3} />}
         {mark === 'now' && <span className="size-1.5 rounded-full bg-status-amber" />}
+        {mark === 'event' && <span className="size-1.5 rounded-full bg-muted-foreground" />}
       </span>
       <span className="sr-only">{spoken}</span>
       <div aria-hidden className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -96,7 +96,7 @@ export const NAV: readonly NavItem[] = [
   {
     key: 'land',
     flag: 'land',
-    built: false,
+    built: true,
     module: 'land',
     label: 'Land & title',
     to: '/land',

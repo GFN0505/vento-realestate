@@ -6,7 +6,7 @@ The single list of every screen, sheet, dialog, document and message the product
 **Status** — `todo` · `pattern` (built from design-system patterns, no bespoke design) · `built` (matches its board) · `needs-design` (flagged for the next design pass)
 
 Every list screen implies its empty, filtered-empty, loading and error states (designed once on [States](claude-design/States.dc.html)); every form implies validation, saving and error states. Those aren't listed separately. Product rules the designs set are in [DESIGN-NOTES.md](DESIGN-NOTES.md).
-**Coverage:** 203 rows · 138 designed (22 of them partly) · 65 without a design.
+**Coverage:** 207 rows · 138 designed (22 of them partly) · 69 without a design.
 
 
 
@@ -21,7 +21,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Onboarding: organization → first entity → first project and units (steps 1–2 in brick 2a) | [Onboarding](claude-design/Onboarding.dc.html) | built (steps 1–2) |
 | Setup checklist on Home (brick 3b: owners and admins; items derived from data and shown only for available features; hide per person, back from ⌘K; brick 3c: "Add your first company" and "Add your other companies (SPVs)" with "We only have one company") | [Onboarding](claude-design/Onboarding.dc.html) (checklist), [DSAdditions](claude-design/DSAdditions.dc.html) (ChecklistRow) | built |
 | App shell: sidebar by role, top bar, entity switcher, organization switcher, user menu (theme, preview as role; brick 3d: **My security** for everyone, also in More and ⌘K), mobile bottom tabs and More sheet (brick 3a; project switcher with Projects; feature-flags spec: only available features, "Early access" tag, owner-only "Available on …" rows in ⌘K; brick 3c: switcher labelled "Company", "+ Add company" for owners and admins, "No company" state; admin console: the **Vento console** entries were removed in slice 1b, see §15; brick 4: **Approvals** in the sidebar and top bar with a waiting count, owner/admin phone tab, ⌘K entries) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html), [ExecutiveHomeMobile](claude-design/ExecutiveHomeMobile.dc.html), role homes (sidebars and tabs), [Main](claude-design/Main.dc.html) (bottom nav) | built |
-| ⌘K command palette (brick 3a: pages and actions; record search added per module) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions) |
+| ⌘K command palette (brick 3a: pages and actions; record search added per module; Land & title: **New parcel**, **Upload document** and a Parcels group searched on the server by name, area, LGA or reference) | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (palette), [Main](claude-design/Main.dc.html) (component), [AskVento](claude-design/AskVento.dc.html) | built (pages and actions; parcels) |
 | Module placeholder ("Coming soon", until each module ships; only in Vento Real Estate's internal organizations once feature flags ship) | – | pattern |
 | Plan limit message (inline where a create is refused; owner version with **Talk to Vento** (**Talk to Vento Real Estate** from admin-console 1b), member version naming whom to ask) (feature flags) | – | pattern (component built; first used in 3b) |
 | Trial ending: line on Home and email to owners (feature flags) | – | pattern |
@@ -43,7 +43,7 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 | Screen | Design | Status |
 |---|---|---|
 | Executive home | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) | built (shell Home: hero, KPI placeholders, workspace; data arrives per module) |
-| Role homes: Land & legal, Project manager, Sales, Finance, HR, Facility | [HomeLand](claude-design/HomeLand.dc.html), [HomePM](claude-design/HomePM.dc.html), [HomeSales](claude-design/HomeSales.dc.html), [HomeFinance](claude-design/HomeFinance.dc.html), [HomeHR](claude-design/HomeHR.dc.html), [HomeFM](claude-design/HomeFM.dc.html) | built (role KPI sets; queues arrive per module) |
+| Role homes: Land & legal, Project manager, Sales, Finance, HR, Facility | [HomeLand](claude-design/HomeLand.dc.html), [HomePM](claude-design/HomePM.dc.html), [HomeSales](claude-design/HomeSales.dc.html), [HomeFinance](claude-design/HomeFinance.dc.html), [HomeHR](claude-design/HomeHR.dc.html), [HomeFM](claude-design/HomeFM.dc.html) | built (role KPI sets; queues arrive per module. Land & legal: Titles tile, queue, Title pipeline) |
 | Daily digest (WhatsApp and email) | [MorningDigest](claude-design/MorningDigest.dc.html), [EmailDigest](claude-design/EmailDigest.dc.html) | todo |
 | Dashboards: collections, delinquency, project progress, cash by entity, budget variance | [ExecutiveHome](claude-design/ExecutiveHome.dc.html) (as home cards) | todo |
 | Project IRR / ROI calculator | – | todo |
@@ -55,11 +55,15 @@ Every list screen implies its empty, filtered-empty, loading and error states (d
 ## 2. Land & title
 | Screen | Design | Status |
 |---|---|---|
-| Parcels list and map view | [LandTitle](claude-design/LandTitle.dc.html) | todo |
-| Parcel detail (overview, title, documents, encumbrances, surveys, valuations, activity) | [ParcelDetail](claude-design/ParcelDetail.dc.html) | todo |
-| Add / edit parcel (incl. drawing the boundary on a map) | [ParcelEditor](claude-design/ParcelEditor.dc.html) | todo |
-| Title stage update (status, dates, documents) | [TitleStageUpdate](claude-design/TitleStageUpdate.dc.html) | todo |
-| Document vault: upload, versions, preview, download | [ParcelDetail](claude-design/ParcelDetail.dc.html) (documents tab) | todo |
+| Parcels list and map view (slice 1: columns Parcel · Location · Size · Title stage · Status; chips All, Titled, In progress, Archived; cards and sticky **Add parcel** on phones) | [LandTitle](claude-design/LandTitle.dc.html) | built (list view; map in slice 3) |
+| Parcel detail (overview, title stage tracker, documents, encumbrances, activity; header **Update {stage}** with ⋯ Edit parcel, Edit stages, Upload document, Archive; activity a side column from 1024 px, a tab below) | [ParcelDetail](claude-design/ParcelDetail.dc.html) | built (encumbrances in slice 2) |
+| Add / edit parcel (boundary on a map in slice 3) | [ParcelEditor](claude-design/ParcelEditor.dc.html) | built (boundary in slice 3) |
+| Title stage update (stage, status, date, reference, issued by, what happened, follow up by, documents; side sheet, full screen on phones) | [TitleStageUpdate](claude-design/TitleStageUpdate.dc.html) | built |
+| Edit stages sheet (catalog checklist; a started stage or one with a document stays; at least one stays) | – | pattern |
+| Document vault: upload, versions, preview, download (columns Document · Version · Updated · actions) | [ParcelDetail](claude-design/ParcelDetail.dc.html) (documents tab) | built |
+| Remove version dialog (reason required; Undo toast) | – | pattern |
+| Upload document from the parcel page (one file, its type, number and issue date; "Upload as v2" for a type already there) | – | pattern |
+| Upload document on a phone, from Home (parcel remembered, type guessed, **Take photo** or **Choose file**, **Upload**; also ⌘K) | – | pattern |
 | Add / clear encumbrance | [EncumbranceAdd](claude-design/EncumbranceAdd.dc.html), [EncumbranceClear](claude-design/EncumbranceClear.dc.html) | todo |
 | Assign survey / record survey result | – | todo |
 | Record valuation | – | todo |

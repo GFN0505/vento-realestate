@@ -155,6 +155,7 @@ function RowLink({
     // Phones: the request opens as its own page, and Back returns to the list.
     return (
       <Link
+        from="/approvals"
         to="/approvals"
         search={(prev) => ({ ...prev, id: row.id })}
         className={cn(approvalRowClass, 'min-h-16')}
@@ -165,6 +166,7 @@ function RowLink({
   }
   return (
     <Link
+      from="/approvals"
       to="/approvals"
       search={(prev) => ({ ...prev, id: row.id })}
       replace

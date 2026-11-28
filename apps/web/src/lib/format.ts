@@ -1,17 +1,28 @@
-const dateFormat = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Africa/Lagos',
-})
+/*
+ * Month names are written out: Intl's en-GB short month became "Sept" in newer browsers, and
+ * every date in the product reads `d Mon yyyy`.
+ */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+export const lagosDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' })
+const BARE_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/** A bare date as it is (a calendar day, never shifted), an instant as its Lagos day. */
+export function lagosParts(value: string): { y: string; m: string; d: number } | null {
+  const ymd = BARE_DATE.test(value)
+    ? value
+    : Number.isNaN(new Date(value).getTime())
+      ? null
+      : lagosDay.format(new Date(value))
+  const [y = '', m = '', d = ''] = ymd?.split('-') ?? []
+  const month = MONTHS[Number(m) - 1]
+  return month ? { y, m: month, d: Number(d) } : null
+}
 
 /** "2026-11-30" or an ISO date-time → "30 Nov 2026" (Lagos time). */
 export function formatDate(value: string): string {
-  // A bare date is a calendar day, not an instant: read it at Lagos noon so it never shifts.
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? new Date(`${value}T12:00:00+01:00`)
-    : new Date(value)
-  return Number.isNaN(date.getTime()) ? value : dateFormat.format(date)
+  const p = lagosParts(value)
+  return p ? `${p.d} ${p.m} ${p.y}` : value
 }
 
 /** "Vento Homes Ltd" → "VH". */
@@ -24,7 +35,10 @@ export function initials(name: string): string {
     .join('')
 }
 
-const lagosDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' })
+/** Today's calendar date in Lagos, "2026-11-28": the upper bound of date fields that can't be future. */
+export function todayInLagos(now: Date = new Date()): string {
+  return lagosDay.format(now)
+}
 
 /** Whole days from today (Lagos) to a calendar date: 0 = today, 1 = tomorrow, -1 = yesterday. */
 export function daysUntilInLagos(isoDate: string, now: Date = new Date()): number {
@@ -39,16 +53,10 @@ export function daysAgoInLagos(iso: string, now: Date = new Date()): number {
   return -daysUntilInLagos(lagosDay.format(then), now)
 }
 
-const dayMonthFormat = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'Africa/Lagos',
-})
-
-/** An instant → "3 Dec" (Lagos), for near dates where the year goes without saying. */
-export function formatDayMonth(iso: string): string {
-  const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? iso : dayMonthFormat.format(date)
+/** A date or an instant → "3 Dec" (Lagos), for near dates where the year goes without saying. */
+export function formatDayMonth(value: string): string {
+  const p = lagosParts(value)
+  return p ? `${p.d} ${p.m}` : value
 }
 
 const monthName = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' })

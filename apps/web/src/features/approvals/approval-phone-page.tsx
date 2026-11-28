@@ -14,6 +14,7 @@ export function ApprovalPhonePage({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4 pb-28">
       <Link
+        from="/approvals"
         to="/approvals"
         search={(prev) => ({ ...prev, id: undefined })}
         className="-ml-1 inline-flex min-h-11 w-fit items-center gap-1 rounded-sm font-medium text-[13px] text-muted-foreground outline-hidden hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-ring"
