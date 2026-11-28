@@ -15,10 +15,9 @@ permissions:
 
 jobs:
   check:
-    name: Lint, types, tests, build, e2e
+    name: Lint, types, unit tests, build
     runs-on: ubuntu-latest
-    # e2e alone takes ~13 min on a hosted runner (desktop + mobile, 950+ tests).
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -49,6 +48,15 @@ jobs:
       EMAIL_DEV_DIR: .mail
       # Many sign-ins from one IP in e2e.
       AUTH_RATE_LIMIT: "off"
+      # Local S3-compatible storage started below (decision 0025). Throwaway CI-only values, the
+      # same as docker-compose.yml. They switch on the S3 contract test; STORAGE_DRIVER=s3 is set
+      # only on the e2e step, so service tests keep the in-memory driver.
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: vento-local
+      S3_ACCESS_KEY_ID: vento
+      S3_SECRET_ACCESS_KEY: vento-local-secret
+      S3_FORCE_PATH_STYLE: "true"
 
     steps:
       - uses: actions/checkout@v7
@@ -68,6 +76,27 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # A service container can't pass the start command and the init script, so docker run it.
+      # Same image digest as docker-compose.yml; the container is healthy once the bucket exists.
+      - name: Start object storage
+        run: |
+          docker run -d --name vento-storage --network host \
+            -e MINIO_ROOT_USER=vento -e MINIO_ROOT_PASSWORD=vento-local-secret \
+            -e STORAGE_BUCKET=vento-local \
+            -e MINIO_API_CORS_ALLOW_ORIGIN=http://localhost:5173 \
+            -e MINIO_API_STALE_UPLOADS_EXPIRY=24h \
+            -v "$PWD/docker/storage-init.sh:/storage-init.sh:ro" \
+            --health-cmd "test -f /tmp/storage-ready" --health-interval 2s --health-retries 30 \
+            --entrypoint sh \
+            cgr.dev/chainguard/minio:latest@sha256:b288eaa709ba2f799a39e9a8ceda71a08fabf90109b12c90badba9afff29485c \
+            /storage-init.sh
+          for i in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' vento-storage)" = healthy ] && exit 0
+            sleep 2
+          done
+          docker logs vento-storage
+          exit 1
+
       - name: Migrate
         run: pnpm db:migrate
 
@@ -81,16 +110,125 @@ jobs:
       - name: Bundle size
         run: pnpm --filter @vento/web bundle:check
 
+  # The suite outgrew one runner's 30 minutes (desktop + mobile, 1,000+ tests), so it runs in
+  # three shards on their own runners, each with its own database and bucket.
+  e2e:
+    name: End-to-end (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: vento
+          POSTGRES_PASSWORD: vento
+          POSTGRES_DB: vento_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vento -d vento_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    # CI-only placeholders for the throwaway service database above. Not secrets.
+    env:
+      PORT: 3000
+      WEB_ORIGIN: http://localhost:5173
+      DATABASE_URL: postgres://vento:vento@localhost:5432/vento_test
+      TEST_DATABASE_URL: postgres://vento:vento@localhost:5432/vento_test
+      LOG_LEVEL: warn
+      # Throwaway signing secret for CI's test database only; never used anywhere real.
+      BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-for-real-use-000000
+      # dev: e2e reads verification codes from the files it writes to .mail/
+      EMAIL_TRANSPORT: dev
+      EMAIL_DEV_DIR: .mail
+      # Many sign-ins from one IP in e2e.
+      AUTH_RATE_LIMIT: "off"
+      # Local S3-compatible storage started below (decision 0025). Throwaway CI-only values, the
+      # same as docker-compose.yml. They switch on the S3 contract test; STORAGE_DRIVER=s3 is set
+      # only on the e2e step, so service tests keep the in-memory driver.
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: vento-local
+      S3_ACCESS_KEY_ID: vento
+      S3_SECRET_ACCESS_KEY: vento-local-secret
+      S3_FORCE_PATH_STYLE: "true"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # A service container can't pass the start command and the init script, so docker run it.
+      # Same image digest as docker-compose.yml; the container is healthy once the bucket exists.
+      - name: Start object storage
+        run: |
+          docker run -d --name vento-storage --network host \
+            -e MINIO_ROOT_USER=vento -e MINIO_ROOT_PASSWORD=vento-local-secret \
+            -e STORAGE_BUCKET=vento-local \
+            -e MINIO_API_CORS_ALLOW_ORIGIN=http://localhost:5173 \
+            -e MINIO_API_STALE_UPLOADS_EXPIRY=24h \
+            -v "$PWD/docker/storage-init.sh:/storage-init.sh:ro" \
+            --health-cmd "test -f /tmp/storage-ready" --health-interval 2s --health-retries 30 \
+            --entrypoint sh \
+            cgr.dev/chainguard/minio:latest@sha256:b288eaa709ba2f799a39e9a8ceda71a08fabf90109b12c90badba9afff29485c \
+            /storage-init.sh
+          for i in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' vento-storage)" = healthy ] && exit 0
+            sleep 2
+          done
+          docker logs vento-storage
+          exit 1
+
+      - name: Migrate
+        run: pnpm db:migrate
+
+      - name: Build
+        run: pnpm build
+
       - name: Install Playwright browser
         run: pnpm --filter @vento/web exec playwright install --with-deps chromium
 
       - name: End-to-end tests
-        run: pnpm e2e
+        run: pnpm e2e --shard=${{ matrix.shard }}/3
+        env:
+          STORAGE_DRIVER: s3
+
+      - name: Storage logs
+        if: failure()
+        run: docker logs vento-storage || true
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: apps/web/playwright-report
           retention-days: 7
+
+  # Branch protection on main requires this exact name: it passes only when every job above did.
+  gate:
+    name: Lint, types, tests, build, e2e
+    if: always()
+    needs: [check, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All checks passed
+        run: |
+          [ "${{ needs.check.result }}" = success ] && [ "${{ needs.e2e.result }}" = success ] && exit 0
+          echo "check: ${{ needs.check.result }}, e2e: ${{ needs.e2e.result }}"
+          exit 1

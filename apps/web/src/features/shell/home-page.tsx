@@ -9,6 +9,7 @@ import { useEffectiveAccess, useMe } from '@/features/preview/use-effective-perm
 import { greeting, longDateInLagos } from './greeting'
 import { HomeHero } from './home-hero'
 import { homeKpis, kpiNote } from './home-kpis'
+import { KpiIcon } from './kpi-icon'
 import { navItemForModule, workspaceModules } from './nav'
 import { usePageTitle } from './use-page-title'
 
@@ -63,7 +64,7 @@ export function HomePage() {
         <section aria-label="Your numbers" className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {kpis.map((kpi) => (
-              <StatCard key={kpi.label} label={kpi.label} icon={kpi.icon} />
+              <StatCard key={kpi.label} label={kpi.label} icon={<KpiIcon name={kpi.icon} />} />
             ))}
           </div>
           {note && <p className="text-muted-foreground text-xs">{note}</p>}

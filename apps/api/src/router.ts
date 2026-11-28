@@ -5,6 +5,7 @@ import { approvalsRouter } from '@/modules/approvals/approvals.router'
 import { auditRouter } from '@/modules/audit/audit.router'
 import { checklistRouter } from '@/modules/checklist/checklist.router'
 import { entitiesRouter } from '@/modules/entities/entities.router'
+import { filesRouter } from '@/modules/files/files.router'
 import { healthRouter } from '@/modules/health/health.router'
 import { invitationsRouter } from '@/modules/invitations/invitations.router'
 import { membersRouter } from '@/modules/members/members.router'
@@ -30,6 +31,7 @@ export const router = os.router({
   approvals: approvalsRouter,
   approvalRules: approvalRulesRouter,
   audit: auditRouter,
+  files: filesRouter,
   console: consoleRouter,
 })
 export type Router = typeof router

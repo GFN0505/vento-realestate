@@ -21,6 +21,14 @@ export const badRequestReason = z.enum([
   'reason_required',
   /** Reject without a comment the server caught (zod catches it first in the web). */
   'comment_required',
+  /** An upload that isn't one of the purpose's file types (declared at start, sniffed at the end). */
+  'file_type',
+  /** An upload over the purpose's size limit. */
+  'file_too_large',
+  /** Completing an upload with parts missing, mismatched or a size other than declared. */
+  'upload_incomplete',
+  /** A file id a record can't use: not this person's, not finished, or already used elsewhere. */
+  'file_unavailable',
 ])
 export type BadRequestReason = z.infer<typeof badRequestReason>
 
@@ -207,7 +215,11 @@ export const errorMap = {
   TOO_MANY_REQUESTS: {
     status: 429,
     message: 'Too many attempts. Wait a minute and try again.',
-    data: z.object({ retryAfterSeconds: z.number().int().min(1) }),
+    data: z.object({
+      retryAfterSeconds: z.number().int().min(1),
+      /** `uploads_in_progress`: 20 unfinished uploads already; finish or cancel one first. */
+      reason: z.enum(['uploads_in_progress']).optional(),
+    }),
   },
   /** Anything unexpected. `reference` is in the server log line too, so support can find it. */
   INTERNAL_SERVER_ERROR: {

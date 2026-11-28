@@ -1,32 +1,5 @@
 import type { PermissionModule, SystemRoleKey } from '@vento/shared'
-import {
-  ArrowLeftRight,
-  BadgePercent,
-  Banknote,
-  Building2,
-  CalendarCheck,
-  CalendarClock,
-  CalendarDays,
-  ClipboardCheck,
-  FilePen,
-  FileSearch,
-  Fuel,
-  Gauge,
-  HandCoins,
-  HardHat,
-  IdCard,
-  KeyRound,
-  Landmark,
-  type LucideIcon,
-  PhoneCall,
-  Plane,
-  Receipt,
-  ScrollText,
-  ShieldAlert,
-  TrendingUp,
-  TriangleAlert,
-  Wrench,
-} from 'lucide-react'
+import type { KpiGlyphName } from './kpi-glyphs'
 import { canViewModule, type NavAccess } from './nav'
 
 /*
@@ -36,13 +9,13 @@ import { canViewModule, type NavAccess } from './nav'
  * its module's entry does: the organization has it and the role can view it (decision 12).
  */
 
-export type HomeKpi = { label: string; icon: LucideIcon; module: PermissionModule }
+export type HomeKpi = { label: string; icon: KpiGlyphName; module: PermissionModule }
 
 const EXECUTIVE: readonly HomeKpi[] = [
-  { label: 'Cash across companies', icon: Landmark, module: 'finance' },
-  { label: 'Collected this month', icon: HandCoins, module: 'finance' },
-  { label: 'Overdue', icon: CalendarClock, module: 'sales' },
-  { label: 'Units sold', icon: KeyRound, module: 'sales' },
+  { label: 'Cash across companies', icon: 'landmark', module: 'finance' },
+  { label: 'Collected this month', icon: 'hand-coins', module: 'finance' },
+  { label: 'Overdue', icon: 'calendar-clock', module: 'sales' },
+  { label: 'Units sold', icon: 'key-round', module: 'sales' },
 ]
 
 export const HOME_KPIS: Record<SystemRoleKey, readonly HomeKpi[]> = {
@@ -50,40 +23,40 @@ export const HOME_KPIS: Record<SystemRoleKey, readonly HomeKpi[]> = {
   admin: EXECUTIVE,
   viewer: EXECUTIVE,
   land_legal: [
-    { label: 'Titles in progress', icon: ScrollText, module: 'land' },
-    { label: 'Active encumbrances', icon: ShieldAlert, module: 'land' },
-    { label: 'Contracts for legal review', icon: FileSearch, module: 'documents' },
-    { label: 'Deeds to prepare', icon: FilePen, module: 'documents' },
+    { label: 'Titles in progress', icon: 'scroll-text', module: 'land' },
+    { label: 'Active encumbrances', icon: 'shield-alert', module: 'land' },
+    { label: 'Contracts for legal review', icon: 'file-search', module: 'documents' },
+    { label: 'Deeds to prepare', icon: 'file-pen', module: 'documents' },
   ],
   project_manager: [
-    { label: 'Project progress', icon: Gauge, module: 'projects' },
-    { label: 'On site today', icon: HardHat, module: 'projects' },
-    { label: 'POs in approval', icon: ClipboardCheck, module: 'projects' },
-    { label: 'Open issues', icon: TriangleAlert, module: 'projects' },
+    { label: 'Project progress', icon: 'gauge', module: 'projects' },
+    { label: 'On site today', icon: 'hard-hat', module: 'projects' },
+    { label: 'POs in approval', icon: 'clipboard-check', module: 'projects' },
+    { label: 'Open issues', icon: 'triangle-alert', module: 'projects' },
   ],
   sales: [
-    { label: 'My sales this quarter', icon: TrendingUp, module: 'sales' },
-    { label: 'Follow-ups due today', icon: PhoneCall, module: 'sales' },
-    { label: 'Units I can sell', icon: Building2, module: 'sales' },
-    { label: 'Commission earned', icon: BadgePercent, module: 'sales' },
+    { label: 'My sales this quarter', icon: 'trending-up', module: 'sales' },
+    { label: 'Follow-ups due today', icon: 'phone-call', module: 'sales' },
+    { label: 'Units I can sell', icon: 'building-2', module: 'sales' },
+    { label: 'Commission earned', icon: 'badge-percent', module: 'sales' },
   ],
   finance: [
-    { label: 'Cash, all companies', icon: Landmark, module: 'finance' },
-    { label: 'Bank lines to match', icon: ArrowLeftRight, module: 'finance' },
-    { label: 'Receipts held for AML', icon: ShieldAlert, module: 'compliance' },
-    { label: 'Month-end close', icon: CalendarCheck, module: 'finance' },
+    { label: 'Cash, all companies', icon: 'landmark', module: 'finance' },
+    { label: 'Bank lines to match', icon: 'arrow-left-right', module: 'finance' },
+    { label: 'Receipts held for AML', icon: 'shield-alert', module: 'compliance' },
+    { label: 'Month-end close', icon: 'calendar-check', module: 'finance' },
   ],
   hr: [
-    { label: 'Payroll this month', icon: Banknote, module: 'hr' },
-    { label: 'Leave requests', icon: Plane, module: 'hr' },
-    { label: 'Memberships expiring', icon: IdCard, module: 'hr' },
-    { label: 'On leave today', icon: CalendarDays, module: 'hr' },
+    { label: 'Payroll this month', icon: 'banknote', module: 'hr' },
+    { label: 'Leave requests', icon: 'plane', module: 'hr' },
+    { label: 'Memberships expiring', icon: 'id-card', module: 'hr' },
+    { label: 'On leave today', icon: 'calendar-days', module: 'hr' },
   ],
   facility: [
-    { label: 'Open requests', icon: Wrench, module: 'facility' },
-    { label: 'Diesel in tank', icon: Fuel, module: 'facility' },
-    { label: 'Service charge collected', icon: Receipt, module: 'facility' },
-    { label: 'PPM due this week', icon: CalendarClock, module: 'facility' },
+    { label: 'Open requests', icon: 'wrench', module: 'facility' },
+    { label: 'Diesel in tank', icon: 'fuel', module: 'facility' },
+    { label: 'Service charge collected', icon: 'receipt', module: 'facility' },
+    { label: 'PPM due this week', icon: 'calendar-clock', module: 'facility' },
   ],
 }
 

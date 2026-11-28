@@ -566,6 +566,7 @@ async function makerContext(
     member: membership.member,
     sessionId: null,
     features: ctx.features,
+    storage: ctx.storage,
   }
 }
 

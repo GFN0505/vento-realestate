@@ -29,10 +29,14 @@ export function conflict(
 }
 
 /** Too soon to do this again; the web can say when to retry. */
-export function tooManyRequests(message: string, retryAfterSeconds: number) {
+export function tooManyRequests(
+  message: string,
+  retryAfterSeconds: number,
+  reason?: 'uploads_in_progress',
+) {
   return new ORPCError('TOO_MANY_REQUESTS', {
     message,
-    data: { retryAfterSeconds: Math.max(1, Math.ceil(retryAfterSeconds)) },
+    data: { retryAfterSeconds: Math.max(1, Math.ceil(retryAfterSeconds)), reason },
   })
 }
 
@@ -69,12 +73,14 @@ export function isUniqueViolation(error: unknown, constraint?: string): boolean 
   return e?.code === '23505' && (!constraint || e.constraint === constraint)
 }
 
-/** The guard triggers of migration 0008 (custom roles), named in their CONSTRAINT. */
+/** The guard triggers (0008 roles, 0017 approvals, 0019 files), named in their CONSTRAINT. */
 export type GuardName =
   | 'members_role_not_archived'
   | 'invitations_role_not_archived'
   | 'roles_archive_unheld'
   | 'roles_not_in_rule'
+  | 'files_attached_kept'
+  | 'files_ready_fixed'
 
 /**
  * A database guard trigger refused the write (check_violation naming the guard). The services

@@ -5,6 +5,8 @@ import { HomePage } from '@/features/shell/home-page'
 
 export const Route = createFileRoute('/_app/_shell/')({
   loader: ({ context }) => {
+    // The numbers' icons load beside the page, not in the first-load bundle (kpi-icon.tsx).
+    void import('@/features/shell/kpi-glyphs')
     // Not awaited: Home never waits for the checklist; it appears as soon as it arrives.
     const access = effectiveAccessFrom(context.queryClient)
     if (access && canSeeChecklist(access)) {

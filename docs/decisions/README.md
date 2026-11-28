@@ -30,5 +30,6 @@ Write one when a choice is hard to reverse, affects several modules, or will mak
 | [0022](0022-the-product-is-always-called-vento-real-estate.md) | The product is always called Vento Real Estate | accepted |
 | [0023](0023-staff-accounts-are-separate-from-customer-accounts.md) | Staff accounts are separate from customer accounts and join by invitation | accepted (amends 0015 and 0021) |
 | [0024](0024-one-approvals-engine-request-approve-execute.md) | One approvals engine: request, approve, execute | accepted |
+| [0025](0025-private-file-storage.md) | Private file storage: one S3-compatible bucket, direct multipart uploads, short-lived signed links | accepted |
 
 Template: [0000-template.md](0000-template.md)

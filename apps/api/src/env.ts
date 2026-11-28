@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { loadLocalEnvFile } from './lib/repo-root'
+import { localCredentialProblems } from './storage/local'
 
 // Local runs read the repo-root .env. In production the host injects variables and no file is read.
 if (process.env.NODE_ENV !== 'production') loadLocalEnvFile(import.meta.dirname)
@@ -37,6 +38,20 @@ const envSchema = z.object({
   SECURITY_ALERT_EMAIL: optionalText.pipe(z.email().optional()),
   /** "Talk to Vento Real Estate" for owners. Required in production. */
   SUPPORT_EMAIL: optionalText.pipe(z.email().optional()),
+  /**
+   * Private file storage (decision 0025). `s3`: any S3-compatible bucket (local container from
+   * `pnpm db:up`; R2 or S3 in production). `memory`: tests only, refused in production. Locally
+   * every S3_* value has a default matching the container (storage/index.ts).
+   */
+  STORAGE_DRIVER: z.enum(['s3', 'memory']).default('s3'),
+  /** Empty: the local container outside production; AWS's own endpoint in production. */
+  S3_ENDPOINT: optionalText.pipe(z.url({ protocol: /^https?$/ }).optional()),
+  S3_REGION: optionalText,
+  S3_BUCKET: optionalText,
+  S3_ACCESS_KEY_ID: optionalText,
+  S3_SECRET_ACCESS_KEY: optionalText,
+  /** `true` for MinIO and most S3-compatible stores; R2 and AWS work either way. */
+  S3_FORCE_PATH_STYLE: optionalText.pipe(z.enum(['true', 'false']).optional()),
   SUPPORT_WHATSAPP: optionalText.pipe(
     z
       .string()
@@ -67,6 +82,26 @@ if (
 if (parsed.data.NODE_ENV === 'production' && !parsed.data.SUPPORT_EMAIL) {
   console.error('Invalid environment variables (see .env.example):\n  - SUPPORT_EMAIL: Required')
   process.exit(1)
+}
+
+// Files in memory vanish on restart, and a production bucket must be named, never defaulted.
+if (parsed.data.NODE_ENV === 'production') {
+  const d = parsed.data
+  const missing =
+    d.STORAGE_DRIVER === 'memory'
+      ? ['STORAGE_DRIVER: Use s3; memory is for tests only']
+      : (['S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const)
+          .filter((k) => !d[k])
+          .map((k) => `${k}: Required`)
+  if (d.S3_ENDPOINT && !d.S3_ENDPOINT.startsWith('https://'))
+    missing.push('S3_ENDPOINT: Use https://')
+  if (d.STORAGE_DRIVER === 's3') missing.push(...localCredentialProblems(d))
+  if (missing.length > 0) {
+    console.error(
+      `Invalid environment variables (see .env.example):\n${missing.map((m) => `  - ${m}`).join('\n')}`,
+    )
+    process.exit(1)
+  }
 }
 
 export const env: Env = parsed.data
