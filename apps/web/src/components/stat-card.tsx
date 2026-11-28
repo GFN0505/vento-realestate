@@ -1,10 +1,10 @@
-import type { LucideIcon } from 'lucide-react'
 import { type ReactNode, useId } from 'react'
 import { cn } from '@/lib/utils'
 
 type Props = {
   label: string
-  icon: LucideIcon
+  /** A 16px glyph, e.g. `<Landmark className="size-4" strokeWidth={1.9} />`; it may load late. */
+  icon: ReactNode
   /** The number. Omit until the module that owns it ships: the tile shows a quiet placeholder. */
   value?: ReactNode
   className?: string
@@ -15,7 +15,7 @@ type Props = {
  * a large tabular value over a soft chart area. With no value yet it shows a refined placeholder
  * and an empty baseline: never a made-up figure or a fake trend.
  */
-export function StatCard({ label, icon: Icon, value, className }: Props) {
+export function StatCard({ label, icon, value, className }: Props) {
   const empty = value === undefined
   const wash = useId()
   return (
@@ -30,7 +30,7 @@ export function StatCard({ label, icon: Icon, value, className }: Props) {
           aria-hidden
           className="flex size-8 shrink-0 items-center justify-center rounded-lg tile-gradient text-tile-icon"
         >
-          <Icon className="size-4" strokeWidth={1.9} />
+          {icon}
         </span>
         <span className="line-clamp-2 min-w-0 font-medium text-[13px] text-muted-foreground leading-tight">
           {label}
