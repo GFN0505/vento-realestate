@@ -306,6 +306,56 @@ describe('approvals engine: requesting', () => {
   })
 })
 
+describe('approvals engine: an action that requires a rule (decision 0026)', () => {
+  const meta = APPROVAL_ACTIONS['access.role.update'] as {
+    -readonly [K in keyof ApprovalActionMeta]: ApprovalActionMeta[K]
+  }
+  afterEach(() => {
+    meta.whenNoRule = 'run'
+  })
+
+  it('refuses before anything is saved when no rule matches, naming the company', () =>
+    withRollback(async (tx) => {
+      meta.whenNoRule = 'refuse'
+      const w = await world(tx)
+      await expect(
+        requestOrRun(tx, w.maker, renamePlugin, { payload: rename(w), reason: 'x' }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        data: { reason: 'no_rule' },
+        message: `Changing a role's permissions needs an approval rule for ${w.parkview.name}. Ask an owner to add one in Approval rules.`,
+      })
+      expect(await nameOf(tx, w.parkview.id)).toBe(w.parkview.name)
+      expect(
+        await tx
+          .select()
+          .from(approvalRequests)
+          .where(eq(approvalRequests.organizationId, w.org.id)),
+      ).toEqual([])
+    }))
+
+  it('refuses when the only rule covers other companies', () =>
+    withRollback(async (tx) => {
+      meta.whenNoRule = 'refuse'
+      const w = await world(tx)
+      const lekki = await createEntity(tx, w.org, { name: 'Lekki Pearl Estates Ltd' })
+      await createApprovalRule(tx, w.org, { steps: [['owner']], entityIds: [lekki.id] })
+      await expect(
+        requestOrRun(tx, w.maker, renamePlugin, { payload: rename(w), reason: 'x' }),
+      ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'no_rule' } })
+    }))
+
+  it('still asks for approval when a rule matches', () =>
+    withRollback(async (tx) => {
+      meta.whenNoRule = 'refuse'
+      const w = await world(tx)
+      await createApprovalRule(tx, w.org, { steps: [['owner']] })
+      const out = await ask(tx, w)
+      expect(out.ran).toBe(false)
+      expect(await nameOf(tx, w.parkview.id)).toBe(w.parkview.name)
+    }))
+})
+
 describe('approvals engine: separation of duties', () => {
   it('never lets the maker decide, even an owner', () =>
     withRollback(async (tx) => {

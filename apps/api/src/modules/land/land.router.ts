@@ -1,10 +1,18 @@
 import { requirePermission } from '@/access/middleware'
 import { serviceContext } from '@/access/service-context'
+import { sendAll } from '@/email/mailer'
 import { member } from '@/orpc'
-import { assertLinkAllowed, documentLink, listVersions } from './document-link.service'
+import {
+  assertEncumbranceWriteAllowed,
+  assertLinkAllowed,
+  documentLink,
+  listVersions,
+} from './document-link.service'
 import { removeVersion, restoreVersion, uploadDocument } from './documents.service'
+import { recordEncumbrance, requestClear, updateEncumbrance } from './encumbrances.service'
 import { parcelActivity } from './land-activity.service'
 import { landHome } from './land-home.service'
+import { landBlockers } from './land-home-encumbrances'
 import { archiveParcel, restoreParcel, updateParcel } from './parcel-changes.service'
 import { createParcel } from './parcel-create.service'
 import { getParcel, listParcels, parcelNameTaken } from './parcels.service'
@@ -72,7 +80,35 @@ export const landRouter = {
       return documentLink(ctx, input)
     }),
   },
+  encumbrances: {
+    record: member.land.encumbrances.record
+      .use(requirePermission('land', 'create', 'record encumbrances'))
+      .handler(async ({ context, input }) => {
+        const ctx = serviceContext(context)
+        assertEncumbranceWriteAllowed(context.rateLimiter, ctx)
+        const { parcel, emails } = await recordEncumbrance(ctx, input)
+        // "Caveat recorded on …" to owners, after commit: a mail failure never undoes it.
+        await sendAll(context.mailer, emails)
+        return parcel
+      }),
+    update: member.land.encumbrances.update
+      .use(requirePermission('land', 'edit', 'edit encumbrances'))
+      .handler(({ context, input }) => updateEncumbrance(serviceContext(context), input)),
+    requestClear: member.land.encumbrances.requestClear
+      .use(requirePermission('land', 'edit', 'clear encumbrances'))
+      .handler(async ({ context, input }) => {
+        const ctx = serviceContext(context)
+        assertEncumbranceWriteAllowed(context.rateLimiter, ctx)
+        const { emails, ...result } = await requestClear(ctx, input)
+        // "Approval needed" to the first step's approvers, after commit.
+        await sendAll(context.mailer, emails)
+        return result
+      }),
+  },
   home: member.land.home
     .use(view)
     .handler(({ context, input }) => landHome(serviceContext(context), input)),
+  blockers: member.land.blockers
+    .use(view)
+    .handler(({ context, input }) => landBlockers(serviceContext(context), input)),
 }

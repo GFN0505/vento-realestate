@@ -73,7 +73,10 @@ export function isUniqueViolation(error: unknown, constraint?: string): boolean 
   return e?.code === '23505' && (!constraint || e.constraint === constraint)
 }
 
-/** The guard triggers (0008 roles, 0017 approvals, 0019 files, 0021 land), named in CONSTRAINT. */
+/**
+ * The guard triggers (0008 roles, 0017 approvals, 0019 files, 0021 land, 0023 encumbrances),
+ * named in CONSTRAINT.
+ */
 export type GuardName =
   | 'members_role_not_archived'
   | 'invitations_role_not_archived'
@@ -88,6 +91,13 @@ export type GuardName =
   | 'title_stages_fixed'
   | 'land_no_truncate'
   | 'record_counters_forward'
+  | 'encumbrances_kept'
+  | 'encumbrances_cleared_frozen'
+  | 'encumbrances_fixed'
+  | 'encumbrances_parcel_active'
+  | 'parcels_not_encumbered'
+  | 'encumbrances_cleared_by_approval'
+  | 'title_document_versions_pinned_kept'
 
 /**
  * A database guard trigger refused the write (check_violation naming the guard). The services

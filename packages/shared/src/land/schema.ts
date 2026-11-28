@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pendingApproval } from '../approvals/outcome'
 import { auditActor, auditFieldChange } from '../audit/schema'
 import { Decimal } from '../common/decimal'
 import { money } from '../common/money'
@@ -22,6 +23,8 @@ import {
   TITLE_STAGE_STATUSES,
   TITLE_STAGE_TYPES,
 } from './catalog'
+import { ENCUMBRANCE_STATUSES, ENCUMBRANCE_TYPES } from './encumbrance'
+import { optionalNotes, optionalText } from './fields'
 import { MAX_SIZE_SQM, SIZE_UNITS, sizeSqmDecimal } from './size'
 
 export const parcelStatus = z.enum(PARCEL_STATUSES)
@@ -31,28 +34,8 @@ export const titleStageType = z.enum(TITLE_STAGE_TYPES)
 export const titleStageStatus = z.enum(TITLE_STAGE_STATUSES)
 export const stageUpdateStatus = z.enum(STAGE_UPDATE_STATUSES)
 export const titleDocumentType = z.enum(TITLE_DOCUMENT_TYPES)
-
-/** Short free text: trimmed, '' means none (stored as null). */
-const optionalText = (max: number, label: string) =>
-  z
-    .string()
-    .trim()
-    .max(max, { message: `Use ${max} characters or fewer for ${label}` })
-    .refine((v) => !hasHiddenCharacters(v), { message: HIDDEN_CHARACTERS_MESSAGE })
-    .transform((v) => (v === '' ? null : v))
-    .nullish()
-    .transform((v) => v ?? null)
-
-/** Longer text (notes), where line breaks are fine but other hidden characters aren't. */
-const optionalNotes = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max, { message: `Use ${max} characters or fewer` })
-    .refine((v) => !hasHiddenCharactersInText(v), { message: HIDDEN_CHARACTERS_IN_TEXT_MESSAGE })
-    .transform((v) => (v === '' ? null : v))
-    .nullish()
-    .transform((v) => v ?? null)
+export const encumbranceType = z.enum(ENCUMBRANCE_TYPES)
+export const encumbranceStatus = z.enum(ENCUMBRANCE_STATUSES)
 
 export const parcelName = z
   .string()
@@ -205,7 +188,8 @@ export const updateParcelInput = z
   .transform(canonicalLga)
 export type UpdateParcelInput = z.input<typeof updateParcelInput>
 
-export const PARCEL_FILTERS = ['all', 'titled', 'in_progress', 'archived'] as const
+/** `encumbered`: not archived, with any active encumbrance, blocking or not (owner, 28 Nov 2026). */
+export const PARCEL_FILTERS = ['all', 'titled', 'in_progress', 'encumbered', 'archived'] as const
 export const PARCEL_SORTS = ['name', 'reference', 'size', 'updated'] as const
 
 export const listParcelsInput = paginationInput.extend({
@@ -261,13 +245,35 @@ export const parcelRow = z.object({
     .nullable(),
   /** Tells "not recorded" (acquisition.cost null) from "not yours to see". */
   costHidden: z.boolean(),
+  /**
+   * Active encumbrances only; null when there are none. `top` is the most serious (blocking
+   * first, then severity), for the badge: "Court order", "Caveat + 1", "Mortgaged to …".
+   */
+  encumbrance: z
+    .object({
+      /** The sales block (decision 0027): any active one blocks sales. */
+      blocked: z.boolean(),
+      /** `claimant` is null for people who can't see encumbrance details (owner, 28 Nov 2026). */
+      top: z.object({
+        type: encumbranceType,
+        blocksSales: z.boolean(),
+        claimant: z.string().nullable(),
+      }),
+      count: z.number().int().min(1),
+    })
+    .nullable(),
   updatedAt: z.iso.datetime(),
 })
 export type ParcelRow = z.infer<typeof parcelRow>
 
 export const listParcelsOutput = paginated(parcelRow).extend({
   /** Every non-archived parcel in the viewer's companies (and the switcher's), for the subtitle. */
-  summary: z.object({ count: z.number().int().min(0), totalSqm: z.string() }),
+  summary: z.object({
+    count: z.number().int().min(0),
+    totalSqm: z.string(),
+    /** Of those, parcels whose sales are blocked (non-blocking mortgages don't count). */
+    blocked: z.number().int().min(0),
+  }),
 })
 export type ListParcelsOutput = z.infer<typeof listParcelsOutput>
 
@@ -319,6 +325,58 @@ export const titleDocument = z.object({
 })
 export type TitleDocument = z.infer<typeof titleDocument>
 
+/**
+ * An encumbrance's evidence or clearance file: the version saved with it (security M1), whatever
+ * the vault holds now, so what was approved is what shows.
+ */
+export const encumbranceFile = z.object({
+  documentId: id,
+  /** "Caveat · CV/LAG/2026/114". */
+  name: z.string(),
+  version: documentVersion,
+})
+export type EncumbranceFile = z.infer<typeof encumbranceFile>
+
+export const encumbrance = z.object({
+  id,
+  type: encumbranceType,
+  status: encumbranceStatus,
+  blocksSales: z.boolean(),
+  /**
+   * Claimant, lawyer, notes and the files go only to people who can edit Land & title or approve
+   * in it (owner, 28 Nov 2026); for others they're null and `detailsHidden` is true.
+   */
+  detailsHidden: z.boolean(),
+  /** "Claimant or holder": personal data, never logged. */
+  claimant: z.string().nullable(),
+  servedOn: isoDate,
+  reference: z.string().nullable(),
+  lawyer: z.string().nullable(),
+  /** A hearing (court order) or next date; may have passed without an update. */
+  nextOn: isoDate.nullable(),
+  notes: z.string().nullable(),
+  version: z.number().int().min(1),
+  recordedBy: personName,
+  recordedAt: z.iso.datetime(),
+  /** The evidence as recorded; null when hidden. */
+  evidence: encumbranceFile.nullable(),
+  clearance: z
+    .object({
+      clearedOn: isoDate,
+      /** Null when there's none or it's hidden. */
+      note: z.string().nullable(),
+      clearedAt: z.iso.datetime(),
+      /** The clearance evidence as approved; null when hidden. */
+      file: encumbranceFile.nullable(),
+      /** The approvers in step order, from the audit ("approved by Aisha Bello, Olumide Bankole"). */
+      approvedBy: z.array(z.string()),
+    })
+    .nullable(),
+  /** A clearing request waiting for approval; null otherwise. */
+  pendingClear: pendingApproval.nullable(),
+})
+export type Encumbrance = z.infer<typeof encumbrance>
+
 export const parcelDetail = parcelRow.extend({
   /** "Bought from": null when not recorded, or when the viewer may not see it (sellerHidden). */
   seller: z.string().nullable(),
@@ -332,7 +390,19 @@ export const parcelDetail = parcelRow.extend({
   documents: z.array(titleDocument),
   /** The issuer last used for each stage type on parcels in the same state. */
   suggestedIssuers: z.partialRecord(titleStageType, z.string()),
-  can: z.object({ edit: z.boolean(), create: z.boolean(), delete: z.boolean() }),
+  /** The sales block (decision 0027): an active encumbrance on it blocks sales. */
+  blocked: z.boolean(),
+  /** Active first (most serious first), then cleared, newest first. */
+  encumbrances: z.array(encumbrance),
+  can: z.object({
+    edit: z.boolean(),
+    create: z.boolean(),
+    delete: z.boolean(),
+    /** Record an encumbrance (Land & title create). */
+    record: z.boolean(),
+    /** Edit and ask to clear one (edit, and create for the evidence upload). */
+    clear: z.boolean(),
+  }),
   /** Why nothing can change: the parcel or its company is archived. */
   readOnly: z.enum(['archived', 'entity_archived']).nullable(),
 })
@@ -441,20 +511,60 @@ export const documentLinkOutput = z.object({ url: z.url(), expiresAt: z.iso.date
 
 export const landHomeInput = z.strictObject({ entityId: id.optional() })
 
-export const LAND_QUEUE_KINDS = ['query', 'follow_up', 'stalled'] as const
+export const LAND_QUEUE_KINDS = ['query', 'follow_up', 'stalled', 'next_date'] as const
+export const LAND_STAGE_QUEUE_KINDS = ['query', 'follow_up', 'stalled'] as const
 
-export const landQueueItem = z.object({
-  kind: z.enum(LAND_QUEUE_KINDS),
+const queueBase = {
   parcelId: id,
   parcelName: z.string(),
-  stageId: id,
-  stageType: titleStageType,
   /** Query: the query's date; follow-up: the follow-up date; stalled: the last movement. */
   due: isoDate,
-  /** Days since `due` (Lagos), 0 today. */
+  /** Days since `due` (Lagos), 0 today, negative while it's ahead (next dates). */
   days: z.number().int(),
+}
+
+/** A title stage to act on. */
+export const landStageQueueItem = z.object({
+  kind: z.enum(LAND_STAGE_QUEUE_KINDS),
+  ...queueBase,
+  stageId: id,
+  stageType: titleStageType,
 })
+export type LandStageQueueItem = z.infer<typeof landStageQueueItem>
+
+/**
+ * An active encumbrance's hearing or next date within 30 days, or passed without an update
+ * (owner, 28 Nov 2026). `due` is the date; `blocksSales` makes it a blocker.
+ */
+export const landNextDateQueueItem = z.object({
+  kind: z.literal('next_date'),
+  ...queueBase,
+  encumbranceId: id,
+  encumbranceType: encumbranceType,
+  blocksSales: z.boolean(),
+})
+export type LandNextDateQueueItem = z.infer<typeof landNextDateQueueItem>
+
+export const landQueueItem = z.discriminatedUnion('kind', [
+  landStageQueueItem,
+  landNextDateQueueItem,
+])
 export type LandQueueItem = z.infer<typeof landQueueItem>
+
+/** One active encumbrance on the Land & legal home's panel. */
+export const landHomeEncumbrance = z.object({
+  id,
+  parcelId: id,
+  parcelName: z.string(),
+  type: encumbranceType,
+  blocksSales: z.boolean(),
+  /** Null for people who can't see encumbrance details. */
+  claimant: z.string().nullable(),
+  /** The case or caveat number, which everyone who can view Land & title sees. */
+  reference: z.string().nullable(),
+  servedOn: isoDate,
+  nextOn: isoDate.nullable(),
+})
 
 export const landHome = z.object({
   /** Any non-archived parcel in view; without one the tile says "Add your first parcel". */
@@ -476,7 +586,43 @@ export const landHome = z.object({
     }),
   ),
   titledCount: z.number().int().min(0),
+  /** The *Encumbrances blocking sales* tile and the *Encumbrances* panel. */
+  encumbrances: z.object({
+    /** Parcels whose sales are blocked. */
+    blockedParcels: z.number().int().min(0),
+    /** The oldest served date among blocking ones ("Oldest since 4 Nov 2026"). */
+    oldestBlockingSince: isoDate.nullable(),
+    /** Blocked parcels per company; companies with none are left out. */
+    byEntity: z.array(z.object({ entityId: id, name: z.string(), count: z.number().int() })),
+    /** Every active encumbrance in view, blocking or not ("See all {n}"). */
+    activeCount: z.number().int().min(0),
+    /** Blocking first, then by next date; at most 5. */
+    active: z.array(landHomeEncumbrance),
+  }),
   /** Only for people who can edit Land & title; by due date, then impact; at most 20. */
   queue: z.array(landQueueItem),
 })
 export type LandHome = z.infer<typeof landHome>
+
+export const landBlockersInput = z.strictObject({ entityId: id.optional() })
+
+/** One blocked parcel for the executive home's *Needs attention*. */
+export const landBlocker = z.object({
+  parcelId: id,
+  parcelName: z.string(),
+  /** The most serious blocking encumbrance. */
+  type: encumbranceType,
+  reference: z.string().nullable(),
+  /** Other active encumbrances on the parcel ("and 1 more"). */
+  others: z.number().int().min(0),
+  /** When the oldest blocking one was served or lodged. */
+  since: isoDate,
+})
+export type LandBlocker = z.infer<typeof landBlocker>
+
+export const landBlockers = z.object({
+  /** Oldest first; at most 10. */
+  items: z.array(landBlocker),
+  total: z.number().int().min(0),
+})
+export type LandBlockers = z.infer<typeof landBlockers>

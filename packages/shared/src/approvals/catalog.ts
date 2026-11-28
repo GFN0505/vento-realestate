@@ -1,11 +1,18 @@
 import type { SystemRoleKey } from '../access/default-roles'
 import type { PermissionModule } from '../access/permissions'
+import type { FeatureKey } from '../features/catalog'
 
 // Metadata only (decision 0024): the web shows labels and chips from here, and the API's
 // plug-in registry must have exactly these keys (tested there). No server code in this file.
 
 /** What the detail's primary button needs to name the effect ("Make Aisha Bello an owner"). */
-export type ApproveLabelInput = { title: string; recordLabel: string; amountText: string | null }
+export type ApproveLabelInput = {
+  title: string
+  recordLabel: string
+  amountText: string | null
+  /** The plug-in's own words for the effect ("Clear caveat and unblock sales"), when it gave any. */
+  actionLabel?: string | null
+}
 
 /** A default rule, by built-in role keys; turned into role ids per organization. */
 export type DefaultApprovalRule = {
@@ -18,8 +25,15 @@ export type DefaultApprovalRule = {
 export type ApprovalActionMeta = {
   /** Approvers need Approve in this module; the audit and inbox file the request here. */
   module: PermissionModule
+  /**
+   * The feature the action belongs to: its rules show (and can be written) only where the
+   * organization has it. null for platform actions, available everywhere.
+   */
+  feature: FeatureKey | null
   /** Imperative, for the rules page and the rule sheet's Action list. */
   label: string
+  /** The action as a subject, for refusals: "Clearing an encumbrance needs an approval rule…". */
+  doing: string
   /** The inbox row's type chip. */
   chip: string
   /** Rules may say "Over ₦X" only when the action carries an amount. */
@@ -34,6 +48,12 @@ export type ApprovalActionMeta = {
    * to make an owner with nobody watching (security M1).
    */
   whenNoApprover: 'proceed' | 'refuse' | 'sole_owner'
+  /**
+   * No rule matches (decision 0026): `run` goes ahead at once, so owners can switch approval off
+   * (decision 0024); `refuse` refuses before anything is saved, for actions that must never run
+   * on one person's word.
+   */
+  whenNoRule: 'run' | 'refuse'
   /** Fixed text in the rules table's Extra condition column; null = none. */
   extraCondition: string | null
   /**
@@ -49,17 +69,21 @@ export const APPROVAL_ACTION_KEYS = [
   'access.role.update',
   'access.member.make_owner',
   'access.invitation.owner',
+  'land.encumbrance.clear',
 ] as const
 export type ApprovalActionKey = (typeof APPROVAL_ACTION_KEYS)[number]
 
 export const APPROVAL_ACTIONS: Readonly<Record<ApprovalActionKey, ApprovalActionMeta>> = {
   'access.role.update': {
     module: 'settings',
+    feature: null,
     label: "Change a role's permissions",
+    doing: "Changing a role's permissions",
     chip: 'Roles',
     hasAmount: false,
     irreversible: false,
     whenNoApprover: 'proceed',
+    whenNoRule: 'run',
     extraCondition: "Can't give access the approver doesn't have",
     rulesFrom: null,
     approveLabel: () => 'Approve role change',
@@ -67,11 +91,14 @@ export const APPROVAL_ACTIONS: Readonly<Record<ApprovalActionKey, ApprovalAction
   },
   'access.member.make_owner': {
     module: 'settings',
+    feature: null,
     label: 'Make someone an owner',
+    doing: 'Making someone an owner',
     chip: 'Owners',
     hasAmount: false,
     irreversible: false,
     whenNoApprover: 'sole_owner',
+    whenNoRule: 'run',
     extraCondition: 'Not the person being made an owner',
     rulesFrom: null,
     approveLabel: (s) => `Make ${s.recordLabel} an owner`,
@@ -79,16 +106,36 @@ export const APPROVAL_ACTIONS: Readonly<Record<ApprovalActionKey, ApprovalAction
   },
   'access.invitation.owner': {
     module: 'settings',
+    feature: null,
     label: 'Invite someone as an owner',
+    doing: 'Inviting someone as an owner',
     chip: 'Owners',
     hasAmount: false,
     irreversible: false,
     whenNoApprover: 'sole_owner',
+    whenNoRule: 'run',
     extraCondition: null,
     // Plan question 2: covered by "Make someone an owner", so inviting can't bypass it.
     rulesFrom: 'access.member.make_owner',
     approveLabel: (s) => `Invite ${s.recordLabel} as an owner`,
     defaults: [],
+  },
+  // Land & title slice 2: clearing unblocks sales, so it never runs on one person's word, even
+  // when the rule is deleted or narrowed (decision 0026).
+  'land.encumbrance.clear': {
+    module: 'land',
+    feature: 'land',
+    label: 'Clear an encumbrance',
+    doing: 'Clearing an encumbrance',
+    chip: 'Land',
+    hasAmount: false,
+    irreversible: false,
+    whenNoApprover: 'refuse',
+    whenNoRule: 'refuse',
+    extraCondition: null,
+    rulesFrom: null,
+    approveLabel: (s) => s.actionLabel ?? 'Clear encumbrance',
+    defaults: [{ minAmount: null, steps: [['land_legal', 'finance', 'admin'], ['owner']] }],
   },
 }
 

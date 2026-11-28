@@ -1,8 +1,15 @@
+import { recordEncumbranceInput } from '@vento/shared'
+import { sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { decide } from '@/approvals/engine'
+import { approvalPlugins } from '@/approvals/registry'
 import { db } from '@/db/client'
+import { seedDefaultRules } from '@/modules/approval-rules/approval-rules.service'
 import { createMemoryStorage, type MemoryStorage } from '@/storage/memory-driver'
 import { uniqueSuffix } from '@/test/db'
 import {
+  contextFor,
+  createEncumbrance,
   createEntity,
   createMember,
   createOrganization,
@@ -10,7 +17,23 @@ import {
   createReadyFile,
 } from '@/test/factories'
 import { clientAs } from '@/test/router-client'
-import { addParcel } from './land.test-world'
+import { recordEncumbrance } from './encumbrances.service'
+import { addParcel, recordCaveat } from './land.test-world'
+import { assertParcelsNotBlocked } from './sales-block'
+
+/** Until another session waits for a lock on this parcel's row (the approval's execute). */
+async function waitForParcelLockWaiter(parcelId: string): Promise<void> {
+  for (let i = 0; i < 200; i++) {
+    const result = await db.execute<{ waiting: boolean }>(sql`
+      select exists (select 1 from pg_stat_activity
+        where wait_event_type = 'Lock' and state = 'active'
+          and query ilike '%from "parcels"%for update%'
+          and query not ilike '%pg_stat_activity%') as waiting`)
+    if (result.rows[0]?.waiting) return
+    await new Promise((r) => setTimeout(r, 25))
+  }
+  throw new Error(`nobody waited for parcel ${parcelId}`)
+}
 
 // Real commits on separate pool connections: one transaction can't show two requests racing.
 // Each test makes its own organization, so the rows it leaves behind never meet another test's.
@@ -112,5 +135,98 @@ describe('land under concurrent requests', () => {
         data: expect.objectContaining({ reason: 'stale', changedByName: winner }),
       }),
     })
+  })
+
+  it('makes a new encumbrance wait for a sale checking the block, then blocks the next one', async () => {
+    const w = await freshOrg()
+    const parcel = await createParcel(db, w.org, { entityId: w.entity.id, status: 'acquired' })
+    const file = await createReadyFile(db, w.org, { uploadedBy: w.ngozi.user, storage: w.storage })
+    let release = () => {}
+    const held = new Promise<void>((r) => {
+      release = r
+    })
+    let checked = () => {}
+    const checking = new Promise<void>((r) => {
+      checked = r
+    })
+    // A sale's transaction: checks the block (FOR SHARE on the parcel), then takes its time.
+    const sale = db.transaction(async (tx) => {
+      await assertParcelsNotBlocked(tx, { organizationId: w.org.id }, [parcel.id])
+      checked()
+      await held
+    })
+    await checking
+    let recorded = false
+    const record = w
+      .client()
+      .land.encumbrances.record(recordCaveat(parcel.id, file.id))
+      .then((d) => {
+        recorded = true
+        return d
+      })
+    await new Promise((r) => setTimeout(r, 300))
+    expect(recorded).toBe(false)
+    release()
+    await sale
+    expect((await record).blocked).toBe(true)
+    await expect(
+      db.transaction((tx) =>
+        assertParcelsNotBlocked(tx, { organizationId: w.org.id }, [parcel.id]),
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT', data: { reason: 'sales_blocked' } })
+  })
+  it('lets a last-step approval and a new encumbrance on the same parcel both finish (review #1)', async () => {
+    // The order that deadlocked with FOR UPDATE on the organization (40P01): the recorder holds
+    // the parcel; the approval takes the organization and waits for the parcel; then the
+    // recorder inserts rows referencing the organization (FOR KEY SHARE). Arranged for certain
+    // here: the recorder's transaction takes the parcel first and records only once the approval
+    // is waiting on it.
+    const w = await freshOrg()
+    await seedDefaultRules(db, w.org.id, w.org.ownerMemberId)
+    const aisha = await createMember(db, w.org, { role: 'finance', name: 'Aisha Bello' })
+    const parcel = await createParcel(db, w.org, { entityId: w.entity.id, status: 'acquired' })
+    const enc = await createEncumbrance(db, w.org, parcel, { recordedBy: w.ngozi.user })
+    const file = () => createReadyFile(db, w.org, { uploadedBy: w.ngozi.user, storage: w.storage })
+    const sent = await w.client().land.encumbrances.requestClear({
+      id: enc.id,
+      expectedVersion: 1,
+      clearedOn: '2026-11-20',
+      evidence: { fileId: (await file()).id },
+      reason: 'Family withdrew the caveat',
+    })
+    const requestId = sent.pendingRequestId ?? ''
+    const registry = approvalPlugins()
+    await decide(
+      await contextFor(db, aisha.user, w.org),
+      { requestId, decision: 'approve' },
+      registry,
+    )
+    const evidence = (await file()).id
+    const ownerCtx = await contextFor(db, w.org.owner, w.org, w.storage)
+    let holding = () => {}
+    const held = new Promise<void>((r) => {
+      holding = r
+    })
+    const recording = db.transaction(async (tx) => {
+      await tx.execute(sql`select 1 from parcels where id = ${parcel.id} for update`)
+      holding()
+      await waitForParcelLockWaiter(parcel.id)
+      const ngozi = await contextFor(tx, w.ngozi.user, w.org, w.storage)
+      return recordEncumbrance(
+        ngozi,
+        recordEncumbranceInput.parse(
+          recordCaveat(parcel.id, evidence, { type: 'lien', reference: 'LN/2026/9' }),
+        ),
+      )
+    })
+    await held
+    const approving = decide(ownerCtx, { requestId, decision: 'approve' }, registry)
+    const results = await within(15_000, Promise.allSettled([recording, approving]))
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled'])
+    const detail = await w.client().land.parcels.get({ id: parcel.id })
+    expect(detail.encumbrances.map((e) => [e.type, e.status])).toEqual([
+      ['lien', 'active'],
+      ['caveat', 'cleared'],
+    ])
   })
 })

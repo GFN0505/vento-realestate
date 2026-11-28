@@ -2,6 +2,7 @@ import {
   currentStageOf,
   hasPermission,
   inCatalogOrder,
+  mostSerious,
   type NigerianState,
   type ParcelDetail,
   type ParcelRow,
@@ -18,12 +19,20 @@ import { auditEvents, parcels, titleStages, users } from '@/db/schema'
 import { actorFor, actorStandingOf } from '@/modules/audit/audit-read.service'
 import { documentsOf } from './document-read'
 import {
+  type EncumbranceSummary,
+  encumbranceExtras,
+  encumbranceRows,
+  encumbranceSummaries,
+  toEncumbrances,
+} from './encumbrance-read'
+import {
   canSeeCost,
   loadParcel,
   type ParcelRecord,
   parcelScope,
   readOnlyReason,
 } from './land-access'
+import { canSeeEncumbranceDetails } from './land-visibility'
 
 // How parcels read: the list row and the detail page (plan §4). Batched by parcel ids, never one
 // query per parcel.
@@ -64,6 +73,7 @@ export function toParcelRow(
   ctx: Pick<ServiceContext, 'member'>,
   p: ParcelRecord,
   stages: readonly Omit<StageSummaryRow, 'parcelId'>[],
+  encumbrance: EncumbranceSummary | null,
 ): ParcelRow {
   const current = currentStageOf(stages)
   const costVisible = canSeeCost(ctx.member)
@@ -91,15 +101,22 @@ export function toParcelRow(
       ? { cost: p.acquisitionCost, currency: 'NGN', on: p.acquiredOn }
       : null,
     costHidden: !costVisible,
+    encumbrance,
     updatedAt: p.updatedAt.toISOString(),
   }
 }
 
-/** One parcel's row (after a write), read again with its stages. */
+/** One parcel's row (after a write), read again with its stages and encumbrances. */
 export async function parcelRow(db: DbOrTx, ctx: Ctx, id: string): Promise<ParcelRow> {
   const parcel = await loadParcel(db, ctx, id)
   const stages = await stageSummaries(db, ctx.organizationId, [id])
-  return toParcelRow(ctx, parcel, stages.get(id) ?? [])
+  const encumbrance = await encumbranceSummaries(
+    db,
+    ctx.organizationId,
+    [id],
+    canSeeEncumbranceDetails(ctx.member),
+  )
+  return toParcelRow(ctx, parcel, stages.get(id) ?? [], encumbrance.get(id) ?? null)
 }
 
 async function stagesOf(db: DbOrTx, ctx: Ctx, parcelId: string): Promise<TitleStage[]> {
@@ -211,26 +228,49 @@ async function suggestedIssuers(
  */
 export async function parcelDetail(db: DbOrTx, ctx: Ctx, id: string): Promise<ParcelDetail> {
   const parcel = await loadParcel(db, ctx, id)
-  const [stages, documents, issuers] = await runQueries(db, [
+  const seesDetails = canSeeEncumbranceDetails(ctx.member)
+  const [stages, documents, issuers, encumbranceList] = await runQueries(db, [
     () => stagesOf(db, ctx, id),
     () => documentsOf(db, ctx.organizationId, { parcelId: id }),
     () => suggestedIssuers(db, ctx, parcel.state),
+    async () => {
+      const rows = await encumbranceRows(db, ctx.organizationId, id)
+      return { rows, extras: await encumbranceExtras(db, ctx, id, rows, seesDetails) }
+    },
   ])
   const p = ctx.member.permissions
   const sellerVisible = canSeeCost(ctx.member)
+  const list = toEncumbrances(encumbranceList.rows, encumbranceList.extras)
+  const active = list.filter((e) => e.status === 'active')
+  const top = mostSerious(active)
+  const summary = top
+    ? {
+        blocked: active.some((e) => e.blocksSales),
+        top: { type: top.type, blocksSales: top.blocksSales, claimant: top.claimant },
+        count: active.length,
+      }
+    : null
   return {
-    ...toParcelRow(ctx, parcel, stages),
+    ...toParcelRow(ctx, parcel, stages, summary),
     seller: sellerVisible ? parcel.seller : null,
     sellerHidden: !sellerVisible,
     notes: parcel.notes,
     version: parcel.version,
     stages,
-    documents: documents.filter((d) => d.latest !== null),
+    // Encumbrance evidence is an encumbrance detail: others don't see it in the vault either.
+    documents: documents.filter(
+      (d) => d.latest !== null && (seesDetails || d.type !== 'encumbrance_evidence'),
+    ),
     suggestedIssuers: issuers,
+    blocked: summary?.blocked ?? false,
+    encumbrances: list,
     can: {
       edit: hasPermission(p, 'land', 'edit'),
       create: hasPermission(p, 'land', 'create'),
       delete: hasPermission(p, 'land', 'delete'),
+      record: hasPermission(p, 'land', 'create'),
+      // Clearing files the clearance evidence, so it needs the upload right too.
+      clear: hasPermission(p, 'land', 'edit') && hasPermission(p, 'land', 'create'),
     },
     readOnly: readOnlyReason(parcel),
   }

@@ -141,7 +141,8 @@ export const DEFAULT_ROLES: readonly DefaultRole[] = [
     description: 'Books, receipts, tax and payroll approval.',
     requiresTwoStep: true,
     levels: {
-      land: 'view',
+      // Second approver on clearing an encumbrance (land spec question 1); otherwise View.
+      land: 'viewApprove',
       projects: 'view',
       sales: 'viewApprove',
       finance: 'full',

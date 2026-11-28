@@ -1,4 +1,6 @@
 export * from './catalog'
+export * from './encumbrance'
+export * from './encumbrance-schema'
 export * from './reference'
 export * from './schema'
 export * from './size'

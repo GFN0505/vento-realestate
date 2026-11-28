@@ -6,12 +6,12 @@ import {
   type TitleDocument,
   type uploadDocumentInput,
 } from '@vento/shared'
-import { and, eq, isNotNull, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, type ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
-import { parcels, titleDocumentVersions, titleStages } from '@/db/schema'
-import { conflict, notFound } from '@/lib/errors'
+import { parcels, titleDocuments, titleDocumentVersions, titleStages } from '@/db/schema'
+import { badRequest, conflict, notFound } from '@/lib/errors'
 import { recordAudit } from '@/modules/audit/audit.service'
 import { keepUpload } from '@/modules/files/files.records'
 import { documentsOf } from './document-read'
@@ -23,12 +23,18 @@ import {
   versionMetadata,
 } from './documents-write'
 import {
+  assertAcceptsVersion,
+  assertDocumentVisible,
+  refuseIfPinned,
+} from './encumbrance-documents'
+import {
   assertNotFuture,
   assertWritable,
   loadParcel,
   type ParcelRecord,
   parcelTarget,
 } from './land-access'
+import { canSeeEncumbranceDetails } from './land-visibility'
 
 // The document vault (spec "Document vault"): uploads become versions, a version is removed only
 // with a reason (and Undo). Reading and links are in document-link.service.ts.
@@ -44,6 +50,10 @@ export async function uploadDocument(
   return ctx.db.transaction(async (tx) => {
     const parcel = await loadParcel(tx, ctx, input.parcelId, { lock: true })
     assertWritable(parcel)
+    if (input.type === 'encumbrance_evidence') {
+      const documentId = await assertEvidenceExists(tx, ctx, parcel, input)
+      await assertAcceptsVersion(tx, ctx, documentId)
+    }
     const added = await addVersion(tx, ctx, parcel, {
       type: input.type,
       name: input.name,
@@ -73,11 +83,13 @@ export async function removeVersion(
 ): Promise<{ document: TitleDocument }> {
   return ctx.db.transaction(async (tx) => {
     const found = await loadVersion(tx, ctx, input.versionId)
+    assertDocumentVisible(ctx, found.type)
     const parcel = await loadParcel(tx, ctx, found.parcelId, { lock: true })
     assertWritable(parcel)
     const v = await loadVersion(tx, ctx, input.versionId)
     if (!v.removedAt) {
       await refuseIfLastEvidence(tx, ctx, parcel, v)
+      if (v.type === 'encumbrance_evidence') await refuseIfPinned(tx, ctx, v.versionId)
       await tx
         .update(titleDocumentVersions)
         .set({ removedAt: new Date(), removedByUserId: ctx.user.id, removedReason: input.reason })
@@ -127,6 +139,34 @@ async function refuseIfLastEvidence(
   )
 }
 
+/**
+ * An encumbrance's evidence and clearance documents are created by the encumbrance sheets (named
+ * after it); the vault only adds a better scan as a new version of one that exists, and only for
+ * people who can see encumbrance details. Returns that document.
+ */
+async function assertEvidenceExists(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  parcel: ParcelRecord,
+  input: Pick<z.output<typeof uploadDocumentInput>, 'name' | 'separate'>,
+): Promise<string> {
+  const refusal = badRequest('evidence_from_encumbrance', 'Add evidence from the encumbrance.')
+  if (input.separate || !input.name || !canSeeEncumbranceDetails(ctx.member)) throw refusal
+  const [found] = await tx
+    .select({ id: titleDocuments.id })
+    .from(titleDocuments)
+    .where(
+      and(
+        eq(titleDocuments.organizationId, ctx.organizationId),
+        eq(titleDocuments.parcelId, parcel.id),
+        eq(titleDocuments.type, 'encumbrance_evidence'),
+        sql`lower(${titleDocuments.name}) = lower(${input.name})`,
+      ),
+    )
+  if (!found) throw refusal
+  return found.id
+}
+
 /** Undo of a remove: back in the vault. A version that isn't removed is returned as it is. */
 export async function restoreVersion(
   ctx: ServiceContext,
@@ -134,6 +174,7 @@ export async function restoreVersion(
 ): Promise<{ document: TitleDocument }> {
   return ctx.db.transaction(async (tx) => {
     const found = await loadVersion(tx, ctx, versionId)
+    assertDocumentVisible(ctx, found.type)
     const parcel = await loadParcel(tx, ctx, found.parcelId, { lock: true })
     assertWritable(parcel)
     const [restored] = await tx

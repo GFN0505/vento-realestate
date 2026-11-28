@@ -2,6 +2,7 @@ import {
   hasPermission,
   type LandHome,
   type LandQueueItem,
+  type LandStageQueueItem,
   STALLED_AFTER_DAYS,
   TITLE_STAGE_TYPES,
   type TitleStageStatus,
@@ -13,10 +14,12 @@ import type { DbOrTx } from '@/db/client'
 import { runQueries } from '@/db/run-queries'
 import { entities, parcels } from '@/db/schema'
 import { lagosToday, parcelEntityJoin, parcelScope } from './land-access'
+import { encumbranceSection, nextDateItems } from './land-home-encumbrances'
+import { canSeeEncumbranceDetails } from './land-visibility'
 import { inProgressCondition } from './parcels.service'
 
 // The Land & legal home (plan §7): the Titles in progress tile, the Title pipeline panel and the
-// queue. Everything follows the company filter (decision 0014), counted in SQL on Lagos calendar
+// queue; encumbrances (slice 2) in land-home-encumbrances.ts. Everything follows the company filter (decision 0014), counted in SQL on Lagos calendar
 // days (date arithmetic, so the stalled boundary is exact).
 
 type StageFact = {
@@ -39,7 +42,7 @@ export function daysBetween(from: string, to: string): number {
 export function queueItemFor(
   stage: StageFact,
   today: string,
-): { kind: LandQueueItem['kind']; due: string } | null {
+): { kind: LandStageQueueItem['kind']; due: string } | null {
   if (stage.status === 'queried' && stage.statusOn) return { kind: 'query', due: stage.statusOn }
   if (stage.followUpOn && stage.followUpOn <= today) {
     return { kind: 'follow_up', due: stage.followUpOn }
@@ -76,10 +79,12 @@ export async function landHome(
     input.entityId ? eq(parcels.entityId, input.entityId) : undefined,
   ) as SQL
   const canAct = hasPermission(ctx.member.permissions, 'land', 'edit')
-  const [counts, pipelineRows, queueRows] = await runQueries(ctx.db, [
+  const [counts, pipelineRows, queueRows, nextRows, encumbrances] = await runQueries(ctx.db, [
     () => countsByEntity(ctx.db, inView, today),
     () => pipelineOf(ctx.db, inView, today),
     async () => (canAct ? queueOf(ctx.db, inView, today) : []),
+    async () => (canAct ? nextDateItems(ctx.db, inView, today, QUEUE_LIMIT) : []),
+    () => encumbranceSection(ctx.db, inView, canSeeEncumbranceDetails(ctx.member)),
   ])
   const inProgress = counts.filter((c) => c.inProgress > 0)
   return {
@@ -104,8 +109,31 @@ export async function landHome(
       ]
     }),
     titledCount: counts.reduce((n, c) => n + c.titled, 0),
-    queue: queueRows,
+    encumbrances,
+    queue: mergeQueue(queueRows, nextRows),
   }
+}
+
+/**
+ * Stage items and next dates in one queue: by due date, then impact (an encumbrance that blocks
+ * sales first, then query, follow-up, stalled, other next dates), at most 20.
+ */
+export function mergeQueue(
+  stages: readonly LandQueueItem[],
+  next: readonly LandQueueItem[],
+): LandQueueItem[] {
+  const rank = (q: LandQueueItem): number => {
+    if (q.kind === 'next_date') return q.blocksSales ? 0 : 4
+    return { query: 1, follow_up: 2, stalled: 3 }[q.kind]
+  }
+  return [...stages, ...next]
+    .sort(
+      (a, b) =>
+        a.due.localeCompare(b.due) ||
+        rank(a) - rank(b) ||
+        a.parcelName.toLowerCase().localeCompare(b.parcelName.toLowerCase()),
+    )
+    .slice(0, QUEUE_LIMIT)
 }
 
 const day = (today: string) => sql`${today}::date`
@@ -171,9 +199,9 @@ async function pipelineOf(db: DbOrTx, inView: SQL, today: string): Promise<Pipel
 }
 
 /** At most one item per stage (a query, then a due follow-up, then stalled), oldest due first. */
-async function queueOf(db: DbOrTx, inView: SQL, today: string): Promise<LandQueueItem[]> {
+async function queueOf(db: DbOrTx, inView: SQL, today: string): Promise<LandStageQueueItem[]> {
   const result = await db.execute<{
-    kind: LandQueueItem['kind']
+    kind: LandStageQueueItem['kind']
     parcel_id: string
     parcel_name: string
     stage_id: string

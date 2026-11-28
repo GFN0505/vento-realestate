@@ -1,15 +1,15 @@
 import { auditFieldChanges, auditWhat, type TimelineEvent } from '@vento/shared'
-import { and, desc, eq, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import type { ServiceContext } from '@/access/context'
 import { runQueries } from '@/db/run-queries'
-import { auditEvents } from '@/db/schema'
+import { auditEvents, encumbrances } from '@/db/schema'
 import { pageOffset, toPage } from '@/lib/paginate'
 import { ACTOR_STANDING, actorFor } from '@/modules/audit/audit-read.service'
 import { loadParcel } from './land-access'
 import { hiddenOnlyEdits, viewLandEvents } from './land-visibility'
 
-// A parcel's Activity (the first record timeline): its audit events, newest first, in plain
-// words. One query on audit_events_org_target_idx. Device and IP are never returned; links issued
+// A parcel's Activity (the first record timeline): its audit events and its encumbrances'
+// approval events, newest first, in plain words, on audit_events_org_target_idx. Device and IP are never returned; links issued
 // are access records, not changes, so they stay in the audit log only.
 
 type Json = Record<string, unknown> | null
@@ -26,10 +26,30 @@ export async function parcelActivity(
   input: { id: string; page: number; pageSize: number },
 ): Promise<{ items: TimelineEvent[]; page: number; pageSize: number; total: number }> {
   const parcel = await loadParcel(ctx.db, ctx, input.id)
+  // The engine aims a clearing request's events at the encumbrance (its subject), so Activity
+  // reads those too: "Asked for approval", "Approved step 1", "Rejected", "Request expired".
+  const encumbranceIds = (
+    await ctx.db
+      .select({ id: encumbrances.id })
+      .from(encumbrances)
+      .where(
+        and(
+          eq(encumbrances.organizationId, ctx.organizationId),
+          eq(encumbrances.parcelId, parcel.id),
+        ),
+      )
+  ).map((r) => r.id)
   const where = and(
     eq(auditEvents.organizationId, ctx.organizationId),
-    eq(auditEvents.targetType, 'parcel'),
-    eq(auditEvents.targetId, parcel.id),
+    or(
+      and(eq(auditEvents.targetType, 'parcel'), eq(auditEvents.targetId, parcel.id)),
+      encumbranceIds.length > 0
+        ? and(
+            eq(auditEvents.targetType, 'encumbrance'),
+            inArray(auditEvents.targetId, encumbranceIds),
+          )
+        : undefined,
+    ),
     ne(auditEvents.action, 'land.document.link_issued'),
     hiddenOnlyEdits(ctx.member),
   )
@@ -44,6 +64,7 @@ export async function parcelActivity(
           actorName: auditEvents.actorName,
           actorStanding: ACTOR_STANDING,
           action: auditEvents.action,
+          targetLabel: auditEvents.targetLabel,
           before: auditEvents.before,
           after: auditEvents.after,
           metadata: auditEvents.metadata,
@@ -64,8 +85,12 @@ export async function parcelActivity(
       at: r.at.toISOString(),
       actor: actorFor(r),
       action: r.action,
-      // Without the parcel's name: the page is the parcel.
-      what: auditWhat(r.action, { targetLabel: null, metadata: asJson(r.metadata) }),
+      // Without the parcel's name: the page is the parcel. An approval event keeps its request's
+      // title ("Approved step 1: Clear caveat · Plot 22"), or it wouldn't say what was approved.
+      what: auditWhat(r.action, {
+        targetLabel: r.action.startsWith('approval.') ? r.targetLabel : null,
+        metadata: asJson(r.metadata),
+      }),
       changes: auditFieldChanges(before, after),
     }
   })

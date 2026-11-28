@@ -46,7 +46,7 @@ describe('invitations', () => {
       )
       expect(email?.text).toContain('as Finance')
       expect(email?.text).toContain('Access: Parkview Residences SPV Ltd')
-      expect(email?.text).toContain('Can approve: Sales & CRM, Finance, HR & payroll')
+      expect(email?.text).toContain('Can approve: Land & title, Sales & CRM, Finance, HR & payroll')
       expect(email?.text).toMatch(/expires on \d{1,2} \w{3} \d{4}/)
     }))
 
@@ -197,7 +197,7 @@ describe('invitations', () => {
         inviterName: 'Olumide Bankole',
         roleName: 'Finance',
         entities: 'all',
-        canApprove: ['Sales & CRM', 'Finance', 'HR & payroll'],
+        canApprove: ['Land & title', 'Sales & CRM', 'Finance', 'HR & payroll'],
         twoStepRequired: true,
         hasAccount: false,
       })

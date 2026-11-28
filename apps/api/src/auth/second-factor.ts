@@ -63,6 +63,7 @@ export async function verifyCodeInPlace(
   input: CodeInput,
 ): Promise<string | null> {
   const scope = requestScope()
+  const before = scope.auth.twoStepMode
   scope.auth.twoStepMode = 'in_place'
   try {
     if ('code' in input) await api.verifyTOTP({ body: { code: input.code }, headers })
@@ -76,6 +77,9 @@ export async function verifyCodeInPlace(
   } catch (error) {
     if (error instanceof APIError) return errorCode(error)
     throw error
+  } finally {
+    // Only these calls skip our verify hooks; nothing later in the request may.
+    scope.auth.twoStepMode = before
   }
 }
 

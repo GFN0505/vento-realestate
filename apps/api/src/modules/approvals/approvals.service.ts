@@ -16,6 +16,7 @@ import {
   matchRule,
   needsApprovalLine,
   noApproverMessage,
+  noRuleMessage,
   type PreviewApprovalOutput,
   policySentence,
   type previewApprovalInput,
@@ -27,6 +28,7 @@ import { and, eq, type SQL, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { ServiceContext } from '@/access/context'
 import { whoCanGrant } from '@/access/who-can-grant'
+import { actionAvailable, availableActionsSql } from '@/approvals/availability'
 import {
   CAN_DECIDE,
   chainGap,
@@ -74,10 +76,14 @@ const ROW_COLUMNS = sql`r.id, r.action_key, r.summary, r.amount, r.currency, r.n
   r.maker_name, r.reason, r.status, r.ended_reason, r.current_step, r.step_count, r.entity_id,
   e.name as entity_name, r.created_at, r.decided_at`
 
-/** The viewer's company limits: organization-wide requests always, company ones inside them. */
-function accessFilter(ctx: ServiceContext): SQL {
-  if (ctx.member.entityIds === null) return sql``
-  return sql` and (r.entity_id is null or r.entity_id = any(${uuidArray(ctx.member.entityIds)}))`
+/**
+ * The viewer's company limits (organization-wide requests always, company ones inside them), and
+ * only actions whose feature the organization has (security L2).
+ */
+function accessFilter(ctx: Pick<ServiceContext, 'member' | 'features'>): SQL {
+  const actions = availableActionsSql(ctx.features)
+  if (ctx.member.entityIds === null) return actions
+  return sql` and (r.entity_id is null or r.entity_id = any(${uuidArray(ctx.member.entityIds)}))${actions}`
 }
 
 function tabFilter(ctx: ServiceContext, tab: ListInput['tab']): SQL {
@@ -143,12 +149,12 @@ export async function listApprovals(
 /** The top bar's count: requests whose current step the viewer can decide now. */
 export async function countWaiting(
   db: DbOrTx,
-  ctx: Pick<ServiceContext, 'organizationId' | 'member'>,
+  ctx: Pick<ServiceContext, 'organizationId' | 'member' | 'features'>,
 ): Promise<number> {
   const result = await db.execute<{ n: number }>(sql`
     select count(*)::int as n from approval_requests r
     join members m on m.id = ${ctx.member.id} and m.organization_id = r.organization_id
-    where r.organization_id = ${ctx.organizationId} and ${OPEN_REQUEST} and ${CAN_DECIDE}`)
+    where r.organization_id = ${ctx.organizationId} and ${OPEN_REQUEST} and ${CAN_DECIDE}${availableActionsSql(ctx.features)}`)
   return result.rows[0]?.n ?? 0
 }
 
@@ -337,6 +343,7 @@ export async function getApproval(ctx: ServiceContext, id: string): Promise<Appr
       amountText: summary.amount
         ? formatAmount(summary.amount.value, summary.amount.currency)
         : null,
+      actionLabel: summary.actionLabel ?? null,
     }),
     irreversible: meta.irreversible,
     isOwn: standing.isMaker,
@@ -399,29 +406,54 @@ export async function previewApproval(
   ctx: ServiceContext,
   input: z.output<typeof previewApprovalInput>,
 ): Promise<PreviewApprovalOutput> {
+  if (!actionAvailable(ctx.features, input.actionKey)) throw notFound()
   const plugin = approvalPlugins()[input.actionKey]
-  const { module, action } = plugin.permission
-  if (!hasPermission(ctx.member.permissions, module, action)) {
+  // Every permission the action needs (security L5: clearing also uploads, so Land & title create).
+  const missing = plugin.permissions.find(
+    (p) => !hasPermission(ctx.member.permissions, p.module, p.action),
+  )
+  if (missing) {
     const advice = await whoCanGrant(ctx.db, {
       organizationId: ctx.organizationId,
-      module,
-      action,
+      module: missing.module,
+      action: missing.action,
       doing: lowerFirst(APPROVAL_ACTIONS[input.actionKey].label),
       excludeUserId: ctx.user.id,
     })
     throw forbidden('permission', advice.message)
   }
-  if (!(await plugin.appliesTo(ctx.db, ctx, input.subject))) return { needed: false }
+  // The company comes from the record (security M4): a record outside the viewer's companies is
+  // NOT_FOUND there, and a company sent that isn't the record's is refused the same way, so no
+  // other company's name is ever read back.
+  const applies = await plugin.appliesTo(ctx.db, ctx, input.subject)
+  if (input.entityId !== undefined && input.entityId !== applies.entityId) throw notFound()
+  if (!applies.applies) return { needed: false }
   const rules = await loadRules(ctx.db, ctx.organizationId, ruleActionKey(input.actionKey))
-  const entityId = input.entityId ?? null
+  const entityId = applies.entityId
   const rule = matchRule(rules, {
     actionKey: input.actionKey,
     entityId,
     ngnAmount: input.ngnAmount ?? null,
   })
-  if (!rule) return { needed: false }
-  const stepWords = rule.steps.map((step) => stepText(step.map((r) => r.name)))
   const meta = APPROVAL_ACTIONS[input.actionKey]
+  if (!rule) {
+    if (meta.whenNoRule === 'run') return { needed: false }
+    // Decision 0026: requestOrRun would refuse, so the sheet says it before any upload.
+    return {
+      needed: true,
+      chain: '',
+      policy: '',
+      blocked: noRuleMessage(input.actionKey, await entityName(ctx, entityId)),
+      proceedsWithoutApprover: false,
+      pendingRequestId: await pendingRequestId(
+        ctx.db,
+        ctx.organizationId,
+        input.actionKey,
+        input.subject,
+      ),
+    }
+  }
+  const stepWords = rule.steps.map((step) => stepText(step.map((r) => r.name)))
   // The same test requestOrRun applies, without the record's own exclusions (no payload here).
   let blocked: string | null = null
   let proceedsWithoutApprover = false

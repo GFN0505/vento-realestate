@@ -76,7 +76,28 @@ async function putSampleFile(
   kind: keyof typeof KINDS,
 ): Promise<string> {
   const label = documentLabel(type, name)
-  const bytes = kind === 'pdf' ? samplePdf(`${parcelName} · ${label}`) : samplePng()
+  const fileId = await sampleUpload(tx, input, `${parcelName} · ${label}`, label, kind)
+  await attachFile(
+    tx,
+    { organizationId: input.organizationId, user: input.officer, storage: input.storage },
+    fileId,
+    'title_document',
+  )
+  return fileId
+}
+
+/**
+ * A finished upload by the officer, in the bucket's incoming/ and not attached, exactly as
+ * `files.completeUpload` leaves one: what the encumbrance services take as evidence.
+ */
+export async function sampleUpload(
+  tx: DbOrTx,
+  input: LandSeedInput,
+  title: string,
+  fileName: string,
+  kind: keyof typeof KINDS = 'pdf',
+): Promise<string> {
+  const bytes = kind === 'pdf' ? samplePdf(title) : samplePng()
   const [idRow] = (await tx.execute<{ id: string }>(sql`select uuidv7() as id`)).rows
   if (!idRow) throw new Error('uuidv7() returned nothing')
   const key = incomingKey(input.organizationId, idRow.id)
@@ -87,7 +108,7 @@ async function putSampleFile(
     purpose: 'title_document',
     status: 'ready',
     objectKey: key,
-    originalName: `${label}.${KINDS[kind].ext}`,
+    originalName: `${fileName}.${KINDS[kind].ext}`,
     declaredType: KINDS[kind].contentType,
     contentType: KINDS[kind].contentType,
     sizeBytes: bytes.length,
@@ -95,11 +116,5 @@ async function putSampleFile(
     uploadedByUserId: input.officer.id,
     completedAt: new Date(),
   })
-  await attachFile(
-    tx,
-    { organizationId: input.organizationId, user: input.officer, storage: input.storage },
-    idRow.id,
-    'title_document',
-  )
   return idRow.id
 }

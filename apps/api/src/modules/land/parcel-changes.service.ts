@@ -1,6 +1,8 @@
 import {
   Decimal,
+  ENCUMBRANCE_WORDS,
   findLga,
+  mostSerious,
   type NigerianState,
   type ParcelDetail,
   type ParcelRow,
@@ -12,8 +14,8 @@ import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { actorOf, type ServiceContext } from '@/access/context'
 import type { DbOrTx } from '@/db/client'
-import { parcels } from '@/db/schema'
-import { badRequest } from '@/lib/errors'
+import { encumbrances, parcels } from '@/db/schema'
+import { badRequest, conflict } from '@/lib/errors'
 import { recordAudit } from '@/modules/audit/audit.service'
 import {
   assertNotFuture,
@@ -182,7 +184,8 @@ export async function updateParcel(ctx: ServiceContext, input: UpdateInput): Pro
 
 /**
  * Archive: leaves the list, stays reachable read-only by link, documents kept. Archiving an
- * archived parcel answers it as it is (Undo double-clicks). Slice 2 refuses an encumbered one.
+ * archived parcel answers it as it is (Undo double-clicks). Refused while an encumbrance is
+ * active (titling isn't affected); the 0023 trigger backs it up.
  */
 export async function archiveParcel(ctx: ServiceContext, id: string): Promise<ParcelRow> {
   return setArchived(ctx, id, true)
@@ -197,6 +200,7 @@ async function setArchived(ctx: ServiceContext, id: string, archive: boolean): P
   return ctx.db.transaction(async (tx) => {
     const parcel = await loadParcel(tx, ctx, id, { lock: true })
     if (parcel.entityArchived) throw entityArchivedConflict(parcel.entityName)
+    if (archive && !parcel.archivedAt) await refuseIfEncumbered(tx, ctx, parcel.id)
     const [row] = await tx
       .update(parcels)
       .set({
@@ -225,4 +229,28 @@ async function setArchived(ctx: ServiceContext, id: string, archive: boolean): P
     }
     return parcelRow(tx, ctx, id)
   })
+}
+
+/** "Clear the caveat before archiving this parcel.", naming the most serious active one. */
+async function refuseIfEncumbered(tx: DbOrTx, ctx: ServiceContext, parcelId: string) {
+  const active = await tx
+    .select({
+      type: encumbrances.type,
+      blocksSales: encumbrances.blocksSales,
+      servedOn: encumbrances.servedOn,
+    })
+    .from(encumbrances)
+    .where(
+      and(
+        eq(encumbrances.organizationId, ctx.organizationId),
+        eq(encumbrances.parcelId, parcelId),
+        eq(encumbrances.status, 'active'),
+      ),
+    )
+  const top = mostSerious(active)
+  if (!top) return
+  throw conflict(
+    'encumbered',
+    `Clear the ${ENCUMBRANCE_WORDS[top.type]} before archiving this parcel.`,
+  )
 }

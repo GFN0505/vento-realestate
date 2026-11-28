@@ -6,6 +6,7 @@ import {
   approvalRequests,
   approvalRules,
   auditEvents,
+  encumbrances,
   entities,
   files,
   invitations,
@@ -31,6 +32,7 @@ import {
   archiveEntityRow,
   contextFor,
   createCustomRole,
+  createEncumbrance,
   createEntity,
   createInvitation,
   createMember,
@@ -587,7 +589,7 @@ describe('organization isolation: approvals and audit (brick 4)', () => {
       ).toEqual([])
       expect(
         await tx.select().from(approvalRules).where(eq(approvalRules.organizationId, theirs.id)),
-      ).toHaveLength(2)
+      ).toHaveLength(3)
     }))
 
   it("never lists, counts or previews another organization's approvals or audit", () =>
@@ -805,6 +807,84 @@ describe('organization isolation: land & title (slice 1)', () => {
       expect(JSON.stringify(await client.land.home({}))).not.toContain('Their secret plot')
     }))
 })
+
+describe('organization isolation: land & title encumbrances (slice 2)', () => {
+  it('answers not found for their parcels, encumbrances and companies, writing nothing', () =>
+    withRollback(async (tx) => {
+      const mine = await createOrganization(tx)
+      await seedDefaultRules(tx, mine.id, mine.ownerMemberId)
+      const myEntity = await createEntity(tx, mine, { name: 'Lekki Pearl Estates Ltd' })
+      await createMember(tx, mine, { role: 'finance' })
+      const theirs = await createOrganization(tx, { name: `Other Developer ${uniqueSuffix()}` })
+      const theirEntity = await createEntity(tx, theirs, { name: 'Their SPV Ltd' })
+      const parcel = await createParcel(tx, theirs, { entityId: theirEntity.id })
+      const theirs1 = await createEncumbrance(tx, theirs, parcel, { nextOn: '2026-12-01' })
+      const { client, storage } = clientAs(tx, mine.owner)
+      const file = async () =>
+        (await createReadyFile(tx, mine, { uploadedBy: mine.owner, storage })).id
+      const before = {
+        ...(await landRowsOf(tx, theirs.id)),
+        encumbrances: await encumbrancesOf(tx, theirs.id),
+      }
+      const attempts: [string, () => Promise<unknown>][] = [
+        [
+          'land.encumbrances.record',
+          async () =>
+            client.land.encumbrances.record({
+              parcelId: parcel.id,
+              type: 'caveat',
+              blocksSales: true,
+              claimant: 'Taken',
+              servedOn: '2026-11-04',
+              evidence: { fileId: await file() },
+            }),
+        ],
+        [
+          'land.encumbrances.update',
+          () => client.land.encumbrances.update({ id: theirs1.id, expectedVersion: 1, notes: 'x' }),
+        ],
+        [
+          'land.encumbrances.requestClear',
+          async () =>
+            client.land.encumbrances.requestClear({
+              id: theirs1.id,
+              expectedVersion: 1,
+              clearedOn: '2026-11-20',
+              evidence: { fileId: await file() },
+              reason: 'Taken',
+            }),
+        ],
+        [
+          'approvals.preview (their encumbrance)',
+          () =>
+            client.approvals.preview({
+              actionKey: 'land.encumbrance.clear',
+              subject: { type: 'encumbrance', id: theirs1.id },
+              entityId: myEntity.id,
+            }),
+        ],
+      ]
+      for (const [name, attempt] of attempts) {
+        await expect(attempt(), name).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      expect({
+        ...(await landRowsOf(tx, theirs.id)),
+        encumbrances: await encumbrancesOf(tx, theirs.id),
+      }).toEqual(before)
+      expect(await client.land.blockers({ entityId: theirEntity.id })).toEqual({
+        items: [],
+        total: 0,
+      })
+      expect(await client.land.blockers({})).toEqual({ items: [], total: 0 })
+      const home = await client.land.home({})
+      expect(home.encumbrances).toMatchObject({ blockedParcels: 0, activeCount: 0 })
+      expect(home.queue).toEqual([])
+    }))
+})
+
+async function encumbrancesOf(tx: Parameters<typeof createParcel>[0], organizationId: string) {
+  return tx.select().from(encumbrances).where(eq(encumbrances.organizationId, organizationId))
+}
 
 /** Every land row of an organization, to prove an attempt wrote nothing. */
 async function landRowsOf(tx: Parameters<typeof createParcel>[0], organizationId: string) {

@@ -8,11 +8,12 @@ import type { Storage } from '@/storage'
 import type { DbOrTx } from './client'
 import { parcels, titleStages } from './schema'
 import { LAND_PARCELS, type ParcelSeed } from './seed-land-data'
+import { seedLandEncumbrances } from './seed-land-encumbrances'
 import { addSampleDocument } from './seed-land-files'
 import { daysBefore, type HistoryItem, morningOf, writeHistory } from './seed-land-history'
 
-// The golden-thread parcels (plan §9) with stages, sample documents in the bucket and a
-// backdated history. Dates are counted back from the run date, so the Land & legal queue always
+// The golden-thread parcels (plan §9) with stages, sample documents in the bucket, a backdated
+// history and (slice 2) their encumbrances, written through the real services. Dates are counted back from the run date, so the Land & legal queue always
 // has its query, follow-up and stalled stage. Safe to run again: the seed's own parcels (their
 // "added" event says seed) upsert by reference, stages by type, documents only when missing;
 // history is written once, with the parcel. A reference someone took by hand is left alone.
@@ -26,6 +27,14 @@ export type LandSeedInput = {
   companies: SeedCompanies
   /** Ngozi Adeyemi, Land & legal: she registered the parcels and uploaded the files. */
   officer: { id: string; name: string; email: string }
+  /**
+   * Who approves clearing Plot 22's caveat under the default rule: Aisha Bello (Finance) at
+   * step 1, Olumide Bankole (Owner) at step 2.
+   */
+  approvers: {
+    finance: { id: string; name: string; email: string }
+    owner: { id: string; name: string; email: string }
+  }
   storage: Storage
   now?: Date
 }
@@ -54,6 +63,7 @@ export async function seedLand(
     }
     // Numbers in between (P-0001…P-0020) belong to parcels the demo doesn't show.
     await raiseCounter(tx, input.organizationId, 'parcel', 21)
+    await seedLandEncumbrances(tx, input, out, today)
     return out
   })
 }

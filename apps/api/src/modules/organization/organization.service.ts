@@ -32,7 +32,15 @@ export function toOrganization(row: OrganizationRow): Organization {
   }
 }
 
-/** Locks the organization row: serialises owner counts and last-entity checks. */
+/**
+ * Locks the organization row: serialises owner counts, last-entity checks, role and rule saves
+ * and approval decisions (every caller takes this same lock, which conflicts with itself).
+ * FOR NO KEY UPDATE, not FOR UPDATE: inserts referencing the organization take FOR KEY SHARE for
+ * their foreign key, and FOR UPDATE would block them, so a decision holding this while its
+ * execute waits for a parcel deadlocked with a land write inserting under that parcel's lock
+ * (review #1). No caller relies on blocking those inserts: every check this serialises is
+ * between callers of this function, and the organization's key never changes.
+ */
 export async function lockOrganization(
   tx: DbOrTx,
   organizationId: string,
@@ -41,7 +49,7 @@ export async function lockOrganization(
     .select()
     .from(organizations)
     .where(eq(organizations.id, organizationId))
-    .for('update')
+    .for('no key update')
   if (!row) throw notFound()
   return row
 }

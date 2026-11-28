@@ -156,6 +156,9 @@ export const roleUpdatePlugin: ApprovalPlugin<RoleUpdatePayload, ExecuteResult> 
   excluded: (tx, ctx, p) => excludedFor(tx, ctx.organizationId, p),
   execute: (tx, ctx, p, meta) => applyRoleUpdate(tx, ctx, p, meta),
   async appliesTo(tx, ctx, subject) {
-    return subject.type === 'role' && roleIsHeld(tx, ctx.organizationId, subject.id)
+    // Roles are organization-wide: no company to name.
+    const applies =
+      subject.type === 'role' && (await roleIsHeld(tx, ctx.organizationId, subject.id))
+    return { applies, entityId: null }
   },
 }

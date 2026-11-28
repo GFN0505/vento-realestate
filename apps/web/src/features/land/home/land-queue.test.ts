@@ -1,11 +1,11 @@
-import type { LandQueueItem } from '@vento/shared'
+import type { LandStageQueueItem } from '@vento/shared'
 import { describe, expect, it } from 'vitest'
 import { LAND_QUEUE_LIMIT, landQueueRows } from './land-queue'
 
 const TODAY = '2026-11-28'
 
 let n = 0
-function item(overrides: Partial<LandQueueItem>): LandQueueItem {
+function item(overrides: Partial<LandStageQueueItem>): LandStageQueueItem {
   n += 1
   return {
     kind: 'query',

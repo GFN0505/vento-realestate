@@ -44,8 +44,9 @@ describe('default roles', () => {
     expect(settings).toEqual(['owner', 'admin'])
   })
 
-  it('lets finance approve in Sales, Finance and HR', () => {
+  it('lets finance approve in Land & title (clearing encumbrances), Sales, Finance and HR', () => {
     expect(approvableModules(defaultPermissions(defaultRole('finance')))).toEqual([
+      'land',
       'sales',
       'finance',
       'hr',

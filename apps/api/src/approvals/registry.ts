@@ -1,5 +1,6 @@
 import type { ApprovalActionKey } from '@vento/shared'
 import { ownerInvitationPlugin } from '@/modules/invitations/approvals'
+import { encumbranceClearPlugin } from '@/modules/land/approvals'
 import { makeOwnerPlugin } from '@/modules/members/approvals'
 import { roleUpdatePlugin } from '@/modules/roles/approvals'
 import { type RegisteredPlugin, registerPlugin } from './plugin'
@@ -13,5 +14,6 @@ export function approvalPlugins(): Readonly<Record<ApprovalActionKey, Registered
     'access.role.update': registerPlugin(roleUpdatePlugin),
     'access.member.make_owner': registerPlugin(makeOwnerPlugin),
     'access.invitation.owner': registerPlugin(ownerInvitationPlugin),
+    'land.encumbrance.clear': registerPlugin(encumbranceClearPlugin),
   }
 }

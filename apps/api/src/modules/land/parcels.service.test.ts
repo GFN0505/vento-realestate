@@ -101,7 +101,7 @@ describe('land.parcels.list', () => {
       const w = await landWorld(tx)
       await sixParcels(w, tx)
       const byLekki = await w.client.land.parcels.list({ entityId: w.lekki.id })
-      expect(byLekki.summary).toEqual({ count: 2, totalSqm: '110000.00' })
+      expect(byLekki.summary).toEqual({ count: 2, totalSqm: '110000.00', blocked: 0 })
       const limited = await createMember(tx, w.org, { role: 'viewer', entityIds: [w.parkview.id] })
       const own = await w.as(limited.user).land.parcels.list({})
       expect(own.items.map((p) => p.name)).toEqual(['Parkview Block B'])
@@ -109,7 +109,7 @@ describe('land.parcels.list', () => {
       expect(outside).toMatchObject({
         items: [],
         total: 0,
-        summary: { count: 0, totalSqm: '0.00' },
+        summary: { count: 0, totalSqm: '0.00', blocked: 0 },
       })
     }))
 
@@ -132,7 +132,10 @@ describe('land.parcels.get', () => {
       expect(detail).toMatchObject({
         version: 1,
         readOnly: null,
-        can: { edit: true, create: true, delete: true },
+        can: { edit: true, create: true, delete: true, record: true, clear: true },
+        blocked: false,
+        encumbrances: [],
+        encumbrance: null,
         stages: [{ type: 'survey_plan' }, { type: 'excision_gazette' }, { type: 'c_of_o' }],
         documents: [],
       })
@@ -141,6 +144,8 @@ describe('land.parcels.get', () => {
         edit: false,
         create: false,
         delete: false,
+        record: false,
+        clear: false,
       })
     }))
 

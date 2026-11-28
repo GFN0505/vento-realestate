@@ -110,6 +110,7 @@ export const TITLE_DOCUMENT_TYPES = [
   ...TITLE_STAGE_TYPES,
   'family_receipt',
   'land_purchase_agreement',
+  'encumbrance_evidence',
   'other',
 ] as const
 export type TitleDocumentType = (typeof TITLE_DOCUMENT_TYPES)[number]
@@ -167,8 +168,19 @@ export const TITLE_DOCUMENTS: Readonly<Record<TitleDocumentType, TitleDocumentDe
     multiple: true,
     stageType: null,
   },
+  // Slice 2: each encumbrance's evidence and clearance, named after it ("Caveat · CV/LAG/114").
+  // Created only from the encumbrance sheets; a better scan is a new version in the vault.
+  encumbrance_evidence: {
+    label: 'Encumbrance evidence',
+    word: 'encumbrance evidence',
+    multiple: true,
+    stageType: null,
+  },
   other: { label: 'Other', word: 'document', multiple: true, stageType: null },
 }
+
+/** Types whose name is the whole label (an encumbrance's documents are named after it). */
+const NAME_IS_LABEL: readonly TitleDocumentType[] = ['other', 'encumbrance_evidence']
 
 /** The document type that is evidence for a stage (same key). */
 export function documentTypeForStage(stage: TitleStageType): TitleDocumentType {
@@ -177,14 +189,14 @@ export function documentTypeForStage(stage: TitleStageType): TitleDocumentType {
 
 /** "C of O", "Family receipt · Adeyemi family", "Query letter". */
 export function documentLabel(type: TitleDocumentType, name: string | null): string {
-  if (type === 'other') return name ?? TITLE_DOCUMENTS.other.label
+  if (NAME_IS_LABEL.includes(type)) return name ?? TITLE_DOCUMENTS[type].label
   const label = TITLE_DOCUMENTS[type].label
   return name ? `${label} · ${name}` : label
 }
 
 /** Mid-sentence: "survey plan", "C of O", "family receipt (Adeyemi family)", "Query letter". */
 export function documentWord(type: TitleDocumentType, name: string | null): string {
-  if (type === 'other') return name ?? TITLE_DOCUMENTS.other.word
+  if (NAME_IS_LABEL.includes(type)) return name ?? TITLE_DOCUMENTS[type].word
   const word = TITLE_DOCUMENTS[type].word
   return name ? `${word} (${name})` : word
 }

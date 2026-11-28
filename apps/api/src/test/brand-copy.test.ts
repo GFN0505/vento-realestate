@@ -6,6 +6,7 @@ import { approvalDecidedEmail } from '@/email/templates/approval-decided'
 import { approvalNeededEmail } from '@/email/templates/approval-needed'
 import { approvalNoApproverEmail } from '@/email/templates/approval-no-approver'
 import { approvalRuleChangedEmail } from '@/email/templates/approval-rule-changed'
+import { encumbranceRecordedEmail } from '@/email/templates/encumbrance-recorded'
 import { invitationEmail } from '@/email/templates/invitation'
 import type { RenderedEmail } from '@/email/templates/layout'
 import {
@@ -215,6 +216,18 @@ const EMAILS: [string, RenderedEmail][] = [
   [
     'superAdminBackupCodesEmail',
     superAdminBackupCodesEmail({ name: 'Ada', at: '14:30', activityUrl: 'http://x' }),
+  ],
+  [
+    'encumbranceRecordedEmail',
+    encumbranceRecordedEmail({
+      typeLabel: 'Caveat',
+      servedOn: '4 Nov 2026',
+      recorderName: 'Ngozi Adeyemi',
+      parcelName: 'Plot 22, Folu Ayo',
+      organizationName: 'Vento Homes Ltd',
+      blocksSales: true,
+      url: 'http://x/land',
+    }),
   ],
 ]
 

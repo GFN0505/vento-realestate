@@ -9,7 +9,9 @@ import type { DbOrTx } from '@/db/client'
 import { uniqueEmail, withRollback } from './db'
 import {
   archiveEntityRow,
+  createApprovalRule,
   createCustomRole,
+  createEncumbrance,
   createEntity,
   createInvitation,
   createMember,
@@ -299,6 +301,10 @@ async function landWorld(tx: DbOrTx, org: TestOrg, actor: TestUser, entityId: st
     removedReason: 'Wrong parcel',
   })
   const [createFile, uploadFile] = [await file(), await file()]
+  const [evidenceFile, clearanceFile] = [await file(), await file()]
+  const claimed = await parcel('Claimed plot')
+  const edited2 = await createEncumbrance(tx, org, claimed, { reference: 'CV/1' })
+  const cleared = await createEncumbrance(tx, org, claimed, { reference: 'CV/2' })
   const cases: LandCase[] = [
     { name: 'land.parcels.list', action: 'view', call: (x) => x.land.parcels.list({}) },
     {
@@ -327,6 +333,38 @@ async function landWorld(tx: DbOrTx, org: TestOrg, actor: TestUser, entityId: st
       call: (x) => x.land.documents.link({ versionId: doc.version.id, disposition: 'inline' }),
     },
     { name: 'land.home', action: 'view', call: (x) => x.land.home({}) },
+    { name: 'land.blockers', action: 'view', call: (x) => x.land.blockers({}) },
+    {
+      name: 'land.encumbrances.record',
+      action: 'create',
+      call: (x) =>
+        x.land.encumbrances.record({
+          parcelId: claimed.id,
+          type: 'court_order',
+          blocksSales: true,
+          claimant: 'Ogunleye family',
+          servedOn: '2026-11-04',
+          evidence: { fileId: evidenceFile },
+        }),
+    },
+    {
+      name: 'land.encumbrances.update',
+      action: 'edit',
+      call: (x) =>
+        x.land.encumbrances.update({ id: edited2.id, expectedVersion: 1, lawyer: 'A. Okoro' }),
+    },
+    {
+      name: 'land.encumbrances.requestClear',
+      action: 'edit',
+      call: (x) =>
+        x.land.encumbrances.requestClear({
+          id: cleared.id,
+          expectedVersion: 1,
+          clearedOn: '2026-11-20',
+          evidence: { fileId: clearanceFile },
+          reason: 'Withdrawn',
+        }),
+    },
     {
       name: 'land.parcels.create',
       action: 'create',
@@ -413,6 +451,12 @@ async function landActor(tx: DbOrTx, role: SystemRoleKey | 'parkview_land_legal'
       : role === 'parkview_land_legal'
         ? (await createMember(tx, org, { role: 'land_legal', entityIds: [parkview.id] })).user
         : (await createMember(tx, org, { role })).user
+  // Clearing needs a rule and someone besides the maker to approve it (decision 0026).
+  await createMember(tx, org, { role: 'admin', name: 'Second admin' })
+  await createApprovalRule(tx, org, {
+    actionKey: 'land.encumbrance.clear',
+    steps: [['owner', 'admin']],
+  })
   return { org, parkview, lekki, actor }
 }
 
@@ -442,11 +486,24 @@ describe('permissions matrix: Land & title', () => {
         })
       }
       const other = await landWorld(tx, org, actor, lekki.id)
-      const listing = new Set(['land.parcels.list', 'land.parcels.nameTaken', 'land.home'])
+      const listing = new Set([
+        'land.parcels.list',
+        'land.parcels.nameTaken',
+        'land.home',
+        'land.blockers',
+      ])
       for (const c of other.cases.filter((x) => !listing.has(x.name))) {
         await expect(c.call(other.client), c.name).rejects.toMatchObject({ code: 'NOT_FOUND' })
       }
       expect(await other.client.land.parcels.list({ entityId: lekki.id })).toMatchObject({
+        total: 0,
+      })
+      // Their own Parkview blocks only: Lekki's claimed plot is never listed.
+      expect((await other.client.land.blockers({})).items.map((b) => b.parcelName)).toEqual([
+        'Claimed plot',
+      ])
+      expect(await other.client.land.blockers({ entityId: lekki.id })).toEqual({
+        items: [],
         total: 0,
       })
     }))

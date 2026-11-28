@@ -28,8 +28,8 @@ import { files } from './files'
 import { entities, organizations } from './organization'
 
 // Land & title, slice 1 (plan §3). Organization-scoped with composite same-organization keys
-// (decision 0012). Encumbrances (slice 2) point at parcels; boundaries (slice 3) are new nullable
-// columns. Catalog order lives in @vento/shared, not in the enums' order.
+// (decision 0012). Encumbrances (slice 2, encumbrances.ts) point at parcels and documents;
+// boundaries (slice 3) are new nullable columns. Catalog order lives in @vento/shared, not in the enums' order.
 
 export const parcelStatus = pgEnum('parcel_status', PARCEL_STATUSES)
 export const parcelSizeUnit = pgEnum('parcel_size_unit', SIZE_UNITS)
@@ -184,6 +184,8 @@ export const titleDocuments = pgTable(
   },
   (t) => [
     unique('title_documents_org_id_unique').on(t.organizationId, t.id),
+    // Encumbrances point at their evidence with (organization_id, parcel_id, document_id).
+    unique('title_documents_org_parcel_id_unique').on(t.organizationId, t.parcelId, t.id),
     foreignKey({
       name: 'title_documents_parcel_fk',
       columns: [t.organizationId, t.parcelId],
@@ -205,9 +207,14 @@ export const titleDocuments = pgTable(
     index('title_documents_stage_idx').on(t.stageId),
     index('title_documents_created_by_idx').on(t.createdByUserId),
     check('title_documents_other_named', sql`${t.type} <> 'other' or ${t.name} is not null`),
+    // ::text: encumbrance_evidence is added in the same migration transaction (plan §13 risk 2).
     check(
       'title_documents_single_unnamed',
-      sql`${t.type} in ('family_receipt', 'land_purchase_agreement', 'deed_of_assignment', 'other') or ${t.name} is null`,
+      sql`${t.type}::text in ('family_receipt', 'land_purchase_agreement', 'deed_of_assignment', 'encumbrance_evidence', 'other') or ${t.name} is null`,
+    ),
+    check(
+      'title_documents_encumbrance_named',
+      sql`${t.type}::text <> 'encumbrance_evidence' or ${t.name} is not null`,
     ),
     check(
       'title_documents_name_length',
@@ -241,6 +248,12 @@ export const titleDocumentVersions = pgTable(
   },
   (t) => [
     unique('title_document_versions_org_id_unique').on(t.organizationId, t.id),
+    // Encumbrances pin a version of their document with (organization_id, document_id, id).
+    unique('title_document_versions_org_document_id_unique').on(
+      t.organizationId,
+      t.documentId,
+      t.id,
+    ),
     unique('title_document_versions_document_no_unique').on(t.documentId, t.versionNo),
     unique('title_document_versions_file_unique').on(t.fileId),
     foreignKey({

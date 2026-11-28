@@ -86,6 +86,9 @@ describe('discarding unfinished staff accounts', () => {
           'approval_decisions.user_id',
           'approval_requests.maker_user_id',
           'audit_events.actor_user_id',
+          // Encumbrances, like the rest of Land & title, come only through `member` procedures.
+          'encumbrances.cleared_by_user_id',
+          'encumbrances.recorded_by_user_id',
           'entities.archived_by_user_id',
           'feature_releases.changed_by_user_id',
           // Uploads come only through `member` procedures, which staff accounts never reach.

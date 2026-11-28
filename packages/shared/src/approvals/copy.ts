@@ -101,6 +101,26 @@ export function noApproverMessage(entityName: string | null): string {
   return `Nobody else can approve this${entityName ? ` in ${entityName}` : ''}. Ask an owner to add an approver to the rule.`
 }
 
+/**
+ * An action that refuses without a rule (decision 0026), with no rule for the record's company:
+ * "Clearing an encumbrance needs an approval rule for Lekki Pearl Estates Ltd. Ask an owner to add
+ * one in Approval rules."
+ */
+export function noRuleMessage(actionKey: ApprovalActionKey, entityName: string | null): string {
+  const doing = APPROVAL_ACTIONS[actionKey].doing
+  return `${doing} needs an approval rule${entityName ? ` for ${entityName}` : ''}. Ask an owner to add one in Approval rules.`
+}
+
+/**
+ * The rules page's warning for such an action: "No rule covers Parkview SPV. Clearing an
+ * encumbrance is refused there until one is added." Without a company, no rule exists at all.
+ */
+export function uncoveredText(actionKey: ApprovalActionKey, entityName: string | null): string {
+  const doing = APPROVAL_ACTIONS[actionKey].doing
+  if (entityName === null) return `No rule yet. ${doing} is refused until one is added.`
+  return `No rule covers ${entityName}. ${doing} is refused there until one is added.`
+}
+
 /** The audit entry's note when a platform action went ahead with nobody else to approve. */
 export const NO_APPROVER_NOTE = 'No one else could approve this'
 

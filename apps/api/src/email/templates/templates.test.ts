@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { encumbranceRecordedEmail } from './encumbrance-recorded'
 import { invitationEmail } from './invitation'
 import { staffInvitationEmail, superAdminRemovedEmail } from './platform-notices'
 import {
@@ -187,5 +188,28 @@ describe('email templates', () => {
   it('tells a staff account someone tried to sign up as a customer', () => {
     const email = existingStaffAccountSignUp({ name: 'Ada', signInUrl: 'http://localhost/sign-in' })
     expect(email.text).toContain("It's a staff account")
+  })
+
+  it('tells owners an encumbrance was recorded, and whether sales are blocked', () => {
+    const facts = {
+      typeLabel: 'Caveat',
+      servedOn: '4 Nov 2026',
+      recorderName: 'Ngozi Adeyemi',
+      parcelName: 'Plot 22, Folu Ayo',
+      organizationName: '<b>Vento Homes Ltd</b>',
+      url: 'http://localhost/land/abc?tab=encumbrances',
+    }
+    const blocking = encumbranceRecordedEmail({ ...facts, blocksSales: true })
+    expect(blocking.subject).toBe('Caveat recorded on Plot 22, Folu Ayo')
+    expect(blocking.text).toContain('Caveat recorded on Plot 22, Folu Ayo · blocks new sales')
+    expect(blocking.text).toContain('Ngozi Adeyemi recorded it. Served or lodged on 4 Nov 2026.')
+    expect(blocking.text).toContain(
+      "New sales on this parcel's units are blocked until it's cleared and approved.",
+    )
+    expect(blocking.text).toContain('Open parcel: http://localhost/land/abc?tab=encumbrances')
+    expect(blocking.html).not.toContain('<b>Vento')
+    const mortgage = encumbranceRecordedEmail({ ...facts, blocksSales: false })
+    expect(mortgage.text).toContain("Caveat recorded on Plot 22, Folu Ayo · Sales aren't blocked.")
+    expect(mortgage.text).not.toContain('New sales')
   })
 })

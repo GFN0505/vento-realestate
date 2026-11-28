@@ -11,8 +11,11 @@ import { runQueries } from '@/db/run-queries'
 import { entities, parcels } from '@/db/schema'
 import { likePattern } from '@/lib/like'
 import { pageOffset } from '@/lib/paginate'
+import { encumbranceSummaries } from './encumbrance-read'
 import { parcelColumns, parcelEntityJoin, parcelScope } from './land-access'
+import { canSeeEncumbranceDetails } from './land-visibility'
 import { parcelDetail, stageSummaries, toParcelRow } from './parcel-read'
+import { parcelBlockedSql } from './sales-block'
 
 // Parcels (plan §3–§5): the list, the detail and the name hint. Add parcel is in
 // parcel-create.service.ts; edit, archive and restore in parcel-changes.service.ts.
@@ -25,12 +28,19 @@ export const inProgressCondition = sql`${parcels.status} <> 'titled' and exists 
   where s.organization_id = ${parcels.organizationId} and s.parcel_id = ${parcels.id}
     and s.status <> 'not_started')`
 
+/** Any active encumbrance, blocking or not (owner, 28 Nov 2026): every claim on the land. */
+const parcelEncumberedSql = sql`exists (select 1 from encumbrances e
+  where e.organization_id = ${parcels.organizationId} and e.parcel_id = ${parcels.id}
+    and e.status = 'active')`
+
 function filterCondition(filter: ListInput['filter']): SQL | undefined {
   switch (filter) {
     case 'titled':
       return and(isNull(parcels.archivedAt), eq(parcels.status, 'titled'))
     case 'in_progress':
       return and(isNull(parcels.archivedAt), inProgressCondition)
+    case 'encumbered':
+      return and(isNull(parcels.archivedAt), parcelEncumberedSql)
     case 'archived':
       return isNotNull(parcels.archivedAt)
     default:
@@ -88,21 +98,30 @@ export async function listParcels(
         .select({
           count: sql<number>`count(*)::int`,
           totalSqm: sql<string>`coalesce(sum(${parcels.sizeSqm}), 0)::numeric(20, 2)::text`,
+          // Only parcels whose sales are blocked: a non-blocking mortgage isn't "blocked".
+          blocked: sql<number>`(count(*) filter (where ${parcelBlockedSql}))::int`,
         })
         .from(parcels)
         .where(and(inView, isNull(parcels.archivedAt))),
   ])
-  const stages = await stageSummaries(
-    ctx.db,
-    ctx.organizationId,
-    rows.map((r) => r.id),
-  )
+  const ids = rows.map((r) => r.id)
+  const [stages, encumbrance] = await runQueries(ctx.db, [
+    () => stageSummaries(ctx.db, ctx.organizationId, ids),
+    () =>
+      encumbranceSummaries(ctx.db, ctx.organizationId, ids, canSeeEncumbranceDetails(ctx.member)),
+  ])
   return {
-    items: rows.map((r) => toParcelRow(ctx, r, stages.get(r.id) ?? [])),
+    items: rows.map((r) =>
+      toParcelRow(ctx, r, stages.get(r.id) ?? [], encumbrance.get(r.id) ?? null),
+    ),
     page: input.page,
     pageSize: input.pageSize,
     total: count?.n ?? 0,
-    summary: { count: summary?.count ?? 0, totalSqm: summary?.totalSqm ?? '0.00' },
+    summary: {
+      count: summary?.count ?? 0,
+      totalSqm: summary?.totalSqm ?? '0.00',
+      blocked: summary?.blocked ?? 0,
+    },
   }
 }
 

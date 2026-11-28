@@ -128,7 +128,14 @@ describe('land.home', () => {
         ],
       })
       const { queue } = await w.client.land.home({})
-      expect(queue.map((q) => [q.kind, q.parcelName, q.stageType, q.days])).toEqual([
+      expect(
+        queue.map((q) => [
+          q.kind,
+          q.parcelName,
+          'stageType' in q ? q.stageType : q.encumbranceType,
+          q.days,
+        ]),
+      ).toEqual([
         ['stalled', 'Idu family land', 'c_of_o', 94],
         ['query', 'Idu family land', 'r_of_o', 25],
         ['follow_up', 'Parkview Block B', 'c_of_o', 1],
@@ -218,6 +225,13 @@ describe('land.home', () => {
         titlesInProgress: { count: 0, stalled: 0, byEntity: [] },
         pipeline: [],
         titledCount: 0,
+        encumbrances: {
+          blockedParcels: 0,
+          oldestBlockingSince: null,
+          byEntity: [],
+          activeCount: 0,
+          active: [],
+        },
         queue: [],
       })
     }))
